@@ -25,6 +25,7 @@ class TurnEventType(StrEnum):
     ROUTER_DECIDED = 'router.decided'
     RETRIEVAL_COMPLETED = 'retrieval.completed'
     RESPONSE_APPROVED = 'response.approved'
+    RESPONSE_PLAYED = 'response.played'
     AGENT_PLAN_STARTED = 'agent.plan.started'
     AGENT_STEP_COMPLETED = 'agent.step.completed'
     AGENT_REPLANNED = 'agent.replanned'

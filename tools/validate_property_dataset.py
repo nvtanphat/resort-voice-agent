@@ -2,7 +2,9 @@
 
 Property-specific curation rules belong beside the dataset.  This validator owns
 only deployment invariants shared by every property: one manifest identity,
-profile/manifest agreement, safe relative artifact paths and pinned bytes.
+profile/manifest agreement, safe relative artifact paths and canonically pinned
+UTF-8 text bytes. Canonical LF bytes keep the same manifest portable across
+Windows checkouts without accepting any content change.
 """
 from __future__ import annotations
 
@@ -14,7 +16,9 @@ from typing import Any
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from concierge_kiosk.core.dataset_layout import KNOWLEDGE_MANIFEST, PROPERTY, dataset_path
+from concierge_kiosk.core.dataset_layout import (
+    KNOWLEDGE_MANIFEST, PROPERTY, canonical_text_bytes, dataset_path,
+)
 
 
 def _json(path: Path) -> Any:
@@ -24,12 +28,8 @@ def _json(path: Path) -> Any:
         raise ValueError(f"Invalid JSON: {path.name}") from exc
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 def _safe_relative(value: str) -> Path:
@@ -90,9 +90,10 @@ def verify_dataset_manifest(dataset_root: str | Path) -> dict[str, int | str]:
         if not isinstance(supplied_size, int) or supplied_size < 0:
             errors.append(f"invalid size metadata: {relative}")
             continue
-        if path.stat().st_size != supplied_size:
+        canonical = canonical_text_bytes(path)
+        if len(canonical) != supplied_size:
             errors.append(f"size mismatch: {relative}")
-        if _sha256(path) != supplied_sha:
+        if _sha256(canonical) != supplied_sha:
             errors.append(f"sha256 mismatch: {relative}")
     if errors:
         raise ValueError("Dataset manifest integrity validation failed:\n- " + "\n- ".join(errors))

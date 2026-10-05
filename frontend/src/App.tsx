@@ -3,6 +3,7 @@ import type {LanguageCode,RequestKind,KioskConfig,Citation} from './api';
 import * as api from './api';
 import {t,statusLabel} from './i18n';
 import {ContinuousVoice} from './continuousVoice';
+import {VoiceAgent} from './voiceAgent';
 import {useVoiceSession} from './hooks/useVoiceSession';
 import {useTurnLifecycle} from './hooks/useTurnLifecycle';
 import {useSpeechPlayback} from './hooks/useSpeechPlayback';
@@ -82,6 +83,7 @@ export const App:React.FC=()=>{
  const langRef=useRef<LanguageCode>('vi'), previousRef=useRef('');
  const languageRevision=useRef(0), userSelectedLanguage=useRef(false);
  const voiceEngine=useRef<ContinuousVoice|null>(null), voiceEpoch=useRef(0);
+ const pipecatAgent=useRef<VoiceAgent|null>(null);
  const voiceTransport=useRef<AbortController|null>(null);
  const playbackTransport=useRef<AbortController|null>(null);
  const greetedRef=useRef(false);
@@ -102,7 +104,7 @@ export const App:React.FC=()=>{
  useEffect(()=>{const offline=()=>setErrorText(t(langRef.current,'networkLost'));const online=()=>setErrorText(t(langRef.current,'recovery'));window.addEventListener('offline',offline);window.addEventListener('online',online);return()=>{window.removeEventListener('offline',offline);window.removeEventListener('online',online);};},[]);
  useEffect(()=>{const id=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(id);},[]);
  useEffect(()=>{if(!toastMessage)return;const id=setTimeout(()=>setToastMessage(null),5000);return()=>clearTimeout(id);},[toastMessage]);
- const invalidate=useCallback(()=>{connectAbort.current?.abort();connectAbort.current=null;voiceEpoch.current++;activeRef.current=false;voiceTransport.current?.abort();voiceTransport.current=null;playbackTransport.current?.abort();playbackTransport.current=null;voiceEngine.current?.stop();voiceEngine.current=null;disableVoice();invalidateRequest();
+ const invalidate=useCallback(()=>{connectAbort.current?.abort();connectAbort.current=null;voiceEpoch.current++;activeRef.current=false;voiceTransport.current?.abort();voiceTransport.current=null;playbackTransport.current?.abort();playbackTransport.current=null;voiceEngine.current?.stop();voiceEngine.current=null;void pipecatAgent.current?.stop();pipecatAgent.current=null;disableVoice();invalidateRequest();
   const turn=currentTurn.current;currentTurn.current=null;if(turn) void api.cancelVoiceTurn(turn).catch(()=>{});
   stopPlayback();setIsThinking(false);setVoiceMessage('');},[disableVoice,invalidateRequest,stopPlayback,setVoiceMessage]);
  const expireIfAuth=(error:unknown)=>{if(error instanceof api.ApiError&&[401,403].includes(error.status)){invalidate();setSessionReady(false);setErrorText(t(langRef.current,'sessionExpired'));return true;}return false;};
@@ -311,8 +313,48 @@ export const App:React.FC=()=>{
  };
  const handleVoiceSearch=async()=>{
    if(activeRef.current){activeRef.current=false;voiceEngine.current?.stop();voiceEngine.current=null;
+     await pipecatAgent.current?.stop().catch(()=>{});pipecatAgent.current=null;
      disableVoice();interruptVoice();return;}
    if(!sessionReady||!serverConfig?.voice_available||!serverConfig.tts_languages.includes(langRef.current)){showToast(t(langRef.current,'voiceUnavailable'));return;}
+   if(serverConfig.voice_transport==='pipecat'&&serverConfig.voice_agent_available){
+     const language=langRef.current;
+     const agent=new VoiceAgent({
+       onState:state=>{if(pipecatAgent.current===agent&&activeRef.current)setVoiceEngineState(state);},
+       onTranscript:text=>{
+         if(pipecatAgent.current!==agent||!activeRef.current)return;
+         previousRef.current=text;setLastQuery(text);
+         setMessages(items=>[...items,{id:uuid(),sender:'user',time:clock(language),text}]);
+       },
+       onProgress:event=>{
+         if(pipecatAgent.current!==agent||!activeRef.current)return;
+         setIsThinking(event!=='response.approved');
+         setVoiceMessage(event==='response.approved'?t(language,'voicePlaying'):t(language,'consulting'));
+       },
+       onAnswer:result=>{
+         if(pipecatAgent.current!==agent||!activeRef.current)return;
+         const clearSuggestions=result.clear_suggestions===true;
+         setMessages(items=>[...(clearSuggestions?items.map(item=>({...item,suggestedAction:undefined})):items),{
+           id:uuid(),sender:'assistant',time:clock(language),text:result.answer,
+           answerTitle:result.answer_title,citations:result.citations||[],
+           suggestedAction:clearSuggestions?null:(result.suggested_action&&allowedRequestKinds.includes(result.suggested_action.kind)?result.suggested_action:null),
+           speechTurnId:result.speech_turn_id,planIsDraft:result.plan_is_draft,
+           missingTopics:result.missing_topics,mapGuidance:result.map_guidance,plan:result.plan,
+           evidenceStatus:result.evidence_status,omittedClaims:result.omitted_claims,
+           relatedTopics:result.related_topics||[],supportContact:result.support_contact||null,
+           actionOptions:(result.action_options||[]).filter(a=>allowedRequestKinds.includes(a.kind)),
+           taskProgress:result.task_progress,agentProgress:result.agent_progress,
+         }]);
+         if(result.autonomous_action?.executed)void refreshRequests();
+         setIsThinking(false);
+       },
+       onError:error=>{if(pipecatAgent.current===agent){showToast(error.message);setVoiceStatus('error');}},
+     });
+     pipecatAgent.current=agent;activeRef.current=true;enableVoice();
+     try{await agent.start(language);}catch{
+       if(pipecatAgent.current===agent){pipecatAgent.current=null;activeRef.current=false;disableVoice();showToast(t(language,'voiceError'));}
+     }
+     return;
+   }
    // Live PCM is a functional transport change, not a UI redesign. Each
    // utterance receives one allocated backend turn before streaming starts.
    type LiveJob={epoch:number;abort:AbortController;turn?:string;
@@ -719,7 +761,7 @@ export const App:React.FC=()=>{
     voiceEpoch.current++;activeRef.current=false;
     voiceTransport.current?.abort();voiceTransport.current=null;
     playbackTransport.current?.abort();playbackTransport.current=null;
-    voiceEngine.current?.stop();voiceEngine.current=null;disableVoice();
+    voiceEngine.current?.stop();voiceEngine.current=null;void pipecatAgent.current?.stop();pipecatAgent.current=null;disableVoice();
     invalidateRequest();
     const turn=currentTurn.current;currentTurn.current=null;if(turn)void api.cancelVoiceTurn(turn).catch(()=>{});
     stopPlayback();setIsThinking(false);setVoiceMessage('');

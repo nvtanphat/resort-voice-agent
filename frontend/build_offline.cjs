@@ -19,6 +19,8 @@ const dir=path.join(base,'..','web');fs.mkdirSync(dir,{recursive:true});
 const ids=new Map(),mod=[];
 function resolve(spec,parent){
  if(spec.endsWith('.css'))return null;
+ if(spec==='events')return require.resolve('events/',{paths:[path.dirname(parent),base]});
+ if(spec==='uuid')return path.join(path.dirname(require.resolve('uuid/package.json')),'dist','cjs-browser','index.js');
  if(spec.startsWith('.')){
   let filename=path.resolve(path.dirname(parent),spec);
   if(!path.extname(filename)){
@@ -56,7 +58,10 @@ function load(id){if(cache[id])return cache[id].exports;const row=modules[id];if
 const module={exports:{}};cache[id]=module;
 row[0](module,module.exports,function(spec){const dep=row[1][spec];if(dep===null)return {};if(dep===undefined)throw Error('Unbundled '+spec);return load(dep);},process);return module.exports;}
 load(${main});})();`;
-fs.writeFileSync(path.join(dir,'guest.js'),output);
+// Third-party transpiled modules occasionally retain spaces before newlines.
+// Keep the checked-in offline artifact deterministic and git-diff clean.
+const cleanOutput=output.replace(/[ \t]+$/gm,'');
+fs.writeFileSync(path.join(dir,'guest.js'),cleanOutput);
 const cssCLI=require.resolve('tailwindcss/lib/cli.js');
 cp.execFileSync(process.execPath,[cssCLI,'-c','tailwind.config.js','-i','src/index.css','-o','../web/guest.css','--minify'],{cwd:base,stdio:'pipe'});
-console.log('Bundled modules',mod.length,'bytes',Buffer.byteLength(output),'and generated stylesheet');
+console.log('Bundled modules',mod.length,'bytes',Buffer.byteLength(cleanOutput),'and generated stylesheet');

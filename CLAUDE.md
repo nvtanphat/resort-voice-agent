@@ -117,11 +117,11 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
   - **After retrieval:** citation binding (`rag/citations.py`) and the `domain_review.runtime_gate` (pending facts need staff confirmation) are applied.
   - No-evidence answers come from a fixed template (`_allowed_no_evidence_answer`), so model prose cannot leak into them.
 - **Voice**:
-  - Browser VAD (`frontend/src/continuousVoice.ts`) → WebSocket `/api/audio/stream` → faster-whisper (`voice/runtime/adapters.py`).
-  - The STT step decodes in the UI language, uses a per-language prompt built from data, filters low-confidence and hallucinated output, and returns a `reject_reason`.
-  - The transcript goes to `/api/ask` with `X-Voice-Turn-ID` (same engine as text).
-  - `authorize_speech` binds the approved answer to the turn. `/api/audio/speak` synthesizes each server-owned chunk ID with in-process Piper and caches the WAV; evidence is re-checked before and after synthesis.
-  - `speech_rendering` runs after authorization and changes only the TTS input, never the displayed text.
+  - `features.voice_transport` selects `legacy|pipecat`. Development uses the authenticated same-origin `/api/voice/agent` Pipecat WebSocket; legacy `/api/audio/stream` and chunk playback remain as a rollback path until voice eval reaches parity.
+  - Pipecat uses the official Protobuf WebSocket transport, Silero VAD, Local Smart Turn v3, guarded faster-whisper STT, the governed conversation engine, and in-process Piper TTS. The browser client is `frontend/src/voiceAgent.ts`.
+  - STT decodes in the authenticated session language and retains the hallucination, repetition, confidence and `reject_reason` gates.
+  - `SpeechGate` owns every spoken chunk: authorization, reserve/complete, and evidence freshness checks run before synthesis and again before playback acknowledgement.
+  - Barge-in interrupts unheard audio and marks the active chunk failed; it does not roll back a committed workflow transition. `speech_rendering` changes only TTS input, never displayed text.
 
 ## Configuration, data-driven vocabulary and pinning
 

@@ -253,6 +253,13 @@ def _read_json(path: Path, *, max_bytes: int, label: str) -> tuple[dict[str, Any
     return value, raw
 
 
+def _json_digest_matches(raw: bytes, expected: str) -> bool:
+    return expected in {
+        hashlib.sha256(raw).hexdigest(),
+        hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest(),
+    }
+
+
 def _load_domain_vocab(profile_path: Path, spec: Mapping[str, Any] | None) -> Mapping[str, Any]:
     """Load and pin the property vocabulary release, if the profile declares one."""
     if spec is None:
@@ -266,8 +273,7 @@ def _load_domain_vocab(profile_path: Path, spec: Mapping[str, Any] | None) -> Ma
     payload, raw = _read_json(source, max_bytes=_MAX_DOMAIN_VOCAB_BYTES,
                               label="domain vocabulary release")
     expected = str(spec.get("sha256", "")).lower()
-    actual = hashlib.sha256(raw).hexdigest()
-    if actual != expected:
+    if not _json_digest_matches(raw, expected):
         raise ValueError("Domain vocabulary release SHA-256 mismatch")
     if payload.get("schema_version") != 1 or not isinstance(payload.get("entities"), list) or not isinstance(payload.get("services"), list):
         raise ValueError("Invalid domain vocabulary release")
@@ -840,8 +846,7 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
         raise ValueError("Invalid pinned agent domain SHA-256")
 
     payload, raw = _read_json(source, max_bytes=_MAX_PROFILE_BYTES, label="agent domain profile")
-    actual = hashlib.sha256(raw).hexdigest()
-    if actual != expected:
+    if not _json_digest_matches(raw, expected):
         raise ValueError("Agent domain profile SHA-256 mismatch")
 
     schema, _ = _read_json(
@@ -959,7 +964,7 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
             presentation_limits={key: int(value) for key, value in payload["ui"]["presentation_limits"].items()},
         ),
         domain_vocab=_load_domain_vocab(source, payload.get("domain_vocab")),
-        sha256=actual,
+        sha256=expected,
         source_path=source.resolve(),
     )
 

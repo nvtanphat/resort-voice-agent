@@ -236,9 +236,9 @@ class _TurnRuntimeSupport:
                             voice_turn: bool = False):
         """Ask once for a closed Command stream when command mode is enabled.
 
-        Emergency and deterministic service routes are resolved before this
-        helper is called. A missing model, timeout or invalid proposal simply
-        returns ``None``; the caller then keeps the deterministic route.
+        Emergency is resolved before this helper is called. A missing model,
+        timeout or invalid proposal returns ``None`` and the caller keeps the
+        deterministic route.
         """
         workflow = self.conversations.workflow_projection(session, language)
         pending_reply = workflow.get('expected_reply') if isinstance(workflow, dict) else None
@@ -717,19 +717,24 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         legacy_intent: ModelIntent | None = None
         legacy_conversational_result: dict | None = None
         turn_plan_smalltalk = False
-        if (voice_reply_result is None and decision.branch == 'knowledge'):
-            understanding_mode = getattr(cfg, 'understanding_mode', 'legacy')
-            command_proposal = None
-            if understanding_mode in {'command', 'shadow'}:
-                command_proposal = turn_support.command_for_session(
-                    execution_query, body.language, session,
-                    enabled_request_kinds=frozenset(enabled_request_kinds), voice_turn=voice_input)
+        understanding_mode = getattr(cfg, 'understanding_mode', 'legacy')
+        command_proposal = None
+        # Emergency has already won deterministically. Every other turn in a
+        # staged command profile gets at most one bounded SLM understanding
+        # call; timeout/invalid JSON keeps the existing deterministic route.
+        if (voice_reply_result is None and decision.branch != 'emergency'
+                and understanding_mode in {'command', 'shadow'}):
+            command_proposal = turn_support.command_for_session(
+                execution_query, body.language, session,
+                enabled_request_kinds=frozenset(enabled_request_kinds), voice_turn=voice_input)
+        if (voice_reply_result is None and
+                (decision.branch == 'knowledge' or
+                 (understanding_mode == 'command' and command_proposal is not None))):
             # Command mode is a single bounded understanding call. Shadow mode
-            # intentionally continues through the old parser so it can be
-            # compared by operators before becoming authoritative.
+            # records the proposal while retaining deterministic authority.
             if understanding_mode == 'command':
                 understanding_commands = command_proposal
-            else:
+            elif understanding_mode == 'legacy':
                 turn_plan = turn_support.turn_plan_for_session(
                     execution_query, body.language, session,
                     enabled_request_kinds=frozenset(enabled_request_kinds), voice_turn=voice_input)
@@ -749,6 +754,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                     command = understanding_commands[0]
                     if command.type == 'Confirm':
                         decision = RouteDecision('confirmation', True)
+                    elif command.type == 'AskInfo':
+                        decision = RouteDecision('knowledge', False)
                     elif command.type == 'Navigate':
                         decision = RouteDecision('navigation', True)
                     elif command.type == 'Handoff':

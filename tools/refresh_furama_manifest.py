@@ -14,25 +14,20 @@ from typing import Any
 import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from concierge_kiosk.core.dataset_layout import KNOWLEDGE_MANIFEST, dataset_path, dataset_root
+from concierge_kiosk.core.dataset_layout import (
+    KNOWLEDGE_MANIFEST, canonical_text_bytes, dataset_path, dataset_root,
+)
 
 
 def _load(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _metadata(path: Path, previous: dict[str, Any]) -> dict[str, Any]:
     result = dict(previous)
-    result["sha256"] = _sha256(path)
-    result["bytes"] = path.stat().st_size
+    canonical = canonical_text_bytes(path)
+    result["sha256"] = hashlib.sha256(canonical).hexdigest()
+    result["bytes"] = len(canonical)
     if path.suffix == ".jsonl" or "records" in previous:
         result["records"] = sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
     return result

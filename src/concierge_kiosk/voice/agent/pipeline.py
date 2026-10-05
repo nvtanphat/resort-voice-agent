@@ -25,12 +25,14 @@ def build_pipeline(*, websocket, cfg, session: str, language: str,
     from pipecat.audio.vad.silero import SileroVADAnalyzer
     from pipecat.audio.vad.vad_analyzer import VADParams
     from pipecat.pipeline.pipeline import Pipeline
-    from pipecat.transports.base_transport import TransportParams
+    from pipecat.processors.audio.vad_processor import VADProcessor
+    from pipecat.serializers.protobuf import ProtobufFrameSerializer
     from pipecat.transports.websocket.fastapi import (
         FastAPIWebsocketParams, FastAPIWebsocketTransport,
     )
-
-    from .transport import RawPcmSerializer
+    from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
+    from pipecat.turns.user_turn_processor import UserTurnProcessor
+    from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
     gate = SpeechGate(
         voice_turns=voice_turns,
@@ -47,15 +49,24 @@ def build_pipeline(*, websocket, cfg, session: str, language: str,
     vad = SileroVADAnalyzer(params=VADParams(
         stop_secs=min(1.2, max(0.2, float(getattr(cfg, "voice_ws_idle_timeout_seconds", 5.0)) / 5)),
     ))
+    vad_processor = VADProcessor(vad_analyzer=vad)
+    turn_processor = UserTurnProcessor(
+        user_turn_strategies=UserTurnStrategies(stop=[
+            TurnAnalyzerUserTurnStopStrategy(
+                turn_analyzer=LocalSmartTurnAnalyzerV3()),
+        ]),
+        user_turn_stop_timeout=max(
+            1.0, float(getattr(cfg, "voice_ws_idle_timeout_seconds", 5.0))),
+    )
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
         params=FastAPIWebsocketParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
             add_wav_header=False,
-            serializer=RawPcmSerializer(sample_rate=16000),
-            vad_analyzer=vad,
-            turn_analyzer=LocalSmartTurnAnalyzerV3(),
+            audio_in_sample_rate=16000,
+            audio_out_sample_rate=16000,
+            serializer=ProtobufFrameSerializer(),
         ),
     )
     stt = ConciergeSTT(cfg=cfg, language=language, transcribe_fn=transcribe_fn)
@@ -65,18 +76,17 @@ def build_pipeline(*, websocket, cfg, session: str, language: str,
         commit_autonomous_action=commit_autonomous_action, gate=gate,
     )
     tts = ConciergeTTS(cfg=cfg, gate=gate, synthesize_fn=synthesize_fn)
-    return Pipeline([transport.input(), stt, agent, tts, transport.output()]), transport
+    return Pipeline([
+        transport.input(), vad_processor, turn_processor, stt, agent, tts,
+        transport.output(),
+    ]), transport
 
 
 async def run_pipeline(pipeline, *, transport, idle_timeout: float):
-    """Run on Pipecat 1.x worker API, with a compatibility fallback for 0.x."""
+    """Run with RTVI enabled on Pipecat 1.x, falling back for older installs."""
     try:
-        from pipecat.pipeline.task import PipelineParams, PipelineTask
-        from pipecat.pipeline.runner import PipelineRunner
-    except ImportError:  # Pipecat 1.3+ worker API
         from pipecat.pipeline.worker import PipelineParams, PipelineWorker
         from pipecat.workers.runner import WorkerRunner
-
         worker = PipelineWorker(
             pipeline,
             params=PipelineParams(enable_metrics=True, enable_usage_metrics=False),
@@ -86,6 +96,9 @@ async def run_pipeline(pipeline, *, transport, idle_timeout: float):
         await runner.add_workers(worker)
         await runner.run()
         return
+    except ImportError:  # pragma: no cover - compatibility with Pipecat 0.x
+        from pipecat.pipeline.task import PipelineParams, PipelineTask
+        from pipecat.pipeline.runner import PipelineRunner
     task = PipelineTask(
         pipeline,
         params=PipelineParams(

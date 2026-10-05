@@ -1,4 +1,4 @@
-/* source-sha256:939406b93c4fdf818e7b9196980bd1841efdb6f0171c9ca1950096a93c0b8245 */
+/* source-sha256:d88fc1f0347d0965465f65c16b8fa6108a7db14fae0481d746c626149bdd6271 */
 /* Concierge Kiosk guest UI. React and TSX bundled from the user-provided Siêu Web UI plus real Concierge backend client. */
 (function(){
 'use strict';
@@ -2817,7 +2817,7 @@ if (
 ) {
   __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(new Error());
 }
-        
+
   })();
 }
 
@@ -5216,7 +5216,7 @@ if (
 ) {
   __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(new Error());
 }
-        
+
   })();
 }
 
@@ -35142,7 +35142,7 @@ if (
 ) {
   __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(new Error());
 }
-        
+
   })();
 }
 
@@ -35189,6 +35189,7 @@ const react_1 = __importStar(require("react"));
 const api = __importStar(require("./api"));
 const i18n_1 = require("./i18n");
 const continuousVoice_1 = require("./continuousVoice");
+const voiceAgent_1 = require("./voiceAgent");
 const useVoiceSession_1 = require("./hooks/useVoiceSession");
 const useTurnLifecycle_1 = require("./hooks/useTurnLifecycle");
 const useSpeechPlayback_1 = require("./hooks/useSpeechPlayback");
@@ -35264,6 +35265,7 @@ const App = () => {
     const langRef = (0, react_1.useRef)('vi'), previousRef = (0, react_1.useRef)('');
     const languageRevision = (0, react_1.useRef)(0), userSelectedLanguage = (0, react_1.useRef)(false);
     const voiceEngine = (0, react_1.useRef)(null), voiceEpoch = (0, react_1.useRef)(0);
+    const pipecatAgent = (0, react_1.useRef)(null);
     const voiceTransport = (0, react_1.useRef)(null);
     const playbackTransport = (0, react_1.useRef)(null);
     const greetedRef = (0, react_1.useRef)(false);
@@ -35295,6 +35297,8 @@ const App = () => {
         playbackTransport.current = null;
         voiceEngine.current?.stop();
         voiceEngine.current = null;
+        void pipecatAgent.current?.stop();
+        pipecatAgent.current = null;
         disableVoice();
         invalidateRequest();
         const turn = currentTurn.current;
@@ -35717,12 +35721,72 @@ const App = () => {
             activeRef.current = false;
             voiceEngine.current?.stop();
             voiceEngine.current = null;
+            await pipecatAgent.current?.stop().catch(() => { });
+            pipecatAgent.current = null;
             disableVoice();
             interruptVoice();
             return;
         }
         if (!sessionReady || !serverConfig?.voice_available || !serverConfig.tts_languages.includes(langRef.current)) {
             showToast((0, i18n_1.t)(langRef.current, 'voiceUnavailable'));
+            return;
+        }
+        if (serverConfig.voice_transport === 'pipecat' && serverConfig.voice_agent_available) {
+            const language = langRef.current;
+            const agent = new voiceAgent_1.VoiceAgent({
+                onState: state => { if (pipecatAgent.current === agent && activeRef.current)
+                    setVoiceEngineState(state); },
+                onTranscript: text => {
+                    if (pipecatAgent.current !== agent || !activeRef.current)
+                        return;
+                    previousRef.current = text;
+                    setLastQuery(text);
+                    setMessages(items => [...items, { id: uuid(), sender: 'user', time: clock(language), text }]);
+                },
+                onProgress: event => {
+                    if (pipecatAgent.current !== agent || !activeRef.current)
+                        return;
+                    setIsThinking(event !== 'response.approved');
+                    setVoiceMessage(event === 'response.approved' ? (0, i18n_1.t)(language, 'voicePlaying') : (0, i18n_1.t)(language, 'consulting'));
+                },
+                onAnswer: result => {
+                    if (pipecatAgent.current !== agent || !activeRef.current)
+                        return;
+                    const clearSuggestions = result.clear_suggestions === true;
+                    setMessages(items => [...(clearSuggestions ? items.map(item => ({ ...item, suggestedAction: undefined })) : items), {
+                            id: uuid(), sender: 'assistant', time: clock(language), text: result.answer,
+                            answerTitle: result.answer_title, citations: result.citations || [],
+                            suggestedAction: clearSuggestions ? null : (result.suggested_action && allowedRequestKinds.includes(result.suggested_action.kind) ? result.suggested_action : null),
+                            speechTurnId: result.speech_turn_id, planIsDraft: result.plan_is_draft,
+                            missingTopics: result.missing_topics, mapGuidance: result.map_guidance, plan: result.plan,
+                            evidenceStatus: result.evidence_status, omittedClaims: result.omitted_claims,
+                            relatedTopics: result.related_topics || [], supportContact: result.support_contact || null,
+                            actionOptions: (result.action_options || []).filter(a => allowedRequestKinds.includes(a.kind)),
+                            taskProgress: result.task_progress, agentProgress: result.agent_progress,
+                        }]);
+                    if (result.autonomous_action?.executed)
+                        void refreshRequests();
+                    setIsThinking(false);
+                },
+                onError: error => { if (pipecatAgent.current === agent) {
+                    showToast(error.message);
+                    setVoiceStatus('error');
+                } },
+            });
+            pipecatAgent.current = agent;
+            activeRef.current = true;
+            enableVoice();
+            try {
+                await agent.start(language);
+            }
+            catch {
+                if (pipecatAgent.current === agent) {
+                    pipecatAgent.current = null;
+                    activeRef.current = false;
+                    disableVoice();
+                    showToast((0, i18n_1.t)(language, 'voiceError'));
+                }
+            }
             return;
         }
         let liveJob = null;
@@ -36442,6 +36506,8 @@ const App = () => {
         playbackTransport.current = null;
         voiceEngine.current?.stop();
         voiceEngine.current = null;
+        void pipecatAgent.current?.stop();
+        pipecatAgent.current = null;
         disableVoice();
         invalidateRequest();
         const turn = currentTurn.current;
@@ -36465,13 +36531,14 @@ const App = () => {
 exports.App = App;
 exports.default = exports.App;
 
-},{"react/jsx-runtime":1,"react":3,"./api":15,"./i18n":16,"./continuousVoice":21,"./hooks/useVoiceSession":22,"./hooks/useTurnLifecycle":23,"./hooks/useSpeechPlayback":24,"./components/Header":25,"./components/SidebarNav":26,"./components/ChatSection":27,"./components/VoiceAssistant":29,"./components/MyRequests":30,"./components/EditRequestModal":31,"./components/TicketModal":33,"./components/VerificationModal":34}],
+},{"react/jsx-runtime":1,"react":3,"./api":15,"./i18n":16,"./continuousVoice":21,"./voiceAgent":22,"./hooks/useVoiceSession":78,"./hooks/useTurnLifecycle":79,"./hooks/useSpeechPlayback":80,"./components/Header":81,"./components/SidebarNav":82,"./components/ChatSection":83,"./components/VoiceAssistant":85,"./components/MyRequests":86,"./components/EditRequestModal":87,"./components/TicketModal":89,"./components/VerificationModal":90}],
 15:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.transcribeStream = exports.VoiceTransportError = exports.turnEvents = exports.markSpeechChunkPlaybackFailed = exports.markSpeechChunkPlayed = exports.checkSpeechChunk = exports.checkSpeechCurrent = exports.cancelVoiceTurn = exports.voiceGreeting = exports.startVoiceTurn = exports.requestChange = exports.requestFeedback = exports.proactiveSuggestions = exports.requestProgress = exports.myRequests = exports.cancelProposal = exports.confirm = exports.prepare = exports.mapPlaces = exports.uiContract = exports.services = exports.config = exports.RequestTimeoutError = exports.ApiError = exports.csrf = void 0;
 exports.startSession = startSession;
 exports.endSession = endSession;
+exports.voiceAgentConnection = voiceAgentConnection;
 exports.reportVoiceLatency = reportVoiceLatency;
 exports.ask = ask;
 exports.transcribe = transcribe;
@@ -36557,6 +36624,14 @@ async function endSession() {
     finally {
         csrfToken = '';
     }
+}
+function voiceAgentConnection(language) {
+    if (!csrfToken)
+        throw new ApiError(401, 'Voice session is not initialized');
+    const url = new URL('/api/voice/agent', window.location.href);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.searchParams.set('language', language);
+    return { wsUrl: url.toString(), token: csrfToken };
 }
 /** Privacy-minimal, best-effort client latency. Never sends text, audio, citations,
  * session IDs or turn IDs. The authoritative business path does not await this. */
@@ -38189,6 +38264,11295 @@ exports.ContinuousVoice = ContinuousVoice;
 22:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.VoiceAgent = void 0;
+const client_js_1 = require("@pipecat-ai/client-js");
+const websocket_transport_1 = require("@pipecat-ai/websocket-transport");
+const api_1 = require("./api");
+class VoiceAgent {
+    constructor(callbacks) {
+        this.callbacks = callbacks;
+        this.client = null;
+        this.stopping = false;
+    }
+    async start(language) {
+        if (this.client)
+            return;
+        this.stopping = false;
+        this.callbacks.onState('connecting');
+        const transport = new websocket_transport_1.WebSocketTransport({
+            serializer: new websocket_transport_1.ProtobufFrameSerializer(),
+            recorderSampleRate: 16000,
+            playerSampleRate: 16000,
+        });
+        const client = new client_js_1.PipecatClient({
+            transport, enableMic: true, enableCam: false,
+            callbacks: {
+                onConnected: () => this.callbacks.onState('ready'),
+                onDisconnected: () => { if (!this.stopping)
+                    this.callbacks.onState('off'); },
+                onUserStartedSpeaking: () => this.callbacks.onState('speaking'),
+                onUserStoppedSpeaking: () => this.callbacks.onState('processing'),
+                onBotStartedSpeaking: () => this.callbacks.onState('playing'),
+                onBotStoppedSpeaking: () => this.callbacks.onState('ready'),
+                onUserTranscript: data => { if (data.final && data.text.trim())
+                    this.callbacks.onTranscript(data.text.trim()); },
+                onServerMessage: data => {
+                    const event = data;
+                    if (event.type === 'agent.progress' && event.event)
+                        this.callbacks.onProgress(event.event);
+                    else if (event.type === 'answer.card' && event.answer)
+                        this.callbacks.onAnswer(event.answer);
+                },
+                onError: message => this.callbacks.onError(new Error(String(message.data?.error || 'Voice agent error'))),
+                onMessageError: () => this.callbacks.onError(new Error('Voice agent protocol error')),
+                onDeviceError: error => this.callbacks.onError(new Error(error.message || 'Microphone unavailable')),
+            },
+        });
+        this.client = client;
+        try {
+            await client.initDevices();
+            await client.connect((0, api_1.voiceAgentConnection)(language));
+            this.callbacks.onState('ready');
+        }
+        catch (error) {
+            this.client = null;
+            try {
+                await client.disconnect();
+            }
+            catch { }
+            throw error;
+        }
+    }
+    async stop() {
+        const client = this.client;
+        this.client = null;
+        this.stopping = true;
+        if (client)
+            await client.disconnect();
+        this.callbacks.onState('off');
+    }
+}
+exports.VoiceAgent = VoiceAgent;
+
+},{"@pipecat-ai/client-js":23,"@pipecat-ai/websocket-transport":47,"./api":15}],
+23:[function(module,exports,require,process){
+var $58KWk$events = require("events");
+var $58KWk$uuid = require("uuid");
+var $58KWk$bowser = require("bowser");
+
+
+function $parcel$exportWildcard(dest, source) {
+  Object.keys(source).forEach(function(key) {
+    if (key === 'default' || key === '__esModule' || Object.prototype.hasOwnProperty.call(dest, key)) {
+      return;
+    }
+
+    Object.defineProperty(dest, key, {
+      enumerable: true,
+      get: function get() {
+        return source[key];
+      }
+    });
+  });
+
+  return dest;
+}
+
+function $parcel$export(e, n, v, s) {
+  Object.defineProperty(e, n, {get: v, set: s, enumerable: true, configurable: true});
+}
+
+function $parcel$interopDefault(a) {
+  return a && a.__esModule ? a.default : a;
+}
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */ var $c2758f3146a53d04$exports = {};
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */ var $db0fd363e17a8e86$exports = {};
+
+$parcel$export($db0fd363e17a8e86$exports, "A11ySnapshotStreamer", () => $db0fd363e17a8e86$export$d1b25383c8328718);
+/**
+ * Copyright (c) 2026, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */ /**
+ * Framework-agnostic helper that drives accessibility-snapshot
+ * streaming. Wraps the walker, a `MutationObserver`, and the other
+ * triggers (scrollend, resize, focus, visibilitychange) into a single
+ * object with `start()` / `stop()`. React apps use
+ * `useUISnapshot` which is a thin wrapper around this; vanilla JS
+ * or non-React apps instantiate the class directly.
+ */ /**
+ * Copyright (c) 2026, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */ // ---------------------------------------------------------------------------
+// Tunables
+// ---------------------------------------------------------------------------
+const $5919cad7020843f0$var$MAX_DEPTH = 10;
+const $5919cad7020843f0$var$MAX_NODES = 200;
+const $5919cad7020843f0$var$MAX_CHILDREN_PER_NODE = 50;
+const $5919cad7020843f0$var$NAME_MAX = 100;
+// Tighter cap on emitted `<option>` children. Country / state pickers
+// can have hundreds of entries; truncating at 20 keeps the snapshot
+// useful without ballooning LLM context.
+const $5919cad7020843f0$var$MAX_SELECT_OPTIONS = 20;
+// Selections benefit from preserving paragraph structure, but the worker
+// only needs enough text to disambiguate the referent. 2000 chars is
+// roughly 500 tokens — meaningful context without dominating the
+// `<ui_state>` injection.
+const $5919cad7020843f0$var$SELECTION_TEXT_MAX = 2000;
+// ---------------------------------------------------------------------------
+// Ref registry: stable `e{N}` IDs per DOM node, persist as long as the
+// node is mounted. WeakMap keeps us from leaking detached nodes.
+// ---------------------------------------------------------------------------
+const $5919cad7020843f0$var$refMap = new WeakMap();
+const $5919cad7020843f0$var$WeakRefCtor = typeof WeakRef === "undefined" ? undefined : WeakRef;
+const $5919cad7020843f0$var$refToElement = new Map();
+let $5919cad7020843f0$var$refCounter = 0;
+function $5919cad7020843f0$var$getRef(el) {
+    const existing = $5919cad7020843f0$var$refMap.get(el);
+    if (existing) return existing;
+    const ref = `e${++$5919cad7020843f0$var$refCounter}`;
+    $5919cad7020843f0$var$refMap.set(el, ref);
+    $5919cad7020843f0$var$refToElement.set(ref, $5919cad7020843f0$var$WeakRefCtor ? new $5919cad7020843f0$var$WeakRefCtor(el) : el);
+    return ref;
+}
+function $5919cad7020843f0$export$792dfd553abe8e9a(ref) {
+    const entry = $5919cad7020843f0$var$refToElement.get(ref);
+    if (!entry) return null;
+    const el = "deref" in entry ? entry.deref() : entry;
+    if (!el) {
+        $5919cad7020843f0$var$refToElement.delete(ref);
+        return null;
+    }
+    if (!el.isConnected) {
+        $5919cad7020843f0$var$refToElement.delete(ref);
+        return null;
+    }
+    return el;
+}
+function $5919cad7020843f0$export$5174ac1454ce16bc(el) {
+    return $5919cad7020843f0$var$refMap.get(el) ?? null;
+}
+function $5919cad7020843f0$export$b09bfb5aa97446d5() {
+    $5919cad7020843f0$var$refCounter = 0;
+    $5919cad7020843f0$var$refToElement.clear();
+}
+// ---------------------------------------------------------------------------
+// Inclusion / exclusion
+// ---------------------------------------------------------------------------
+const $5919cad7020843f0$var$EXCLUDED_TAGS = new Set([
+    "script",
+    "style",
+    "link",
+    "meta",
+    "noscript",
+    "template"
+]);
+function $5919cad7020843f0$var$isExcluded(el) {
+    if ($5919cad7020843f0$var$EXCLUDED_TAGS.has(el.tagName.toLowerCase())) return true;
+    if (el.getAttribute("aria-hidden") === "true") return true;
+    // Explicit app-level opt-out for PII / sensitive subtrees. Skips the
+    // element and its descendants entirely, without needing to also
+    // hide it from screen readers (unlike aria-hidden).
+    if (el.hasAttribute("data-a11y-exclude")) return true;
+    if (el.hidden) return true;
+    // offsetParent == null is a fast-ish check for display:none for most
+    // elements (doesn't catch position:fixed hidden or visibility:hidden,
+    // but catches the common case). Full getComputedStyle is ~10x slower
+    // and we're running on every mutation.
+    if (el instanceof HTMLElement && el.offsetParent === null && el.tagName !== "BODY") {
+        // One false positive: position: fixed with display: block looks
+        // like offsetParent=null but is still visible. Fall back to
+        // getComputedStyle only for those.
+        const style = window.getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden") return true;
+    // If fixed/sticky and rendered, let it through.
+    }
+    return false;
+}
+// ---------------------------------------------------------------------------
+// Role derivation
+// ---------------------------------------------------------------------------
+const $5919cad7020843f0$var$INTERACTIVE_ROLES = new Set([
+    "button",
+    "link",
+    "checkbox",
+    "radio",
+    "textbox",
+    "combobox",
+    "switch",
+    "menuitem",
+    "tab"
+]);
+const $5919cad7020843f0$var$LEAF_ROLES = new Set([
+    ...$5919cad7020843f0$var$INTERACTIVE_ROLES,
+    "heading",
+    "img"
+]);
+function $5919cad7020843f0$var$hasAccessibleName(el) {
+    if (el.hasAttribute("aria-label")) return true;
+    if (el.hasAttribute("aria-labelledby")) return true;
+    if ((el.textContent ?? "").trim().length > 0) return true;
+    return false;
+}
+/**
+ * Derive an ARIA-style role for an element. Returns `null` if the
+ * element is a "pure wrapper" (no semantic value on its own); the
+ * walker will flatten its children into the parent's list rather than
+ * emitting a node.
+ */ function $5919cad7020843f0$var$getRole(el) {
+    const explicit = el.getAttribute("role");
+    if (explicit) return explicit;
+    const tag = el.tagName.toLowerCase();
+    switch(tag){
+        case "main":
+        case "nav":
+        case "header":
+        case "aside":
+        case "footer":
+            return tag;
+        case "article":
+        case "section":
+            return $5919cad7020843f0$var$hasAccessibleName(el) ? "region" : null;
+        case "h1":
+        case "h2":
+        case "h3":
+        case "h4":
+        case "h5":
+        case "h6":
+            return "heading";
+        case "a":
+            return el.hasAttribute("href") ? "link" : null;
+        case "button":
+            return "button";
+        case "input":
+            {
+                const type = el.type;
+                if (type === "checkbox") return "checkbox";
+                if (type === "radio") return "radio";
+                if (type === "submit" || type === "button" || type === "reset") return "button";
+                if (type === "hidden") return null;
+                return "textbox";
+            }
+        case "select":
+            return "combobox";
+        case "textarea":
+            return "textbox";
+        case "label":
+            return null; // consumed by its associated input
+        case "img":
+            return el.getAttribute("alt") !== null ? "img" : null;
+        case "p":
+            // Promote prose containers so paragraph-level deixis works:
+            // selection anchors at the enclosing paragraph, and the worker
+            // can address individual paragraphs by ref for select_text /
+            // scroll_to / highlight. Pure-wrapper flattening would lose
+            // both. Paragraphs are walked as non-leaf so inline links and
+            // emphasis still nest underneath.
+            return "paragraph";
+        case "ul":
+        case "ol":
+            return "list";
+        case "li":
+            return "listitem";
+        case "table":
+            return "table";
+        case "tr":
+            return "row";
+        case "th":
+            return "columnheader";
+        case "td":
+            return "cell";
+        default:
+            // Promote anonymous containers that carry aria/tabindex/click.
+            if (el.hasAttribute("aria-label") || el.hasAttribute("aria-labelledby") || el.hasAttribute("tabindex")) return "generic";
+            return null;
+    }
+}
+// ---------------------------------------------------------------------------
+// Name / value / state / level
+// ---------------------------------------------------------------------------
+function $5919cad7020843f0$var$collapseWhitespace(s) {
+    return s.replace(/\s+/g, " ").trim();
+}
+function $5919cad7020843f0$var$truncate(s, max = $5919cad7020843f0$var$NAME_MAX) {
+    const collapsed = $5919cad7020843f0$var$collapseWhitespace(s);
+    if (collapsed.length <= max) return collapsed;
+    return collapsed.slice(0, max - 1) + "\u2026";
+}
+function $5919cad7020843f0$var$resolveLabelledBy(el) {
+    const ids = el.getAttribute("aria-labelledby");
+    if (!ids) return undefined;
+    const parts = [];
+    for (const id of ids.split(/\s+/)){
+        if (!id) continue;
+        const target = el.ownerDocument.getElementById(id);
+        if (target) parts.push($5919cad7020843f0$var$collectAccessibleText(target));
+    }
+    const joined = parts.filter(Boolean).join(" ");
+    return joined || undefined;
+}
+/**
+ * Collect the accessible text content of an element by walking its
+ * descendant text nodes and joining them with a single space across
+ * element boundaries. This fixes the common case where a button
+ * contains multiple `<span>` children whose text would otherwise
+ * concatenate without a separator (`textContent` returns
+ * `"FooBar"` for `<span>Foo</span><span>Bar</span>`).
+ *
+ * Skips aria-hidden and `EXCLUDED_TAGS` descendants.
+ */ function $5919cad7020843f0$var$collectAccessibleText(el) {
+    const parts = [];
+    for(let i = 0; i < el.childNodes.length; i++){
+        const child = el.childNodes[i];
+        if (child.nodeType === 3 /* TEXT_NODE */ ) {
+            const t = (child.textContent ?? "").trim();
+            if (t) parts.push(t);
+        } else if (child.nodeType === 1 /* ELEMENT_NODE */ ) {
+            const childEl = child;
+            if ($5919cad7020843f0$var$EXCLUDED_TAGS.has(childEl.tagName.toLowerCase())) continue;
+            if (childEl.getAttribute("aria-hidden") === "true") continue;
+            const sub = $5919cad7020843f0$var$collectAccessibleText(childEl);
+            if (sub) parts.push(sub);
+        }
+    }
+    return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+function $5919cad7020843f0$var$getName(el, role) {
+    const ariaLabel = el.getAttribute("aria-label");
+    if (ariaLabel) return $5919cad7020843f0$var$truncate(ariaLabel);
+    const labelled = $5919cad7020843f0$var$resolveLabelledBy(el);
+    if (labelled) return $5919cad7020843f0$var$truncate(labelled);
+    const tag = el.tagName.toLowerCase();
+    // Form controls: prefer associated <label>.
+    if (tag === "input" || tag === "textarea" || tag === "select") {
+        const id = el.getAttribute("id");
+        if (id) {
+            // Iterate labels rather than using a CSS attribute selector so we
+            // avoid needing CSS.escape (which isn't available in jsdom).
+            const labels = el.ownerDocument.getElementsByTagName("label");
+            for(let i = 0; i < labels.length; i++){
+                if (labels[i].htmlFor === id && labels[i].textContent) return $5919cad7020843f0$var$truncate(labels[i].textContent ?? "");
+            }
+        }
+        const wrappingLabel = el.closest("label");
+        if (wrappingLabel?.textContent) return $5919cad7020843f0$var$truncate(wrappingLabel.textContent);
+        // Fall back to placeholder for inputs.
+        const placeholder = el.getAttribute("placeholder");
+        if (placeholder) return $5919cad7020843f0$var$truncate(placeholder);
+        return undefined;
+    }
+    // img: alt text.
+    if (tag === "img") {
+        const alt = el.getAttribute("alt");
+        return alt ? $5919cad7020843f0$var$truncate(alt) : undefined;
+    }
+    // Leaf interactive / heading / link roles, plus paragraphs, use
+    // text from descendants. Paragraphs aren't leaves (they may carry
+    // nested links / emphasis) but we want the prose preview as the
+    // node's name so the LLM has the gist without expanding text
+    // children. `collectAccessibleText` joins sibling children with
+    // spaces so `<span>Foo</span><span>Bar</span>` yields `"Foo Bar"`
+    // rather than `"FooBar"`.
+    if ($5919cad7020843f0$var$LEAF_ROLES.has(role) || role === "paragraph") {
+        const text = $5919cad7020843f0$var$collectAccessibleText(el);
+        return text ? $5919cad7020843f0$var$truncate(text) : undefined;
+    }
+    return undefined;
+}
+function $5919cad7020843f0$var$getValue(el) {
+    if (el instanceof HTMLInputElement) {
+        if (el.type === "password") return undefined;
+        if (el.type === "checkbox" || el.type === "radio" || el.type === "hidden") return undefined;
+        return el.value || undefined;
+    }
+    if (el instanceof HTMLTextAreaElement) return el.value || undefined;
+    if (el instanceof HTMLSelectElement) {
+        // Prefer the selected option's visible text; the raw `value` is
+        // often a numeric id or sentinel that means nothing to a reader.
+        const selected = el.selectedOptions[0];
+        const text = selected?.text?.trim();
+        if (text) return text;
+        return el.value || undefined;
+    }
+    return undefined;
+}
+function $5919cad7020843f0$var$getState(el) {
+    const state = [];
+    if (el.ownerDocument.activeElement === el) state.push("focused");
+    if (el.getAttribute("aria-expanded") === "true") state.push("expanded");
+    if (el.getAttribute("aria-selected") === "true") state.push("selected");
+    if (el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true") state.push("disabled");
+    const ariaChecked = el.getAttribute("aria-checked");
+    if (ariaChecked === "true") state.push("checked");
+    if (el instanceof HTMLInputElement) {
+        if ((el.type === "checkbox" || el.type === "radio") && el.checked) {
+            if (!state.includes("checked")) state.push("checked");
+        }
+    }
+    return state;
+}
+/**
+ * Return `true` when the element's bounding rect does not
+ * intersect the current viewport at all. Any intersection, even
+ * partial, counts as visible (matches user intuition). Elements
+ * with zero-size rects (`width === 0 && height === 0`) are
+ * treated as offscreen.
+ */ function $5919cad7020843f0$var$isOffscreen(el) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return true;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.bottom <= 0) return true;
+    if (rect.top >= viewportHeight) return true;
+    if (rect.right <= 0) return true;
+    if (rect.left >= viewportWidth) return true;
+    return false;
+}
+function $5919cad7020843f0$var$getLevel(el, role) {
+    if (role !== "heading") return undefined;
+    const tag = el.tagName.toLowerCase();
+    const m = tag.match(/^h([1-6])$/);
+    if (m) return parseInt(m[1], 10);
+    const aria = el.getAttribute("aria-level");
+    if (aria) {
+        const parsed = parseInt(aria, 10);
+        if (!Number.isNaN(parsed)) return parsed;
+    }
+    return undefined;
+}
+function $5919cad7020843f0$var$getAriaIntAttr(el, name) {
+    const raw = el.getAttribute(name);
+    if (!raw) return undefined;
+    const parsed = parseInt(raw, 10);
+    if (Number.isNaN(parsed) || parsed < 0) return undefined;
+    return parsed;
+}
+function $5919cad7020843f0$var$walk(el, depth, budget, opts, inheritSkipTextNodes = false) {
+    if ($5919cad7020843f0$var$isExcluded(el)) return [];
+    if (budget.count >= $5919cad7020843f0$var$MAX_NODES) return [];
+    if (depth > $5919cad7020843f0$var$MAX_DEPTH) {
+        budget.count++;
+        return [
+            {
+                ref: $5919cad7020843f0$var$getRef(el),
+                role: "ellipsis",
+                name: "<truncated: max depth>"
+            }
+        ];
+    }
+    const role = $5919cad7020843f0$var$getRole(el);
+    if (role === null) // Pure wrapper: inline children into the parent's child list.
+    // Inherit the caller's text-skip flag so e.g. a <span> inside a
+    // <p> doesn't leak its text as a duplicate text-role node.
+    return $5919cad7020843f0$var$walkChildren(el, depth, budget, opts, {
+        skipTextNodes: inheritSkipTextNodes
+    });
+    budget.count++;
+    const node = {
+        ref: $5919cad7020843f0$var$getRef(el),
+        role: role
+    };
+    const name = $5919cad7020843f0$var$getName(el, role);
+    if (name) node.name = name;
+    const value = $5919cad7020843f0$var$getValue(el);
+    if (value !== undefined) node.value = value;
+    const state = $5919cad7020843f0$var$getState(el);
+    if (opts.trackViewport && $5919cad7020843f0$var$isOffscreen(el)) state.push("offscreen");
+    if (state.length) node.state = state;
+    const level = $5919cad7020843f0$var$getLevel(el, role);
+    if (level !== undefined) node.level = level;
+    const colcount = $5919cad7020843f0$var$getAriaIntAttr(el, "aria-colcount");
+    if (colcount !== undefined) node.colcount = colcount;
+    const rowcount = $5919cad7020843f0$var$getAriaIntAttr(el, "aria-rowcount");
+    if (rowcount !== undefined) node.rowcount = rowcount;
+    if (!$5919cad7020843f0$var$LEAF_ROLES.has(role)) {
+        // For paragraphs the text content is already in the node's
+        // `name`. Skip raw text-node children so the same prose
+        // doesn't appear twice in `<ui_state>`.
+        const skipTextNodes = role === "paragraph";
+        const children = $5919cad7020843f0$var$walkChildren(el, depth + 1, budget, opts, {
+            skipTextNodes: skipTextNodes
+        });
+        if (children.length > 0) {
+            if (children.length > $5919cad7020843f0$var$MAX_CHILDREN_PER_NODE) {
+                const kept = children.slice(0, $5919cad7020843f0$var$MAX_CHILDREN_PER_NODE);
+                kept.push({
+                    ref: `${node.ref}.more`,
+                    role: "ellipsis",
+                    name: `${children.length - $5919cad7020843f0$var$MAX_CHILDREN_PER_NODE} more`
+                });
+                node.children = kept;
+            } else node.children = children;
+        }
+    } else if (el instanceof HTMLSelectElement) {
+        // Combobox is a leaf role, but for native `<select>` we synthesize
+        // `option` children so the worker can see all available choices,
+        // not just the one currently selected. Without this, an LLM has no
+        // way to know what other values it could ask the user to pick.
+        const options = $5919cad7020843f0$var$collectSelectOptions(el, budget, node.ref);
+        if (options.length > 0) node.children = options;
+    }
+    return [
+        node
+    ];
+}
+function $5919cad7020843f0$var$collectSelectOptions(select, budget, parentRef) {
+    const out = [];
+    const all = select.options;
+    let emitted = 0;
+    for(let i = 0; i < all.length; i++){
+        if (budget.count >= $5919cad7020843f0$var$MAX_NODES) break;
+        const opt = all[i];
+        if (opt.hidden) continue;
+        if (opt.getAttribute("aria-hidden") === "true") continue;
+        if (emitted >= $5919cad7020843f0$var$MAX_SELECT_OPTIONS) {
+            budget.count++;
+            out.push({
+                ref: `${parentRef}.more`,
+                role: "ellipsis",
+                name: `${all.length - emitted} more`
+            });
+            break;
+        }
+        budget.count++;
+        emitted++;
+        const text = (opt.text || opt.value || "").trim();
+        const optNode = {
+            ref: $5919cad7020843f0$var$getRef(opt),
+            role: "option",
+            name: $5919cad7020843f0$var$truncate(text)
+        };
+        const state = [];
+        if (opt.selected) state.push("selected");
+        if (opt.disabled) state.push("disabled");
+        if (state.length) optNode.state = state;
+        out.push(optNode);
+    }
+    return out;
+}
+function $5919cad7020843f0$var$walkChildren(el, depth, budget, opts, childOpts = {}) {
+    const out = [];
+    // Iterate `childNodes` rather than `children` so we pick up
+    // direct text nodes too (e.g. track titles sitting in a pure-wrapper
+    // `<div>` next to a Play button). Without this, wrapper divs that
+    // carry meaningful text lose it entirely when they get flattened.
+    for(let i = 0; i < el.childNodes.length; i++){
+        const child = el.childNodes[i];
+        if (child.nodeType === 3 /* TEXT_NODE */ ) {
+            if (childOpts.skipTextNodes) continue;
+            const text = $5919cad7020843f0$var$collapseWhitespace(child.textContent ?? "");
+            if (text) {
+                if (budget.count >= $5919cad7020843f0$var$MAX_NODES) break;
+                budget.count++;
+                out.push({
+                    ref: "",
+                    role: "text",
+                    name: $5919cad7020843f0$var$truncate(text)
+                });
+            }
+        } else if (child.nodeType === 1 /* ELEMENT_NODE */ ) {
+            const nodes = $5919cad7020843f0$var$walk(child, depth, budget, opts, childOpts.skipTextNodes);
+            for (const n of nodes)out.push(n);
+            if (budget.count >= $5919cad7020843f0$var$MAX_NODES) break;
+        }
+    }
+    return out;
+}
+// ---------------------------------------------------------------------------
+// Selection
+// ---------------------------------------------------------------------------
+/**
+ * Look up a ref for `el` without assigning a new one.
+ *
+ * Selections frequently land on text nodes whose closest element
+ * ancestor is a structural tag like `<p>` or `<span>` that the
+ * walker treats as a pure wrapper and so doesn't ref. Climb the
+ * ancestor chain until we find a walked element.
+ *
+ * Returns `null` when an `aria-hidden="true"` or
+ * `data-a11y-exclude` ancestor is encountered before any
+ * ref-bearing element, so selections inside subtrees the app has
+ * explicitly hidden from accessibility don't leak into the snapshot.
+ */ function $5919cad7020843f0$var$findRefBearingAncestor(start) {
+    let el = start;
+    while(el){
+        if (el.getAttribute("aria-hidden") === "true" || el.hasAttribute("data-a11y-exclude")) return null;
+        if ($5919cad7020843f0$var$refMap.has(el)) return el;
+        el = el.parentElement;
+    }
+    return null;
+}
+function $5919cad7020843f0$var$clampSelectionText(text) {
+    if (text.length <= $5919cad7020843f0$var$SELECTION_TEXT_MAX) return text;
+    return text.slice(0, $5919cad7020843f0$var$SELECTION_TEXT_MAX - 1) + "\u2026";
+}
+function $5919cad7020843f0$export$e702c6c416f7c8de() {
+    if (typeof document === "undefined") return null;
+    // Input / textarea: own selection model, distinct from
+    // `window.getSelection()`.
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+        const start = active.selectionStart;
+        const end = active.selectionEnd;
+        if (start !== null && end !== null && start !== end) {
+            const ref = $5919cad7020843f0$var$refMap.get(active);
+            if (!ref) return null;
+            const text = active.value.slice(start, end);
+            if (!text) return null;
+            return {
+                ref: ref,
+                text: $5919cad7020843f0$var$clampSelectionText(text),
+                start_offset: start,
+                end_offset: end
+            };
+        }
+    }
+    // Document selection.
+    const sel = document.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+    const text = sel.toString();
+    if (!text) return null;
+    const range = sel.getRangeAt(0);
+    let common = range.commonAncestorContainer;
+    // Climb to the nearest element node first.
+    while(common && common.nodeType !== 1 /* ELEMENT_NODE */ )common = common.parentNode;
+    const anchor = $5919cad7020843f0$var$findRefBearingAncestor(common);
+    if (!anchor) return null;
+    const ref = $5919cad7020843f0$var$refMap.get(anchor);
+    if (!ref) return null;
+    return {
+        ref: ref,
+        text: $5919cad7020843f0$var$clampSelectionText(text)
+    };
+}
+function $5919cad7020843f0$export$326b5f56ac5b6149(root, options = {}) {
+    const el = root ?? (typeof document !== "undefined" ? document.body : null);
+    if (!el) return {
+        root: {
+            ref: "e0",
+            role: "generic"
+        },
+        captured_at: Date.now()
+    };
+    const opts = {
+        trackViewport: options.trackViewport ?? true
+    };
+    const budget = {
+        count: 0
+    };
+    const children = $5919cad7020843f0$var$walkChildren(el, 0, budget, opts);
+    // Capture selection after the walk so refs are populated for
+    // anything visible on the page.
+    const selection = $5919cad7020843f0$export$e702c6c416f7c8de();
+    return {
+        root: {
+            ref: $5919cad7020843f0$var$getRef(el),
+            role: "generic",
+            ...children.length > 0 ? {
+                children: children
+            } : {}
+        },
+        captured_at: Date.now(),
+        ...selection ? {
+            selection: selection
+        } : {}
+    };
+}
+
+
+class $db0fd363e17a8e86$export$d1b25383c8328718 {
+    constructor(emitSnapshot, options = {}){
+        this.running = false;
+        this.emitSnapshot = emitSnapshot;
+        this.debounceMs = options.debounceMs ?? 300;
+        this.trackViewport = options.trackViewport ?? true;
+        this.logSnapshots = options.logSnapshots ?? false;
+    }
+    /**
+     * Begin streaming. Safe to call multiple times; subsequent calls
+     * are no-ops until `stop()` runs.
+     */ start() {
+        if (this.running) return;
+        if (typeof document === "undefined") return;
+        this.running = true;
+        // Prime with an initial snapshot once the caller has had a chance
+        // to mount the UI.
+        this.schedule();
+        this.observer = new MutationObserver(()=>this.schedule());
+        this.observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: [
+                "role",
+                "aria-label",
+                "aria-labelledby",
+                "aria-expanded",
+                "aria-selected",
+                "aria-checked",
+                "aria-disabled",
+                "aria-level",
+                "aria-hidden",
+                "aria-colcount",
+                "aria-rowcount",
+                "data-a11y-exclude",
+                "disabled",
+                "hidden",
+                "tabindex",
+                "href"
+            ]
+        });
+        this.focusHandler = ()=>this.schedule();
+        document.addEventListener("focusin", this.focusHandler);
+        document.addEventListener("focusout", this.focusHandler);
+        // Scrollend fires once when a scroll gesture settles - no
+        // debounce needed, and firing at rest avoids fighting the
+        // browser's animation frames. `capture: true` catches scroll
+        // on any scrollable ancestor, not just the window.
+        this.scrollEndHandler = ()=>this.schedule();
+        window.addEventListener("scrollend", this.scrollEndHandler, {
+            capture: true
+        });
+        // Resize changes the viewport rect, which shifts which nodes are
+        // `[offscreen]`. Debounced via `schedule` so a drag-resize
+        // doesn't thrash.
+        this.resizeHandler = ()=>this.schedule();
+        window.addEventListener("resize", this.resizeHandler);
+        // Refresh state when the tab becomes visible again; ignore the
+        // transition into `hidden`.
+        this.visibilityHandler = ()=>{
+            if (document.visibilityState === "visible") this.schedule();
+        };
+        document.addEventListener("visibilitychange", this.visibilityHandler);
+        // `selectionchange` fires throughout a drag-select; the existing
+        // debounce coalesces the burst into a single snapshot once the
+        // user stops moving. Snapshots end up carrying the latest
+        // selection alongside the rest of the screen state.
+        this.selectionHandler = ()=>this.schedule();
+        document.addEventListener("selectionchange", this.selectionHandler);
+        // Native form controls (checkbox/radio toggles, text and select edits)
+        // change via element PROPERTIES, which a MutationObserver can't see - the
+        // attributeFilter above only catches them when an app mirrors state into
+        // aria-*. Listen for `input`/`change` in the capture phase so a user edit
+        // (or a programmatic change that dispatches these events) refreshes the
+        // snapshot. Debounced via `schedule`, so a burst of typing coalesces into
+        // a single snapshot at rest.
+        this.formHandler = ()=>this.schedule();
+        document.addEventListener("input", this.formHandler, {
+            capture: true
+        });
+        document.addEventListener("change", this.formHandler, {
+            capture: true
+        });
+    }
+    /** Stop streaming. Safe to call before `start()` or multiple times. */ stop() {
+        if (!this.running) return;
+        this.running = false;
+        if (this.timer !== undefined) {
+            clearTimeout(this.timer);
+            this.timer = undefined;
+        }
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer = undefined;
+        }
+        if (typeof document !== "undefined") {
+            if (this.focusHandler) {
+                document.removeEventListener("focusin", this.focusHandler);
+                document.removeEventListener("focusout", this.focusHandler);
+            }
+            if (this.visibilityHandler) document.removeEventListener("visibilitychange", this.visibilityHandler);
+            if (this.selectionHandler) document.removeEventListener("selectionchange", this.selectionHandler);
+            if (this.formHandler) {
+                document.removeEventListener("input", this.formHandler, {
+                    capture: true
+                });
+                document.removeEventListener("change", this.formHandler, {
+                    capture: true
+                });
+            }
+        }
+        if (typeof window !== "undefined") {
+            if (this.scrollEndHandler) window.removeEventListener("scrollend", this.scrollEndHandler, {
+                capture: true
+            });
+            if (this.resizeHandler) window.removeEventListener("resize", this.resizeHandler);
+        }
+        this.focusHandler = undefined;
+        this.scrollEndHandler = undefined;
+        this.resizeHandler = undefined;
+        this.visibilityHandler = undefined;
+        this.selectionHandler = undefined;
+        this.formHandler = undefined;
+    }
+    schedule() {
+        if (!this.running) return;
+        if (this.timer !== undefined) clearTimeout(this.timer);
+        this.timer = setTimeout(()=>this.emit(), this.debounceMs);
+    }
+    emit() {
+        this.timer = undefined;
+        if (!this.running) return;
+        try {
+            const snapshot = (0, $5919cad7020843f0$export$326b5f56ac5b6149)(undefined, {
+                trackViewport: this.trackViewport
+            });
+            this.emitSnapshot(snapshot);
+            if (this.logSnapshots) {
+                const nodeCount = $db0fd363e17a8e86$var$countNodes(snapshot.root);
+                const estTokens = Math.round(JSON.stringify(snapshot).length / 4);
+                // Grouped so it collapses cleanly in DevTools. The raw tree
+                // is included last so it can be expanded on demand.
+                console.groupCollapsed(`[A11ySnapshotStreamer] emit: ${nodeCount} nodes, ~${estTokens} tokens`);
+                console.log("snapshot:", snapshot);
+                console.groupEnd();
+            }
+        } catch  {
+        // Swallow walker errors so we don't crash the host app from a
+        // background snapshot attempt. The browser's default error
+        // reporting still surfaces them in DevTools.
+        }
+    }
+}
+function $db0fd363e17a8e86$var$countNodes(node) {
+    let count = 1;
+    const kids = node.children;
+    if (kids) for (const child of kids)count += $db0fd363e17a8e86$var$countNodes(child);
+    return count;
+}
+
+
+var $02f900e1428a591c$exports = {};
+
+$parcel$export($02f900e1428a591c$exports, "PipecatClient", () => $02f900e1428a591c$export$8f7f86a77535f7a3);
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+var $8cf63be2a2a16953$exports = {};
+$8cf63be2a2a16953$exports = JSON.parse("{\"name\":\"@pipecat-ai/client-js\",\"version\":\"1.13.1\",\"license\":\"BSD-2-Clause\",\"main\":\"dist/index.js\",\"module\":\"dist/index.module.js\",\"types\":\"dist/index.d.ts\",\"source\":\"index.ts\",\"repository\":{\"type\":\"git\",\"url\":\"git+https://github.com/pipecat-ai/pipecat-client-web.git\"},\"exports\":{\".\":{\"types\":\"./dist/index.d.ts\",\"import\":\"./dist/index.module.js\",\"require\":\"./dist/index.js\"}},\"files\":[\"dist\",\"package.json\",\"README.md\"],\"scripts\":{\"build\":\"jest --silent --passWithNoTests && parcel build --no-cache\",\"dev\":\"parcel watch\",\"lint\":\"eslint . --report-unused-disable-directives --max-warnings 0\",\"test\":\"jest\"},\"jest\":{\"preset\":\"ts-jest\",\"testEnvironment\":\"jsdom\",\"setupFilesAfterEnv\":[\"<rootDir>/tests/jest.setup.ts\"]},\"devDependencies\":{\"@jest/globals\":\"^29.7.0\",\"@types/clone-deep\":\"^4.0.4\",\"@types/jest\":\"^29.5.12\",\"eslint\":\"^9.11.1\",\"eslint-config-prettier\":\"^9.1.0\",\"eslint-plugin-simple-import-sort\":\"^12.1.1\",\"jest\":\"^29.7.0\",\"jest-environment-jsdom\":\"^30.0.2\",\"ts-jest\":\"^29.2.5\",\"whatwg-fetch\":\"^3.6.20\"},\"dependencies\":{\"@types/events\":\"^3.0.3\",\"bowser\":\"^2.11.0\",\"clone-deep\":\"^4.0.1\",\"events\":\"^3.3.0\",\"typed-emitter\":\"^2.1.0\",\"uuid\":\"^11.1.1\"}}");
+
+
+var $609db2a766ef81cc$exports = {};
+
+$parcel$export($609db2a766ef81cc$exports, "findElementByRef", () => $5919cad7020843f0$export$792dfd553abe8e9a);
+$parcel$export($609db2a766ef81cc$exports, "findRefForElement", () => $5919cad7020843f0$export$5174ac1454ce16bc);
+$parcel$export($609db2a766ef81cc$exports, "serializeSelection", () => $5919cad7020843f0$export$e702c6c416f7c8de);
+$parcel$export($609db2a766ef81cc$exports, "snapshotDocument", () => $5919cad7020843f0$export$326b5f56ac5b6149);
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+var $920632f0518a5f1b$exports = {};
+
+$parcel$export($920632f0518a5f1b$exports, "TransportStateEnum", () => $920632f0518a5f1b$export$8f2038d3679a1d9b);
+var $920632f0518a5f1b$export$8f2038d3679a1d9b;
+(function(TransportStateEnum) {
+    TransportStateEnum["DISCONNECTED"] = "disconnected";
+    TransportStateEnum["INITIALIZING"] = "initializing";
+    TransportStateEnum["INITIALIZED"] = "initialized";
+    TransportStateEnum["AUTHENTICATING"] = "authenticating";
+    TransportStateEnum["AUTHENTICATED"] = "authenticated";
+    TransportStateEnum["CONNECTING"] = "connecting";
+    TransportStateEnum["CONNECTED"] = "connected";
+    TransportStateEnum["READY"] = "ready";
+    TransportStateEnum["DISCONNECTING"] = "disconnecting";
+    TransportStateEnum["ERROR"] = "error";
+})($920632f0518a5f1b$export$8f2038d3679a1d9b || ($920632f0518a5f1b$export$8f2038d3679a1d9b = {}));
+
+
+var $b4e51e049033e221$exports = {};
+
+$parcel$export($b4e51e049033e221$exports, "RTVIError", () => $b4e51e049033e221$export$59b4786f333aac02);
+$parcel$export($b4e51e049033e221$exports, "ConnectionTimeoutError", () => $b4e51e049033e221$export$c67992fa684a81a6);
+$parcel$export($b4e51e049033e221$exports, "StartBotError", () => $b4e51e049033e221$export$e7544ab812238a61);
+$parcel$export($b4e51e049033e221$exports, "TransportStartError", () => $b4e51e049033e221$export$e0624a511a2c4e9);
+$parcel$export($b4e51e049033e221$exports, "InvalidTransportParamsError", () => $b4e51e049033e221$export$b6ce555ea7f95fba);
+$parcel$export($b4e51e049033e221$exports, "BotNotReadyError", () => $b4e51e049033e221$export$885fb96b850e8fbb);
+$parcel$export($b4e51e049033e221$exports, "BotAlreadyStartedError", () => $b4e51e049033e221$export$cc240eab14fa4f50);
+$parcel$export($b4e51e049033e221$exports, "UnsupportedFeatureError", () => $b4e51e049033e221$export$bd0820eb8444fcd9);
+$parcel$export($b4e51e049033e221$exports, "MessageTooLargeError", () => $b4e51e049033e221$export$78e1011ee1942cf6);
+$parcel$export($b4e51e049033e221$exports, "DeviceError", () => $b4e51e049033e221$export$64c9f614187c1e59);
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */ class $b4e51e049033e221$export$59b4786f333aac02 extends Error {
+    constructor(message, status){
+        super(message);
+        this.status = status;
+    }
+}
+class $b4e51e049033e221$export$c67992fa684a81a6 extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(message){
+        super(message ?? "Bot did not enter ready state within the specified timeout period.");
+    }
+}
+class $b4e51e049033e221$export$e7544ab812238a61 extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(message, status){
+        super(message ?? `Failed to connect / invalid auth bundle from base url`, status ?? 500);
+        this.error = "invalid-request-error";
+    }
+}
+class $b4e51e049033e221$export$e0624a511a2c4e9 extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(message){
+        super(message ?? "Unable to connect to transport");
+    }
+}
+class $b4e51e049033e221$export$b6ce555ea7f95fba extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(message){
+        super(message ?? "Invalid transport connection parameters");
+    }
+}
+class $b4e51e049033e221$export$885fb96b850e8fbb extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(message){
+        super(message ?? "Attempt to call action on transport when not in 'ready' state.");
+    }
+}
+class $b4e51e049033e221$export$cc240eab14fa4f50 extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(message){
+        super(message ?? "Pipecat client has already been started. Please call disconnect() before starting again.");
+    }
+}
+class $b4e51e049033e221$export$bd0820eb8444fcd9 extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(feature, source, message){
+        let msg = `${feature} not supported${message ? `: ${message}` : ""}`;
+        if (source) msg = `${source} does not support ${feature}${message ? `: ${message}` : ""}`;
+        super(msg);
+        this.feature = feature;
+    }
+}
+class $b4e51e049033e221$export$78e1011ee1942cf6 extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(message){
+        super(message ?? "Message size exceeds the maximum allowed limit for transport.");
+    }
+}
+class $b4e51e049033e221$export$64c9f614187c1e59 extends $b4e51e049033e221$export$59b4786f333aac02 {
+    constructor(devices, type, message, details){
+        super(message ?? `Device error for ${devices.join(", ")}: ${type}`);
+        this.devices = devices;
+        this.type = type;
+        this.details = details;
+    }
+}
+
+
+var $82c0e475b1b90003$exports = {};
+
+$parcel$export($82c0e475b1b90003$exports, "RTVIEvent", () => $82c0e475b1b90003$export$6b4624d233c61fcb);
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */ var $82c0e475b1b90003$export$6b4624d233c61fcb;
+(function(RTVIEvent) {
+    /** local connection state events */ RTVIEvent["Connected"] = "connected";
+    RTVIEvent["Disconnected"] = "disconnected";
+    RTVIEvent["TransportStateChanged"] = "transportStateChanged";
+    /** remote connection state events */ RTVIEvent["BotStarted"] = "botStarted";
+    RTVIEvent["BotConnected"] = "botConnected";
+    RTVIEvent["BotReady"] = "botReady";
+    RTVIEvent["BotDisconnected"] = "botDisconnected";
+    RTVIEvent["Error"] = "error";
+    /** server messaging */ RTVIEvent["ServerMessage"] = "serverMessage";
+    RTVIEvent["ServerResponse"] = "serverResponse";
+    RTVIEvent["MessageError"] = "messageError";
+    /** UI Worker Protocol */ RTVIEvent["UICommand"] = "uiCommand";
+    RTVIEvent["UIJobGroup"] = "uiJobGroup";
+    /** service events */ RTVIEvent["Metrics"] = "metrics";
+    // vad events
+    RTVIEvent["BotStartedSpeaking"] = "botStartedSpeaking";
+    RTVIEvent["BotStoppedSpeaking"] = "botStoppedSpeaking";
+    RTVIEvent["UserStartedSpeaking"] = "userStartedSpeaking";
+    RTVIEvent["UserStoppedSpeaking"] = "userStoppedSpeaking";
+    // user mute strategy events
+    RTVIEvent["UserMuteStarted"] = "userMuteStarted";
+    RTVIEvent["UserMuteStopped"] = "userMuteStopped";
+    // stt events
+    RTVIEvent["UserTranscript"] = "userTranscript";
+    RTVIEvent["BotOutput"] = "botOutput";
+    // DEPRECATED
+    RTVIEvent["BotTranscript"] = "botTranscript";
+    // llm events
+    RTVIEvent["UserLlmText"] = "userLlmText";
+    RTVIEvent["BotLlmText"] = "botLlmText";
+    RTVIEvent["BotLlmStarted"] = "botLlmStarted";
+    RTVIEvent["BotLlmStopped"] = "botLlmStopped";
+    // DEPRECATED
+    RTVIEvent["LLMFunctionCall"] = "llmFunctionCall";
+    RTVIEvent["LLMFunctionCallStarted"] = "llmFunctionCallStarted";
+    RTVIEvent["LLMFunctionCallInProgress"] = "llmFunctionCallInProgress";
+    RTVIEvent["LLMFunctionCallStopped"] = "llmFunctionCallStopped";
+    RTVIEvent["BotLlmSearchResponse"] = "botLlmSearchResponse";
+    // tts events
+    RTVIEvent["BotTtsText"] = "botTtsText";
+    RTVIEvent["BotTtsStarted"] = "botTtsStarted";
+    RTVIEvent["BotTtsStopped"] = "botTtsStopped";
+    /** participant events */ RTVIEvent["ParticipantConnected"] = "participantConnected";
+    RTVIEvent["ParticipantLeft"] = "participantLeft";
+    /** media events */ RTVIEvent["TrackStarted"] = "trackStarted";
+    RTVIEvent["TrackStopped"] = "trackStopped";
+    RTVIEvent["ScreenTrackStarted"] = "screenTrackStarted";
+    RTVIEvent["ScreenTrackStopped"] = "screenTrackStopped";
+    RTVIEvent["ScreenShareError"] = "screenShareError";
+    RTVIEvent["LocalAudioLevel"] = "localAudioLevel";
+    RTVIEvent["RemoteAudioLevel"] = "remoteAudioLevel";
+    /** media device events */ RTVIEvent["AvailableCamsUpdated"] = "availableCamsUpdated";
+    RTVIEvent["AvailableMicsUpdated"] = "availableMicsUpdated";
+    RTVIEvent["AvailableSpeakersUpdated"] = "availableSpeakersUpdated";
+    RTVIEvent["CamUpdated"] = "camUpdated";
+    RTVIEvent["MicUpdated"] = "micUpdated";
+    RTVIEvent["SpeakerUpdated"] = "speakerUpdated";
+    RTVIEvent["DeviceError"] = "deviceError";
+    RTVIEvent["MediaStateUpdated"] = "mediaStateUpdated";
+    RTVIEvent["UnsupportedFeature"] = "unsupportedFeature";
+})($82c0e475b1b90003$export$6b4624d233c61fcb || ($82c0e475b1b90003$export$6b4624d233c61fcb = {}));
+
+
+var $b1a2fe36be912934$exports = {};
+
+$parcel$export($b1a2fe36be912934$exports, "RTVI_PROTOCOL_VERSION", () => $b1a2fe36be912934$export$7bdaf0e0d661a8f5);
+$parcel$export($b1a2fe36be912934$exports, "RTVI_MESSAGE_LABEL", () => $b1a2fe36be912934$export$882b13c7fda338f5);
+$parcel$export($b1a2fe36be912934$exports, "RTVIMessageType", () => $b1a2fe36be912934$export$38b3db05cbf0e240);
+$parcel$export($b1a2fe36be912934$exports, "AggregationType", () => $b1a2fe36be912934$export$fa4739a8a27f18c0);
+$parcel$export($b1a2fe36be912934$exports, "setAboutClient", () => $b1a2fe36be912934$export$e4036f9b8ddb7379);
+$parcel$export($b1a2fe36be912934$exports, "RTVIMessage", () => $b1a2fe36be912934$export$69aa9ab0334b212);
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+const $b1a2fe36be912934$export$7bdaf0e0d661a8f5 = "2.1.0";
+const $b1a2fe36be912934$export$882b13c7fda338f5 = "rtvi-ai";
+var $b1a2fe36be912934$export$38b3db05cbf0e240;
+(function(RTVIMessageType) {
+    /** Outbound Messages */ RTVIMessageType["CLIENT_READY"] = "client-ready";
+    RTVIMessageType["DISCONNECT_BOT"] = "disconnect-bot";
+    // Client-to-server messages
+    RTVIMessageType["CLIENT_MESSAGE"] = "client-message";
+    RTVIMessageType["SEND_TEXT"] = "send-text";
+    RTVIMessageType["DTMF"] = "dtmf";
+    // UI Worker Protocol (client-to-server)
+    RTVIMessageType["UI_EVENT"] = "ui-event";
+    RTVIMessageType["UI_SNAPSHOT"] = "ui-snapshot";
+    RTVIMessageType["UI_CANCEL_JOB_GROUP"] = "ui-cancel-job-group";
+    // DEPRECATED
+    RTVIMessageType["APPEND_TO_CONTEXT"] = "append-to-context";
+    /**
+     * Inbound Messages
+     * Messages the server-side client sends to our client-side client regarding
+     * its state or other non-service-specific messaging.
+     */ RTVIMessageType["BOT_READY"] = "bot-ready";
+    RTVIMessageType["ERROR"] = "error";
+    RTVIMessageType["METRICS"] = "metrics";
+    RTVIMessageType["SERVER_MESSAGE"] = "server-message";
+    RTVIMessageType["SERVER_RESPONSE"] = "server-response";
+    RTVIMessageType["ERROR_RESPONSE"] = "error-response";
+    RTVIMessageType["APPEND_TO_CONTEXT_RESULT"] = "append-to-context-result";
+    // UI Worker Protocol (server-to-client)
+    RTVIMessageType["UI_COMMAND"] = "ui-command";
+    RTVIMessageType["UI_JOB_GROUP"] = "ui-job-group";
+    /** Speaking and Transcription Messages */ RTVIMessageType["USER_STARTED_SPEAKING"] = "user-started-speaking";
+    RTVIMessageType["USER_STOPPED_SPEAKING"] = "user-stopped-speaking";
+    RTVIMessageType["BOT_STARTED_SPEAKING"] = "bot-started-speaking";
+    RTVIMessageType["BOT_STOPPED_SPEAKING"] = "bot-stopped-speaking";
+    // User muted events. These events notify when the server is ignoring audio from the client.
+    // The client should continue sending audio normally but may want to show some indication to the user.
+    RTVIMessageType["USER_MUTE_STARTED"] = "user-mute-started";
+    RTVIMessageType["USER_MUTE_STOPPED"] = "user-mute-stopped";
+    RTVIMessageType["USER_TRANSCRIPTION"] = "user-transcription";
+    RTVIMessageType["BOT_OUTPUT"] = "bot-output";
+    // DEPRECATED
+    RTVIMessageType["BOT_TRANSCRIPTION"] = "bot-transcription";
+    /** LLM Messages */ RTVIMessageType["USER_LLM_TEXT"] = "user-llm-text";
+    RTVIMessageType["BOT_LLM_TEXT"] = "bot-llm-text";
+    RTVIMessageType["BOT_LLM_STARTED"] = "bot-llm-started";
+    RTVIMessageType["BOT_LLM_STOPPED"] = "bot-llm-stopped";
+    // Function calling
+    // DECPRECATED
+    RTVIMessageType["LLM_FUNCTION_CALL"] = "llm-function-call";
+    RTVIMessageType["LLM_FUNCTION_CALL_STARTED"] = "llm-function-call-started";
+    RTVIMessageType["LLM_FUNCTION_CALL_IN_PROGRESS"] = "llm-function-call-in-progress";
+    RTVIMessageType["LLM_FUNCTION_CALL_STOPPED"] = "llm-function-call-stopped";
+    RTVIMessageType["LLM_FUNCTION_CALL_RESULT"] = "llm-function-call-result";
+    RTVIMessageType["BOT_LLM_SEARCH_RESPONSE"] = "bot-llm-search-response";
+    /** TTS Messages */ RTVIMessageType["BOT_TTS_TEXT"] = "bot-tts-text";
+    RTVIMessageType["BOT_TTS_STARTED"] = "bot-tts-started";
+    RTVIMessageType["BOT_TTS_STOPPED"] = "bot-tts-stopped";
+})($b1a2fe36be912934$export$38b3db05cbf0e240 || ($b1a2fe36be912934$export$38b3db05cbf0e240 = {}));
+var $b1a2fe36be912934$export$fa4739a8a27f18c0;
+(function(AggregationType) {
+    AggregationType["WORD"] = "word";
+    AggregationType["SENTENCE"] = "sentence";
+})($b1a2fe36be912934$export$fa4739a8a27f18c0 || ($b1a2fe36be912934$export$fa4739a8a27f18c0 = {}));
+// ----- Message Classes
+let $b1a2fe36be912934$var$_aboutClient;
+function $b1a2fe36be912934$export$e4036f9b8ddb7379(about) {
+    // allow for partial updates to the about data
+    // this allows the client to set the about data at any time
+    // before sending the `client-ready` message and not worry about
+    // overwriting existing data
+    if ($b1a2fe36be912934$var$_aboutClient) $b1a2fe36be912934$var$_aboutClient = {
+        ...$b1a2fe36be912934$var$_aboutClient,
+        ...about
+    };
+    else // if no about data is set, set it to the provided value
+    $b1a2fe36be912934$var$_aboutClient = about;
+}
+class $b1a2fe36be912934$export$69aa9ab0334b212 {
+    constructor(type, data, id){
+        this.label = $b1a2fe36be912934$export$882b13c7fda338f5;
+        this.type = type;
+        this.data = data;
+        this.id = id || (0, $58KWk$uuid.v4)().slice(0, 8);
+    }
+    // Outbound message types
+    static clientReady() {
+        return new $b1a2fe36be912934$export$69aa9ab0334b212($b1a2fe36be912934$export$38b3db05cbf0e240.CLIENT_READY, {
+            version: $b1a2fe36be912934$export$7bdaf0e0d661a8f5,
+            about: $b1a2fe36be912934$var$_aboutClient || {
+                library: (0, $8cf63be2a2a16953$exports.name),
+                library_version: (0, $8cf63be2a2a16953$exports.version)
+            }
+        });
+    }
+    static disconnectBot() {
+        return new $b1a2fe36be912934$export$69aa9ab0334b212($b1a2fe36be912934$export$38b3db05cbf0e240.DISCONNECT_BOT, {});
+    }
+    static error(message, fatal = false) {
+        return new $b1a2fe36be912934$export$69aa9ab0334b212($b1a2fe36be912934$export$38b3db05cbf0e240.ERROR, {
+            error: message,
+            message: message,
+            fatal: fatal
+        });
+    }
+}
+
+
+var $79eae4cbf0ee6583$exports = {};
+/**
+ * Copyright (c) 2026, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+$parcel$exportWildcard($609db2a766ef81cc$exports, $920632f0518a5f1b$exports);
+$parcel$exportWildcard($609db2a766ef81cc$exports, $b4e51e049033e221$exports);
+$parcel$exportWildcard($609db2a766ef81cc$exports, $82c0e475b1b90003$exports);
+$parcel$exportWildcard($609db2a766ef81cc$exports, $b1a2fe36be912934$exports);
+$parcel$exportWildcard($609db2a766ef81cc$exports, $79eae4cbf0ee6583$exports);
+
+
+
+
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+function $37a63b97d182bc86$export$f1586721024c4dab(_target, propertyKey, descriptor) {
+    const originalMethod = descriptor.value;
+    descriptor.value = function(...args) {
+        if (this.state === "ready") return originalMethod.apply(this, args);
+        else throw new (0, $b4e51e049033e221$export$885fb96b850e8fbb)(`Attempt to call ${propertyKey.toString()} when transport not in ready state. Await connect() first.`);
+    };
+    return descriptor;
+}
+function $37a63b97d182bc86$export$ebc0d747cf8770bc(_target, propertyKey, descriptor) {
+    const originalMethod = descriptor.value;
+    const states = [
+        "authenticating",
+        "connecting",
+        "connected",
+        "ready"
+    ];
+    descriptor.value = function(...args) {
+        if (states.includes(this.state)) throw new (0, $b4e51e049033e221$export$cc240eab14fa4f50)(`Attempt to call ${propertyKey.toString()} when client already started. Please call disconnect() before starting again.`);
+        else return originalMethod.apply(this, args);
+    };
+    return descriptor;
+}
+function $37a63b97d182bc86$export$808994d0d8c9acb3(states) {
+    return function(_target, propertyKey, descriptor) {
+        const originalMethod = descriptor.value;
+        descriptor.get = function(...args) {
+            if (states.includes(this.state)) return originalMethod.apply(this, args);
+            else throw new (0, $b4e51e049033e221$export$885fb96b850e8fbb)(`Attempt to call ${propertyKey.toString()} when transport not in ${states}.`);
+        };
+        return descriptor;
+    };
+}
+function $37a63b97d182bc86$export$5c35b4fe6fa8c9a6(...states) {
+    states = [
+        "ready",
+        ...states
+    ];
+    return function(_target, propertyKey, descriptor) {
+        const originalGetter = descriptor.get;
+        descriptor.get = function() {
+            if (states.includes(this.state)) return originalGetter?.apply(this);
+            else throw new (0, $b4e51e049033e221$export$885fb96b850e8fbb)(`Attempt to call ${propertyKey.toString()} when transport not in ${states}. Await connect() first.`);
+        };
+        return descriptor;
+    };
+}
+
+
+var $3b981481778defd6$exports = {};
+
+$parcel$export($3b981481778defd6$exports, "MessageDispatcher", () => $3b981481778defd6$export$e9a960646cc432aa);
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+var $42491a06a064f4c0$exports = {};
+
+$parcel$export($42491a06a064f4c0$exports, "LogLevel", () => $42491a06a064f4c0$export$243e62d78d3b544d);
+$parcel$export($42491a06a064f4c0$exports, "logger", () => $42491a06a064f4c0$export$af88d00dbe7f521);
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */ var $42491a06a064f4c0$export$243e62d78d3b544d;
+(function(LogLevel) {
+    LogLevel[LogLevel["NONE"] = 0] = "NONE";
+    LogLevel[LogLevel["ERROR"] = 1] = "ERROR";
+    LogLevel[LogLevel["WARN"] = 2] = "WARN";
+    LogLevel[LogLevel["INFO"] = 3] = "INFO";
+    LogLevel[LogLevel["DEBUG"] = 4] = "DEBUG";
+})($42491a06a064f4c0$export$243e62d78d3b544d || ($42491a06a064f4c0$export$243e62d78d3b544d = {}));
+class $42491a06a064f4c0$var$Logger {
+    constructor(){
+        this.level = $42491a06a064f4c0$export$243e62d78d3b544d.DEBUG;
+    }
+    static getInstance() {
+        if (!$42491a06a064f4c0$var$Logger.instance) $42491a06a064f4c0$var$Logger.instance = new $42491a06a064f4c0$var$Logger();
+        return $42491a06a064f4c0$var$Logger.instance;
+    }
+    setLevel(level) {
+        this.level = level;
+    }
+    debug(...args) {
+        if (this.level >= $42491a06a064f4c0$export$243e62d78d3b544d.DEBUG) console.debug(...args);
+    }
+    info(...args) {
+        if (this.level >= $42491a06a064f4c0$export$243e62d78d3b544d.INFO) console.info(...args);
+    }
+    warn(...args) {
+        if (this.level >= $42491a06a064f4c0$export$243e62d78d3b544d.WARN) console.warn(...args);
+    }
+    error(...args) {
+        if (this.level >= $42491a06a064f4c0$export$243e62d78d3b544d.ERROR) console.error(...args);
+    }
+}
+const $42491a06a064f4c0$export$af88d00dbe7f521 = $42491a06a064f4c0$var$Logger.getInstance();
+
+
+class $3b981481778defd6$export$e9a960646cc432aa {
+    constructor(sendMethod){
+        this._queue = new Array();
+        this._gcInterval = undefined;
+        this._queue = [];
+        this._sendMethod = sendMethod;
+    }
+    disconnect() {
+        this.clearQueue();
+        clearInterval(this._gcInterval);
+        this._gcInterval = undefined;
+    }
+    dispatch(message_data, type = (0, $b1a2fe36be912934$export$38b3db05cbf0e240).CLIENT_MESSAGE, timeout = 10000) {
+        if (!this._gcInterval) // start garbage collection if not already running
+        this._gcInterval = setInterval(()=>{
+            this._gc();
+        }, 2000); // Run garbage collection every 2 seconds
+        const message = new (0, $b1a2fe36be912934$export$69aa9ab0334b212)(type, message_data);
+        const promise = new Promise((resolve, reject)=>{
+            this._queue.push({
+                message: message,
+                timestamp: Date.now(),
+                timeout: timeout,
+                resolve: resolve,
+                reject: reject
+            });
+        });
+        (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[MessageDispatcher] dispatch", message);
+        try {
+            this._sendMethod(message);
+        } catch (e) {
+            (0, $42491a06a064f4c0$export$af88d00dbe7f521).error("[MessageDispatcher] Error sending message", e);
+            return Promise.reject(e);
+        }
+        this._gc();
+        return promise;
+    }
+    clearQueue() {
+        this._queue = [];
+    }
+    _resolveReject(message, resolve = true) {
+        const queuedMessage = this._queue.find((msg)=>msg.message.id === message.id);
+        if (queuedMessage) {
+            if (resolve) {
+                (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[MessageDispatcher] Resolve", message);
+                queuedMessage.resolve(message);
+            } else {
+                (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[MessageDispatcher] Reject", message);
+                queuedMessage.reject(message);
+            }
+            // Remove message from queue
+            this._queue = this._queue.filter((msg)=>msg.message.id !== message.id);
+            (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[MessageDispatcher] Queue", this._queue);
+        }
+        return message;
+    }
+    resolve(message) {
+        return this._resolveReject(message, true);
+    }
+    reject(message) {
+        return this._resolveReject(message, false);
+    }
+    _gc() {
+        const expired = [];
+        this._queue = this._queue.filter((msg)=>{
+            const isValid = Date.now() - msg.timestamp < msg.timeout;
+            if (!isValid) expired.push(msg);
+            return isValid;
+        });
+        expired.forEach((msg)=>{
+            if (msg.message.type === (0, $b1a2fe36be912934$export$38b3db05cbf0e240).CLIENT_MESSAGE) msg.reject(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).ERROR_RESPONSE, {
+                error: "Timed out waiting for response",
+                msgType: msg.message.data.t,
+                data: msg.message.data.d,
+                fatal: false
+            }));
+        });
+        (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[MessageDispatcher] GC", this._queue);
+    }
+}
+
+
+
+var $e93e1075413e9e2e$exports = {};
+
+$parcel$export($e93e1075413e9e2e$exports, "isAPIRequest", () => $e93e1075413e9e2e$export$2dd7ca293b2783);
+$parcel$export($e93e1075413e9e2e$exports, "makeRequest", () => $e93e1075413e9e2e$export$699251e5611cc6db);
+
+function $e93e1075413e9e2e$export$2dd7ca293b2783(value) {
+    if (typeof value === "object" && value !== null && Object.keys(value).includes("endpoint")) {
+        const endpoint = value["endpoint"];
+        return typeof endpoint === "string" || endpoint instanceof URL || typeof Request !== "undefined" && endpoint instanceof Request;
+    }
+    return false;
+}
+async function $e93e1075413e9e2e$export$699251e5611cc6db(cxnOpts, abortController) {
+    if (!abortController) abortController = new AbortController();
+    let handshakeTimeout;
+    return new Promise((resolve, reject)=>{
+        (async ()=>{
+            if (cxnOpts.timeout) handshakeTimeout = setTimeout(async ()=>{
+                abortController.abort();
+                reject(new Error("Timed out"));
+            }, cxnOpts.timeout);
+            let request;
+            if (typeof Request !== "undefined" && cxnOpts.endpoint instanceof Request) {
+                request = new Request(cxnOpts.endpoint, {
+                    signal: abortController.signal
+                });
+                if (cxnOpts.requestData) (0, $42491a06a064f4c0$export$af88d00dbe7f521).warn("[Pipecat Client] requestData in APIRequest is ignored when endpoint is a Request object");
+                if (cxnOpts.headers) (0, $42491a06a064f4c0$export$af88d00dbe7f521).warn("[Pipecat Client] headers in APIRequest is ignored when endpoint is a Request object");
+            } else request = new Request(cxnOpts.endpoint, {
+                method: "POST",
+                mode: "cors",
+                headers: new Headers({
+                    "Content-Type": "application/json",
+                    ...Object.fromEntries((cxnOpts.headers ?? new Headers()).entries())
+                }),
+                body: JSON.stringify(cxnOpts.requestData),
+                signal: abortController.signal
+            });
+            (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug(`[Pipecat Client] Fetching from ${request.url}`);
+            fetch(request).then((res)=>{
+                (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug(`[Pipecat Client] Received response from ${request.url}`, res);
+                if (!res.ok) {
+                    reject(res);
+                    return;
+                }
+                return res.json();
+            }).then((data)=>{
+                resolve(data);
+            }).catch((err)=>{
+                (0, $42491a06a064f4c0$export$af88d00dbe7f521).error(`[Pipecat Client] Error fetching: ${err}`);
+                reject(err);
+            }).finally(()=>{
+                if (handshakeTimeout) clearTimeout(handshakeTimeout);
+            });
+        })();
+    });
+}
+
+
+var $8e196b651aab6862$exports = {};
+
+$parcel$export($8e196b651aab6862$exports, "Transport", () => $8e196b651aab6862$export$86495b081fef8e52);
+$parcel$export($8e196b651aab6862$exports, "TransportWrapper", () => $8e196b651aab6862$export$82b6ede160a64a3c);
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+class $8e196b651aab6862$export$86495b081fef8e52 {
+    constructor(){
+        this._state = "disconnected";
+        /**
+         * Maximum allowed size in bytes for a single signaling/message payload.
+         *
+         * The default is 64 KiB (`64 * 1024`), which is chosen to stay well within
+         * typical WebSocket, proxy, and intermediary limits and to discourage
+         * transports from sending very large payloads in a single message.
+         *
+         * Transport implementations may override this value in subclasses or
+         * constructors if their underlying transport has stricter or more relaxed
+         * limits, as long as they continue to honor this field when enforcing
+         * message size constraints.
+         */ this._maxMessageSize = 65536; // 64 KiB
+    }
+    /**
+     * Establishes a connection with the remote server. This is the main entry
+     * point for the transport to start sending and receiving media and messages.
+     * This is called from PipecatClient.connect() and should not be called directly.
+     * @param connectParams - This type will ultimately be defned by the transport
+     * implementation. It is used to pass connection parameters to the transport.
+     */ connect(connectParams) {
+        this._abortController = new AbortController();
+        let validatedParams = connectParams;
+        try {
+            validatedParams = this._validateConnectionParams(connectParams);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (e) {
+            throw new (0, $b4e51e049033e221$export$59b4786f333aac02)(`Invalid connection params: ${e.message}. Please check your connection params and try again.`);
+        }
+        return this._connect(validatedParams);
+    }
+    /**
+     * Allow the transports to determine how the bot was started.
+     */ get startBotParams() {
+        return this._startBotParams;
+    }
+    /**
+     * Set the parameters used to start the bot.
+     * @param startBotParams
+     */ set startBotParams(startBotParams) {
+        if (typeof Request !== "undefined" && startBotParams.endpoint instanceof Request) {
+            // If the endpoint is a Request object, we have to clone it.
+            // Otherwise, we might run into issues with body being already used.
+            this._startBotParams = {
+                ...startBotParams,
+                endpoint: startBotParams.endpoint.clone()
+            };
+            return;
+        }
+        this._startBotParams = startBotParams;
+    }
+    /**
+     * Disconnects the transport from the remote server. This is called from
+     * PipecatClient.disconnect() and should not be called directly.
+     */ disconnect() {
+        if (this._abortController) this._abortController.abort();
+        return this._disconnect();
+    }
+    /**
+     * Maximum size, in bytes, of a single message that this transport will attempt
+     * to send. Callers should ensure that any outbound {@link RTVIMessage} payloads
+     * do not exceed this limit to avoid transport or server errors.
+     */ get maxMessageSize() {
+        return this._maxMessageSize;
+    }
+}
+class $8e196b651aab6862$export$82b6ede160a64a3c {
+    constructor(transport){
+        this._transport = transport;
+        this._proxy = new Proxy(this._transport, {
+            get: (target, prop, receiver)=>{
+                if (typeof target[prop] === "function") {
+                    let errMsg;
+                    switch(String(prop)){
+                        // Disable methods that modify the lifecycle of the call. These operations
+                        // should be performed via the Pipecat client in order to keep state in sync.
+                        case "initialize":
+                            errMsg = `Direct calls to initialize() are disabled and used internally by the PipecatClient.`;
+                            break;
+                        case "initDevices":
+                            errMsg = `Direct calls to initDevices() are disabled. Please use the PipecatClient.initDevices() wrapper or let PipecatClient.connect() call it for you.`;
+                            break;
+                        case "sendReadyMessage":
+                            errMsg = `Direct calls to sendReadyMessage() are disabled and used internally by the PipecatClient.`;
+                            break;
+                        case "connect":
+                            errMsg = `Direct calls to connect() are disabled. Please use the PipecatClient.connect() wrapper.`;
+                            break;
+                        case "disconnect":
+                            errMsg = `Direct calls to disconnect() are disabled. Please use the PipecatClient.disconnect() wrapper.`;
+                            break;
+                    }
+                    if (errMsg) return ()=>{
+                        throw new Error(errMsg);
+                    };
+                    // Forward other method calls
+                    return (...args)=>{
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+                        return target[prop](...args);
+                    };
+                }
+                // Forward property access
+                return Reflect.get(target, prop, receiver);
+            }
+        });
+    }
+    get proxy() {
+        return this._proxy;
+    }
+}
+
+
+var $109c6e1fa5564bb5$exports = {};
+
+$parcel$export($109c6e1fa5564bb5$exports, "learnAboutClient", () => $109c6e1fa5564bb5$export$7eb7b0a641098f31);
+$parcel$export($109c6e1fa5564bb5$exports, "messageSizeWithinLimit", () => $109c6e1fa5564bb5$export$48f8227f1e7323f5);
+
+
+function $109c6e1fa5564bb5$export$7eb7b0a641098f31() {
+    let about = {
+        library: (0, $8cf63be2a2a16953$exports.name),
+        library_version: (0, $8cf63be2a2a16953$exports.version),
+        platform_details: {}
+    };
+    // This uses legacy browser user agent parsing, which we still fall
+    // back to if the User Agent Hints API is not available
+    let navAgentInfo = null;
+    if (window?.navigator?.userAgent) try {
+        navAgentInfo = (0, ($parcel$interopDefault($58KWk$bowser))).parse(window.navigator.userAgent);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_) {
+    // void
+    }
+    if (navAgentInfo?.browser?.name) about.platform_details.browser = navAgentInfo.browser.name;
+    if (navAgentInfo?.browser?.name === "Safari" && !navAgentInfo.browser.version) about.platform_details.browser_version = "Web View";
+    else if (navAgentInfo?.browser?.version) about.platform_details.browser_version = navAgentInfo.browser.version;
+    if (navAgentInfo?.platform?.type) about.platform_details.platform_type = navAgentInfo.platform.type;
+    if (navAgentInfo?.engine?.name) about.platform_details.engine = navAgentInfo.engine.name;
+    if (navAgentInfo?.os) {
+        about.platform = navAgentInfo.os.name;
+        about.platform_version = navAgentInfo.os.version;
+    }
+    return about;
+}
+function $109c6e1fa5564bb5$export$48f8227f1e7323f5(message, maxSize) {
+    const getSizeInBytes = (obj)=>{
+        const jsonString = JSON.stringify(obj);
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(jsonString);
+        return bytes.length;
+    };
+    const size = getSizeInBytes(message);
+    return size <= maxSize;
+}
+
+
+var $02f900e1428a591c$var$__decorate = undefined && undefined.__decorate || function(decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for(var i = decorators.length - 1; i >= 0; i--)if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+/**
+ * Map a DeviceErrorType onto a DeviceErrorReason that captures the per-device
+ * failure mode. Speaker-affecting errors are not represented here because
+ * MediaState only tracks mic and cam.
+ */ function $02f900e1428a591c$var$deviceErrorReasonFromType(type) {
+    switch(type){
+        case "in-use":
+            return "already-in-use";
+        case "permissions":
+            return "blocked";
+        case "not-found":
+            return "not-found";
+        case "undefined-mediadevices":
+            return "not-supported";
+        case "constraints":
+            return "invalid-constraints";
+        case "unknown":
+        default:
+            return "unknown";
+    }
+}
+class $02f900e1428a591c$var$RTVIEventEmitter extends (0, ($parcel$interopDefault($58KWk$events))) {
+}
+class $02f900e1428a591c$export$8f7f86a77535f7a3 extends $02f900e1428a591c$var$RTVIEventEmitter {
+    constructor(options){
+        super();
+        this._functionCallCallbacks = {};
+        this._botTranscriptionWarned = false;
+        this._llmFunctionCallWarned = false;
+        // Bot's RTVI protocol version, parsed from bot-ready. [0, 0, 0] until known.
+        this._botVersion = [
+            0,
+            0,
+            0
+        ];
+        // Per-device device state. Independent of TransportState — driven by
+        // initDevices() and DeviceError events, never by transport connect/disconnect.
+        // See common_types.ts for the rationale and the daily-react reference.
+        this._mediaState = {
+            mic: {
+                state: "uninitialized"
+            },
+            cam: {
+                state: "uninitialized"
+            }
+        };
+        (0, $b1a2fe36be912934$export$e4036f9b8ddb7379)((0, $109c6e1fa5564bb5$export$7eb7b0a641098f31)());
+        this._transport = options.transport;
+        this._transportWrapper = new (0, $8e196b651aab6862$export$82b6ede160a64a3c)(this._transport);
+        this._disconnectOnBotDisconnect = options.disconnectOnBotDisconnect ?? true;
+        // Wrap transport callbacks with event triggers
+        // This allows for either functional callbacks or .on / .off event listeners
+        const wrappedCallbacks = {
+            ...options.callbacks,
+            onMessageError: (message)=>{
+                options?.callbacks?.onMessageError?.(message);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).MessageError, message);
+            },
+            onError: (message)=>{
+                options?.callbacks?.onError?.(message);
+                try {
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).Error, message);
+                } catch (e) {
+                    if (e instanceof Error && e.message.includes("Unhandled error")) {
+                        if (!options?.callbacks?.onError) (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("No onError callback registered to handle error", message);
+                    } else (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("Could not emit error", message, e);
+                }
+                const data = message.data;
+                if (data?.fatal) {
+                    (0, $42491a06a064f4c0$export$af88d00dbe7f521).error("Fatal error reported. Disconnecting...");
+                    this.disconnect();
+                }
+            },
+            onConnected: ()=>{
+                options?.callbacks?.onConnected?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).Connected);
+            },
+            onDisconnected: ()=>{
+                options?.callbacks?.onDisconnected?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).Disconnected);
+            },
+            onTransportStateChanged: (state)=>{
+                options?.callbacks?.onTransportStateChanged?.(state);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).TransportStateChanged, state);
+                if (state === "ready") this._flushPendingUISnapshot();
+            },
+            onParticipantJoined: (p)=>{
+                options?.callbacks?.onParticipantJoined?.(p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).ParticipantConnected, p);
+            },
+            onParticipantLeft: (p)=>{
+                options?.callbacks?.onParticipantLeft?.(p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).ParticipantLeft, p);
+            },
+            onTrackStarted: (track, p)=>{
+                options?.callbacks?.onTrackStarted?.(track, p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).TrackStarted, track, p);
+            },
+            onTrackStopped: (track, p)=>{
+                options?.callbacks?.onTrackStopped?.(track, p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).TrackStopped, track, p);
+            },
+            onScreenTrackStarted: (track, p)=>{
+                options?.callbacks?.onScreenTrackStarted?.(track, p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).ScreenTrackStarted, track, p);
+            },
+            onScreenTrackStopped: (track, p)=>{
+                options?.callbacks?.onScreenTrackStopped?.(track, p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).ScreenTrackStopped, track, p);
+            },
+            onScreenShareError: (errorMessage)=>{
+                options?.callbacks?.onScreenShareError?.(errorMessage);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).ScreenShareError, errorMessage);
+            },
+            onUnsupportedFeature: (error)=>{
+                options?.callbacks?.onUnsupportedFeature?.(error);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UnsupportedFeature, error);
+            },
+            onAvailableCamsUpdated: (cams)=>{
+                options?.callbacks?.onAvailableCamsUpdated?.(cams);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).AvailableCamsUpdated, cams);
+            },
+            onAvailableMicsUpdated: (mics)=>{
+                options?.callbacks?.onAvailableMicsUpdated?.(mics);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).AvailableMicsUpdated, mics);
+            },
+            onAvailableSpeakersUpdated: (speakers)=>{
+                options?.callbacks?.onAvailableSpeakersUpdated?.(speakers);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).AvailableSpeakersUpdated, speakers);
+            },
+            onCamUpdated: (cam)=>{
+                // Real device selected → permission was granted. Upgrade MediaState
+                // (no-op if already granted, sticky if blocked / in-use / etc).
+                if (cam?.deviceId) this._markDeviceGranted("cam");
+                options?.callbacks?.onCamUpdated?.(cam);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).CamUpdated, cam);
+            },
+            onMicUpdated: (mic)=>{
+                if (mic?.deviceId) this._markDeviceGranted("mic");
+                options?.callbacks?.onMicUpdated?.(mic);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).MicUpdated, mic);
+            },
+            onSpeakerUpdated: (speaker)=>{
+                options?.callbacks?.onSpeakerUpdated?.(speaker);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).SpeakerUpdated, speaker);
+            },
+            onDeviceError: (error)=>{
+                // Classify into MediaState in real time. Works the same whether the
+                // error fires during an initDevices() call (mid-await) or out of band
+                // (e.g. devicechange-driven). The post-transport Permissions API
+                // re-query in initDevices() then has the final word for any 'denied'
+                // override.
+                this._classifyAndApplyDeviceError(error);
+                options?.callbacks?.onDeviceError?.(error);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).DeviceError, error);
+            },
+            onBotStarted: (botResponse)=>{
+                options?.callbacks?.onBotStarted?.(botResponse);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotStarted, botResponse);
+            },
+            onBotConnected: (p)=>{
+                options?.callbacks?.onBotConnected?.(p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotConnected, p);
+            },
+            onBotReady: (botReadyData)=>{
+                options?.callbacks?.onBotReady?.(botReadyData);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotReady, botReadyData);
+            },
+            onBotDisconnected: (p)=>{
+                options?.callbacks?.onBotDisconnected?.(p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotDisconnected, p);
+                if (this._disconnectOnBotDisconnect) {
+                    (0, $42491a06a064f4c0$export$af88d00dbe7f521).info("Bot disconnected. Disconnecting client...");
+                    this.disconnect();
+                }
+            },
+            onUserStartedSpeaking: ()=>{
+                options?.callbacks?.onUserStartedSpeaking?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UserStartedSpeaking);
+            },
+            onUserStoppedSpeaking: ()=>{
+                options?.callbacks?.onUserStoppedSpeaking?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UserStoppedSpeaking);
+            },
+            onBotStartedSpeaking: ()=>{
+                options?.callbacks?.onBotStartedSpeaking?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotStartedSpeaking);
+            },
+            onBotStoppedSpeaking: ()=>{
+                options?.callbacks?.onBotStoppedSpeaking?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotStoppedSpeaking);
+            },
+            onRemoteAudioLevel: (level, p)=>{
+                options?.callbacks?.onRemoteAudioLevel?.(level, p);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).RemoteAudioLevel, level, p);
+            },
+            onLocalAudioLevel: (level)=>{
+                options?.callbacks?.onLocalAudioLevel?.(level);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).LocalAudioLevel, level);
+            },
+            onUserMuteStarted: ()=>{
+                options?.callbacks?.onUserMuteStarted?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UserMuteStarted);
+            },
+            onUserMuteStopped: ()=>{
+                options?.callbacks?.onUserMuteStopped?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UserMuteStopped);
+            },
+            onUserTranscript: (data)=>{
+                options?.callbacks?.onUserTranscript?.(data);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UserTranscript, data);
+            },
+            onBotOutput: (data)=>{
+                options?.callbacks?.onBotOutput?.(data);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotOutput, data);
+            },
+            onBotTranscript: (text)=>{
+                const hasSubscriber = !!options?.callbacks?.onBotTranscript || this.listenerCount((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotTranscript) > 0;
+                if (hasSubscriber && !this._botTranscriptionWarned) {
+                    (0, $42491a06a064f4c0$export$af88d00dbe7f521).warn("[Pipecat Client] Bot transcription is deprecated. Please use the onBotOutput instead.");
+                    this._botTranscriptionWarned = true;
+                }
+                options?.callbacks?.onBotTranscript?.(text);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotTranscript, text);
+            },
+            onBotLlmText: (text)=>{
+                options?.callbacks?.onBotLlmText?.(text);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotLlmText, text);
+            },
+            onBotLlmStarted: ()=>{
+                options?.callbacks?.onBotLlmStarted?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotLlmStarted);
+            },
+            onBotLlmStopped: ()=>{
+                options?.callbacks?.onBotLlmStopped?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotLlmStopped);
+            },
+            onBotTtsText: (text)=>{
+                options?.callbacks?.onBotTtsText?.(text);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotTtsText, text);
+            },
+            onBotTtsStarted: ()=>{
+                options?.callbacks?.onBotTtsStarted?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotTtsStarted);
+            },
+            onBotTtsStopped: ()=>{
+                options?.callbacks?.onBotTtsStopped?.();
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotTtsStopped);
+            }
+        };
+        // Update options to reference wrapped callbacks and config defaults
+        this._options = {
+            ...options,
+            callbacks: wrappedCallbacks,
+            enableMic: options.enableMic ?? true,
+            enableCam: options.enableCam ?? false,
+            enableScreenShare: options.enableScreenShare ?? false
+        };
+        // Instantiate the transport class and bind message handler
+        this._initialize();
+        // Get package version number
+        (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[Pipecat Client] Initialized", this.version);
+    }
+    setLogLevel(level) {
+        (0, $42491a06a064f4c0$export$af88d00dbe7f521).setLevel(level);
+    }
+    // ------ Transport methods
+    /**
+     * Initialize local media devices.
+     *
+     * Drives MediaState transitions: both mic and cam move to 'initializing' on
+     * entry. On success, each device moves to 'granted' only if the transport
+     * reports it as acquired (via onMicUpdated / onCamUpdated with a real
+     * deviceId); otherwise that device falls back to 'uninitialized'. On
+     * failure the in-flight DeviceError (if any) classifies the affected
+     * device(s) per-device; anything still at 'initializing' falls back to
+     * 'unknown'. The original error is always re-thrown.
+     *
+     * Calling this again after a failure is the recovery path — a second call
+     * re-enters 'initializing' and reclassifies. There is no separate
+     * retryDevices() method.
+     */ async initDevices() {
+        (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[Pipecat Client] Initializing devices...");
+        // Both devices enter the lifecycle, regardless of enableMic / enableCam.
+        // The actual transport behavior is asymmetric and not predictable from
+        // options alone (e.g. daily-js's startCamera honors startVideoOff but not
+        // startAudioOff — it acquires the mic even when the caller said
+        // enableMic: false). MediaState mirrors what the transport actually did,
+        // sourced from onMicUpdated / onCamUpdated events that fire with a real
+        // deviceId only when permission was granted. Devices the transport never
+        // speaks to fall back to 'uninitialized' below.
+        this._setMediaState({
+            mic: {
+                state: "initializing"
+            },
+            cam: {
+                state: "initializing"
+            }
+        });
+        try {
+            await this._transport.initDevices();
+            // Transport resolved. Per-device transitions during the await:
+            //   - onMicUpdated / onCamUpdated upgraded reported devices to 'granted'
+            //   - onDeviceError applied per-device 'error' classifications
+            // Anything still at 'initializing' wasn't reported either way — the
+            // transport simply didn't speak to that device (e.g. daily-js skipping
+            // cam under startVideoOff: true). Fall it back to 'uninitialized'.
+            this._resolveLingeringInitializing({
+                state: "uninitialized"
+            });
+        } catch (error) {
+            // Transport rejected. Same as above but the fallback for unspoken-to
+            // devices is 'unknown' — something failed and we can't tell whether
+            // this device would have worked.
+            this._resolveLingeringInitializing({
+                state: "error",
+                reason: "unknown"
+            });
+            throw error;
+        } finally{
+            // Re-query the Permissions API now that the prompt (if any) has been
+            // dismissed. Authoritative source for 'denied' regardless of what the
+            // transport said. See the helper for the under-reporting rationale.
+            await this._enrichFromPermissionsAPI();
+        }
+    }
+    /**
+     * After the transport's initDevices() resolves or rejects, any device
+     * still at 'initializing' didn't receive a 'granted' upgrade from
+     * onMicUpdated / onCamUpdated and wasn't classified by a DeviceError
+     * (which would have moved it to 'error'). Apply the supplied fallback so
+     * it doesn't linger.
+     *
+     * On success, fallback is 'uninitialized' (the transport simply didn't
+     * speak to that device — e.g. daily-js skipping cam under
+     * startVideoOff: true). On failure, fallback is an 'unknown' error (we
+     * know something went wrong but can't pin it on this device).
+     */ _resolveLingeringInitializing(fallback) {
+        const patch = {};
+        for (const kind of [
+            "mic",
+            "cam"
+        ])if (this._mediaState[kind].state === "initializing") patch[kind] = fallback;
+        if (Object.keys(patch).length > 0) this._setMediaState(patch);
+    }
+    /**
+     * Upgrade a device to 'granted'. Called from the wrapped onMicUpdated /
+     * onCamUpdated when the transport reports an actual selected device.
+     * Allowed from any state — a previously errored device (e.g. 'not-found'
+     * because the cam was unplugged) can recover when the device reappears
+     * on a subsequent initDevices() call.
+     */ _markDeviceGranted(kind) {
+        if (this._mediaState[kind].state !== "granted") this._setMediaState({
+            [kind]: {
+                state: "granted"
+            }
+        });
+    }
+    /**
+     * startBot() is a method that initiates the bot by posting to a specified endpoint
+     * that optionally returns connection parameters for establishing a transport session.
+     * @param startBotParams
+     * @returns Promise that resolves to TransportConnectionParams or unknown
+     */ async startBot(startBotParams) {
+        // Implicit init when devices haven't been initialized yet. Pre-Plan-A
+        // this gate read transport.state === "disconnected", which fired both
+        // pre-init AND post-session — leading to redundant initDevices() calls
+        // on reconnect. needsInit(mediaState) is the unambiguous replacement.
+        if (this.needsInit()) await this.initDevices();
+        this._transport.state = "authenticating";
+        this._transport.startBotParams = startBotParams;
+        this._abortController = new AbortController();
+        let response;
+        try {
+            response = await (0, $e93e1075413e9e2e$export$699251e5611cc6db)(startBotParams, this._abortController);
+        } catch (e) {
+            let errMsg = "An unknown error occurred while starting the bot.";
+            let status;
+            if (e instanceof Response) {
+                const errResp = await e.json();
+                errMsg = errResp.info ?? errResp.detail ?? e.statusText;
+                status = e.status;
+            } else if (e instanceof Error) errMsg = e.message;
+            this._options.callbacks?.onError?.(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).ERROR_RESPONSE, {
+                message: errMsg,
+                fatal: true
+            }));
+            throw new $b4e51e049033e221$export$e7544ab812238a61(errMsg, status);
+        }
+        this._transport.state = "authenticated";
+        this._options.callbacks?.onBotStarted?.(response);
+        return response;
+    }
+    /**
+     * The `connect` function establishes a transport session and awaits a
+     * bot-ready signal, handling various connection states and errors.
+     * @param {TransportConnectionParams} [connectParams] -
+     * The `connectParams` parameter in the `connect` method should be of type
+     * `TransportConnectionParams`. This parameter is passed to the transport
+     * for establishing a transport session.
+     * NOTE: `connectParams` as type `ConnectionEndpoint` IS NOW DEPRECATED. If you
+     * want to authenticate and connect to a bot in one step, use
+     * `startBotAndConnect()` instead.
+     * @returns The `connect` method returns a Promise that resolves to an unknown value.
+     */ async connect(connectParams) {
+        if (connectParams && (0, $e93e1075413e9e2e$export$2dd7ca293b2783)(connectParams)) {
+            (0, $42491a06a064f4c0$export$af88d00dbe7f521).warn("Calling connect with an API endpoint is deprecated. Use startBotAndConnect() instead.");
+            return this.startBotAndConnect(connectParams);
+        }
+        // Establish transport session and await bot ready signal
+        return new Promise((resolve, reject)=>{
+            (async ()=>{
+                this._connectResolve = resolve;
+                if (this.needsInit()) await this.initDevices();
+                try {
+                    await this._transport.connect(connectParams);
+                    await this._transport.sendReadyMessage();
+                } catch (e) {
+                    this.disconnect();
+                    reject(e);
+                    return;
+                }
+            })();
+        });
+    }
+    async startBotAndConnect(startBotParams) {
+        const connectionParams = await this.startBot(startBotParams);
+        return this.connect(connectionParams);
+    }
+    /**
+     * Disconnect the voice client from the transport
+     * Reset / reinitialize transport and abort any pending requests
+     */ async disconnect() {
+        this.stopUISnapshotStream();
+        this._botVersion = [
+            0,
+            0,
+            0
+        ];
+        await this._transport.disconnect();
+        this._messageDispatcher.disconnect();
+    }
+    /**
+     * The _initialize function performs internal set up of the transport and
+     * message dispatcher.
+     */ _initialize() {
+        this._transport.initialize(this._options, this.handleMessage.bind(this));
+        // Create a new message dispatch queue for async message handling
+        this._messageDispatcher = new (0, $3b981481778defd6$export$e9a960646cc432aa)(this._sendMessage.bind(this));
+    }
+    /**
+     * Apply a partial MediaState patch and emit MediaStateUpdated if the patch
+     * actually changes anything. The callback always receives a fresh object.
+     */ _setMediaState(patch) {
+        const next = {
+            ...this._mediaState,
+            ...patch
+        };
+        if (this._statusEquals(next.mic, this._mediaState.mic) && this._statusEquals(next.cam, this._mediaState.cam)) return;
+        this._mediaState = next;
+        this._options.callbacks?.onMediaStateChanged?.(this.mediaState);
+        this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).MediaStateUpdated, this.mediaState);
+    }
+    /**
+     * Structural equality for two DeviceStatus values. Distinct error
+     * statuses (different `reason` or `details`) are treated as distinct so a
+     * status update fires when the underlying error changes, even if `state`
+     * was already 'error'.
+     */ _statusEquals(a, b) {
+        if (a.state !== b.state) return false;
+        if (a.state === "error" && b.state === "error") return a.reason === b.reason && a.details === b.details;
+        return true;
+    }
+    /**
+     * Map a DeviceError onto a partial MediaState patch and apply it. Mirrors
+     * daily-react's camera-error classifier — affected devices flip to an
+     * `'error'` status carrying the reason and the original error payload.
+     */ _classifyAndApplyDeviceError(error) {
+        const status = {
+            state: "error",
+            reason: $02f900e1428a591c$var$deviceErrorReasonFromType(error.type),
+            details: error.details
+        };
+        const patch = {};
+        if (error.devices.includes("mic")) patch.mic = status;
+        if (error.devices.includes("cam")) patch.cam = status;
+        if (Object.keys(patch).length === 0) return; // speaker-only or empty
+        this._setMediaState(patch);
+    }
+    /**
+     * Permissions API enrichment, run AFTER the transport's initDevices()
+     * resolves. By that point the prompt (if any) has been dismissed, and the
+     * Permissions API's `denied` answer is authoritative — it overrides any
+     * under-reported DeviceError.
+     *
+     * Concrete case worth flagging: on a page where the user previously
+     * blocked permissions, daily-js's `camera-error` only names whichever
+     * device the transport tried first when re-initializing — even though
+     * both are blocked. Re-querying here catches the missing one. Worth a
+     * follow-up daily-js ticket.
+     *
+     * Silently no-ops where the API is unavailable (Safari, some mobile
+     * browsers) or throws on an unsupported descriptor.
+     */ async _enrichFromPermissionsAPI() {
+        const permissions = globalThis.navigator?.permissions;
+        if (!permissions?.query) return;
+        const query = permissions.query.bind(permissions);
+        const patch = {};
+        await Promise.all([
+            "mic",
+            "cam"
+        ].map(async (kind)=>{
+            try {
+                const result = await query({
+                    name: kind === "mic" ? "microphone" : "camera"
+                });
+                if (result.state === "denied") patch[kind] = {
+                    state: "error",
+                    reason: "blocked"
+                };
+            } catch  {
+            // Browsers may throw on unsupported descriptor names — swallow.
+            }
+        }));
+        if (Object.keys(patch).length > 0) this._setMediaState(patch);
+    }
+    /**
+     * Internal wrapper around the transport's sendMessage method
+     */ _sendMessage(message) {
+        if (!(0, $109c6e1fa5564bb5$export$48f8227f1e7323f5)(message, this._transport.maxMessageSize)) {
+            const msg = `Message data too large. Max size is ${this._transport.maxMessageSize}`;
+            this._options.callbacks?.onError?.((0, $b1a2fe36be912934$export$69aa9ab0334b212).error(msg, false));
+            throw new $b4e51e049033e221$export$78e1011ee1942cf6(msg);
+        }
+        try {
+            this._transport.sendMessage(message);
+        } catch (error) {
+            if (error instanceof Error) this._options.callbacks?.onError?.((0, $b1a2fe36be912934$export$69aa9ab0334b212).error(error.message, false));
+            else this._options.callbacks?.onError?.((0, $b1a2fe36be912934$export$69aa9ab0334b212).error("Unknown error sending message", false));
+            throw error;
+        }
+    }
+    /**
+     * Get the current state of the transport
+     */ get connected() {
+        return [
+            "connected",
+            "ready"
+        ].includes(this._transport.state);
+    }
+    get transport() {
+        return this._transportWrapper.proxy;
+    }
+    get state() {
+        return this._transport.state;
+    }
+    /**
+     * Per-device device state (mic, cam). Independent of transport state.
+     *
+     * Updated by initDevices() and DeviceError events. Returns a snapshot — to
+     * track changes, subscribe to RTVIEvent.MediaStateUpdated or pass an
+     * onMediaStateChanged callback in the client constructor.
+     */ get mediaState() {
+        // Deep snapshot — DeviceStatus is a nested object, so a shallow spread
+        // would still hand the caller a reference to our per-device records.
+        return {
+            mic: {
+                ...this._mediaState.mic
+            },
+            cam: {
+                ...this._mediaState.cam
+            }
+        };
+    }
+    /**
+     * Whether initDevices() still has work to do. Returns true if any device
+     * the caller opted into (enableMic / enableCam) is still 'uninitialized'.
+     * Devices the caller opted out of are not considered — they stay
+     * 'uninitialized' by design and must not gate the implicit init.
+     *
+     * Used internally by connect() / startBot() to decide whether to drive an
+     * implicit initDevices(); exposed publicly so consumers (e.g. step 3's
+     * useMediaState hook) can branch on the same logic.
+     */ needsInit() {
+        if (this._options.enableMic !== false && this._mediaState.mic.state === "uninitialized") return true;
+        if (this._options.enableCam !== false && this._mediaState.cam.state === "uninitialized") return true;
+        return false;
+    }
+    get version() {
+        return (0, (/*@__PURE__*/$parcel$interopDefault($8cf63be2a2a16953$exports))).version;
+    }
+    // ------ Device methods
+    async getAllMics() {
+        return await this._transport.getAllMics();
+    }
+    async getAllCams() {
+        return await this._transport.getAllCams();
+    }
+    async getAllSpeakers() {
+        return await this._transport.getAllSpeakers();
+    }
+    get selectedMic() {
+        return this._transport.selectedMic;
+    }
+    get selectedCam() {
+        try {
+            return this._transport.selectedCam;
+        } catch (e) {
+            if (e instanceof $b4e51e049033e221$export$bd0820eb8444fcd9) {
+                this._options.callbacks?.onUnsupportedFeature?.(e);
+                return {};
+            }
+            throw e;
+        }
+    }
+    get selectedSpeaker() {
+        return this._transport.selectedSpeaker;
+    }
+    updateMic(micId) {
+        this._transport.updateMic(micId);
+    }
+    updateCam(camId) {
+        this._transport.updateCam(camId);
+    }
+    updateSpeaker(speakerId) {
+        this._transport.updateSpeaker(speakerId);
+    }
+    enableMic(enable) {
+        this._transport.enableMic(enable);
+    }
+    get isMicEnabled() {
+        return this._transport.isMicEnabled;
+    }
+    enableCam(enable) {
+        try {
+            this._transport.enableCam(enable);
+        } catch (e) {
+            if (e instanceof $b4e51e049033e221$export$bd0820eb8444fcd9) this._options.callbacks?.onUnsupportedFeature?.(e);
+            else throw e;
+        }
+    }
+    get isCamEnabled() {
+        return this._transport.isCamEnabled;
+    }
+    tracks() {
+        return this._transport.tracks();
+    }
+    enableScreenShare(enable) {
+        try {
+            return this._transport.enableScreenShare(enable);
+        } catch (e) {
+            if (e instanceof $b4e51e049033e221$export$bd0820eb8444fcd9) this._options.callbacks?.onUnsupportedFeature?.(e);
+            else throw e;
+        }
+    }
+    get isSharingScreen() {
+        return this._transport.isSharingScreen;
+    }
+    // ------ Messages
+    /**
+     * Directly send a message to the bot via the transport.
+     * Do not await a response.
+     * @param msgType - a string representing the message type
+     * @param data - a dictionary of data to send with the message
+     */ sendClientMessage(msgType, data) {
+        this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).CLIENT_MESSAGE, {
+            t: msgType,
+            d: data
+        }));
+    }
+    /**
+     * Send a named UI event to the server as a first-class RTVI
+     * `ui-event` message.
+     *
+     * @param event - App-defined event.
+     * @param payload - App-defined payload. Optional.
+     */ sendUIEvent(event, payload) {
+        const data = {
+            event: event,
+            payload: payload
+        };
+        this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).UI_EVENT, data));
+    }
+    /**
+     * Send DTMF tones to the server as first-class RTVI `dtmf` messages.
+     *
+     * Accepts a single key or a sequence of keys (e.g. "123#"). Bots on
+     * RTVI protocol 2.1.0+ receive the keys as a single message; 2.0.x
+     * bots receive one legacy `{button}` message per key. Bots older than
+     * 2.0.0 don't support DTMF at all.
+     *
+     * @param dtmf - The DTMF key(s) to send (0-9, *, or #).
+     */ sendDTMF(dtmf) {
+        if (!/^[0-9*#]+$/.test(dtmf)) throw new $b4e51e049033e221$export$59b4786f333aac02(`Invalid DTMF sequence "${dtmf}". Only 0-9, * and # are allowed.`);
+        if (this._botVersion[0] < 2) throw new $b4e51e049033e221$export$bd0820eb8444fcd9("DTMF", "bot", "requires RTVI protocol 2.0.0+");
+        const buttons = [
+            ...dtmf
+        ];
+        if (this._botVersion[0] === 2 && this._botVersion[1] < 1) for (const button of buttons)this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).DTMF, {
+            button: button
+        }));
+        else {
+            const data = {
+                buttons: buttons
+            };
+            this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).DTMF, data));
+        }
+    }
+    /**
+     * Start streaming UI snapshots to the server as
+     * first-class `ui-snapshot` RTVI messages.
+     *
+     * Calling this again replaces any existing managed streamer with
+     * the new options.
+     */ startUISnapshotStream(options = {}) {
+        this.stopUISnapshotStream();
+        this._uiSnapshotStreamer = new (0, $db0fd363e17a8e86$export$d1b25383c8328718)((snapshot)=>{
+            if (this.state !== "ready") {
+                this._pendingUISnapshot = snapshot;
+                return;
+            }
+            this._sendUISnapshot(snapshot);
+        }, options);
+        this._uiSnapshotStreamer.start();
+    }
+    /**
+     * Stop the managed UI snapshot stream, if one is active.
+     */ stopUISnapshotStream() {
+        this._uiSnapshotStreamer?.stop();
+        this._uiSnapshotStreamer = undefined;
+        this._pendingUISnapshot = undefined;
+    }
+    _sendUISnapshot(snapshot) {
+        const data = {
+            tree: snapshot
+        };
+        this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).UI_SNAPSHOT, data));
+    }
+    _flushPendingUISnapshot() {
+        if (!this._pendingUISnapshot || this.state !== "ready") return;
+        const snapshot = this._pendingUISnapshot;
+        this._pendingUISnapshot = undefined;
+        this._sendUISnapshot(snapshot);
+    }
+    /**
+     * Ask the server to cancel an in-flight UI job group.
+     *
+     * @param jobId - Shared job identifier of the group to cancel.
+     * @param reason - Optional human-readable reason logged on the server.
+     */ cancelUIJobGroup(jobId, reason) {
+        const payload = {
+            job_id: jobId
+        };
+        if (reason !== undefined) payload.reason = reason;
+        this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).UI_CANCEL_JOB_GROUP, payload));
+    }
+    /**
+     * Directly send a message to the bot via the transport.
+     * Wait for and return the response.
+     * @param msgType - a string representing the message type
+     * @param data - a dictionary of data to send with the message
+     * @param timeout - optional timeout in milliseconds for the response
+     */ async sendClientRequest(msgType, data, timeout) {
+        const msgData = {
+            t: msgType,
+            d: data
+        };
+        const response = await this._messageDispatcher.dispatch(msgData, (0, $b1a2fe36be912934$export$38b3db05cbf0e240).CLIENT_MESSAGE, timeout);
+        const ret_data = response.data;
+        return ret_data.d;
+    }
+    registerFunctionCallHandler(functionName, callback) {
+        this._functionCallCallbacks[functionName] = callback;
+    }
+    unregisterFunctionCallHandler(functionName) {
+        delete this._functionCallCallbacks[functionName];
+    }
+    unregisterAllFunctionCallHandlers() {
+        this._functionCallCallbacks = {};
+    }
+    async appendToContext(context) {
+        (0, $42491a06a064f4c0$export$af88d00dbe7f521).warn("appendToContext() is deprecated. Use sendText() instead.");
+        await this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).APPEND_TO_CONTEXT, {
+            role: context.role,
+            content: context.content,
+            run_immediately: context.run_immediately
+        }));
+        return true;
+    }
+    async sendText(content, options = {}) {
+        await this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).SEND_TEXT, {
+            content: content,
+            options: options
+        }));
+    }
+    /**
+     * Disconnects the bot, but keeps the session alive
+     */ disconnectBot() {
+        this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).DISCONNECT_BOT, {}));
+    }
+    handleMessage(ev) {
+        (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[RTVI Message]", ev);
+        switch(ev.type){
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_READY:
+                {
+                    const data = ev.data;
+                    const botVersion = data.version ? data.version.split(".").map(Number) : [
+                        0,
+                        0,
+                        0
+                    ];
+                    this._botVersion = botVersion;
+                    (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
+                    if (botVersion[0] < 2) (0, $42491a06a064f4c0$export$af88d00dbe7f521).warn(`[Pipecat Client] Bot protocol version ${data.version} is older than this client (${(0, $b1a2fe36be912934$export$7bdaf0e0d661a8f5)}). Compatibility issues may occur.`);
+                    this._connectResolve?.(ev.data);
+                    this._options.callbacks?.onBotReady?.(ev.data);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).ERROR:
+                this._options.callbacks?.onError?.(ev);
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).SERVER_RESPONSE:
+                this._messageDispatcher.resolve(ev);
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).ERROR_RESPONSE:
+                {
+                    const resp = this._messageDispatcher.reject(ev);
+                    this._options.callbacks?.onMessageError?.(resp);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).USER_STARTED_SPEAKING:
+                this._options.callbacks?.onUserStartedSpeaking?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).USER_STOPPED_SPEAKING:
+                this._options.callbacks?.onUserStoppedSpeaking?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_STARTED_SPEAKING:
+                this._options.callbacks?.onBotStartedSpeaking?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_STOPPED_SPEAKING:
+                this._options.callbacks?.onBotStoppedSpeaking?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).USER_MUTE_STARTED:
+                this._options.callbacks?.onUserMuteStarted?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).USER_MUTE_STOPPED:
+                this._options.callbacks?.onUserMuteStopped?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).USER_TRANSCRIPTION:
+                {
+                    const TranscriptData = ev.data;
+                    this._options.callbacks?.onUserTranscript?.(TranscriptData);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).USER_LLM_TEXT:
+                {
+                    const llmTextData = ev.data;
+                    this._options.callbacks?.onUserLlmText?.(llmTextData);
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UserLlmText, llmTextData);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_OUTPUT:
+                this._options.callbacks?.onBotOutput?.(ev.data);
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_TRANSCRIPTION:
+                this._options.callbacks?.onBotTranscript?.(ev.data);
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_LLM_TEXT:
+                this._options.callbacks?.onBotLlmText?.(ev.data);
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_LLM_STARTED:
+                this._options.callbacks?.onBotLlmStarted?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_LLM_STOPPED:
+                this._options.callbacks?.onBotLlmStopped?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_TTS_TEXT:
+                this._options.callbacks?.onBotTtsText?.(ev.data);
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_TTS_STARTED:
+                this._options.callbacks?.onBotTtsStarted?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_TTS_STOPPED:
+                this._options.callbacks?.onBotTtsStopped?.();
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).METRICS:
+                this._options.callbacks?.onMetrics?.(ev.data);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).Metrics, ev.data);
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).SERVER_MESSAGE:
+                this._options.callbacks?.onServerMessage?.(ev.data);
+                this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).ServerMessage, ev.data);
+                break;
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).UI_COMMAND:
+                {
+                    const data = ev.data;
+                    this._options.callbacks?.onUICommand?.(data);
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UICommand, data);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).UI_JOB_GROUP:
+                {
+                    const data = ev.data;
+                    this._options.callbacks?.onUIJobGroup?.(data);
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).UIJobGroup, data);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).LLM_FUNCTION_CALL_STARTED:
+                {
+                    const data = ev.data;
+                    this._options.callbacks?.onLLMFunctionCallStarted?.(data);
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).LLMFunctionCallStarted, data);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).LLM_FUNCTION_CALL_IN_PROGRESS:
+                {
+                    const data = ev.data;
+                    this._maybeTriggerFunctionCallCallback(data);
+                    this._options.callbacks?.onLLMFunctionCallInProgress?.(data);
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).LLMFunctionCallInProgress, data);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).LLM_FUNCTION_CALL_STOPPED:
+                {
+                    const data = ev.data;
+                    this._options.callbacks?.onLLMFunctionCallStopped?.(data);
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).LLMFunctionCallStopped, data);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).LLM_FUNCTION_CALL:
+                {
+                    const data = ev.data;
+                    const inProgressData = {
+                        function_name: data.function_name,
+                        tool_call_id: data.tool_call_id,
+                        arguments: data.args
+                    };
+                    this._maybeTriggerFunctionCallCallback(inProgressData);
+                    if (this._options.callbacks?.onLLMFunctionCall) {
+                        if (!this._llmFunctionCallWarned) {
+                            (0, $42491a06a064f4c0$export$af88d00dbe7f521).warn("[Pipecat Client] onLLMFunctionCall is deprecated. Please use onLLMFunctionCallInProgress instead.");
+                            this._llmFunctionCallWarned = true;
+                        }
+                    }
+                    this._options.callbacks?.onLLMFunctionCall?.(data);
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).LLMFunctionCall, data);
+                    break;
+                }
+            case (0, $b1a2fe36be912934$export$38b3db05cbf0e240).BOT_LLM_SEARCH_RESPONSE:
+                {
+                    const data = ev.data;
+                    this._options.callbacks?.onBotLlmSearchResponse?.(data);
+                    this.emit((0, $82c0e475b1b90003$export$6b4624d233c61fcb).BotLlmSearchResponse, data);
+                    break;
+                }
+            default:
+                (0, $42491a06a064f4c0$export$af88d00dbe7f521).debug("[Pipecat Client] Unrecognized message type", ev.type);
+                break;
+        }
+    }
+    _maybeTriggerFunctionCallCallback(data) {
+        // Function call callbacks are meant only for function calls that need information
+        // from the client to complete and generate a result. This process requires that
+        // the event includes the function name. For client-side logic meant simply to
+        // react to the fact that a function call is happening, you should use the
+        // traditional onLLMFunctionCallStarted/InProgress/Stopped events instead.
+        if (!data.function_name) return;
+        const fc = this._functionCallCallbacks[data.function_name];
+        if (fc) {
+            const params = {
+                functionName: data.function_name ?? "",
+                arguments: data.arguments ?? {}
+            };
+            fc(params).then((result)=>{
+                if (result == undefined) return;
+                this._sendMessage(new (0, $b1a2fe36be912934$export$69aa9ab0334b212)((0, $b1a2fe36be912934$export$38b3db05cbf0e240).LLM_FUNCTION_CALL_RESULT, {
+                    function_name: data.function_name,
+                    tool_call_id: data.tool_call_id,
+                    arguments: data.arguments ?? {},
+                    result: result
+                }));
+            }).catch((error)=>{
+                (0, $42491a06a064f4c0$export$af88d00dbe7f521).error("Error in function call callback", error);
+            });
+        }
+    }
+}
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$ebc0d747cf8770bc)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "startBot", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$ebc0d747cf8770bc)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "connect", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$ebc0d747cf8770bc)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "startBotAndConnect", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$f1586721024c4dab)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "sendClientMessage", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$f1586721024c4dab)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "sendUIEvent", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$f1586721024c4dab)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "sendDTMF", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$f1586721024c4dab)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "cancelUIJobGroup", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$f1586721024c4dab)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "sendClientRequest", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$f1586721024c4dab)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "appendToContext", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$f1586721024c4dab)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "sendText", null);
+$02f900e1428a591c$var$__decorate([
+    (0, $37a63b97d182bc86$export$f1586721024c4dab)
+], $02f900e1428a591c$export$8f7f86a77535f7a3.prototype, "disconnectBot", null);
+
+
+
+
+
+
+
+$parcel$exportWildcard($c2758f3146a53d04$exports, $db0fd363e17a8e86$exports);
+$parcel$exportWildcard($c2758f3146a53d04$exports, $02f900e1428a591c$exports);
+$parcel$exportWildcard($c2758f3146a53d04$exports, $3b981481778defd6$exports);
+$parcel$exportWildcard($c2758f3146a53d04$exports, $42491a06a064f4c0$exports);
+$parcel$exportWildcard($c2758f3146a53d04$exports, $e93e1075413e9e2e$exports);
+$parcel$exportWildcard($c2758f3146a53d04$exports, $8e196b651aab6862$exports);
+$parcel$exportWildcard($c2758f3146a53d04$exports, $109c6e1fa5564bb5$exports);
+
+
+
+$parcel$exportWildcard(module.exports, $c2758f3146a53d04$exports);
+$parcel$exportWildcard(module.exports, $609db2a766ef81cc$exports);
+
+
+//# sourceMappingURL=index.js.map
+
+},{"events":24,"uuid":25,"bowser":46}],
+24:[function(module,exports,require,process){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+'use strict';
+
+var R = typeof Reflect === 'object' ? Reflect : null
+var ReflectApply = R && typeof R.apply === 'function'
+  ? R.apply
+  : function ReflectApply(target, receiver, args) {
+    return Function.prototype.apply.call(target, receiver, args);
+  }
+
+var ReflectOwnKeys
+if (R && typeof R.ownKeys === 'function') {
+  ReflectOwnKeys = R.ownKeys
+} else if (Object.getOwnPropertySymbols) {
+  ReflectOwnKeys = function ReflectOwnKeys(target) {
+    return Object.getOwnPropertyNames(target)
+      .concat(Object.getOwnPropertySymbols(target));
+  };
+} else {
+  ReflectOwnKeys = function ReflectOwnKeys(target) {
+    return Object.getOwnPropertyNames(target);
+  };
+}
+
+function ProcessEmitWarning(warning) {
+  if (console && console.warn) console.warn(warning);
+}
+
+var NumberIsNaN = Number.isNaN || function NumberIsNaN(value) {
+  return value !== value;
+}
+
+function EventEmitter() {
+  EventEmitter.init.call(this);
+}
+module.exports = EventEmitter;
+module.exports.once = once;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._eventsCount = 0;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+var defaultMaxListeners = 10;
+
+function checkListener(listener) {
+  if (typeof listener !== 'function') {
+    throw new TypeError('The "listener" argument must be of type Function. Received type ' + typeof listener);
+  }
+}
+
+Object.defineProperty(EventEmitter, 'defaultMaxListeners', {
+  enumerable: true,
+  get: function() {
+    return defaultMaxListeners;
+  },
+  set: function(arg) {
+    if (typeof arg !== 'number' || arg < 0 || NumberIsNaN(arg)) {
+      throw new RangeError('The value of "defaultMaxListeners" is out of range. It must be a non-negative number. Received ' + arg + '.');
+    }
+    defaultMaxListeners = arg;
+  }
+});
+
+EventEmitter.init = function() {
+
+  if (this._events === undefined ||
+      this._events === Object.getPrototypeOf(this)._events) {
+    this._events = Object.create(null);
+    this._eventsCount = 0;
+  }
+
+  this._maxListeners = this._maxListeners || undefined;
+};
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
+  if (typeof n !== 'number' || n < 0 || NumberIsNaN(n)) {
+    throw new RangeError('The value of "n" is out of range. It must be a non-negative number. Received ' + n + '.');
+  }
+  this._maxListeners = n;
+  return this;
+};
+
+function _getMaxListeners(that) {
+  if (that._maxListeners === undefined)
+    return EventEmitter.defaultMaxListeners;
+  return that._maxListeners;
+}
+
+EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
+  return _getMaxListeners(this);
+};
+
+EventEmitter.prototype.emit = function emit(type) {
+  var args = [];
+  for (var i = 1; i < arguments.length; i++) args.push(arguments[i]);
+  var doError = (type === 'error');
+
+  var events = this._events;
+  if (events !== undefined)
+    doError = (doError && events.error === undefined);
+  else if (!doError)
+    return false;
+
+  // If there is no 'error' event listener then throw.
+  if (doError) {
+    var er;
+    if (args.length > 0)
+      er = args[0];
+    if (er instanceof Error) {
+      // Note: The comments on the `throw` lines are intentional, they show
+      // up in Node's output if this results in an unhandled exception.
+      throw er; // Unhandled 'error' event
+    }
+    // At least give some kind of context to the user
+    var err = new Error('Unhandled error.' + (er ? ' (' + er.message + ')' : ''));
+    err.context = er;
+    throw err; // Unhandled 'error' event
+  }
+
+  var handler = events[type];
+
+  if (handler === undefined)
+    return false;
+
+  if (typeof handler === 'function') {
+    ReflectApply(handler, this, args);
+  } else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      ReflectApply(listeners[i], this, args);
+  }
+
+  return true;
+};
+
+function _addListener(target, type, listener, prepend) {
+  var m;
+  var events;
+  var existing;
+
+  checkListener(listener);
+
+  events = target._events;
+  if (events === undefined) {
+    events = target._events = Object.create(null);
+    target._eventsCount = 0;
+  } else {
+    // To avoid recursion in the case that type === "newListener"! Before
+    // adding it to the listeners, first emit "newListener".
+    if (events.newListener !== undefined) {
+      target.emit('newListener', type,
+                  listener.listener ? listener.listener : listener);
+
+      // Re-assign `events` because a newListener handler could have caused the
+      // this._events to be assigned to a new object
+      events = target._events;
+    }
+    existing = events[type];
+  }
+
+  if (existing === undefined) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    existing = events[type] = listener;
+    ++target._eventsCount;
+  } else {
+    if (typeof existing === 'function') {
+      // Adding the second element, need to change to array.
+      existing = events[type] =
+        prepend ? [listener, existing] : [existing, listener];
+      // If we've already got an array, just append.
+    } else if (prepend) {
+      existing.unshift(listener);
+    } else {
+      existing.push(listener);
+    }
+
+    // Check for listener leak
+    m = _getMaxListeners(target);
+    if (m > 0 && existing.length > m && !existing.warned) {
+      existing.warned = true;
+      // No error code for this since it is a Warning
+      // eslint-disable-next-line no-restricted-syntax
+      var w = new Error('Possible EventEmitter memory leak detected. ' +
+                          existing.length + ' ' + String(type) + ' listeners ' +
+                          'added. Use emitter.setMaxListeners() to ' +
+                          'increase limit');
+      w.name = 'MaxListenersExceededWarning';
+      w.emitter = target;
+      w.type = type;
+      w.count = existing.length;
+      ProcessEmitWarning(w);
+    }
+  }
+
+  return target;
+}
+
+EventEmitter.prototype.addListener = function addListener(type, listener) {
+  return _addListener(this, type, listener, false);
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.prependListener =
+    function prependListener(type, listener) {
+      return _addListener(this, type, listener, true);
+    };
+
+function onceWrapper() {
+  if (!this.fired) {
+    this.target.removeListener(this.type, this.wrapFn);
+    this.fired = true;
+    if (arguments.length === 0)
+      return this.listener.call(this.target);
+    return this.listener.apply(this.target, arguments);
+  }
+}
+
+function _onceWrap(target, type, listener) {
+  var state = { fired: false, wrapFn: undefined, target: target, type: type, listener: listener };
+  var wrapped = onceWrapper.bind(state);
+  wrapped.listener = listener;
+  state.wrapFn = wrapped;
+  return wrapped;
+}
+
+EventEmitter.prototype.once = function once(type, listener) {
+  checkListener(listener);
+  this.on(type, _onceWrap(this, type, listener));
+  return this;
+};
+
+EventEmitter.prototype.prependOnceListener =
+    function prependOnceListener(type, listener) {
+      checkListener(listener);
+      this.prependListener(type, _onceWrap(this, type, listener));
+      return this;
+    };
+
+// Emits a 'removeListener' event if and only if the listener was removed.
+EventEmitter.prototype.removeListener =
+    function removeListener(type, listener) {
+      var list, events, position, i, originalListener;
+
+      checkListener(listener);
+
+      events = this._events;
+      if (events === undefined)
+        return this;
+
+      list = events[type];
+      if (list === undefined)
+        return this;
+
+      if (list === listener || list.listener === listener) {
+        if (--this._eventsCount === 0)
+          this._events = Object.create(null);
+        else {
+          delete events[type];
+          if (events.removeListener)
+            this.emit('removeListener', type, list.listener || listener);
+        }
+      } else if (typeof list !== 'function') {
+        position = -1;
+
+        for (i = list.length - 1; i >= 0; i--) {
+          if (list[i] === listener || list[i].listener === listener) {
+            originalListener = list[i].listener;
+            position = i;
+            break;
+          }
+        }
+
+        if (position < 0)
+          return this;
+
+        if (position === 0)
+          list.shift();
+        else {
+          spliceOne(list, position);
+        }
+
+        if (list.length === 1)
+          events[type] = list[0];
+
+        if (events.removeListener !== undefined)
+          this.emit('removeListener', type, originalListener || listener);
+      }
+
+      return this;
+    };
+
+EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
+
+EventEmitter.prototype.removeAllListeners =
+    function removeAllListeners(type) {
+      var listeners, events, i;
+
+      events = this._events;
+      if (events === undefined)
+        return this;
+
+      // not listening for removeListener, no need to emit
+      if (events.removeListener === undefined) {
+        if (arguments.length === 0) {
+          this._events = Object.create(null);
+          this._eventsCount = 0;
+        } else if (events[type] !== undefined) {
+          if (--this._eventsCount === 0)
+            this._events = Object.create(null);
+          else
+            delete events[type];
+        }
+        return this;
+      }
+
+      // emit removeListener for all listeners on all events
+      if (arguments.length === 0) {
+        var keys = Object.keys(events);
+        var key;
+        for (i = 0; i < keys.length; ++i) {
+          key = keys[i];
+          if (key === 'removeListener') continue;
+          this.removeAllListeners(key);
+        }
+        this.removeAllListeners('removeListener');
+        this._events = Object.create(null);
+        this._eventsCount = 0;
+        return this;
+      }
+
+      listeners = events[type];
+
+      if (typeof listeners === 'function') {
+        this.removeListener(type, listeners);
+      } else if (listeners !== undefined) {
+        // LIFO order
+        for (i = listeners.length - 1; i >= 0; i--) {
+          this.removeListener(type, listeners[i]);
+        }
+      }
+
+      return this;
+    };
+
+function _listeners(target, type, unwrap) {
+  var events = target._events;
+
+  if (events === undefined)
+    return [];
+
+  var evlistener = events[type];
+  if (evlistener === undefined)
+    return [];
+
+  if (typeof evlistener === 'function')
+    return unwrap ? [evlistener.listener || evlistener] : [evlistener];
+
+  return unwrap ?
+    unwrapListeners(evlistener) : arrayClone(evlistener, evlistener.length);
+}
+
+EventEmitter.prototype.listeners = function listeners(type) {
+  return _listeners(this, type, true);
+};
+
+EventEmitter.prototype.rawListeners = function rawListeners(type) {
+  return _listeners(this, type, false);
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  if (typeof emitter.listenerCount === 'function') {
+    return emitter.listenerCount(type);
+  } else {
+    return listenerCount.call(emitter, type);
+  }
+};
+
+EventEmitter.prototype.listenerCount = listenerCount;
+function listenerCount(type) {
+  var events = this._events;
+
+  if (events !== undefined) {
+    var evlistener = events[type];
+
+    if (typeof evlistener === 'function') {
+      return 1;
+    } else if (evlistener !== undefined) {
+      return evlistener.length;
+    }
+  }
+
+  return 0;
+}
+
+EventEmitter.prototype.eventNames = function eventNames() {
+  return this._eventsCount > 0 ? ReflectOwnKeys(this._events) : [];
+};
+
+function arrayClone(arr, n) {
+  var copy = new Array(n);
+  for (var i = 0; i < n; ++i)
+    copy[i] = arr[i];
+  return copy;
+}
+
+function spliceOne(list, index) {
+  for (; index + 1 < list.length; index++)
+    list[index] = list[index + 1];
+  list.pop();
+}
+
+function unwrapListeners(arr) {
+  var ret = new Array(arr.length);
+  for (var i = 0; i < ret.length; ++i) {
+    ret[i] = arr[i].listener || arr[i];
+  }
+  return ret;
+}
+
+function once(emitter, name) {
+  return new Promise(function (resolve, reject) {
+    function errorListener(err) {
+      emitter.removeListener(name, resolver);
+      reject(err);
+    }
+
+    function resolver() {
+      if (typeof emitter.removeListener === 'function') {
+        emitter.removeListener('error', errorListener);
+      }
+      resolve([].slice.call(arguments));
+    };
+
+    eventTargetAgnosticAddListener(emitter, name, resolver, { once: true });
+    if (name !== 'error') {
+      addErrorHandlerIfEventEmitter(emitter, errorListener, { once: true });
+    }
+  });
+}
+
+function addErrorHandlerIfEventEmitter(emitter, handler, flags) {
+  if (typeof emitter.on === 'function') {
+    eventTargetAgnosticAddListener(emitter, 'error', handler, flags);
+  }
+}
+
+function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
+  if (typeof emitter.on === 'function') {
+    if (flags.once) {
+      emitter.once(name, listener);
+    } else {
+      emitter.on(name, listener);
+    }
+  } else if (typeof emitter.addEventListener === 'function') {
+    // EventTarget does not have `error` event semantics like Node
+    // EventEmitters, we do not listen for `error` events here.
+    emitter.addEventListener(name, function wrapListener(arg) {
+      // IE does not have builtin `{ once: true }` support so we
+      // have to do it manually.
+      if (flags.once) {
+        emitter.removeEventListener(name, wrapListener);
+      }
+      listener(arg);
+    });
+  } else {
+    throw new TypeError('The "emitter" argument must be of type EventEmitter. Received type ' + typeof emitter);
+  }
+}
+
+},{}],
+25:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.version = exports.validate = exports.v7 = exports.v6ToV1 = exports.v6 = exports.v5 = exports.v4 = exports.v3 = exports.v1ToV6 = exports.v1 = exports.stringify = exports.parse = exports.NIL = exports.MAX = void 0;
+var max_js_1 = require("./max.js");
+Object.defineProperty(exports, "MAX", { enumerable: true, get: function () { return max_js_1.default; } });
+var nil_js_1 = require("./nil.js");
+Object.defineProperty(exports, "NIL", { enumerable: true, get: function () { return nil_js_1.default; } });
+var parse_js_1 = require("./parse.js");
+Object.defineProperty(exports, "parse", { enumerable: true, get: function () { return parse_js_1.default; } });
+var stringify_js_1 = require("./stringify.js");
+Object.defineProperty(exports, "stringify", { enumerable: true, get: function () { return stringify_js_1.default; } });
+var v1_js_1 = require("./v1.js");
+Object.defineProperty(exports, "v1", { enumerable: true, get: function () { return v1_js_1.default; } });
+var v1ToV6_js_1 = require("./v1ToV6.js");
+Object.defineProperty(exports, "v1ToV6", { enumerable: true, get: function () { return v1ToV6_js_1.default; } });
+var v3_js_1 = require("./v3.js");
+Object.defineProperty(exports, "v3", { enumerable: true, get: function () { return v3_js_1.default; } });
+var v4_js_1 = require("./v4.js");
+Object.defineProperty(exports, "v4", { enumerable: true, get: function () { return v4_js_1.default; } });
+var v5_js_1 = require("./v5.js");
+Object.defineProperty(exports, "v5", { enumerable: true, get: function () { return v5_js_1.default; } });
+var v6_js_1 = require("./v6.js");
+Object.defineProperty(exports, "v6", { enumerable: true, get: function () { return v6_js_1.default; } });
+var v6ToV1_js_1 = require("./v6ToV1.js");
+Object.defineProperty(exports, "v6ToV1", { enumerable: true, get: function () { return v6ToV1_js_1.default; } });
+var v7_js_1 = require("./v7.js");
+Object.defineProperty(exports, "v7", { enumerable: true, get: function () { return v7_js_1.default; } });
+var validate_js_1 = require("./validate.js");
+Object.defineProperty(exports, "validate", { enumerable: true, get: function () { return validate_js_1.default; } });
+var version_js_1 = require("./version.js");
+Object.defineProperty(exports, "version", { enumerable: true, get: function () { return version_js_1.default; } });
+
+},{"./max.js":26,"./nil.js":27,"./parse.js":28,"./stringify.js":31,"./v1.js":32,"./v1ToV6.js":34,"./v3.js":35,"./v4.js":38,"./v5.js":40,"./v6.js":42,"./v6ToV1.js":43,"./v7.js":44,"./validate.js":29,"./version.js":45}],
+26:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+
+},{}],
+27:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = '00000000-0000-0000-0000-000000000000';
+
+},{}],
+28:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const validate_js_1 = require("./validate.js");
+function parse(uuid) {
+    if (!(0, validate_js_1.default)(uuid)) {
+        throw TypeError('Invalid UUID');
+    }
+    let v;
+    return Uint8Array.of((v = parseInt(uuid.slice(0, 8), 16)) >>> 24, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff, (v = parseInt(uuid.slice(9, 13), 16)) >>> 8, v & 0xff, (v = parseInt(uuid.slice(14, 18), 16)) >>> 8, v & 0xff, (v = parseInt(uuid.slice(19, 23), 16)) >>> 8, v & 0xff, ((v = parseInt(uuid.slice(24, 36), 16)) / 0x10000000000) & 0xff, (v / 0x100000000) & 0xff, (v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff);
+}
+exports.default = parse;
+
+},{"./validate.js":29}],
+29:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const regex_js_1 = require("./regex.js");
+function validate(uuid) {
+    return typeof uuid === 'string' && regex_js_1.default.test(uuid);
+}
+exports.default = validate;
+
+},{"./regex.js":30}],
+30:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/i;
+
+},{}],
+31:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.unsafeStringify = void 0;
+const validate_js_1 = require("./validate.js");
+const byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+    byteToHex.push((i + 0x100).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+    return (byteToHex[arr[offset + 0]] +
+        byteToHex[arr[offset + 1]] +
+        byteToHex[arr[offset + 2]] +
+        byteToHex[arr[offset + 3]] +
+        '-' +
+        byteToHex[arr[offset + 4]] +
+        byteToHex[arr[offset + 5]] +
+        '-' +
+        byteToHex[arr[offset + 6]] +
+        byteToHex[arr[offset + 7]] +
+        '-' +
+        byteToHex[arr[offset + 8]] +
+        byteToHex[arr[offset + 9]] +
+        '-' +
+        byteToHex[arr[offset + 10]] +
+        byteToHex[arr[offset + 11]] +
+        byteToHex[arr[offset + 12]] +
+        byteToHex[arr[offset + 13]] +
+        byteToHex[arr[offset + 14]] +
+        byteToHex[arr[offset + 15]]).toLowerCase();
+}
+exports.unsafeStringify = unsafeStringify;
+function stringify(arr, offset = 0) {
+    const uuid = unsafeStringify(arr, offset);
+    if (!(0, validate_js_1.default)(uuid)) {
+        throw TypeError('Stringified UUID is invalid');
+    }
+    return uuid;
+}
+exports.default = stringify;
+
+},{"./validate.js":29}],
+32:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateV1State = void 0;
+const rng_js_1 = require("./rng.js");
+const stringify_js_1 = require("./stringify.js");
+const _state = {};
+function v1(options, buf, offset) {
+    let bytes;
+    const isV6 = options?._v6 ?? false;
+    if (options) {
+        const optionsKeys = Object.keys(options);
+        if (optionsKeys.length === 1 && optionsKeys[0] === '_v6') {
+            options = undefined;
+        }
+    }
+    if (options) {
+        bytes = v1Bytes(options.random ?? options.rng?.() ?? (0, rng_js_1.default)(), options.msecs, options.nsecs, options.clockseq, options.node, buf, offset);
+    }
+    else {
+        const now = Date.now();
+        const rnds = (0, rng_js_1.default)();
+        updateV1State(_state, now, rnds);
+        bytes = v1Bytes(rnds, _state.msecs, _state.nsecs, isV6 ? undefined : _state.clockseq, isV6 ? undefined : _state.node, buf, offset);
+    }
+    return buf ?? (0, stringify_js_1.unsafeStringify)(bytes);
+}
+function updateV1State(state, now, rnds) {
+    state.msecs ??= -Infinity;
+    state.nsecs ??= 0;
+    if (now === state.msecs) {
+        state.nsecs++;
+        if (state.nsecs >= 10000) {
+            state.node = undefined;
+            state.nsecs = 0;
+        }
+    }
+    else if (now > state.msecs) {
+        state.nsecs = 0;
+    }
+    else if (now < state.msecs) {
+        state.node = undefined;
+    }
+    if (!state.node) {
+        state.node = rnds.slice(10, 16);
+        state.node[0] |= 0x01;
+        state.clockseq = ((rnds[8] << 8) | rnds[9]) & 0x3fff;
+    }
+    state.msecs = now;
+    return state;
+}
+exports.updateV1State = updateV1State;
+function v1Bytes(rnds, msecs, nsecs, clockseq, node, buf, offset = 0) {
+    if (rnds.length < 16) {
+        throw new Error('Random bytes length must be >= 16');
+    }
+    if (!buf) {
+        buf = new Uint8Array(16);
+        offset = 0;
+    }
+    else {
+        if (offset < 0 || offset + 16 > buf.length) {
+            throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+        }
+    }
+    msecs ??= Date.now();
+    nsecs ??= 0;
+    clockseq ??= ((rnds[8] << 8) | rnds[9]) & 0x3fff;
+    node ??= rnds.slice(10, 16);
+    msecs += 12219292800000;
+    const tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+    buf[offset++] = (tl >>> 24) & 0xff;
+    buf[offset++] = (tl >>> 16) & 0xff;
+    buf[offset++] = (tl >>> 8) & 0xff;
+    buf[offset++] = tl & 0xff;
+    const tmh = ((msecs / 0x100000000) * 10000) & 0xfffffff;
+    buf[offset++] = (tmh >>> 8) & 0xff;
+    buf[offset++] = tmh & 0xff;
+    buf[offset++] = ((tmh >>> 24) & 0xf) | 0x10;
+    buf[offset++] = (tmh >>> 16) & 0xff;
+    buf[offset++] = (clockseq >>> 8) | 0x80;
+    buf[offset++] = clockseq & 0xff;
+    for (let n = 0; n < 6; ++n) {
+        buf[offset++] = node[n];
+    }
+    return buf;
+}
+exports.default = v1;
+
+},{"./rng.js":33,"./stringify.js":31}],
+33:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+let getRandomValues;
+const rnds8 = new Uint8Array(16);
+function rng() {
+    if (!getRandomValues) {
+        if (typeof crypto === 'undefined' || !crypto.getRandomValues) {
+            throw new Error('crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported');
+        }
+        getRandomValues = crypto.getRandomValues.bind(crypto);
+    }
+    return getRandomValues(rnds8);
+}
+exports.default = rng;
+
+},{}],
+34:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const parse_js_1 = require("./parse.js");
+const stringify_js_1 = require("./stringify.js");
+function v1ToV6(uuid) {
+    const v1Bytes = typeof uuid === 'string' ? (0, parse_js_1.default)(uuid) : uuid;
+    const v6Bytes = _v1ToV6(v1Bytes);
+    return typeof uuid === 'string' ? (0, stringify_js_1.unsafeStringify)(v6Bytes) : v6Bytes;
+}
+exports.default = v1ToV6;
+function _v1ToV6(v1Bytes) {
+    return Uint8Array.of(((v1Bytes[6] & 0x0f) << 4) | ((v1Bytes[7] >> 4) & 0x0f), ((v1Bytes[7] & 0x0f) << 4) | ((v1Bytes[4] & 0xf0) >> 4), ((v1Bytes[4] & 0x0f) << 4) | ((v1Bytes[5] & 0xf0) >> 4), ((v1Bytes[5] & 0x0f) << 4) | ((v1Bytes[0] & 0xf0) >> 4), ((v1Bytes[0] & 0x0f) << 4) | ((v1Bytes[1] & 0xf0) >> 4), ((v1Bytes[1] & 0x0f) << 4) | ((v1Bytes[2] & 0xf0) >> 4), 0x60 | (v1Bytes[2] & 0x0f), v1Bytes[3], v1Bytes[8], v1Bytes[9], v1Bytes[10], v1Bytes[11], v1Bytes[12], v1Bytes[13], v1Bytes[14], v1Bytes[15]);
+}
+
+},{"./parse.js":28,"./stringify.js":31}],
+35:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.URL = exports.DNS = void 0;
+const md5_js_1 = require("./md5.js");
+const v35_js_1 = require("./v35.js");
+var v35_js_2 = require("./v35.js");
+Object.defineProperty(exports, "DNS", { enumerable: true, get: function () { return v35_js_2.DNS; } });
+Object.defineProperty(exports, "URL", { enumerable: true, get: function () { return v35_js_2.URL; } });
+function v3(value, namespace, buf, offset) {
+    return (0, v35_js_1.default)(0x30, md5_js_1.default, value, namespace, buf, offset);
+}
+v3.DNS = v35_js_1.DNS;
+v3.URL = v35_js_1.URL;
+exports.default = v3;
+
+},{"./md5.js":36,"./v35.js":37}],
+36:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function md5(bytes) {
+    const words = uint8ToUint32(bytes);
+    const md5Bytes = wordsToMd5(words, bytes.length * 8);
+    return uint32ToUint8(md5Bytes);
+}
+function uint32ToUint8(input) {
+    const bytes = new Uint8Array(input.length * 4);
+    for (let i = 0; i < input.length * 4; i++) {
+        bytes[i] = (input[i >> 2] >>> ((i % 4) * 8)) & 0xff;
+    }
+    return bytes;
+}
+function getOutputLength(inputLength8) {
+    return (((inputLength8 + 64) >>> 9) << 4) + 14 + 1;
+}
+function wordsToMd5(x, len) {
+    const xpad = new Uint32Array(getOutputLength(len)).fill(0);
+    xpad.set(x);
+    xpad[len >> 5] |= 0x80 << len % 32;
+    xpad[xpad.length - 1] = len;
+    x = xpad;
+    let a = 1732584193;
+    let b = -271733879;
+    let c = -1732584194;
+    let d = 271733878;
+    for (let i = 0; i < x.length; i += 16) {
+        const olda = a;
+        const oldb = b;
+        const oldc = c;
+        const oldd = d;
+        a = md5ff(a, b, c, d, x[i], 7, -680876936);
+        d = md5ff(d, a, b, c, x[i + 1], 12, -389564586);
+        c = md5ff(c, d, a, b, x[i + 2], 17, 606105819);
+        b = md5ff(b, c, d, a, x[i + 3], 22, -1044525330);
+        a = md5ff(a, b, c, d, x[i + 4], 7, -176418897);
+        d = md5ff(d, a, b, c, x[i + 5], 12, 1200080426);
+        c = md5ff(c, d, a, b, x[i + 6], 17, -1473231341);
+        b = md5ff(b, c, d, a, x[i + 7], 22, -45705983);
+        a = md5ff(a, b, c, d, x[i + 8], 7, 1770035416);
+        d = md5ff(d, a, b, c, x[i + 9], 12, -1958414417);
+        c = md5ff(c, d, a, b, x[i + 10], 17, -42063);
+        b = md5ff(b, c, d, a, x[i + 11], 22, -1990404162);
+        a = md5ff(a, b, c, d, x[i + 12], 7, 1804603682);
+        d = md5ff(d, a, b, c, x[i + 13], 12, -40341101);
+        c = md5ff(c, d, a, b, x[i + 14], 17, -1502002290);
+        b = md5ff(b, c, d, a, x[i + 15], 22, 1236535329);
+        a = md5gg(a, b, c, d, x[i + 1], 5, -165796510);
+        d = md5gg(d, a, b, c, x[i + 6], 9, -1069501632);
+        c = md5gg(c, d, a, b, x[i + 11], 14, 643717713);
+        b = md5gg(b, c, d, a, x[i], 20, -373897302);
+        a = md5gg(a, b, c, d, x[i + 5], 5, -701558691);
+        d = md5gg(d, a, b, c, x[i + 10], 9, 38016083);
+        c = md5gg(c, d, a, b, x[i + 15], 14, -660478335);
+        b = md5gg(b, c, d, a, x[i + 4], 20, -405537848);
+        a = md5gg(a, b, c, d, x[i + 9], 5, 568446438);
+        d = md5gg(d, a, b, c, x[i + 14], 9, -1019803690);
+        c = md5gg(c, d, a, b, x[i + 3], 14, -187363961);
+        b = md5gg(b, c, d, a, x[i + 8], 20, 1163531501);
+        a = md5gg(a, b, c, d, x[i + 13], 5, -1444681467);
+        d = md5gg(d, a, b, c, x[i + 2], 9, -51403784);
+        c = md5gg(c, d, a, b, x[i + 7], 14, 1735328473);
+        b = md5gg(b, c, d, a, x[i + 12], 20, -1926607734);
+        a = md5hh(a, b, c, d, x[i + 5], 4, -378558);
+        d = md5hh(d, a, b, c, x[i + 8], 11, -2022574463);
+        c = md5hh(c, d, a, b, x[i + 11], 16, 1839030562);
+        b = md5hh(b, c, d, a, x[i + 14], 23, -35309556);
+        a = md5hh(a, b, c, d, x[i + 1], 4, -1530992060);
+        d = md5hh(d, a, b, c, x[i + 4], 11, 1272893353);
+        c = md5hh(c, d, a, b, x[i + 7], 16, -155497632);
+        b = md5hh(b, c, d, a, x[i + 10], 23, -1094730640);
+        a = md5hh(a, b, c, d, x[i + 13], 4, 681279174);
+        d = md5hh(d, a, b, c, x[i], 11, -358537222);
+        c = md5hh(c, d, a, b, x[i + 3], 16, -722521979);
+        b = md5hh(b, c, d, a, x[i + 6], 23, 76029189);
+        a = md5hh(a, b, c, d, x[i + 9], 4, -640364487);
+        d = md5hh(d, a, b, c, x[i + 12], 11, -421815835);
+        c = md5hh(c, d, a, b, x[i + 15], 16, 530742520);
+        b = md5hh(b, c, d, a, x[i + 2], 23, -995338651);
+        a = md5ii(a, b, c, d, x[i], 6, -198630844);
+        d = md5ii(d, a, b, c, x[i + 7], 10, 1126891415);
+        c = md5ii(c, d, a, b, x[i + 14], 15, -1416354905);
+        b = md5ii(b, c, d, a, x[i + 5], 21, -57434055);
+        a = md5ii(a, b, c, d, x[i + 12], 6, 1700485571);
+        d = md5ii(d, a, b, c, x[i + 3], 10, -1894986606);
+        c = md5ii(c, d, a, b, x[i + 10], 15, -1051523);
+        b = md5ii(b, c, d, a, x[i + 1], 21, -2054922799);
+        a = md5ii(a, b, c, d, x[i + 8], 6, 1873313359);
+        d = md5ii(d, a, b, c, x[i + 15], 10, -30611744);
+        c = md5ii(c, d, a, b, x[i + 6], 15, -1560198380);
+        b = md5ii(b, c, d, a, x[i + 13], 21, 1309151649);
+        a = md5ii(a, b, c, d, x[i + 4], 6, -145523070);
+        d = md5ii(d, a, b, c, x[i + 11], 10, -1120210379);
+        c = md5ii(c, d, a, b, x[i + 2], 15, 718787259);
+        b = md5ii(b, c, d, a, x[i + 9], 21, -343485551);
+        a = safeAdd(a, olda);
+        b = safeAdd(b, oldb);
+        c = safeAdd(c, oldc);
+        d = safeAdd(d, oldd);
+    }
+    return Uint32Array.of(a, b, c, d);
+}
+function uint8ToUint32(input) {
+    if (input.length === 0) {
+        return new Uint32Array();
+    }
+    const output = new Uint32Array(getOutputLength(input.length * 8)).fill(0);
+    for (let i = 0; i < input.length; i++) {
+        output[i >> 2] |= (input[i] & 0xff) << ((i % 4) * 8);
+    }
+    return output;
+}
+function safeAdd(x, y) {
+    const lsw = (x & 0xffff) + (y & 0xffff);
+    const msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+    return (msw << 16) | (lsw & 0xffff);
+}
+function bitRotateLeft(num, cnt) {
+    return (num << cnt) | (num >>> (32 - cnt));
+}
+function md5cmn(q, a, b, x, s, t) {
+    return safeAdd(bitRotateLeft(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b);
+}
+function md5ff(a, b, c, d, x, s, t) {
+    return md5cmn((b & c) | (~b & d), a, b, x, s, t);
+}
+function md5gg(a, b, c, d, x, s, t) {
+    return md5cmn((b & d) | (c & ~d), a, b, x, s, t);
+}
+function md5hh(a, b, c, d, x, s, t) {
+    return md5cmn(b ^ c ^ d, a, b, x, s, t);
+}
+function md5ii(a, b, c, d, x, s, t) {
+    return md5cmn(c ^ (b | ~d), a, b, x, s, t);
+}
+exports.default = md5;
+
+},{}],
+37:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.URL = exports.DNS = exports.stringToBytes = void 0;
+const parse_js_1 = require("./parse.js");
+const stringify_js_1 = require("./stringify.js");
+function stringToBytes(str) {
+    str = unescape(encodeURIComponent(str));
+    const bytes = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; ++i) {
+        bytes[i] = str.charCodeAt(i);
+    }
+    return bytes;
+}
+exports.stringToBytes = stringToBytes;
+exports.DNS = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+exports.URL = '6ba7b811-9dad-11d1-80b4-00c04fd430c8';
+function v35(version, hash, value, namespace, buf, offset) {
+    const valueBytes = typeof value === 'string' ? stringToBytes(value) : value;
+    const namespaceBytes = typeof namespace === 'string' ? (0, parse_js_1.default)(namespace) : namespace;
+    if (typeof namespace === 'string') {
+        namespace = (0, parse_js_1.default)(namespace);
+    }
+    if (namespace?.length !== 16) {
+        throw TypeError('Namespace must be array-like (16 iterable integer values, 0-255)');
+    }
+    let bytes = new Uint8Array(16 + valueBytes.length);
+    bytes.set(namespaceBytes);
+    bytes.set(valueBytes, namespaceBytes.length);
+    bytes = hash(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | version;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    if (buf) {
+        offset = offset || 0;
+        if (offset < 0 || offset + 16 > buf.length) {
+            throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+        }
+        for (let i = 0; i < 16; ++i) {
+            buf[offset + i] = bytes[i];
+        }
+        return buf;
+    }
+    return (0, stringify_js_1.unsafeStringify)(bytes);
+}
+exports.default = v35;
+
+},{"./parse.js":28,"./stringify.js":31}],
+38:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const native_js_1 = require("./native.js");
+const rng_js_1 = require("./rng.js");
+const stringify_js_1 = require("./stringify.js");
+function v4(options, buf, offset) {
+    if (native_js_1.default.randomUUID && !buf && !options) {
+        return native_js_1.default.randomUUID();
+    }
+    options = options || {};
+    const rnds = options.random ?? options.rng?.() ?? (0, rng_js_1.default)();
+    if (rnds.length < 16) {
+        throw new Error('Random bytes length must be >= 16');
+    }
+    rnds[6] = (rnds[6] & 0x0f) | 0x40;
+    rnds[8] = (rnds[8] & 0x3f) | 0x80;
+    if (buf) {
+        offset = offset || 0;
+        if (offset < 0 || offset + 16 > buf.length) {
+            throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+        }
+        for (let i = 0; i < 16; ++i) {
+            buf[offset + i] = rnds[i];
+        }
+        return buf;
+    }
+    return (0, stringify_js_1.unsafeStringify)(rnds);
+}
+exports.default = v4;
+
+},{"./native.js":39,"./rng.js":33,"./stringify.js":31}],
+39:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const randomUUID = typeof crypto !== 'undefined' && crypto.randomUUID && crypto.randomUUID.bind(crypto);
+exports.default = { randomUUID };
+
+},{}],
+40:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.URL = exports.DNS = void 0;
+const sha1_js_1 = require("./sha1.js");
+const v35_js_1 = require("./v35.js");
+var v35_js_2 = require("./v35.js");
+Object.defineProperty(exports, "DNS", { enumerable: true, get: function () { return v35_js_2.DNS; } });
+Object.defineProperty(exports, "URL", { enumerable: true, get: function () { return v35_js_2.URL; } });
+function v5(value, namespace, buf, offset) {
+    return (0, v35_js_1.default)(0x50, sha1_js_1.default, value, namespace, buf, offset);
+}
+v5.DNS = v35_js_1.DNS;
+v5.URL = v35_js_1.URL;
+exports.default = v5;
+
+},{"./sha1.js":41,"./v35.js":37}],
+41:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function f(s, x, y, z) {
+    switch (s) {
+        case 0:
+            return (x & y) ^ (~x & z);
+        case 1:
+            return x ^ y ^ z;
+        case 2:
+            return (x & y) ^ (x & z) ^ (y & z);
+        case 3:
+            return x ^ y ^ z;
+    }
+}
+function ROTL(x, n) {
+    return (x << n) | (x >>> (32 - n));
+}
+function sha1(bytes) {
+    const K = [0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6];
+    const H = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
+    const newBytes = new Uint8Array(bytes.length + 1);
+    newBytes.set(bytes);
+    newBytes[bytes.length] = 0x80;
+    bytes = newBytes;
+    const l = bytes.length / 4 + 2;
+    const N = Math.ceil(l / 16);
+    const M = new Array(N);
+    for (let i = 0; i < N; ++i) {
+        const arr = new Uint32Array(16);
+        for (let j = 0; j < 16; ++j) {
+            arr[j] =
+                (bytes[i * 64 + j * 4] << 24) |
+                    (bytes[i * 64 + j * 4 + 1] << 16) |
+                    (bytes[i * 64 + j * 4 + 2] << 8) |
+                    bytes[i * 64 + j * 4 + 3];
+        }
+        M[i] = arr;
+    }
+    M[N - 1][14] = ((bytes.length - 1) * 8) / Math.pow(2, 32);
+    M[N - 1][14] = Math.floor(M[N - 1][14]);
+    M[N - 1][15] = ((bytes.length - 1) * 8) & 0xffffffff;
+    for (let i = 0; i < N; ++i) {
+        const W = new Uint32Array(80);
+        for (let t = 0; t < 16; ++t) {
+            W[t] = M[i][t];
+        }
+        for (let t = 16; t < 80; ++t) {
+            W[t] = ROTL(W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16], 1);
+        }
+        let a = H[0];
+        let b = H[1];
+        let c = H[2];
+        let d = H[3];
+        let e = H[4];
+        for (let t = 0; t < 80; ++t) {
+            const s = Math.floor(t / 20);
+            const T = (ROTL(a, 5) + f(s, b, c, d) + e + K[s] + W[t]) >>> 0;
+            e = d;
+            d = c;
+            c = ROTL(b, 30) >>> 0;
+            b = a;
+            a = T;
+        }
+        H[0] = (H[0] + a) >>> 0;
+        H[1] = (H[1] + b) >>> 0;
+        H[2] = (H[2] + c) >>> 0;
+        H[3] = (H[3] + d) >>> 0;
+        H[4] = (H[4] + e) >>> 0;
+    }
+    return Uint8Array.of(H[0] >> 24, H[0] >> 16, H[0] >> 8, H[0], H[1] >> 24, H[1] >> 16, H[1] >> 8, H[1], H[2] >> 24, H[2] >> 16, H[2] >> 8, H[2], H[3] >> 24, H[3] >> 16, H[3] >> 8, H[3], H[4] >> 24, H[4] >> 16, H[4] >> 8, H[4]);
+}
+exports.default = sha1;
+
+},{}],
+42:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const stringify_js_1 = require("./stringify.js");
+const v1_js_1 = require("./v1.js");
+const v1ToV6_js_1 = require("./v1ToV6.js");
+function v6(options, buf, offset) {
+    options ??= {};
+    offset ??= 0;
+    let bytes = (0, v1_js_1.default)({ ...options, _v6: true }, new Uint8Array(16));
+    bytes = (0, v1ToV6_js_1.default)(bytes);
+    if (buf) {
+        if (offset < 0 || offset + 16 > buf.length) {
+            throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+        }
+        for (let i = 0; i < 16; i++) {
+            buf[offset + i] = bytes[i];
+        }
+        return buf;
+    }
+    return (0, stringify_js_1.unsafeStringify)(bytes);
+}
+exports.default = v6;
+
+},{"./stringify.js":31,"./v1.js":32,"./v1ToV6.js":34}],
+43:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const parse_js_1 = require("./parse.js");
+const stringify_js_1 = require("./stringify.js");
+function v6ToV1(uuid) {
+    const v6Bytes = typeof uuid === 'string' ? (0, parse_js_1.default)(uuid) : uuid;
+    const v1Bytes = _v6ToV1(v6Bytes);
+    return typeof uuid === 'string' ? (0, stringify_js_1.unsafeStringify)(v1Bytes) : v1Bytes;
+}
+exports.default = v6ToV1;
+function _v6ToV1(v6Bytes) {
+    return Uint8Array.of(((v6Bytes[3] & 0x0f) << 4) | ((v6Bytes[4] >> 4) & 0x0f), ((v6Bytes[4] & 0x0f) << 4) | ((v6Bytes[5] & 0xf0) >> 4), ((v6Bytes[5] & 0x0f) << 4) | (v6Bytes[6] & 0x0f), v6Bytes[7], ((v6Bytes[1] & 0x0f) << 4) | ((v6Bytes[2] & 0xf0) >> 4), ((v6Bytes[2] & 0x0f) << 4) | ((v6Bytes[3] & 0xf0) >> 4), 0x10 | ((v6Bytes[0] & 0xf0) >> 4), ((v6Bytes[0] & 0x0f) << 4) | ((v6Bytes[1] & 0xf0) >> 4), v6Bytes[8], v6Bytes[9], v6Bytes[10], v6Bytes[11], v6Bytes[12], v6Bytes[13], v6Bytes[14], v6Bytes[15]);
+}
+
+},{"./parse.js":28,"./stringify.js":31}],
+44:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateV7State = void 0;
+const rng_js_1 = require("./rng.js");
+const stringify_js_1 = require("./stringify.js");
+const _state = {};
+function v7(options, buf, offset) {
+    let bytes;
+    if (options) {
+        bytes = v7Bytes(options.random ?? options.rng?.() ?? (0, rng_js_1.default)(), options.msecs, options.seq, buf, offset);
+    }
+    else {
+        const now = Date.now();
+        const rnds = (0, rng_js_1.default)();
+        updateV7State(_state, now, rnds);
+        bytes = v7Bytes(rnds, _state.msecs, _state.seq, buf, offset);
+    }
+    return buf ?? (0, stringify_js_1.unsafeStringify)(bytes);
+}
+function updateV7State(state, now, rnds) {
+    state.msecs ??= -Infinity;
+    state.seq ??= 0;
+    if (now > state.msecs) {
+        state.seq = (rnds[6] << 23) | (rnds[7] << 16) | (rnds[8] << 8) | rnds[9];
+        state.msecs = now;
+    }
+    else {
+        state.seq = (state.seq + 1) | 0;
+        if (state.seq === 0) {
+            state.msecs++;
+        }
+    }
+    return state;
+}
+exports.updateV7State = updateV7State;
+function v7Bytes(rnds, msecs, seq, buf, offset = 0) {
+    if (rnds.length < 16) {
+        throw new Error('Random bytes length must be >= 16');
+    }
+    if (!buf) {
+        buf = new Uint8Array(16);
+        offset = 0;
+    }
+    else {
+        if (offset < 0 || offset + 16 > buf.length) {
+            throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+        }
+    }
+    msecs ??= Date.now();
+    seq ??= ((rnds[6] * 0x7f) << 24) | (rnds[7] << 16) | (rnds[8] << 8) | rnds[9];
+    buf[offset++] = (msecs / 0x10000000000) & 0xff;
+    buf[offset++] = (msecs / 0x100000000) & 0xff;
+    buf[offset++] = (msecs / 0x1000000) & 0xff;
+    buf[offset++] = (msecs / 0x10000) & 0xff;
+    buf[offset++] = (msecs / 0x100) & 0xff;
+    buf[offset++] = msecs & 0xff;
+    buf[offset++] = 0x70 | ((seq >>> 28) & 0x0f);
+    buf[offset++] = (seq >>> 20) & 0xff;
+    buf[offset++] = 0x80 | ((seq >>> 14) & 0x3f);
+    buf[offset++] = (seq >>> 6) & 0xff;
+    buf[offset++] = ((seq << 2) & 0xff) | (rnds[10] & 0x03);
+    buf[offset++] = rnds[11];
+    buf[offset++] = rnds[12];
+    buf[offset++] = rnds[13];
+    buf[offset++] = rnds[14];
+    buf[offset++] = rnds[15];
+    return buf;
+}
+exports.default = v7;
+
+},{"./rng.js":33,"./stringify.js":31}],
+45:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const validate_js_1 = require("./validate.js");
+function version(uuid) {
+    if (!(0, validate_js_1.default)(uuid)) {
+        throw TypeError('Invalid UUID');
+    }
+    return parseInt(uuid.slice(14, 15), 16);
+}
+exports.default = version;
+
+},{"./validate.js":29}],
+46:[function(module,exports,require,process){
+!function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.bowser=t():e.bowser=t()}(this,(function(){return function(e){var t={};function r(i){if(t[i])return t[i].exports;var n=t[i]={i:i,l:!1,exports:{}};return e[i].call(n.exports,n,n.exports,r),n.l=!0,n.exports}return r.m=e,r.c=t,r.d=function(e,t,i){r.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:i})},r.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},r.t=function(e,t){if(1&t&&(e=r(e)),8&t)return e;if(4&t&&"object"==typeof e&&e&&e.__esModule)return e;var i=Object.create(null);if(r.r(i),Object.defineProperty(i,"default",{enumerable:!0,value:e}),2&t&&"string"!=typeof e)for(var n in e)r.d(i,n,function(t){return e[t]}.bind(null,n));return i},r.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return r.d(t,"a",t),t},r.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},r.p="",r(r.s=90)}({17:function(e,t,r){"use strict";t.__esModule=!0,t.default=void 0;var i=r(18),n=function(){function e(){}return e.getFirstMatch=function(e,t){var r=t.match(e);return r&&r.length>0&&r[1]||""},e.getSecondMatch=function(e,t){var r=t.match(e);return r&&r.length>1&&r[2]||""},e.matchAndReturnConst=function(e,t,r){if(e.test(t))return r},e.getWindowsVersionName=function(e){switch(e){case"NT":return"NT";case"XP":return"XP";case"NT 5.0":return"2000";case"NT 5.1":return"XP";case"NT 5.2":return"2003";case"NT 6.0":return"Vista";case"NT 6.1":return"7";case"NT 6.2":return"8";case"NT 6.3":return"8.1";case"NT 10.0":return"10";default:return}},e.getMacOSVersionName=function(e){var t=e.split(".").splice(0,2).map((function(e){return parseInt(e,10)||0}));t.push(0);var r=t[0],i=t[1];if(10===r)switch(i){case 5:return"Leopard";case 6:return"Snow Leopard";case 7:return"Lion";case 8:return"Mountain Lion";case 9:return"Mavericks";case 10:return"Yosemite";case 11:return"El Capitan";case 12:return"Sierra";case 13:return"High Sierra";case 14:return"Mojave";case 15:return"Catalina";default:return}switch(r){case 11:return"Big Sur";case 12:return"Monterey";case 13:return"Ventura";case 14:return"Sonoma";case 15:return"Sequoia";default:return}},e.getAndroidVersionName=function(e){var t=e.split(".").splice(0,2).map((function(e){return parseInt(e,10)||0}));if(t.push(0),!(1===t[0]&&t[1]<5))return 1===t[0]&&t[1]<6?"Cupcake":1===t[0]&&t[1]>=6?"Donut":2===t[0]&&t[1]<2?"Eclair":2===t[0]&&2===t[1]?"Froyo":2===t[0]&&t[1]>2?"Gingerbread":3===t[0]?"Honeycomb":4===t[0]&&t[1]<1?"Ice Cream Sandwich":4===t[0]&&t[1]<4?"Jelly Bean":4===t[0]&&t[1]>=4?"KitKat":5===t[0]?"Lollipop":6===t[0]?"Marshmallow":7===t[0]?"Nougat":8===t[0]?"Oreo":9===t[0]?"Pie":void 0},e.getVersionPrecision=function(e){return e.split(".").length},e.compareVersions=function(t,r,i){void 0===i&&(i=!1);var n=e.getVersionPrecision(t),a=e.getVersionPrecision(r),o=Math.max(n,a),s=0,u=e.map([t,r],(function(t){var r=o-e.getVersionPrecision(t),i=t+new Array(r+1).join(".0");return e.map(i.split("."),(function(e){return new Array(20-e.length).join("0")+e})).reverse()}));for(i&&(s=o-Math.min(n,a)),o-=1;o>=s;){if(u[0][o]>u[1][o])return 1;if(u[0][o]===u[1][o]){if(o===s)return 0;o-=1}else if(u[0][o]<u[1][o])return-1}},e.map=function(e,t){var r,i=[];if(Array.prototype.map)return Array.prototype.map.call(e,t);for(r=0;r<e.length;r+=1)i.push(t(e[r]));return i},e.find=function(e,t){var r,i;if(Array.prototype.find)return Array.prototype.find.call(e,t);for(r=0,i=e.length;r<i;r+=1){var n=e[r];if(t(n,r))return n}},e.assign=function(e){for(var t,r,i=e,n=arguments.length,a=new Array(n>1?n-1:0),o=1;o<n;o++)a[o-1]=arguments[o];if(Object.assign)return Object.assign.apply(Object,[e].concat(a));var s=function(){var e=a[t];"object"==typeof e&&null!==e&&Object.keys(e).forEach((function(t){i[t]=e[t]}))};for(t=0,r=a.length;t<r;t+=1)s();return e},e.getBrowserAlias=function(e){return i.BROWSER_ALIASES_MAP[e]},e.getBrowserTypeByAlias=function(e){return i.BROWSER_MAP[e]||""},e}();t.default=n,e.exports=t.default},18:function(e,t,r){"use strict";t.__esModule=!0,t.ENGINE_MAP=t.OS_MAP=t.PLATFORMS_MAP=t.BROWSER_MAP=t.BROWSER_ALIASES_MAP=void 0;t.BROWSER_ALIASES_MAP={AmazonBot:"amazonbot","Amazon Silk":"amazon_silk","Android Browser":"android",BaiduSpider:"baiduspider",Bada:"bada",BingCrawler:"bingcrawler",Brave:"brave",BlackBerry:"blackberry","ChatGPT-User":"chatgpt_user",Chrome:"chrome",ClaudeBot:"claudebot",Chromium:"chromium",Diffbot:"diffbot",DuckDuckBot:"duckduckbot",DuckDuckGo:"duckduckgo",Electron:"electron",Epiphany:"epiphany",FacebookExternalHit:"facebookexternalhit",Firefox:"firefox",Focus:"focus",Generic:"generic","Google Search":"google_search",Googlebot:"googlebot",GPTBot:"gptbot","Internet Explorer":"ie",InternetArchiveCrawler:"internetarchivecrawler","K-Meleon":"k_meleon",LibreWolf:"librewolf",Linespider:"linespider",Maxthon:"maxthon","Meta-ExternalAds":"meta_externalads","Meta-ExternalAgent":"meta_externalagent","Meta-ExternalFetcher":"meta_externalfetcher","Meta-WebIndexer":"meta_webindexer","Microsoft Edge":"edge","MZ Browser":"mz","NAVER Whale Browser":"naver","OAI-SearchBot":"oai_searchbot",Omgilibot:"omgilibot",Opera:"opera","Opera Coast":"opera_coast","Pale Moon":"pale_moon",PerplexityBot:"perplexitybot","Perplexity-User":"perplexity_user",PhantomJS:"phantomjs",PingdomBot:"pingdombot",Puffin:"puffin",QQ:"qq",QQLite:"qqlite",QupZilla:"qupzilla",Roku:"roku",Safari:"safari",Sailfish:"sailfish","Samsung Internet for Android":"samsung_internet",SlackBot:"slackbot",SeaMonkey:"seamonkey",Sleipnir:"sleipnir","Sogou Browser":"sogou",Swing:"swing",Tizen:"tizen","UC Browser":"uc",Vivaldi:"vivaldi","WebOS Browser":"webos",WeChat:"wechat",YahooSlurp:"yahooslurp","Yandex Browser":"yandex",YandexBot:"yandexbot",YouBot:"youbot"};t.BROWSER_MAP={amazonbot:"AmazonBot",amazon_silk:"Amazon Silk",android:"Android Browser",baiduspider:"BaiduSpider",bada:"Bada",bingcrawler:"BingCrawler",blackberry:"BlackBerry",brave:"Brave",chatgpt_user:"ChatGPT-User",chrome:"Chrome",claudebot:"ClaudeBot",chromium:"Chromium",diffbot:"Diffbot",duckduckbot:"DuckDuckBot",duckduckgo:"DuckDuckGo",edge:"Microsoft Edge",electron:"Electron",epiphany:"Epiphany",facebookexternalhit:"FacebookExternalHit",firefox:"Firefox",focus:"Focus",generic:"Generic",google_search:"Google Search",googlebot:"Googlebot",gptbot:"GPTBot",ie:"Internet Explorer",internetarchivecrawler:"InternetArchiveCrawler",k_meleon:"K-Meleon",librewolf:"LibreWolf",linespider:"Linespider",maxthon:"Maxthon",meta_externalads:"Meta-ExternalAds",meta_externalagent:"Meta-ExternalAgent",meta_externalfetcher:"Meta-ExternalFetcher",meta_webindexer:"Meta-WebIndexer",mz:"MZ Browser",naver:"NAVER Whale Browser",oai_searchbot:"OAI-SearchBot",omgilibot:"Omgilibot",opera:"Opera",opera_coast:"Opera Coast",pale_moon:"Pale Moon",perplexitybot:"PerplexityBot",perplexity_user:"Perplexity-User",phantomjs:"PhantomJS",pingdombot:"PingdomBot",puffin:"Puffin",qq:"QQ Browser",qqlite:"QQ Browser Lite",qupzilla:"QupZilla",roku:"Roku",safari:"Safari",sailfish:"Sailfish",samsung_internet:"Samsung Internet for Android",seamonkey:"SeaMonkey",slackbot:"SlackBot",sleipnir:"Sleipnir",sogou:"Sogou Browser",swing:"Swing",tizen:"Tizen",uc:"UC Browser",vivaldi:"Vivaldi",webos:"WebOS Browser",wechat:"WeChat",yahooslurp:"YahooSlurp",yandex:"Yandex Browser",yandexbot:"YandexBot",youbot:"YouBot"};t.PLATFORMS_MAP={bot:"bot",desktop:"desktop",mobile:"mobile",tablet:"tablet",tv:"tv"};t.OS_MAP={Android:"Android",Bada:"Bada",BlackBerry:"BlackBerry",ChromeOS:"Chrome OS",HarmonyOS:"HarmonyOS",iOS:"iOS",Linux:"Linux",MacOS:"macOS",PlayStation4:"PlayStation 4",Roku:"Roku",Tizen:"Tizen",WebOS:"WebOS",Windows:"Windows",WindowsPhone:"Windows Phone"};t.ENGINE_MAP={Blink:"Blink",EdgeHTML:"EdgeHTML",Gecko:"Gecko",Presto:"Presto",Trident:"Trident",WebKit:"WebKit"}},90:function(e,t,r){"use strict";t.__esModule=!0,t.default=void 0;var i,n=(i=r(91))&&i.__esModule?i:{default:i},a=r(18);function o(e,t){for(var r=0;r<t.length;r++){var i=t[r];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(e,i.key,i)}}var s=function(){function e(){}var t,r,i;return e.getParser=function(e,t,r){if(void 0===t&&(t=!1),void 0===r&&(r=null),"string"!=typeof e)throw new Error("UserAgent should be a string");return new n.default(e,t,r)},e.parse=function(e,t){return void 0===t&&(t=null),new n.default(e,t).getResult()},t=e,i=[{key:"BROWSER_MAP",get:function(){return a.BROWSER_MAP}},{key:"ENGINE_MAP",get:function(){return a.ENGINE_MAP}},{key:"OS_MAP",get:function(){return a.OS_MAP}},{key:"PLATFORMS_MAP",get:function(){return a.PLATFORMS_MAP}}],(r=null)&&o(t.prototype,r),i&&o(t,i),e}();t.default=s,e.exports=t.default},91:function(e,t,r){"use strict";t.__esModule=!0,t.default=void 0;var i=u(r(92)),n=u(r(93)),a=u(r(94)),o=u(r(95)),s=u(r(17));function u(e){return e&&e.__esModule?e:{default:e}}var d=function(){function e(e,t,r){if(void 0===t&&(t=!1),void 0===r&&(r=null),null==e||""===e)throw new Error("UserAgent parameter can't be empty");this._ua=e;var i=!1;"boolean"==typeof t?(i=t,this._hints=r):this._hints=null!=t&&"object"==typeof t?t:null,this.parsedResult={},!0!==i&&this.parse()}var t=e.prototype;return t.getHints=function(){return this._hints},t.hasBrand=function(e){if(!this._hints||!Array.isArray(this._hints.brands))return!1;var t=e.toLowerCase();return this._hints.brands.some((function(e){return e.brand&&e.brand.toLowerCase()===t}))},t.getBrandVersion=function(e){if(this._hints&&Array.isArray(this._hints.brands)){var t=e.toLowerCase(),r=this._hints.brands.find((function(e){return e.brand&&e.brand.toLowerCase()===t}));return r?r.version:void 0}},t.getUA=function(){return this._ua},t.test=function(e){return e.test(this._ua)},t.parseBrowser=function(){var e=this;this.parsedResult.browser={};var t=s.default.find(i.default,(function(t){if("function"==typeof t.test)return t.test(e);if(Array.isArray(t.test))return t.test.some((function(t){return e.test(t)}));throw new Error("Browser's test function is not valid")}));return t&&(this.parsedResult.browser=t.describe(this.getUA(),this)),this.parsedResult.browser},t.getBrowser=function(){return this.parsedResult.browser?this.parsedResult.browser:this.parseBrowser()},t.getBrowserName=function(e){return e?String(this.getBrowser().name).toLowerCase()||"":this.getBrowser().name||""},t.getBrowserVersion=function(){return this.getBrowser().version},t.getOS=function(){return this.parsedResult.os?this.parsedResult.os:this.parseOS()},t.parseOS=function(){var e=this;this.parsedResult.os={};var t=s.default.find(n.default,(function(t){if("function"==typeof t.test)return t.test(e);if(Array.isArray(t.test))return t.test.some((function(t){return e.test(t)}));throw new Error("Browser's test function is not valid")}));return t&&(this.parsedResult.os=t.describe(this.getUA())),this.parsedResult.os},t.getOSName=function(e){var t=this.getOS().name;return e?String(t).toLowerCase()||"":t||""},t.getOSVersion=function(){return this.getOS().version},t.getPlatform=function(){return this.parsedResult.platform?this.parsedResult.platform:this.parsePlatform()},t.getPlatformType=function(e){void 0===e&&(e=!1);var t=this.getPlatform().type;return e?String(t).toLowerCase()||"":t||""},t.parsePlatform=function(){var e=this;this.parsedResult.platform={};var t=s.default.find(a.default,(function(t){if("function"==typeof t.test)return t.test(e);if(Array.isArray(t.test))return t.test.some((function(t){return e.test(t)}));throw new Error("Browser's test function is not valid")}));return t&&(this.parsedResult.platform=t.describe(this.getUA())),this.parsedResult.platform},t.getEngine=function(){return this.parsedResult.engine?this.parsedResult.engine:this.parseEngine()},t.getEngineName=function(e){return e?String(this.getEngine().name).toLowerCase()||"":this.getEngine().name||""},t.parseEngine=function(){var e=this;this.parsedResult.engine={};var t=s.default.find(o.default,(function(t){if("function"==typeof t.test)return t.test(e);if(Array.isArray(t.test))return t.test.some((function(t){return e.test(t)}));throw new Error("Browser's test function is not valid")}));return t&&(this.parsedResult.engine=t.describe(this.getUA())),this.parsedResult.engine},t.parse=function(){return this.parseBrowser(),this.parseOS(),this.parsePlatform(),this.parseEngine(),this},t.getResult=function(){return s.default.assign({},this.parsedResult)},t.satisfies=function(e){var t=this,r={},i=0,n={},a=0;if(Object.keys(e).forEach((function(t){var o=e[t];"string"==typeof o?(n[t]=o,a+=1):"object"==typeof o&&(r[t]=o,i+=1)})),i>0){var o=Object.keys(r),u=s.default.find(o,(function(e){return t.isOS(e)}));if(u){var d=this.satisfies(r[u]);if(void 0!==d)return d}var c=s.default.find(o,(function(e){return t.isPlatform(e)}));if(c){var f=this.satisfies(r[c]);if(void 0!==f)return f}}if(a>0){var l=Object.keys(n),b=s.default.find(l,(function(e){return t.isBrowser(e,!0)}));if(void 0!==b)return this.compareVersion(n[b])}},t.isBrowser=function(e,t){void 0===t&&(t=!1);var r=this.getBrowserName().toLowerCase(),i=e.toLowerCase(),n=s.default.getBrowserTypeByAlias(i);return t&&n&&(i=n.toLowerCase()),i===r},t.compareVersion=function(e){var t=[0],r=e,i=!1,n=this.getBrowserVersion();if("string"==typeof n)return">"===e[0]||"<"===e[0]?(r=e.substr(1),"="===e[1]?(i=!0,r=e.substr(2)):t=[],">"===e[0]?t.push(1):t.push(-1)):"="===e[0]?r=e.substr(1):"~"===e[0]&&(i=!0,r=e.substr(1)),t.indexOf(s.default.compareVersions(n,r,i))>-1},t.isOS=function(e){return this.getOSName(!0)===String(e).toLowerCase()},t.isPlatform=function(e){return this.getPlatformType(!0)===String(e).toLowerCase()},t.isEngine=function(e){return this.getEngineName(!0)===String(e).toLowerCase()},t.is=function(e,t){return void 0===t&&(t=!1),this.isBrowser(e,t)||this.isOS(e)||this.isPlatform(e)},t.some=function(e){var t=this;return void 0===e&&(e=[]),e.some((function(e){return t.is(e)}))},e}();t.default=d,e.exports=t.default},92:function(e,t,r){"use strict";t.__esModule=!0,t.default=void 0;var i,n=(i=r(17))&&i.__esModule?i:{default:i};var a=/version\/(\d+(\.?_?\d+)+)/i,o=[{test:[/gptbot/i],describe:function(e){var t={name:"GPTBot"},r=n.default.getFirstMatch(/gptbot\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/chatgpt-user/i],describe:function(e){var t={name:"ChatGPT-User"},r=n.default.getFirstMatch(/chatgpt-user\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/oai-searchbot/i],describe:function(e){var t={name:"OAI-SearchBot"},r=n.default.getFirstMatch(/oai-searchbot\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/claudebot/i,/claude-web/i,/claude-user/i,/claude-searchbot/i],describe:function(e){var t={name:"ClaudeBot"},r=n.default.getFirstMatch(/(?:claudebot|claude-web|claude-user|claude-searchbot)\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/omgilibot/i,/webzio-extended/i],describe:function(e){var t={name:"Omgilibot"},r=n.default.getFirstMatch(/(?:omgilibot|webzio-extended)\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/diffbot/i],describe:function(e){var t={name:"Diffbot"},r=n.default.getFirstMatch(/diffbot\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/perplexitybot/i],describe:function(e){var t={name:"PerplexityBot"},r=n.default.getFirstMatch(/perplexitybot\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/perplexity-user/i],describe:function(e){var t={name:"Perplexity-User"},r=n.default.getFirstMatch(/perplexity-user\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/youbot/i],describe:function(e){var t={name:"YouBot"},r=n.default.getFirstMatch(/youbot\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/meta-webindexer/i],describe:function(e){var t={name:"Meta-WebIndexer"},r=n.default.getFirstMatch(/meta-webindexer\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/meta-externalads/i],describe:function(e){var t={name:"Meta-ExternalAds"},r=n.default.getFirstMatch(/meta-externalads\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/meta-externalagent/i],describe:function(e){var t={name:"Meta-ExternalAgent"},r=n.default.getFirstMatch(/meta-externalagent\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/meta-externalfetcher/i],describe:function(e){var t={name:"Meta-ExternalFetcher"},r=n.default.getFirstMatch(/meta-externalfetcher\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/googlebot/i],describe:function(e){var t={name:"Googlebot"},r=n.default.getFirstMatch(/googlebot\/(\d+(\.\d+))/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/linespider/i],describe:function(e){var t={name:"Linespider"},r=n.default.getFirstMatch(/(?:linespider)(?:-[-\w]+)?[\s/](\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/amazonbot/i],describe:function(e){var t={name:"AmazonBot"},r=n.default.getFirstMatch(/amazonbot\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/bingbot/i],describe:function(e){var t={name:"BingCrawler"},r=n.default.getFirstMatch(/bingbot\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/baiduspider/i],describe:function(e){var t={name:"BaiduSpider"},r=n.default.getFirstMatch(/baiduspider\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/duckduckbot/i],describe:function(e){var t={name:"DuckDuckBot"},r=n.default.getFirstMatch(/duckduckbot\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/ia_archiver/i],describe:function(e){var t={name:"InternetArchiveCrawler"},r=n.default.getFirstMatch(/ia_archiver\/(\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/facebookexternalhit/i,/facebookcatalog/i],describe:function(){return{name:"FacebookExternalHit"}}},{test:[/slackbot/i,/slack-imgProxy/i],describe:function(e){var t={name:"SlackBot"},r=n.default.getFirstMatch(/(?:slackbot|slack-imgproxy)(?:-[-\w]+)?[\s/](\d+(\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/yahoo!?[\s/]*slurp/i],describe:function(){return{name:"YahooSlurp"}}},{test:[/yandexbot/i,/yandexmobilebot/i],describe:function(){return{name:"YandexBot"}}},{test:[/pingdom/i],describe:function(){return{name:"PingdomBot"}}},{test:[/opera/i],describe:function(e){var t={name:"Opera"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:opera)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/opr\/|opios/i],describe:function(e){var t={name:"Opera"},r=n.default.getFirstMatch(/(?:opr|opios)[\s/](\S+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/SamsungBrowser/i],describe:function(e){var t={name:"Samsung Internet for Android"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:SamsungBrowser)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/Whale/i],describe:function(e){var t={name:"NAVER Whale Browser"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:whale)[\s/](\d+(?:\.\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/PaleMoon/i],describe:function(e){var t={name:"Pale Moon"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:PaleMoon)[\s/](\d+(?:\.\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/MZBrowser/i],describe:function(e){var t={name:"MZ Browser"},r=n.default.getFirstMatch(/(?:MZBrowser)[\s/](\d+(?:\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/focus/i],describe:function(e){var t={name:"Focus"},r=n.default.getFirstMatch(/(?:focus)[\s/](\d+(?:\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/swing/i],describe:function(e){var t={name:"Swing"},r=n.default.getFirstMatch(/(?:swing)[\s/](\d+(?:\.\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/coast/i],describe:function(e){var t={name:"Opera Coast"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:coast)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/opt\/\d+(?:.?_?\d+)+/i],describe:function(e){var t={name:"Opera Touch"},r=n.default.getFirstMatch(/(?:opt)[\s/](\d+(\.?_?\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/yabrowser/i],describe:function(e){var t={name:"Yandex Browser"},r=n.default.getFirstMatch(/(?:yabrowser)[\s/](\d+(\.?_?\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/ucbrowser/i],describe:function(e){var t={name:"UC Browser"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:ucbrowser)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/Maxthon|mxios/i],describe:function(e){var t={name:"Maxthon"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:Maxthon|mxios)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/epiphany/i],describe:function(e){var t={name:"Epiphany"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:epiphany)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/puffin/i],describe:function(e){var t={name:"Puffin"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:puffin)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/sleipnir/i],describe:function(e){var t={name:"Sleipnir"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:sleipnir)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/k-meleon/i],describe:function(e){var t={name:"K-Meleon"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/(?:k-meleon)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/micromessenger/i],describe:function(e){var t={name:"WeChat"},r=n.default.getFirstMatch(/(?:micromessenger)[\s/](\d+(\.?_?\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/qqbrowser/i],describe:function(e){var t={name:/qqbrowserlite/i.test(e)?"QQ Browser Lite":"QQ Browser"},r=n.default.getFirstMatch(/(?:qqbrowserlite|qqbrowser)[/](\d+(\.?_?\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/msie|trident/i],describe:function(e){var t={name:"Internet Explorer"},r=n.default.getFirstMatch(/(?:msie |rv:)(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/\sedg\//i],describe:function(e){var t={name:"Microsoft Edge"},r=n.default.getFirstMatch(/\sedg\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/edg([ea]|ios)/i],describe:function(e){var t={name:"Microsoft Edge"},r=n.default.getSecondMatch(/edg([ea]|ios)\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/vivaldi/i],describe:function(e){var t={name:"Vivaldi"},r=n.default.getFirstMatch(/vivaldi\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/seamonkey/i],describe:function(e){var t={name:"SeaMonkey"},r=n.default.getFirstMatch(/seamonkey\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/sailfish/i],describe:function(e){var t={name:"Sailfish"},r=n.default.getFirstMatch(/sailfish\s?browser\/(\d+(\.\d+)?)/i,e);return r&&(t.version=r),t}},{test:[/silk/i],describe:function(e){var t={name:"Amazon Silk"},r=n.default.getFirstMatch(/silk\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/phantom/i],describe:function(e){var t={name:"PhantomJS"},r=n.default.getFirstMatch(/phantomjs\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/slimerjs/i],describe:function(e){var t={name:"SlimerJS"},r=n.default.getFirstMatch(/slimerjs\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/blackberry|\bbb\d+/i,/rim\stablet/i],describe:function(e){var t={name:"BlackBerry"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/blackberry[\d]+\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/(web|hpw)[o0]s/i],describe:function(e){var t={name:"WebOS Browser"},r=n.default.getFirstMatch(a,e)||n.default.getFirstMatch(/w(?:eb)?[o0]sbrowser\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/bada/i],describe:function(e){var t={name:"Bada"},r=n.default.getFirstMatch(/dolfin\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/tizen/i],describe:function(e){var t={name:"Tizen"},r=n.default.getFirstMatch(/(?:tizen\s?)?browser\/(\d+(\.?_?\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/qupzilla/i],describe:function(e){var t={name:"QupZilla"},r=n.default.getFirstMatch(/(?:qupzilla)[\s/](\d+(\.?_?\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/librewolf/i],describe:function(e){var t={name:"LibreWolf"},r=n.default.getFirstMatch(/(?:librewolf)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/firefox|iceweasel|fxios/i],describe:function(e){var t={name:"Firefox"},r=n.default.getFirstMatch(/(?:firefox|iceweasel|fxios)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/electron/i],describe:function(e){var t={name:"Electron"},r=n.default.getFirstMatch(/(?:electron)\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/sogoumobilebrowser/i,/metasr/i,/se 2\.[x]/i],describe:function(e){var t={name:"Sogou Browser"},r=n.default.getFirstMatch(/(?:sogoumobilebrowser)[\s/](\d+(\.?_?\d+)+)/i,e),i=n.default.getFirstMatch(/(?:chrome|crios|crmo)\/(\d+(\.?_?\d+)+)/i,e),a=n.default.getFirstMatch(/se ([\d.]+)x/i,e),o=r||i||a;return o&&(t.version=o),t}},{test:[/MiuiBrowser/i],describe:function(e){var t={name:"Miui"},r=n.default.getFirstMatch(/(?:MiuiBrowser)[\s/](\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:function(e){return!!e.hasBrand("DuckDuckGo")||e.test(/\sDdg\/[\d.]+$/i)},describe:function(e,t){var r={name:"DuckDuckGo"};if(t){var i=t.getBrandVersion("DuckDuckGo");if(i)return r.version=i,r}var a=n.default.getFirstMatch(/\sDdg\/([\d.]+)$/i,e);return a&&(r.version=a),r}},{test:function(e){return e.hasBrand("Brave")},describe:function(e,t){var r={name:"Brave"};if(t){var i=t.getBrandVersion("Brave");if(i)return r.version=i,r}return r}},{test:[/chromium/i],describe:function(e){var t={name:"Chromium"},r=n.default.getFirstMatch(/(?:chromium)[\s/](\d+(\.?_?\d+)+)/i,e)||n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/chrome|crios|crmo/i],describe:function(e){var t={name:"Chrome"},r=n.default.getFirstMatch(/(?:chrome|crios|crmo)\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/GSA/i],describe:function(e){var t={name:"Google Search"},r=n.default.getFirstMatch(/(?:GSA)\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:function(e){var t=!e.test(/like android/i),r=e.test(/android/i);return t&&r},describe:function(e){var t={name:"Android Browser"},r=n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/playstation 4/i],describe:function(e){var t={name:"PlayStation 4"},r=n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/safari|applewebkit/i],describe:function(e){var t={name:"Safari"},r=n.default.getFirstMatch(a,e);return r&&(t.version=r),t}},{test:[/.*/i],describe:function(e){var t=-1!==e.search("\\(")?/^(.*)\/(.*)[ \t]\((.*)/:/^(.*)\/(.*) /;return{name:n.default.getFirstMatch(t,e),version:n.default.getSecondMatch(t,e)}}}];t.default=o,e.exports=t.default},93:function(e,t,r){"use strict";t.__esModule=!0,t.default=void 0;var i,n=(i=r(17))&&i.__esModule?i:{default:i},a=r(18);var o=[{test:[/Roku\/DVP/],describe:function(e){var t=n.default.getFirstMatch(/Roku\/DVP-(\d+\.\d+)/i,e);return{name:a.OS_MAP.Roku,version:t}}},{test:[/windows phone/i],describe:function(e){var t=n.default.getFirstMatch(/windows phone (?:os)?\s?(\d+(\.\d+)*)/i,e);return{name:a.OS_MAP.WindowsPhone,version:t}}},{test:[/windows /i],describe:function(e){var t=n.default.getFirstMatch(/Windows ((NT|XP)( \d\d?.\d)?)/i,e),r=n.default.getWindowsVersionName(t);return{name:a.OS_MAP.Windows,version:t,versionName:r}}},{test:[/Macintosh(.*?) FxiOS(.*?)\//],describe:function(e){var t={name:a.OS_MAP.iOS},r=n.default.getSecondMatch(/(Version\/)(\d[\d.]+)/,e);return r&&(t.version=r),t}},{test:[/macintosh/i],describe:function(e){var t=n.default.getFirstMatch(/mac os x (\d+(\.?_?\d+)+)/i,e).replace(/[_\s]/g,"."),r=n.default.getMacOSVersionName(t),i={name:a.OS_MAP.MacOS,version:t};return r&&(i.versionName=r),i}},{test:[/(ipod|iphone|ipad)/i],describe:function(e){var t=n.default.getFirstMatch(/os (\d+([_\s]\d+)*) like mac os x/i,e).replace(/[_\s]/g,".");return{name:a.OS_MAP.iOS,version:t}}},{test:[/OpenHarmony/i],describe:function(e){var t=n.default.getFirstMatch(/OpenHarmony\s+(\d+(\.\d+)*)/i,e);return{name:a.OS_MAP.HarmonyOS,version:t}}},{test:function(e){var t=!e.test(/like android/i),r=e.test(/android/i);return t&&r},describe:function(e){var t=n.default.getFirstMatch(/android[\s/-](\d+(\.\d+)*)/i,e),r=n.default.getAndroidVersionName(t),i={name:a.OS_MAP.Android,version:t};return r&&(i.versionName=r),i}},{test:[/(web|hpw)[o0]s/i],describe:function(e){var t=n.default.getFirstMatch(/(?:web|hpw)[o0]s\/(\d+(\.\d+)*)/i,e),r={name:a.OS_MAP.WebOS};return t&&t.length&&(r.version=t),r}},{test:[/blackberry|\bbb\d+/i,/rim\stablet/i],describe:function(e){var t=n.default.getFirstMatch(/rim\stablet\sos\s(\d+(\.\d+)*)/i,e)||n.default.getFirstMatch(/blackberry\d+\/(\d+([_\s]\d+)*)/i,e)||n.default.getFirstMatch(/\bbb(\d+)/i,e);return{name:a.OS_MAP.BlackBerry,version:t}}},{test:[/bada/i],describe:function(e){var t=n.default.getFirstMatch(/bada\/(\d+(\.\d+)*)/i,e);return{name:a.OS_MAP.Bada,version:t}}},{test:[/tizen/i],describe:function(e){var t=n.default.getFirstMatch(/tizen[/\s](\d+(\.\d+)*)/i,e);return{name:a.OS_MAP.Tizen,version:t}}},{test:[/linux/i],describe:function(){return{name:a.OS_MAP.Linux}}},{test:[/CrOS/],describe:function(){return{name:a.OS_MAP.ChromeOS}}},{test:[/PlayStation 4/],describe:function(e){var t=n.default.getFirstMatch(/PlayStation 4[/\s](\d+(\.\d+)*)/i,e);return{name:a.OS_MAP.PlayStation4,version:t}}}];t.default=o,e.exports=t.default},94:function(e,t,r){"use strict";t.__esModule=!0,t.default=void 0;var i,n=(i=r(17))&&i.__esModule?i:{default:i},a=r(18);var o=[{test:[/googlebot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Google"}}},{test:[/linespider/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Line"}}},{test:[/amazonbot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Amazon"}}},{test:[/gptbot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"OpenAI"}}},{test:[/chatgpt-user/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"OpenAI"}}},{test:[/oai-searchbot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"OpenAI"}}},{test:[/baiduspider/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Baidu"}}},{test:[/bingbot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Bing"}}},{test:[/duckduckbot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"DuckDuckGo"}}},{test:[/claudebot/i,/claude-web/i,/claude-user/i,/claude-searchbot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Anthropic"}}},{test:[/omgilibot/i,/webzio-extended/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Webz.io"}}},{test:[/diffbot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Diffbot"}}},{test:[/perplexitybot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Perplexity AI"}}},{test:[/perplexity-user/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Perplexity AI"}}},{test:[/youbot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"You.com"}}},{test:[/ia_archiver/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Internet Archive"}}},{test:[/meta-webindexer/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/meta-externalads/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/meta-externalagent/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/meta-externalfetcher/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/facebookexternalhit/i,/facebookcatalog/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/slackbot/i,/slack-imgProxy/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Slack"}}},{test:[/yahoo/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Yahoo"}}},{test:[/yandexbot/i,/yandexmobilebot/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Yandex"}}},{test:[/pingdom/i],describe:function(){return{type:a.PLATFORMS_MAP.bot,vendor:"Pingdom"}}},{test:[/huawei/i],describe:function(e){var t=n.default.getFirstMatch(/(can-l01)/i,e)&&"Nova",r={type:a.PLATFORMS_MAP.mobile,vendor:"Huawei"};return t&&(r.model=t),r}},{test:[/nexus\s*(?:7|8|9|10).*/i],describe:function(){return{type:a.PLATFORMS_MAP.tablet,vendor:"Nexus"}}},{test:[/ipad/i],describe:function(){return{type:a.PLATFORMS_MAP.tablet,vendor:"Apple",model:"iPad"}}},{test:[/Macintosh(.*?) FxiOS(.*?)\//],describe:function(){return{type:a.PLATFORMS_MAP.tablet,vendor:"Apple",model:"iPad"}}},{test:[/kftt build/i],describe:function(){return{type:a.PLATFORMS_MAP.tablet,vendor:"Amazon",model:"Kindle Fire HD 7"}}},{test:[/silk/i],describe:function(){return{type:a.PLATFORMS_MAP.tablet,vendor:"Amazon"}}},{test:[/tablet(?! pc)/i],describe:function(){return{type:a.PLATFORMS_MAP.tablet}}},{test:function(e){var t=e.test(/ipod|iphone/i),r=e.test(/like (ipod|iphone)/i);return t&&!r},describe:function(e){var t=n.default.getFirstMatch(/(ipod|iphone)/i,e);return{type:a.PLATFORMS_MAP.mobile,vendor:"Apple",model:t}}},{test:[/nexus\s*[0-6].*/i,/galaxy nexus/i],describe:function(){return{type:a.PLATFORMS_MAP.mobile,vendor:"Nexus"}}},{test:[/Nokia/i],describe:function(e){var t=n.default.getFirstMatch(/Nokia\s+([0-9]+(\.[0-9]+)?)/i,e),r={type:a.PLATFORMS_MAP.mobile,vendor:"Nokia"};return t&&(r.model=t),r}},{test:[/[^-]mobi/i],describe:function(){return{type:a.PLATFORMS_MAP.mobile}}},{test:function(e){return"blackberry"===e.getBrowserName(!0)},describe:function(){return{type:a.PLATFORMS_MAP.mobile,vendor:"BlackBerry"}}},{test:function(e){return"bada"===e.getBrowserName(!0)},describe:function(){return{type:a.PLATFORMS_MAP.mobile}}},{test:function(e){return"windows phone"===e.getBrowserName()},describe:function(){return{type:a.PLATFORMS_MAP.mobile,vendor:"Microsoft"}}},{test:function(e){var t=Number(String(e.getOSVersion()).split(".")[0]);return"android"===e.getOSName(!0)&&t>=3},describe:function(){return{type:a.PLATFORMS_MAP.tablet}}},{test:function(e){return"android"===e.getOSName(!0)},describe:function(){return{type:a.PLATFORMS_MAP.mobile}}},{test:[/smart-?tv|smarttv/i],describe:function(){return{type:a.PLATFORMS_MAP.tv}}},{test:[/netcast/i],describe:function(){return{type:a.PLATFORMS_MAP.tv}}},{test:function(e){return"macos"===e.getOSName(!0)},describe:function(){return{type:a.PLATFORMS_MAP.desktop,vendor:"Apple"}}},{test:function(e){return"windows"===e.getOSName(!0)},describe:function(){return{type:a.PLATFORMS_MAP.desktop}}},{test:function(e){return"linux"===e.getOSName(!0)},describe:function(){return{type:a.PLATFORMS_MAP.desktop}}},{test:function(e){return"playstation 4"===e.getOSName(!0)},describe:function(){return{type:a.PLATFORMS_MAP.tv}}},{test:function(e){return"roku"===e.getOSName(!0)},describe:function(){return{type:a.PLATFORMS_MAP.tv}}}];t.default=o,e.exports=t.default},95:function(e,t,r){"use strict";t.__esModule=!0,t.default=void 0;var i,n=(i=r(17))&&i.__esModule?i:{default:i},a=r(18);var o=[{test:function(e){return"microsoft edge"===e.getBrowserName(!0)},describe:function(e){if(/\sedg\//i.test(e))return{name:a.ENGINE_MAP.Blink};var t=n.default.getFirstMatch(/edge\/(\d+(\.?_?\d+)+)/i,e);return{name:a.ENGINE_MAP.EdgeHTML,version:t}}},{test:[/trident/i],describe:function(e){var t={name:a.ENGINE_MAP.Trident},r=n.default.getFirstMatch(/trident\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:function(e){return e.test(/presto/i)},describe:function(e){var t={name:a.ENGINE_MAP.Presto},r=n.default.getFirstMatch(/presto\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:function(e){var t=e.test(/gecko/i),r=e.test(/like gecko/i);return t&&!r},describe:function(e){var t={name:a.ENGINE_MAP.Gecko},r=n.default.getFirstMatch(/gecko\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}},{test:[/(apple)?webkit\/537\.36/i],describe:function(){return{name:a.ENGINE_MAP.Blink}}},{test:[/(apple)?webkit/i],describe:function(e){var t={name:a.ENGINE_MAP.WebKit},r=n.default.getFirstMatch(/webkit\/(\d+(\.?_?\d+)+)/i,e);return r&&(t.version=r),t}}];t.default=o,e.exports=t.default}})}));
+},{}],
+47:[function(module,exports,require,process){
+var $j6Pln$pipecataiclientjs = require("@pipecat-ai/client-js");
+var $j6Pln$dailycodailyjs = require("@daily-co/daily-js");
+var $j6Pln$events = require("events");
+var $j6Pln$protobuftsruntime = require("@protobuf-ts/runtime");
+var $j6Pln$xlaw = require("x-law");
+
+
+function $parcel$export(e, n, v, s) {
+  Object.defineProperty(e, n, {get: v, set: s, enumerable: true, configurable: true});
+}
+
+function $parcel$interopDefault(a) {
+  return a && a.__esModule ? a.default : a;
+}
+
+$parcel$export(module.exports, "WavMediaManager", () => $48faeb169c82673e$export$45c5b9bfba2f6304);
+$parcel$export(module.exports, "DailyMediaManager", () => $00a190ef6aa79f0d$export$c95c65abc5f47125);
+$parcel$export(module.exports, "WebSocketTransport", () => $4edb85de5b543ae3$export$de21836fc42c6f9c);
+$parcel$export(module.exports, "ProtobufFrameSerializer", () => $1c22f68a017e26c0$export$4b2026f8e11b148a);
+$parcel$export(module.exports, "TwilioSerializer", () => $19b28d1737bec5eb$export$44a8a077420336af);
+// export * from "./realTimeWebSocketTransport";
+/**
+ * Raw wav audio file contents
+ * @typedef {Object} WavPackerAudioType
+ * @property {Blob} blob
+ * @property {string} url
+ * @property {number} channelCount
+ * @property {number} sampleRate
+ * @property {number} duration
+ */ /**
+ * Utility class for assembling PCM16 "audio/wav" data
+ * @class
+ */ class $45766326c6faa3c4$export$13afda237b1c9846 {
+    /**
+   * Converts Float32Array of amplitude data to ArrayBuffer in Int16Array format
+   * @param {Float32Array} float32Array
+   * @returns {ArrayBuffer}
+   */ static floatTo16BitPCM(float32Array) {
+        const buffer = new ArrayBuffer(float32Array.length * 2);
+        const view = new DataView(buffer);
+        let offset = 0;
+        for(let i = 0; i < float32Array.length; i++, offset += 2){
+            let s = Math.max(-1, Math.min(1, float32Array[i]));
+            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        }
+        return buffer;
+    }
+    /**
+   * Concatenates two ArrayBuffers
+   * @param {ArrayBuffer} leftBuffer
+   * @param {ArrayBuffer} rightBuffer
+   * @returns {ArrayBuffer}
+   */ static mergeBuffers(leftBuffer, rightBuffer) {
+        const tmpArray = new Uint8Array(leftBuffer.byteLength + rightBuffer.byteLength);
+        tmpArray.set(new Uint8Array(leftBuffer), 0);
+        tmpArray.set(new Uint8Array(rightBuffer), leftBuffer.byteLength);
+        return tmpArray.buffer;
+    }
+    /**
+   * Packs data into an Int16 format
+   * @private
+   * @param {number} size 0 = 1x Int16, 1 = 2x Int16
+   * @param {number} arg value to pack
+   * @returns
+   */ _packData(size, arg) {
+        return [
+            new Uint8Array([
+                arg,
+                arg >> 8
+            ]),
+            new Uint8Array([
+                arg,
+                arg >> 8,
+                arg >> 16,
+                arg >> 24
+            ])
+        ][size];
+    }
+    /**
+   * Packs audio into "audio/wav" Blob
+   * @param {number} sampleRate
+   * @param {{bitsPerSample: number, channels: Array<Float32Array>, data: Int16Array}} audio
+   * @returns {WavPackerAudioType}
+   */ pack(sampleRate, audio) {
+        if (!audio?.bitsPerSample) throw new Error(`Missing "bitsPerSample"`);
+        else if (!audio?.channels) throw new Error(`Missing "channels"`);
+        else if (!audio?.data) throw new Error(`Missing "data"`);
+        const { bitsPerSample: bitsPerSample, channels: channels, data: data } = audio;
+        const output = [
+            // Header
+            "RIFF",
+            this._packData(1, 52),
+            "WAVE",
+            // chunk 1
+            "fmt ",
+            this._packData(1, 16),
+            this._packData(0, 1),
+            this._packData(0, channels.length),
+            this._packData(1, sampleRate),
+            this._packData(1, sampleRate * channels.length * bitsPerSample / 8),
+            this._packData(0, channels.length * bitsPerSample / 8),
+            this._packData(0, bitsPerSample),
+            // chunk 2
+            "data",
+            this._packData(1, channels[0].length * channels.length * bitsPerSample / 8),
+            data
+        ];
+        const blob = new Blob(output, {
+            type: "audio/mpeg"
+        });
+        const url = URL.createObjectURL(blob);
+        return {
+            blob: blob,
+            url: url,
+            channelCount: channels.length,
+            sampleRate: sampleRate,
+            duration: data.byteLength / (channels.length * sampleRate * 2)
+        };
+    }
+}
+globalThis.WavPacker = $45766326c6faa3c4$export$13afda237b1c9846;
+
+
+/**
+ * Constants for help with visualization
+ * Helps map frequency ranges from Fast Fourier Transform
+ * to human-interpretable ranges, notably music ranges and
+ * human vocal ranges.
+ */ // Eighth octave frequencies
+const $550c0e438054ce18$var$octave8Frequencies = [
+    4186.01,
+    4434.92,
+    4698.63,
+    4978.03,
+    5274.04,
+    5587.65,
+    5919.91,
+    6271.93,
+    6644.88,
+    7040.0,
+    7458.62,
+    7902.13
+];
+// Labels for each of the above frequencies
+const $550c0e438054ce18$var$octave8FrequencyLabels = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B"
+];
+const $550c0e438054ce18$export$776c63898ae5b636 = [];
+const $550c0e438054ce18$export$facd167cc27ea9b0 = [];
+for(let i = 1; i <= 8; i++)for(let f = 0; f < $550c0e438054ce18$var$octave8Frequencies.length; f++){
+    const freq = $550c0e438054ce18$var$octave8Frequencies[f];
+    $550c0e438054ce18$export$776c63898ae5b636.push(freq / Math.pow(2, 8 - i));
+    $550c0e438054ce18$export$facd167cc27ea9b0.push($550c0e438054ce18$var$octave8FrequencyLabels[f] + i);
+}
+/**
+ * Subset of the note frequencies between 32 and 2000 Hz
+ * 6 octave range: C1 to B6
+ */ const $550c0e438054ce18$var$voiceFrequencyRange = [
+    32.0,
+    2000.0
+];
+const $550c0e438054ce18$export$dbc1581ed2cfa183 = $550c0e438054ce18$export$776c63898ae5b636.filter((_, i)=>{
+    return $550c0e438054ce18$export$776c63898ae5b636[i] > $550c0e438054ce18$var$voiceFrequencyRange[0] && $550c0e438054ce18$export$776c63898ae5b636[i] < $550c0e438054ce18$var$voiceFrequencyRange[1];
+});
+const $550c0e438054ce18$export$30a6f2881311088f = $550c0e438054ce18$export$facd167cc27ea9b0.filter((_, i)=>{
+    return $550c0e438054ce18$export$776c63898ae5b636[i] > $550c0e438054ce18$var$voiceFrequencyRange[0] && $550c0e438054ce18$export$776c63898ae5b636[i] < $550c0e438054ce18$var$voiceFrequencyRange[1];
+});
+
+
+class $3f7a723e434a4b86$export$2c3136da0bf130f9 {
+    /**
+   * Retrieves frequency domain data from an AnalyserNode adjusted to a decibel range
+   * returns human-readable formatting and labels
+   * @param {AnalyserNode} analyser
+   * @param {number} sampleRate
+   * @param {Float32Array} [fftResult]
+   * @param {"frequency"|"music"|"voice"} [analysisType]
+   * @param {number} [minDecibels] default -100
+   * @param {number} [maxDecibels] default -30
+   * @returns {AudioAnalysisOutputType}
+   */ static getFrequencies(analyser, sampleRate, fftResult, analysisType = "frequency", minDecibels = -100, maxDecibels = -30) {
+        if (!fftResult) {
+            fftResult = new Float32Array(analyser.frequencyBinCount);
+            analyser.getFloatFrequencyData(fftResult);
+        }
+        const nyquistFrequency = sampleRate / 2;
+        const frequencyStep = 1 / fftResult.length * nyquistFrequency;
+        let outputValues;
+        let frequencies;
+        let labels;
+        if (analysisType === "music" || analysisType === "voice") {
+            const useFrequencies = analysisType === "voice" ? (0, $550c0e438054ce18$export$dbc1581ed2cfa183) : (0, $550c0e438054ce18$export$776c63898ae5b636);
+            const aggregateOutput = Array(useFrequencies.length).fill(minDecibels);
+            for(let i = 0; i < fftResult.length; i++){
+                const frequency = i * frequencyStep;
+                const amplitude = fftResult[i];
+                for(let n = useFrequencies.length - 1; n >= 0; n--)if (frequency > useFrequencies[n]) {
+                    aggregateOutput[n] = Math.max(aggregateOutput[n], amplitude);
+                    break;
+                }
+            }
+            outputValues = aggregateOutput;
+            frequencies = analysisType === "voice" ? (0, $550c0e438054ce18$export$dbc1581ed2cfa183) : (0, $550c0e438054ce18$export$776c63898ae5b636);
+            labels = analysisType === "voice" ? (0, $550c0e438054ce18$export$30a6f2881311088f) : (0, $550c0e438054ce18$export$facd167cc27ea9b0);
+        } else {
+            outputValues = Array.from(fftResult);
+            frequencies = outputValues.map((_, i)=>frequencyStep * i);
+            labels = frequencies.map((f)=>`${f.toFixed(2)} Hz`);
+        }
+        // We normalize to {0, 1}
+        const normalizedOutput = outputValues.map((v)=>{
+            return Math.max(0, Math.min((v - minDecibels) / (maxDecibels - minDecibels), 1));
+        });
+        const values = new Float32Array(normalizedOutput);
+        return {
+            values: values,
+            frequencies: frequencies,
+            labels: labels
+        };
+    }
+    /**
+   * Creates a new AudioAnalysis instance for an HTMLAudioElement
+   * @param {HTMLAudioElement} audioElement
+   * @param {AudioBuffer|null} [audioBuffer] If provided, will cache all frequency domain data from the buffer
+   * @returns {AudioAnalysis}
+   */ constructor(audioElement, audioBuffer = null){
+        this.fftResults = [];
+        if (audioBuffer) {
+            /**
+       * Modified from
+       * https://stackoverflow.com/questions/75063715/using-the-web-audio-api-to-analyze-a-song-without-playing
+       *
+       * We do this to populate FFT values for the audio if provided an `audioBuffer`
+       * The reason to do this is that Safari fails when using `createMediaElementSource`
+       * This has a non-zero RAM cost so we only opt-in to run it on Safari, Chrome is better
+       */ const { length: length, sampleRate: sampleRate } = audioBuffer;
+            const offlineAudioContext = new OfflineAudioContext({
+                length: length,
+                sampleRate: sampleRate
+            });
+            const source = offlineAudioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            const analyser = offlineAudioContext.createAnalyser();
+            analyser.fftSize = 8192;
+            analyser.smoothingTimeConstant = 0.1;
+            source.connect(analyser);
+            // limit is :: 128 / sampleRate;
+            // but we just want 60fps - cuts ~1s from 6MB to 1MB of RAM
+            const renderQuantumInSeconds = 1 / 60;
+            const durationInSeconds = length / sampleRate;
+            const analyze = (index)=>{
+                const suspendTime = renderQuantumInSeconds * index;
+                if (suspendTime < durationInSeconds) offlineAudioContext.suspend(suspendTime).then(()=>{
+                    const fftResult = new Float32Array(analyser.frequencyBinCount);
+                    analyser.getFloatFrequencyData(fftResult);
+                    this.fftResults.push(fftResult);
+                    analyze(index + 1);
+                });
+                if (index === 1) offlineAudioContext.startRendering();
+                else offlineAudioContext.resume();
+            };
+            source.start(0);
+            analyze(1);
+            this.audio = audioElement;
+            this.context = offlineAudioContext;
+            this.analyser = analyser;
+            this.sampleRate = sampleRate;
+            this.audioBuffer = audioBuffer;
+        } else {
+            const audioContext = new AudioContext();
+            const track = audioContext.createMediaElementSource(audioElement);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 8192;
+            analyser.smoothingTimeConstant = 0.1;
+            track.connect(analyser);
+            analyser.connect(audioContext.destination);
+            this.audio = audioElement;
+            this.context = audioContext;
+            this.analyser = analyser;
+            this.sampleRate = this.context.sampleRate;
+            this.audioBuffer = null;
+        }
+    }
+    /**
+   * Gets the current frequency domain data from the playing audio track
+   * @param {"frequency"|"music"|"voice"} [analysisType]
+   * @param {number} [minDecibels] default -100
+   * @param {number} [maxDecibels] default -30
+   * @returns {AudioAnalysisOutputType}
+   */ getFrequencies(analysisType = "frequency", minDecibels = -100, maxDecibels = -30) {
+        let fftResult = null;
+        if (this.audioBuffer && this.fftResults.length) {
+            const pct = this.audio.currentTime / this.audio.duration;
+            const index = Math.min(pct * this.fftResults.length | 0, this.fftResults.length - 1);
+            fftResult = this.fftResults[index];
+        }
+        return $3f7a723e434a4b86$export$2c3136da0bf130f9.getFrequencies(this.analyser, this.sampleRate, fftResult, analysisType, minDecibels, maxDecibels);
+    }
+    /**
+   * Resume the internal AudioContext if it was suspended due to the lack of
+   * user interaction when the AudioAnalysis was instantiated.
+   * @returns {Promise<true>}
+   */ async resumeIfSuspended() {
+        if (this.context.state === "suspended") await this.context.resume();
+        return true;
+    }
+}
+globalThis.AudioAnalysis = $3f7a723e434a4b86$export$2c3136da0bf130f9;
+
+
+const $ff75ae50979bb4fc$export$50b76700e2b15e9 = `
+class StreamProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.hasStarted = false;
+    this.hasInterrupted = false;
+    this.outputBuffers = [];
+    this.bufferLength = 128;
+    this.write = { buffer: new Float32Array(this.bufferLength), trackId: null };
+    this.writeOffset = 0;
+    this.trackSampleOffsets = {};
+    this.port.onmessage = (event) => {
+      if (event.data) {
+        const payload = event.data;
+        if (payload.event === 'write') {
+          const int16Array = payload.buffer;
+          const float32Array = new Float32Array(int16Array.length);
+          for (let i = 0; i < int16Array.length; i++) {
+            float32Array[i] = int16Array[i] / 0x8000; // Convert Int16 to Float32
+          }
+          this.writeData(float32Array, payload.trackId);
+        } else if (
+          payload.event === 'offset' ||
+          payload.event === 'interrupt'
+        ) {
+          const requestId = payload.requestId;
+          const trackId = this.write.trackId;
+          const offset = this.trackSampleOffsets[trackId] || 0;
+          this.port.postMessage({
+            event: 'offset',
+            requestId,
+            trackId,
+            offset,
+          });
+          if (payload.event === 'interrupt') {
+            this.hasInterrupted = true;
+          }
+        } else {
+          throw new Error(\`Unhandled event "\${payload.event}"\`);
+        }
+      }
+    };
+  }
+
+  writeData(float32Array, trackId = null) {
+    let { buffer } = this.write;
+    let offset = this.writeOffset;
+    for (let i = 0; i < float32Array.length; i++) {
+      buffer[offset++] = float32Array[i];
+      if (offset >= buffer.length) {
+        this.outputBuffers.push(this.write);
+        this.write = { buffer: new Float32Array(this.bufferLength), trackId };
+        buffer = this.write.buffer;
+        offset = 0;
+      }
+    }
+    this.writeOffset = offset;
+    return true;
+  }
+
+  process(inputs, outputs, parameters) {
+    const output = outputs[0];
+    const outputChannelData = output[0];
+    const outputBuffers = this.outputBuffers;
+    if (this.hasInterrupted) {
+      this.port.postMessage({ event: 'stop' });
+      return false;
+    } else if (outputBuffers.length) {
+      this.hasStarted = true;
+      const { buffer, trackId } = outputBuffers.shift();
+      for (let i = 0; i < outputChannelData.length; i++) {
+        outputChannelData[i] = buffer[i] || 0;
+      }
+      if (trackId) {
+        this.trackSampleOffsets[trackId] =
+          this.trackSampleOffsets[trackId] || 0;
+        this.trackSampleOffsets[trackId] += buffer.length;
+      }
+      return true;
+    } else if (this.hasStarted) {
+      this.port.postMessage({ event: 'stop' });
+      return false;
+    } else {
+      return true;
+    }
+  }
+}
+
+registerProcessor('stream_processor', StreamProcessor);
+`;
+const $ff75ae50979bb4fc$var$script = new Blob([
+    $ff75ae50979bb4fc$export$50b76700e2b15e9
+], {
+    type: "application/javascript"
+});
+const $ff75ae50979bb4fc$var$src = URL.createObjectURL($ff75ae50979bb4fc$var$script);
+const $ff75ae50979bb4fc$export$bfa8c596114d74df = $ff75ae50979bb4fc$var$src;
+
+
+
+class $347522367945ce82$export$9698d62c78b8f366 {
+    /**
+   * Creates a new WavStreamPlayer instance
+   * @param {{sampleRate?: number}} options
+   * @returns {WavStreamPlayer}
+   */ constructor({ sampleRate: sampleRate = 44100 } = {}){
+        this.scriptSrc = (0, $ff75ae50979bb4fc$export$bfa8c596114d74df);
+        this.sampleRate = sampleRate;
+        this.context = null;
+        this.stream = null;
+        this.analyser = null;
+        this.trackSampleOffsets = {};
+        this.interruptedTrackIds = {};
+    }
+    /**
+   * Connects the audio context and enables output to speakers
+   * @returns {Promise<true>}
+   */ async connect() {
+        this.context = new AudioContext({
+            sampleRate: this.sampleRate
+        });
+        if (this._speakerID) this.context.setSinkId(this._speakerID);
+        if (this.context.state === "suspended") await this.context.resume();
+        try {
+            await this.context.audioWorklet.addModule(this.scriptSrc);
+        } catch (e) {
+            console.error(e);
+            throw new Error(`Could not add audioWorklet module: ${this.scriptSrc}`);
+        }
+        const analyser = this.context.createAnalyser();
+        analyser.fftSize = 8192;
+        analyser.smoothingTimeConstant = 0.1;
+        this.analyser = analyser;
+        return true;
+    }
+    /**
+   * Gets the current frequency domain data from the playing track
+   * @param {"frequency"|"music"|"voice"} [analysisType]
+   * @param {number} [minDecibels] default -100
+   * @param {number} [maxDecibels] default -30
+   * @returns {import('./analysis/audio_analysis.js').AudioAnalysisOutputType}
+   */ getFrequencies(analysisType = "frequency", minDecibels = -100, maxDecibels = -30) {
+        if (!this.analyser) throw new Error("Not connected, please call .connect() first");
+        return (0, $3f7a723e434a4b86$export$2c3136da0bf130f9).getFrequencies(this.analyser, this.sampleRate, null, analysisType, minDecibels, maxDecibels);
+    }
+    /**
+   * @param {string} speaker deviceId
+   */ async updateSpeaker(speaker) {
+        const _prevSpeaker = this._speakerID;
+        this._speakerID = speaker;
+        if (this.context) try {
+            if (speaker === "default") await this.context.setSinkId();
+            else await this.context.setSinkId(speaker);
+        } catch (e) {
+            console.error(`Could not set sinkId to ${speaker}: ${e}`);
+            this._speakerID = _prevSpeaker;
+        }
+    }
+    /**
+   * Starts audio streaming
+   * @private
+   * @returns {Promise<true>}
+   */ _start() {
+        const streamNode = new AudioWorkletNode(this.context, "stream_processor");
+        streamNode.connect(this.context.destination);
+        streamNode.port.onmessage = (e)=>{
+            const { event: event } = e.data;
+            if (event === "stop") {
+                streamNode.disconnect();
+                this.stream = null;
+            } else if (event === "offset") {
+                const { requestId: requestId, trackId: trackId, offset: offset } = e.data;
+                const currentTime = offset / this.sampleRate;
+                this.trackSampleOffsets[requestId] = {
+                    trackId: trackId,
+                    offset: offset,
+                    currentTime: currentTime
+                };
+            }
+        };
+        this.analyser.disconnect();
+        streamNode.connect(this.analyser);
+        this.stream = streamNode;
+        return true;
+    }
+    /**
+   * Adds 16BitPCM data to the currently playing audio stream
+   * You can add chunks beyond the current play point and they will be queued for play
+   * @param {ArrayBuffer|Int16Array} arrayBuffer
+   * @param {string} [trackId]
+   * @returns {Int16Array}
+   */ add16BitPCM(arrayBuffer, trackId = "default") {
+        if (typeof trackId !== "string") throw new Error(`trackId must be a string`);
+        else if (this.interruptedTrackIds[trackId]) return;
+        if (!this.stream) this._start();
+        let buffer;
+        if (arrayBuffer instanceof Int16Array) buffer = arrayBuffer;
+        else if (arrayBuffer instanceof ArrayBuffer) buffer = new Int16Array(arrayBuffer);
+        else throw new Error(`argument must be Int16Array or ArrayBuffer`);
+        this.stream.port.postMessage({
+            event: "write",
+            buffer: buffer,
+            trackId: trackId
+        });
+        return buffer;
+    }
+    /**
+   * Gets the offset (sample count) of the currently playing stream
+   * @param {boolean} [interrupt]
+   * @returns {{trackId: string|null, offset: number, currentTime: number}}
+   */ async getTrackSampleOffset(interrupt = false) {
+        if (!this.stream) return null;
+        const requestId = crypto.randomUUID();
+        this.stream.port.postMessage({
+            event: interrupt ? "interrupt" : "offset",
+            requestId: requestId
+        });
+        let trackSampleOffset;
+        while(!trackSampleOffset){
+            trackSampleOffset = this.trackSampleOffsets[requestId];
+            await new Promise((r)=>setTimeout(()=>r(), 1));
+        }
+        const { trackId: trackId } = trackSampleOffset;
+        if (interrupt && trackId) this.interruptedTrackIds[trackId] = true;
+        return trackSampleOffset;
+    }
+    /**
+   * Strips the current stream and returns the sample offset of the audio
+   * @param {boolean} [interrupt]
+   * @returns {{trackId: string|null, offset: number, currentTime: number}}
+   */ async interrupt() {
+        return this.getTrackSampleOffset(true);
+    }
+}
+globalThis.WavStreamPlayer = $347522367945ce82$export$9698d62c78b8f366;
+
+
+const $5a5c5ac16a3be24c$var$AudioProcessorWorklet = `
+class AudioProcessor extends AudioWorkletProcessor {
+
+  constructor() {
+    super();
+    this.port.onmessage = this.receive.bind(this);
+    this.initialize();
+  }
+
+  initialize() {
+    this.foundAudio = false;
+    this.recording = false;
+    this.chunks = [];
+  }
+
+  /**
+   * Concatenates sampled chunks into channels
+   * Format is chunk[Left[], Right[]]
+   */
+  readChannelData(chunks, channel = -1, maxChannels = 9) {
+    let channelLimit;
+    if (channel !== -1) {
+      if (chunks[0] && chunks[0].length - 1 < channel) {
+        throw new Error(
+          \`Channel \${channel} out of range: max \${chunks[0].length}\`
+        );
+      }
+      channelLimit = channel + 1;
+    } else {
+      channel = 0;
+      channelLimit = Math.min(chunks[0] ? chunks[0].length : 1, maxChannels);
+    }
+    const channels = [];
+    for (let n = channel; n < channelLimit; n++) {
+      const length = chunks.reduce((sum, chunk) => {
+        return sum + chunk[n].length;
+      }, 0);
+      const buffers = chunks.map((chunk) => chunk[n]);
+      const result = new Float32Array(length);
+      let offset = 0;
+      for (let i = 0; i < buffers.length; i++) {
+        result.set(buffers[i], offset);
+        offset += buffers[i].length;
+      }
+      channels[n] = result;
+    }
+    return channels;
+  }
+
+  /**
+   * Combines parallel audio data into correct format,
+   * channels[Left[], Right[]] to float32Array[LRLRLRLR...]
+   */
+  formatAudioData(channels) {
+    if (channels.length === 1) {
+      // Simple case is only one channel
+      const float32Array = channels[0].slice();
+      const meanValues = channels[0].slice();
+      return { float32Array, meanValues };
+    } else {
+      const float32Array = new Float32Array(
+        channels[0].length * channels.length
+      );
+      const meanValues = new Float32Array(channels[0].length);
+      for (let i = 0; i < channels[0].length; i++) {
+        const offset = i * channels.length;
+        let meanValue = 0;
+        for (let n = 0; n < channels.length; n++) {
+          float32Array[offset + n] = channels[n][i];
+          meanValue += channels[n][i];
+        }
+        meanValues[i] = meanValue / channels.length;
+      }
+      return { float32Array, meanValues };
+    }
+  }
+
+  /**
+   * Converts 32-bit float data to 16-bit integers
+   */
+  floatTo16BitPCM(float32Array) {
+    const buffer = new ArrayBuffer(float32Array.length * 2);
+    const view = new DataView(buffer);
+    let offset = 0;
+    for (let i = 0; i < float32Array.length; i++, offset += 2) {
+      let s = Math.max(-1, Math.min(1, float32Array[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return buffer;
+  }
+
+  /**
+   * Retrieves the most recent amplitude values from the audio stream
+   * @param {number} channel
+   */
+  getValues(channel = -1) {
+    const channels = this.readChannelData(this.chunks, channel);
+    const { meanValues } = this.formatAudioData(channels);
+    return { meanValues, channels };
+  }
+
+  /**
+   * Exports chunks as an audio/wav file
+   */
+  export() {
+    const channels = this.readChannelData(this.chunks);
+    const { float32Array, meanValues } = this.formatAudioData(channels);
+    const audioData = this.floatTo16BitPCM(float32Array);
+    return {
+      meanValues: meanValues,
+      audio: {
+        bitsPerSample: 16,
+        channels: channels,
+        data: audioData,
+      },
+    };
+  }
+
+  receive(e) {
+    const { event, id } = e.data;
+    let receiptData = {};
+    switch (event) {
+      case 'start':
+        this.recording = true;
+        break;
+      case 'stop':
+        this.recording = false;
+        break;
+      case 'clear':
+        this.initialize();
+        break;
+      case 'export':
+        receiptData = this.export();
+        break;
+      case 'read':
+        receiptData = this.getValues();
+        break;
+      default:
+        break;
+    }
+    // Always send back receipt
+    this.port.postMessage({ event: 'receipt', id, data: receiptData });
+  }
+
+  sendChunk(chunk) {
+    const channels = this.readChannelData([chunk]);
+    const { float32Array, meanValues } = this.formatAudioData(channels);
+    const rawAudioData = this.floatTo16BitPCM(float32Array);
+    const monoAudioData = this.floatTo16BitPCM(meanValues);
+    this.port.postMessage({
+      event: 'chunk',
+      data: {
+        mono: monoAudioData,
+        raw: rawAudioData,
+      },
+    });
+  }
+
+  process(inputList, outputList, parameters) {
+    // Copy input to output (e.g. speakers)
+    // Note that this creates choppy sounds with Mac products
+    const sourceLimit = Math.min(inputList.length, outputList.length);
+    for (let inputNum = 0; inputNum < sourceLimit; inputNum++) {
+      const input = inputList[inputNum];
+      const output = outputList[inputNum];
+      const channelCount = Math.min(input.length, output.length);
+      for (let channelNum = 0; channelNum < channelCount; channelNum++) {
+        input[channelNum].forEach((sample, i) => {
+          output[channelNum][i] = sample;
+        });
+      }
+    }
+    const inputs = inputList[0];
+    // There's latency at the beginning of a stream before recording starts
+    // Make sure we actually receive audio data before we start storing chunks
+    let sliceIndex = 0;
+    if (!this.foundAudio) {
+      for (const channel of inputs) {
+        sliceIndex = 0; // reset for each channel
+        if (this.foundAudio) {
+          break;
+        }
+        if (channel) {
+          for (const value of channel) {
+            if (value !== 0) {
+              // find only one non-zero entry in any channel
+              this.foundAudio = true;
+              break;
+            } else {
+              sliceIndex++;
+            }
+          }
+        }
+      }
+    }
+    if (inputs && inputs[0] && this.foundAudio && this.recording) {
+      // We need to copy the TypedArray, because the \`process\`
+      // internals will reuse the same buffer to hold each input
+      const chunk = inputs.map((input) => input.slice(sliceIndex));
+      this.chunks.push(chunk);
+      this.sendChunk(chunk);
+    }
+    return true;
+  }
+}
+
+registerProcessor('audio_processor', AudioProcessor);
+`;
+const $5a5c5ac16a3be24c$var$script = new Blob([
+    $5a5c5ac16a3be24c$var$AudioProcessorWorklet
+], {
+    type: "application/javascript"
+});
+const $5a5c5ac16a3be24c$var$src = URL.createObjectURL($5a5c5ac16a3be24c$var$script);
+const $5a5c5ac16a3be24c$export$1f65f50a8cbff43c = $5a5c5ac16a3be24c$var$src;
+
+
+
+
+class $35ad6181fc724add$export$439b217ca659a877 {
+    /**
+   * Create a new WavRecorder instance
+   * @param {{sampleRate?: number, outputToSpeakers?: boolean, debug?: boolean}} [options]
+   * @returns {WavRecorder}
+   */ constructor({ sampleRate: sampleRate = 44100, outputToSpeakers: outputToSpeakers = false, debug: debug = false } = {}){
+        // Script source
+        this.scriptSrc = (0, $5a5c5ac16a3be24c$export$1f65f50a8cbff43c);
+        // Config
+        this.sampleRate = sampleRate;
+        this.outputToSpeakers = outputToSpeakers;
+        this.debug = !!debug;
+        this._deviceChangeCallback = null;
+        this._deviceErrorCallback = null;
+        this._devices = [];
+        this.deviceSelection = null;
+        // State variables
+        this.stream = null;
+        this.processor = null;
+        this.source = null;
+        this.node = null;
+        this.recording = false;
+        // Event handling with AudioWorklet
+        this._lastEventId = 0;
+        this.eventReceipts = {};
+        this.eventTimeout = 5000;
+        // Process chunks of audio
+        this._chunkProcessor = ()=>{};
+        this._chunkProcessorSize = void 0;
+        this._chunkProcessorBuffer = {
+            raw: new ArrayBuffer(0),
+            mono: new ArrayBuffer(0)
+        };
+    }
+    /**
+   * Decodes audio data from multiple formats to a Blob, url, Float32Array and AudioBuffer
+   * @param {Blob|Float32Array|Int16Array|ArrayBuffer|number[]} audioData
+   * @param {number} sampleRate
+   * @param {number} fromSampleRate
+   * @returns {Promise<DecodedAudioType>}
+   */ static async decode(audioData, sampleRate = 44100, fromSampleRate = -1) {
+        const context = new AudioContext({
+            sampleRate: sampleRate
+        });
+        let arrayBuffer;
+        let blob;
+        if (audioData instanceof Blob) {
+            if (fromSampleRate !== -1) throw new Error(`Can not specify "fromSampleRate" when reading from Blob`);
+            blob = audioData;
+            arrayBuffer = await blob.arrayBuffer();
+        } else if (audioData instanceof ArrayBuffer) {
+            if (fromSampleRate !== -1) throw new Error(`Can not specify "fromSampleRate" when reading from ArrayBuffer`);
+            arrayBuffer = audioData;
+            blob = new Blob([
+                arrayBuffer
+            ], {
+                type: "audio/wav"
+            });
+        } else {
+            let float32Array;
+            let data;
+            if (audioData instanceof Int16Array) {
+                data = audioData;
+                float32Array = new Float32Array(audioData.length);
+                for(let i = 0; i < audioData.length; i++)float32Array[i] = audioData[i] / 0x8000;
+            } else if (audioData instanceof Float32Array) float32Array = audioData;
+            else if (audioData instanceof Array) float32Array = new Float32Array(audioData);
+            else throw new Error(`"audioData" must be one of: Blob, Float32Arrray, Int16Array, ArrayBuffer, Array<number>`);
+            if (fromSampleRate === -1) throw new Error(`Must specify "fromSampleRate" when reading from Float32Array, In16Array or Array`);
+            else if (fromSampleRate < 3000) throw new Error(`Minimum "fromSampleRate" is 3000 (3kHz)`);
+            if (!data) data = (0, $45766326c6faa3c4$export$13afda237b1c9846).floatTo16BitPCM(float32Array);
+            const audio = {
+                bitsPerSample: 16,
+                channels: [
+                    float32Array
+                ],
+                data: data
+            };
+            const packer = new (0, $45766326c6faa3c4$export$13afda237b1c9846)();
+            const result = packer.pack(fromSampleRate, audio);
+            blob = result.blob;
+            arrayBuffer = await blob.arrayBuffer();
+        }
+        const audioBuffer = await context.decodeAudioData(arrayBuffer);
+        const values = audioBuffer.getChannelData(0);
+        const url = URL.createObjectURL(blob);
+        return {
+            blob: blob,
+            url: url,
+            values: values,
+            audioBuffer: audioBuffer
+        };
+    }
+    /**
+   * Logs data in debug mode
+   * @param {...any} arguments
+   * @returns {true}
+   */ log() {
+        if (this.debug) this.log(...arguments);
+        return true;
+    }
+    /**
+   * Retrieves the current sampleRate for the recorder
+   * @returns {number}
+   */ getSampleRate() {
+        return this.sampleRate;
+    }
+    /**
+   * Retrieves the current status of the recording
+   * @returns {"ended"|"paused"|"recording"}
+   */ getStatus() {
+        if (!this.processor) return "ended";
+        else if (!this.recording) return "paused";
+        else return "recording";
+    }
+    /**
+   * Sends an event to the AudioWorklet
+   * @private
+   * @param {string} name
+   * @param {{[key: string]: any}} data
+   * @param {AudioWorkletNode} [_processor]
+   * @returns {Promise<{[key: string]: any}>}
+   */ async _event(name, data = {}, _processor = null) {
+        _processor = _processor || this.processor;
+        if (!_processor) throw new Error("Can not send events without recording first");
+        const message = {
+            event: name,
+            id: this._lastEventId++,
+            data: data
+        };
+        _processor.port.postMessage(message);
+        const t0 = new Date().valueOf();
+        while(!this.eventReceipts[message.id]){
+            if (new Date().valueOf() - t0 > this.eventTimeout) throw new Error(`Timeout waiting for "${name}" event`);
+            await new Promise((res)=>setTimeout(()=>res(true), 1));
+        }
+        const payload = this.eventReceipts[message.id];
+        delete this.eventReceipts[message.id];
+        return payload;
+    }
+    /**
+   * Sets device change callback, remove if callback provided is `null`
+   * @param {(Array<MediaDeviceInfo & {default: boolean}>): void|null} callback
+   * @returns {true}
+   */ listenForDeviceChange(callback) {
+        if (callback === null && this._deviceChangeCallback) {
+            navigator.mediaDevices.removeEventListener("devicechange", this._deviceChangeCallback);
+            this._deviceChangeCallback = null;
+        } else if (callback !== null) {
+            // Basically a debounce; we only want this called once when devices change
+            // And we only want the most recent callback() to be executed
+            // if a few are operating at the same time
+            let lastId = 0;
+            let lastDevices = [];
+            const serializeDevices = (devices)=>devices.map((d)=>d.deviceId).sort().join(",");
+            const cb = async ()=>{
+                let id = ++lastId;
+                const devices = await this.listDevices();
+                if (id === lastId) {
+                    if (serializeDevices(lastDevices) !== serializeDevices(devices)) {
+                        lastDevices = devices;
+                        callback(devices.slice());
+                    }
+                }
+            };
+            navigator.mediaDevices.addEventListener("devicechange", cb);
+            cb();
+            this._deviceChangeCallback = cb;
+        }
+        return true;
+    }
+    /**
+   * Provide a callback for if/when device errors occur
+   * @param {(({devices: Array<"cam" | "mic">, type: string, error?: Error}) => void) | null} callback
+   * @returns {true}
+   */ listenForDeviceErrors(callback) {
+        this._deviceErrorCallback = callback;
+    }
+    /**
+   * Manually request permission to use the microphone
+   * @returns {Promise<true>}
+   */ async requestPermission() {
+        const permissionStatus = await navigator.permissions.query({
+            name: "microphone"
+        });
+        if (permissionStatus.state === "denied") {
+            if (this._deviceErrorCallback) this._deviceErrorCallback({
+                devices: [
+                    "mic"
+                ],
+                type: "unknown",
+                error: new Error("Microphone access denied")
+            });
+        } else if (permissionStatus.state === "prompt") try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: true
+            });
+            const tracks = stream.getTracks();
+            tracks.forEach((track)=>track.stop());
+        } catch (e) {
+            console.error("Error accessing microphone.");
+            if (this._deviceErrorCallback) this._deviceErrorCallback({
+                devices: [
+                    "mic"
+                ],
+                type: "unknown",
+                error: e
+            });
+        }
+        return true;
+    }
+    /**
+   * List all eligible devices for recording, will request permission to use microphone
+   * @returns {Promise<Array<MediaDeviceInfo & {default: boolean}>>}
+   */ async listDevices() {
+        if (!navigator.mediaDevices || !("enumerateDevices" in navigator.mediaDevices)) throw new Error("Could not request user devices");
+        await this.requestPermission();
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioDevices = devices.filter((device)=>device.kind === "audioinput");
+        return audioDevices;
+    // const defaultDeviceIndex = audioDevices.findIndex(
+    //   (device) => device.deviceId === 'default'
+    // );
+    // const deviceList = [];
+    // if (defaultDeviceIndex !== -1) {
+    //   let defaultDevice = audioDevices.splice(defaultDeviceIndex, 1)[0];
+    //   let existingIndex = audioDevices.findIndex(
+    //     (device) => device.groupId === defaultDevice.groupId
+    //   );
+    //   if (existingIndex !== -1) {
+    //     defaultDevice = audioDevices.splice(existingIndex, 1)[0];
+    //   }
+    //   defaultDevice.default = true;
+    //   deviceList.push(defaultDevice);
+    // }
+    // return deviceList.concat(audioDevices);
+    }
+    /**
+   * Begins a recording session and requests microphone permissions if not already granted
+   * Microphone recording indicator will appear on browser tab but status will be "paused"
+   * @param {string} [deviceId] if no device provided, default device will be used
+   * @returns {Promise<true>}
+   */ async begin(deviceId) {
+        if (this.processor) throw new Error(`Already connected: please call .end() to start a new session`);
+        if (!navigator.mediaDevices || !("getUserMedia" in navigator.mediaDevices)) {
+            if (this._deviceErrorCallback) this._deviceErrorCallback({
+                devices: [
+                    "mic",
+                    "cam"
+                ],
+                type: "undefined-mediadevices"
+            });
+            throw new Error("Could not request user media");
+        }
+        deviceId = deviceId ?? this.deviceSelection?.deviceId;
+        try {
+            const config = {
+                audio: true
+            };
+            if (deviceId) config.audio = {
+                deviceId: {
+                    exact: deviceId
+                }
+            };
+            this.stream = await navigator.mediaDevices.getUserMedia(config);
+        } catch (err) {
+            if (this._deviceErrorCallback) this._deviceErrorCallback({
+                devices: [
+                    "mic"
+                ],
+                type: "unknown",
+                error: err
+            });
+            throw new Error("Could not start media stream");
+        }
+        this.listDevices().then((devices)=>{
+            deviceId = this.stream.getAudioTracks()[0].getSettings().deviceId;
+            console.log("find current device", devices, deviceId, this.stream.getAudioTracks()[0].getSettings());
+            this.deviceSelection = devices.find((d)=>d.deviceId === deviceId);
+            console.log("current device", this.deviceSelection);
+        });
+        const context = new AudioContext({
+            sampleRate: this.sampleRate
+        });
+        const source = context.createMediaStreamSource(this.stream);
+        // Load and execute the module script.
+        try {
+            await context.audioWorklet.addModule(this.scriptSrc);
+        } catch (e) {
+            console.error(e);
+            throw new Error(`Could not add audioWorklet module: ${this.scriptSrc}`);
+        }
+        const processor = new AudioWorkletNode(context, "audio_processor");
+        processor.port.onmessage = (e)=>{
+            const { event: event, id: id, data: data } = e.data;
+            if (event === "receipt") this.eventReceipts[id] = data;
+            else if (event === "chunk") {
+                if (this._chunkProcessorSize) {
+                    const buffer = this._chunkProcessorBuffer;
+                    this._chunkProcessorBuffer = {
+                        raw: (0, $45766326c6faa3c4$export$13afda237b1c9846).mergeBuffers(buffer.raw, data.raw),
+                        mono: (0, $45766326c6faa3c4$export$13afda237b1c9846).mergeBuffers(buffer.mono, data.mono)
+                    };
+                    if (this._chunkProcessorBuffer.mono.byteLength >= this._chunkProcessorSize) {
+                        this._chunkProcessor(this._chunkProcessorBuffer);
+                        this._chunkProcessorBuffer = {
+                            raw: new ArrayBuffer(0),
+                            mono: new ArrayBuffer(0)
+                        };
+                    }
+                } else this._chunkProcessor(data);
+            }
+        };
+        const node = source.connect(processor);
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 8192;
+        analyser.smoothingTimeConstant = 0.1;
+        node.connect(analyser);
+        if (this.outputToSpeakers) {
+            // eslint-disable-next-line no-console
+            console.warn("Warning: Output to speakers may affect sound quality,\nespecially due to system audio feedback preventative measures.\nuse only for debugging");
+            analyser.connect(context.destination);
+        }
+        this.source = source;
+        this.node = node;
+        this.analyser = analyser;
+        this.processor = processor;
+        console.log("begin completed");
+        return true;
+    }
+    /**
+   * Gets the current frequency domain data from the recording track
+   * @param {"frequency"|"music"|"voice"} [analysisType]
+   * @param {number} [minDecibels] default -100
+   * @param {number} [maxDecibels] default -30
+   * @returns {import('./analysis/audio_analysis.js').AudioAnalysisOutputType}
+   */ getFrequencies(analysisType = "frequency", minDecibels = -100, maxDecibels = -30) {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        return (0, $3f7a723e434a4b86$export$2c3136da0bf130f9).getFrequencies(this.analyser, this.sampleRate, null, analysisType, minDecibels, maxDecibels);
+    }
+    /**
+   * Pauses the recording
+   * Keeps microphone stream open but halts storage of audio
+   * @returns {Promise<true>}
+   */ async pause() {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        else if (!this.recording) throw new Error("Already paused: please call .record() first");
+        if (this._chunkProcessorBuffer.raw.byteLength) this._chunkProcessor(this._chunkProcessorBuffer);
+        this.log("Pausing ...");
+        await this._event("stop");
+        this.recording = false;
+        return true;
+    }
+    /**
+   * Start recording stream and storing to memory from the connected audio source
+   * @param {(data: { mono: ArrayBuffer; raw: ArrayBuffer }) => any} [chunkProcessor]
+   * @param {number} [chunkSize] chunkProcessor will not be triggered until this size threshold met in mono audio
+   * @returns {Promise<true>}
+   */ async record(chunkProcessor = ()=>{}, chunkSize = 8192) {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        else if (this.recording) throw new Error("Already recording: please call .pause() first");
+        else if (typeof chunkProcessor !== "function") throw new Error(`chunkProcessor must be a function`);
+        this._chunkProcessor = chunkProcessor;
+        this._chunkProcessorSize = chunkSize;
+        this._chunkProcessorBuffer = {
+            raw: new ArrayBuffer(0),
+            mono: new ArrayBuffer(0)
+        };
+        this.log("Recording ...");
+        await this._event("start");
+        this.recording = true;
+        return true;
+    }
+    /**
+   * Clears the audio buffer, empties stored recording
+   * @returns {Promise<true>}
+   */ async clear() {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        await this._event("clear");
+        return true;
+    }
+    /**
+   * Reads the current audio stream data
+   * @returns {Promise<{meanValues: Float32Array, channels: Array<Float32Array>}>}
+   */ async read() {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        this.log("Reading ...");
+        const result = await this._event("read");
+        return result;
+    }
+    /**
+   * Saves the current audio stream to a file
+   * @param {boolean} [force] Force saving while still recording
+   * @returns {Promise<import('./wav_packer.js').WavPackerAudioType>}
+   */ async save(force = false) {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        if (!force && this.recording) throw new Error("Currently recording: please call .pause() first, or call .save(true) to force");
+        this.log("Exporting ...");
+        const exportData = await this._event("export");
+        const packer = new (0, $45766326c6faa3c4$export$13afda237b1c9846)();
+        const result = packer.pack(this.sampleRate, exportData.audio);
+        return result;
+    }
+    /**
+   * Ends the current recording session and saves the result
+   * @returns {Promise<import('./wav_packer.js').WavPackerAudioType>}
+   */ async end() {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        const _processor = this.processor;
+        this.log("Stopping ...");
+        await this._event("stop");
+        this.recording = false;
+        const tracks = this.stream.getTracks();
+        tracks.forEach((track)=>track.stop());
+        this.log("Exporting ...");
+        const exportData = await this._event("export", {}, _processor);
+        this.processor.disconnect();
+        this.source.disconnect();
+        this.node.disconnect();
+        this.analyser.disconnect();
+        this.stream = null;
+        this.processor = null;
+        this.source = null;
+        this.node = null;
+        const packer = new (0, $45766326c6faa3c4$export$13afda237b1c9846)();
+        const result = packer.pack(this.sampleRate, exportData.audio);
+        return result;
+    }
+    /**
+   * Performs a full cleanup of WavRecorder instance
+   * Stops actively listening via microphone and removes existing listeners
+   * @returns {Promise<true>}
+   */ async quit() {
+        this.listenForDeviceChange(null);
+        // we do not reset this on end so that selections persist across starts
+        this.deviceSelection = null;
+        if (this.processor) await this.end();
+        return true;
+    }
+}
+globalThis.WavRecorder = $35ad6181fc724add$export$439b217ca659a877;
+
+
+
+
+
+/**
+ * Resamples audio data from one sample rate to another using linear interpolation
+ * @param {ArrayBuffer} inputBuffer - Input audio data as Int16 PCM
+ * @param {number} inputSampleRate - Sample rate of input audio
+ * @param {number} outputSampleRate - Desired output sample rate
+ * @returns {ArrayBuffer} - Resampled audio data as Int16 PCM
+ */ function $ab812aec7679ec67$var$resampleAudioBuffer(inputBuffer, inputSampleRate, outputSampleRate) {
+    if (inputSampleRate === outputSampleRate) return inputBuffer;
+    const inputView = new Int16Array(inputBuffer);
+    const ratio = inputSampleRate / outputSampleRate;
+    const outputLength = Math.round(inputView.length / ratio);
+    const outputBuffer = new ArrayBuffer(outputLength * 2);
+    const outputView = new Int16Array(outputBuffer);
+    for(let i = 0; i < outputLength; i++){
+        const srcIndex = i * ratio;
+        const srcIndexFloor = Math.floor(srcIndex);
+        const srcIndexCeil = Math.min(srcIndexFloor + 1, inputView.length - 1);
+        const t = srcIndex - srcIndexFloor;
+        // Linear interpolation
+        outputView[i] = Math.round(inputView[srcIndexFloor] * (1 - t) + inputView[srcIndexCeil] * t);
+    }
+    return outputBuffer;
+}
+class $ab812aec7679ec67$export$2934cf2d25c67a48 {
+    /**
+   * Create a new MediaStreamRecorder instance
+   * @param {{sampleRate?: number, outputToSpeakers?: boolean, debug?: boolean}} [options]
+   * @returns {MediaStreamRecorder}
+   */ constructor({ sampleRate: sampleRate = 44100, outputToSpeakers: outputToSpeakers = false, debug: debug = false } = {}){
+        // Script source
+        this.scriptSrc = (0, $5a5c5ac16a3be24c$export$1f65f50a8cbff43c);
+        // Config
+        this.sampleRate = sampleRate;
+        this.outputToSpeakers = outputToSpeakers;
+        this.debug = !!debug;
+        // State variables
+        this.stream = null;
+        this.processor = null;
+        this.source = null;
+        this.node = null;
+        this.recording = false;
+        // Event handling with AudioWorklet
+        this._lastEventId = 0;
+        this.eventReceipts = {};
+        this.eventTimeout = 5000;
+        // Process chunks of audio
+        this._chunkProcessor = ()=>{};
+        this._chunkProcessorSize = void 0;
+        this._chunkProcessorBuffer = {
+            raw: new ArrayBuffer(0),
+            mono: new ArrayBuffer(0)
+        };
+    }
+    /**
+   * Logs data in debug mode
+   * @param {...any} arguments
+   * @returns {true}
+   */ log() {
+        if (this.debug) this.log(...arguments);
+        return true;
+    }
+    /**
+   * Retrieves the current sampleRate for the recorder
+   * @returns {number}
+   */ getSampleRate() {
+        return this.sampleRate;
+    }
+    /**
+   * Retrieves the current status of the recording
+   * @returns {"ended"|"paused"|"recording"}
+   */ getStatus() {
+        if (!this.processor) return "ended";
+        else if (!this.recording) return "paused";
+        else return "recording";
+    }
+    /**
+   * Sends an event to the AudioWorklet
+   * @private
+   * @param {string} name
+   * @param {{[key: string]: any}} data
+   * @param {AudioWorkletNode} [_processor]
+   * @returns {Promise<{[key: string]: any}>}
+   */ async _event(name, data = {}, _processor = null) {
+        _processor = _processor || this.processor;
+        if (!_processor) throw new Error("Can not send events without recording first");
+        const message = {
+            event: name,
+            id: this._lastEventId++,
+            data: data
+        };
+        _processor.port.postMessage(message);
+        const t0 = new Date().valueOf();
+        while(!this.eventReceipts[message.id]){
+            if (new Date().valueOf() - t0 > this.eventTimeout) throw new Error(`Timeout waiting for "${name}" event`);
+            await new Promise((res)=>setTimeout(()=>res(true), 1));
+        }
+        const payload = this.eventReceipts[message.id];
+        delete this.eventReceipts[message.id];
+        return payload;
+    }
+    /**
+   * Begins a recording session for the given audioTrack
+   * Microphone recording indicator will appear on browser tab but status will be "paused"
+   * @param {MediaStreamTrack} [audioTrack] if no device provided, default device will be used
+   * @returns {Promise<true>}
+   */ async begin(audioTrack) {
+        if (this.processor) throw new Error(`Already connected: please call .end() to start a new session`);
+        if (!audioTrack || audioTrack.kind !== "audio") throw new Error("No audio track provided");
+        this.stream = new MediaStream([
+            audioTrack
+        ]);
+        // Firefox workaround: Firefox doesn't support connecting AudioNodes from
+        // AudioContexts with different sample rates. So we create the AudioContext
+        // at the native sample rate and resample manually.
+        // This workaround may be temporary; Firefox is in the process of adding
+        // support for this.
+        // See: https://bugzilla.mozilla.org/show_bug.cgi?id=1674892
+        const isFirefox = navigator.userAgent.toLowerCase().includes("firefox");
+        let context;
+        if (isFirefox) // Firefox: Use native sample rate and resample manually
+        context = new AudioContext();
+        else // Other browsers: Let the AudioContext handle resampling
+        context = new AudioContext({
+            sampleRate: this.sampleRate
+        });
+        const contextSampleRate = context.sampleRate;
+        const source = context.createMediaStreamSource(this.stream);
+        // Load and execute the module script.
+        try {
+            await context.audioWorklet.addModule(this.scriptSrc);
+        } catch (e) {
+            console.error(e);
+            throw new Error(`Could not add audioWorklet module: ${this.scriptSrc}`);
+        }
+        const processor = new AudioWorkletNode(context, "audio_processor");
+        processor.port.onmessage = (e)=>{
+            const { event: event, id: id, data: data } = e.data;
+            if (event === "receipt") this.eventReceipts[id] = data;
+            else if (event === "chunk") {
+                // Resample chunk data from native sample rate to target sample rate
+                // (no-op if rates match, i.e. for non-Firefox browsers)
+                const resampledData = {
+                    raw: $ab812aec7679ec67$var$resampleAudioBuffer(data.raw, contextSampleRate, this.sampleRate),
+                    mono: $ab812aec7679ec67$var$resampleAudioBuffer(data.mono, contextSampleRate, this.sampleRate)
+                };
+                if (this._chunkProcessorSize) {
+                    const buffer = this._chunkProcessorBuffer;
+                    this._chunkProcessorBuffer = {
+                        raw: (0, $45766326c6faa3c4$export$13afda237b1c9846).mergeBuffers(buffer.raw, resampledData.raw),
+                        mono: (0, $45766326c6faa3c4$export$13afda237b1c9846).mergeBuffers(buffer.mono, resampledData.mono)
+                    };
+                    if (this._chunkProcessorBuffer.mono.byteLength >= this._chunkProcessorSize) {
+                        this._chunkProcessor(this._chunkProcessorBuffer);
+                        this._chunkProcessorBuffer = {
+                            raw: new ArrayBuffer(0),
+                            mono: new ArrayBuffer(0)
+                        };
+                    }
+                } else this._chunkProcessor(resampledData);
+            }
+        };
+        const node = source.connect(processor);
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 8192;
+        analyser.smoothingTimeConstant = 0.1;
+        node.connect(analyser);
+        if (this.outputToSpeakers) {
+            // eslint-disable-next-line no-console
+            console.warn("Warning: Output to speakers may affect sound quality,\nespecially due to system audio feedback preventative measures.\nuse only for debugging");
+            analyser.connect(context.destination);
+        }
+        this.source = source;
+        this.node = node;
+        this.analyser = analyser;
+        this.processor = processor;
+        return true;
+    }
+    /**
+   * Gets the current frequency domain data from the recording track
+   * @param {"frequency"|"music"|"voice"} [analysisType]
+   * @param {number} [minDecibels] default -100
+   * @param {number} [maxDecibels] default -30
+   * @returns {import('./analysis/audio_analysis.js').AudioAnalysisOutputType}
+   */ getFrequencies(analysisType = "frequency", minDecibels = -100, maxDecibels = -30) {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        return (0, $3f7a723e434a4b86$export$2c3136da0bf130f9).getFrequencies(this.analyser, this.sampleRate, null, analysisType, minDecibels, maxDecibels);
+    }
+    /**
+   * Pauses the recording
+   * Keeps microphone stream open but halts storage of audio
+   * @returns {Promise<true>}
+   */ async pause() {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        else if (!this.recording) throw new Error("Already paused: please call .record() first");
+        if (this._chunkProcessorBuffer.raw.byteLength) this._chunkProcessor(this._chunkProcessorBuffer);
+        this.log("Pausing ...");
+        await this._event("stop");
+        this.recording = false;
+        return true;
+    }
+    /**
+   * Start recording stream and storing to memory from the connected audio source
+   * @param {(data: { mono: ArrayBuffer; raw: ArrayBuffer }) => any} [chunkProcessor]
+   * @param {number} [chunkSize] chunkProcessor will not be triggered until this size threshold met in mono audio
+   * @returns {Promise<true>}
+   */ async record(chunkProcessor = ()=>{}, chunkSize = 8192) {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        else if (this.recording) throw new Error("Already recording: HELLO please call .pause() first");
+        else if (typeof chunkProcessor !== "function") throw new Error(`chunkProcessor must be a function`);
+        this._chunkProcessor = chunkProcessor;
+        this._chunkProcessorSize = chunkSize;
+        this._chunkProcessorBuffer = {
+            raw: new ArrayBuffer(0),
+            mono: new ArrayBuffer(0)
+        };
+        this.log("Recording ...");
+        await this._event("start");
+        this.recording = true;
+        return true;
+    }
+    /**
+   * Clears the audio buffer, empties stored recording
+   * @returns {Promise<true>}
+   */ async clear() {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        await this._event("clear");
+        return true;
+    }
+    /**
+   * Reads the current audio stream data
+   * @returns {Promise<{meanValues: Float32Array, channels: Array<Float32Array>}>}
+   */ async read() {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        this.log("Reading ...");
+        const result = await this._event("read");
+        return result;
+    }
+    /**
+   * Saves the current audio stream to a file
+   * @param {boolean} [force] Force saving while still recording
+   * @returns {Promise<import('./wav_packer.js').WavPackerAudioType>}
+   */ async save(force = false) {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        if (!force && this.recording) throw new Error("Currently recording: please call .pause() first, or call .save(true) to force");
+        this.log("Exporting ...");
+        const exportData = await this._event("export");
+        const packer = new (0, $45766326c6faa3c4$export$13afda237b1c9846)();
+        const result = packer.pack(this.sampleRate, exportData.audio);
+        return result;
+    }
+    /**
+   * Ends the current recording session and saves the result
+   * @returns {Promise<import('./wav_packer.js').WavPackerAudioType>}
+   */ async end() {
+        if (!this.processor) throw new Error("Session ended: please call .begin() first");
+        const _processor = this.processor;
+        this.log("Stopping ...");
+        await this._event("stop");
+        this.recording = false;
+        this.log("Exporting ...");
+        const exportData = await this._event("export", {}, _processor);
+        this.processor.disconnect();
+        this.source.disconnect();
+        this.node.disconnect();
+        this.analyser.disconnect();
+        this.stream = null;
+        this.processor = null;
+        this.source = null;
+        this.node = null;
+        const packer = new (0, $45766326c6faa3c4$export$13afda237b1c9846)();
+        const result = packer.pack(this.sampleRate, exportData.audio);
+        return result;
+    }
+    /**
+   * Performs a full cleanup of WavRecorder instance
+   * Stops actively listening via microphone and removes existing listeners
+   * @returns {Promise<true>}
+   */ async quit() {
+        this.listenForDeviceChange(null);
+        if (this.processor) await this.end();
+        return true;
+    }
+}
+globalThis.WavRecorder = WavRecorder;
+
+
+
+
+
+class $48faeb169c82673e$export$4a0c46dbbe2ddb67 {
+    constructor(){
+        this._callbacks = {};
+        this._micEnabled = true;
+        this._camEnabled = false;
+        this._supportsScreenShare = false;
+    }
+    setUserAudioCallback(userAudioCallback) {
+        this._userAudioCallback = userAudioCallback;
+    }
+    setClientOptions(options, override = false) {
+        if (this._options && !override) return;
+        this._options = options;
+        this._callbacks = options.callbacks ?? {};
+        this._micEnabled = options.enableMic ?? true;
+        this._camEnabled = options.enableCam ?? false;
+    }
+    get supportsScreenShare() {
+        return this._supportsScreenShare;
+    }
+}
+class $48faeb169c82673e$export$45c5b9bfba2f6304 extends $48faeb169c82673e$export$4a0c46dbbe2ddb67 {
+    constructor(recorderChunkSize, recorderSampleRate = 24000){
+        super();
+        this._initialized = false;
+        this._recorderChunkSize = undefined;
+        this._recorderChunkSize = recorderChunkSize;
+        this._wavRecorder = new (0, $35ad6181fc724add$export$439b217ca659a877)({
+            sampleRate: recorderSampleRate
+        });
+        this._wavStreamPlayer = new (0, $347522367945ce82$export$9698d62c78b8f366)({
+            sampleRate: 24000
+        });
+    }
+    async initialize() {
+        try {
+            await this._wavRecorder.begin();
+        } catch (error) {
+        // void. swallow the error. we still want to set up
+        // the listeners and the player.
+        }
+        this._wavRecorder.listenForDeviceChange(null);
+        this._wavRecorder.listenForDeviceChange(this._handleAvailableDevicesUpdated.bind(this));
+        this._wavRecorder.listenForDeviceErrors(null);
+        this._wavRecorder.listenForDeviceErrors(this._handleDeviceError.bind(this));
+        await this._wavStreamPlayer.connect();
+        this._initialized = true;
+    }
+    async connect() {
+        if (!this._initialized) await this.initialize();
+        const isAlreadyRecording = this._wavRecorder.getStatus() == "recording";
+        if (this._micEnabled && !isAlreadyRecording) await this._startRecording();
+        if (this._camEnabled) console.warn("WavMediaManager does not support video input.");
+    }
+    async disconnect() {
+        if (!this._initialized) return;
+        await this._wavRecorder.end();
+        await this._wavStreamPlayer.interrupt();
+        this._initialized = false;
+    }
+    async userStartedSpeaking() {
+        return this._wavStreamPlayer.interrupt();
+    }
+    bufferBotAudio(data, id) {
+        return this._wavStreamPlayer.add16BitPCM(data, id);
+    }
+    getAllMics() {
+        return this._wavRecorder.listDevices();
+    }
+    getAllCams() {
+        // TODO: Video not supported yet
+        return Promise.resolve([]);
+    }
+    getAllSpeakers() {
+        // TODO: Implement speaker support
+        return Promise.resolve([]);
+    }
+    async updateMic(micId) {
+        const prevMic = this._wavRecorder.deviceSelection;
+        if (this._wavRecorder.getStatus() !== "ended") await this._wavRecorder.end();
+        try {
+            await this._wavRecorder.begin(micId);
+            if (this._micEnabled) await this._startRecording();
+            const curMic = this._wavRecorder.deviceSelection;
+            if (curMic && prevMic && prevMic.label !== curMic.label) this._callbacks.onMicUpdated?.(curMic);
+        } catch (error) {
+        // void. If begin() fails, it will have already logged and called
+        // onDeviceError if necessary.
+        }
+    }
+    updateCam(camId) {
+    // TODO: Video not supported yet
+    }
+    updateSpeaker(speakerId) {
+    // TODO: Implement speaker support
+    }
+    get selectedMic() {
+        return this._wavRecorder.deviceSelection ?? {};
+    }
+    get selectedCam() {
+        // TODO: Video not supported yet
+        return {};
+    }
+    get selectedSpeaker() {
+        // TODO: Implement speaker support
+        return {};
+    }
+    async enableMic(enable) {
+        this._micEnabled = enable;
+        if (!this._wavRecorder.stream) return;
+        this._wavRecorder.stream.getAudioTracks().forEach((track)=>{
+            track.enabled = enable;
+            if (!enable) this._callbacks.onTrackStopped?.(track, $48faeb169c82673e$var$localParticipant());
+        });
+        if (enable) await this._startRecording();
+        else await this._wavRecorder.pause();
+    }
+    enableCam(enable) {
+        // TODO: Video not supported yet
+        console.warn("WavMediaManager does not support video input.");
+    }
+    enableScreenShare(enable) {
+        // TODO: Screensharing not supported yet
+        console.warn("WavMediaManager does not support screen sharing.");
+    }
+    get isCamEnabled() {
+        // TODO: Video not supported yet
+        return false;
+    }
+    get isMicEnabled() {
+        return this._micEnabled;
+    }
+    get isSharingScreen() {
+        // TODO: Screensharing not supported yet
+        return false;
+    }
+    tracks() {
+        const tracks = this._wavRecorder.stream?.getTracks()[0];
+        return {
+            local: tracks ? {
+                audio: tracks
+            } : {}
+        };
+    }
+    async _startRecording() {
+        await this._wavRecorder.record((data)=>{
+            this._userAudioCallback?.(data.mono);
+        }, this._recorderChunkSize);
+        const track = this._wavRecorder.stream?.getAudioTracks()[0];
+        if (track) this._callbacks.onTrackStarted?.(track, $48faeb169c82673e$var$localParticipant());
+    }
+    _handleAvailableDevicesUpdated(devices) {
+        this._callbacks.onAvailableCamsUpdated?.(devices.filter((d)=>d.kind === "videoinput"));
+        this._callbacks.onAvailableMicsUpdated?.(devices.filter((d)=>d.kind === "audioinput"));
+        // if the current device went away or we're using the default and
+        // the default changed, reset the mic.
+        const defaultDevice = devices.find((d)=>d.deviceId === "default");
+        const currentDevice = this._wavRecorder.deviceSelection;
+        if (currentDevice && (!devices.some((d)=>d.deviceId === currentDevice.deviceId) || currentDevice.deviceId === "default" && currentDevice.label !== defaultDevice?.label)) this.updateMic("");
+    }
+    _handleDeviceError({ devices: devices, type: type, error: error }) {
+        const deviceError = new (0, $j6Pln$pipecataiclientjs.DeviceError)(devices, type, error?.message, error ? {
+            sourceError: error
+        } : undefined);
+        this._callbacks.onDeviceError?.(deviceError);
+    }
+}
+const $48faeb169c82673e$var$localParticipant = ()=>{
+    return {
+        id: "local",
+        name: "",
+        local: true
+    };
+};
+
+
+
+
+
+
+class $00a190ef6aa79f0d$export$c95c65abc5f47125 extends (0, $48faeb169c82673e$export$4a0c46dbbe2ddb67) {
+    constructor(enablePlayer = true, enableRecording = true, onTrackStartedCallback, onTrackStoppedCallback, recorderChunkSize, recorderSampleRate = 24000, playerSampleRate = 24000){
+        super();
+        this._selectedCam = {};
+        this._selectedMic = {};
+        this._selectedSpeaker = {};
+        this._remoteAudioLevelInterval = null;
+        this._recorderChunkSize = undefined;
+        this._initialized = false;
+        this._connected = false;
+        this._currentAudioTrack = null;
+        this._connectResolve = null;
+        this.onTrackStartedCallback = onTrackStartedCallback;
+        this.onTrackStoppedCallback = onTrackStoppedCallback;
+        this._recorderChunkSize = recorderChunkSize;
+        this._supportsScreenShare = true;
+        this._daily = (0, ($parcel$interopDefault($j6Pln$dailycodailyjs))).getCallInstance() ?? (0, ($parcel$interopDefault($j6Pln$dailycodailyjs))).createCallObject();
+        if (enableRecording) this._mediaStreamRecorder = new (0, $ab812aec7679ec67$export$2934cf2d25c67a48)({
+            sampleRate: recorderSampleRate
+        });
+        if (enablePlayer) this._wavStreamPlayer = new (0, $347522367945ce82$export$9698d62c78b8f366)({
+            sampleRate: playerSampleRate
+        });
+        this._daily.on("track-started", this.handleTrackStarted.bind(this));
+        this._daily.on("track-stopped", this.handleTrackStopped.bind(this));
+        this._daily.on("available-devices-updated", this._handleAvailableDevicesUpdated.bind(this));
+        this._daily.on("selected-devices-updated", this._handleSelectedDevicesUpdated.bind(this));
+        this._daily.on("camera-error", this.handleDeviceError.bind(this));
+        this._daily.on("local-audio-level", this._handleLocalAudioLevel.bind(this));
+    }
+    async initialize() {
+        if (this._initialized) {
+            console.warn("DailyMediaManager already initialized");
+            return;
+        }
+        const infos = await this._daily.startCamera({
+            startVideoOff: !this._camEnabled,
+            startAudioOff: !this._micEnabled,
+            dailyConfig: {
+                useDevicePreferenceCookies: true
+            }
+        });
+        const { devices: devices } = await this._daily.enumerateDevices();
+        const cams = devices.filter((d)=>d.kind === "videoinput");
+        const mics = devices.filter((d)=>d.kind === "audioinput");
+        const speakers = devices.filter((d)=>d.kind === "audiooutput");
+        this._callbacks.onAvailableCamsUpdated?.(cams);
+        this._callbacks.onAvailableMicsUpdated?.(mics);
+        this._callbacks.onAvailableSpeakersUpdated?.(speakers);
+        this._selectedCam = infos.camera;
+        this._callbacks.onCamUpdated?.(infos.camera);
+        this._selectedMic = infos.mic;
+        this._callbacks.onMicUpdated?.(infos.mic);
+        this._selectedSpeaker = infos.speaker;
+        this._callbacks.onSpeakerUpdated?.(infos.speaker);
+        // Instantiate audio observers
+        if (!this._daily.isLocalAudioLevelObserverRunning()) await this._daily.startLocalAudioLevelObserver(100);
+        if (this._wavStreamPlayer) {
+            await this._wavStreamPlayer.connect();
+            if (!this._remoteAudioLevelInterval) this._remoteAudioLevelInterval = setInterval(()=>{
+                const frequencies = this._wavStreamPlayer.getFrequencies();
+                let aveVal = 0;
+                if (frequencies.values?.length) aveVal = frequencies.values.reduce((a, c)=>a + c, 0) / frequencies.values.length;
+                this._handleRemoteAudioLevel(aveVal);
+            }, 100);
+        }
+        this._initialized = true;
+    }
+    async connect() {
+        if (this._connected) {
+            console.warn("DailyMediaManager already connected");
+            return;
+        }
+        this._connected = true;
+        if (!this._initialized) return new Promise((resolve)=>{
+            (async ()=>{
+                this._connectResolve = resolve;
+                await this.initialize();
+                // Without a recorder, handleTrackStarted never fires to resolve this
+                // promise, so resolve here once initialization is complete.
+                if (this._connectResolve && !this._mediaStreamRecorder) {
+                    this._connectResolve();
+                    this._connectResolve = null;
+                }
+            })();
+        });
+        if (this._micEnabled) this._startRecording();
+    }
+    async disconnect() {
+        if (this._remoteAudioLevelInterval) clearInterval(this._remoteAudioLevelInterval);
+        this._remoteAudioLevelInterval = null;
+        this._daily.leave();
+        this._currentAudioTrack = null;
+        await this._mediaStreamRecorder?.end();
+        this._wavStreamPlayer?.interrupt();
+        this._initialized = false;
+        this._connected = false;
+    }
+    async userStartedSpeaking() {
+        return this._wavStreamPlayer?.interrupt();
+    }
+    bufferBotAudio(data, id) {
+        return this._wavStreamPlayer?.add16BitPCM(data, id);
+    }
+    async getAllMics() {
+        let devices = (await this._daily.enumerateDevices()).devices;
+        return devices.filter((device)=>device.kind === "audioinput");
+    }
+    async getAllCams() {
+        let devices = (await this._daily.enumerateDevices()).devices;
+        return devices.filter((device)=>device.kind === "videoinput");
+    }
+    async getAllSpeakers() {
+        let devices = (await this._daily.enumerateDevices()).devices;
+        return devices.filter((device)=>device.kind === "audiooutput");
+    }
+    updateMic(micId) {
+        this._daily.setInputDevicesAsync({
+            audioDeviceId: micId
+        }).then((deviceInfo)=>{
+            this._selectedMic = deviceInfo.mic;
+        });
+    }
+    updateCam(camId) {
+        this._daily.setInputDevicesAsync({
+            videoDeviceId: camId
+        }).then((deviceInfo)=>{
+            this._selectedCam = deviceInfo.camera;
+        });
+    }
+    async updateSpeaker(speakerId) {
+        if (!this._wavStreamPlayer) {
+            try {
+                const dInfo = await this._daily.setOutputDeviceAsync({
+                    outputDeviceId: speakerId
+                });
+                this._selectedSpeaker = dInfo.speaker;
+                this._callbacks.onSpeakerUpdated?.(this._selectedSpeaker);
+            } catch (e) {
+                console.error("Error setting output device", e);
+            }
+            return;
+        }
+        if (speakerId !== "default" && this._selectedSpeaker.deviceId === speakerId) return;
+        let sID = speakerId;
+        if (sID === "default") {
+            const speakers = await this.getAllSpeakers();
+            const defaultSpeaker = speakers.find((s)=>s.deviceId === "default");
+            if (!defaultSpeaker) {
+                console.warn("No default speaker found");
+                return;
+            }
+            speakers.splice(speakers.indexOf(defaultSpeaker), 1);
+            const defaultSpeakerCp = speakers.find((s)=>defaultSpeaker.label.includes(s.label));
+            sID = defaultSpeakerCp?.deviceId ?? speakerId;
+        }
+        this._wavStreamPlayer?.updateSpeaker(sID).then(()=>{
+            this._selectedSpeaker = {
+                deviceId: speakerId
+            };
+            this._callbacks.onSpeakerUpdated?.(this._selectedSpeaker);
+        });
+    }
+    get selectedMic() {
+        return this._selectedMic;
+    }
+    get selectedCam() {
+        return this._selectedCam;
+    }
+    get selectedSpeaker() {
+        return this._selectedSpeaker;
+    }
+    async enableMic(enable) {
+        this._micEnabled = enable;
+        if (!this._daily.participants()?.local) return;
+        this._daily.setLocalAudio(enable);
+        if (this._mediaStreamRecorder) {
+            if (enable) {
+                if (this._mediaStreamRecorder.getStatus() === "paused") this._startRecording();
+                 // else, we'll record on the track-started event
+            } else if (this._mediaStreamRecorder.getStatus() === "recording") this._mediaStreamRecorder.pause();
+        }
+    }
+    enableCam(enable) {
+        this._camEnabled = enable;
+        this._daily.setLocalVideo(enable);
+    }
+    enableScreenShare(enable) {
+        if (enable) this._daily.startScreenShare();
+        else this._daily.stopScreenShare();
+    }
+    // NOTE: deliberately not `this._daily.localVideo()` / `localAudio()`. Daily
+    // fires 'track-started'/'track-stopped' *before* it commits the new state
+    // to the participant object those getters read from (see daily-js's
+    // DAILY_EVENT_PARTICIPANT_UPDATED handling: maybeEventTrackStopped/Started
+    // run, then `this._participants[id]` is reassigned). Callers that react to
+    // TrackStarted/TrackStopped by reading isCamEnabled/isMicEnabled — e.g. to
+    // resync UI state — would otherwise always observe the pre-toggle value.
+    // _camEnabled/_micEnabled are updated synchronously in
+    // handleTrackStarted/handleTrackStopped below, before those callbacks fire.
+    get isCamEnabled() {
+        return this._camEnabled;
+    }
+    get isMicEnabled() {
+        return this._micEnabled;
+    }
+    get isSharingScreen() {
+        return this._daily.localScreenAudio() || this._daily.localScreenVideo();
+    }
+    tracks() {
+        const participants = this._daily.participants();
+        return {
+            local: {
+                audio: participants?.local?.tracks?.audio?.persistentTrack,
+                screenAudio: participants?.local?.tracks?.screenAudio?.persistentTrack,
+                screenVideo: participants?.local?.tracks?.screenVideo?.persistentTrack,
+                video: participants?.local?.tracks?.video?.persistentTrack
+            }
+        };
+    }
+    _startRecording() {
+        if (!this._connected || !this._mediaStreamRecorder) return;
+        try {
+            this._mediaStreamRecorder.record((data)=>{
+                this._userAudioCallback(data.mono);
+            }, this._recorderChunkSize);
+        } catch (e) {
+            const err = e;
+            if (!err.message.includes("Already recording")) console.error("Error starting recording", e);
+        }
+    }
+    _handleAvailableDevicesUpdated(event) {
+        this._callbacks.onAvailableCamsUpdated?.(event.availableDevices.filter((d)=>d.kind === "videoinput"));
+        this._callbacks.onAvailableMicsUpdated?.(event.availableDevices.filter((d)=>d.kind === "audioinput"));
+        this._callbacks.onAvailableSpeakersUpdated?.(event.availableDevices.filter((d)=>d.kind === "audiooutput"));
+        if (this._selectedSpeaker.deviceId === "default") this.updateSpeaker("default");
+    }
+    _handleSelectedDevicesUpdated(event) {
+        if (this._selectedCam?.deviceId !== event.devices.camera) {
+            this._selectedCam = event.devices.camera;
+            this._callbacks.onCamUpdated?.(event.devices.camera);
+        }
+        if (this._selectedMic?.deviceId !== event.devices.mic) {
+            this._selectedMic = event.devices.mic;
+            this._callbacks.onMicUpdated?.(event.devices.mic);
+        }
+    }
+    handleDeviceError(ev) {
+        const generateDeviceError = (error)=>{
+            const devices = [];
+            switch(error.type){
+                case "permissions":
+                    error.blockedMedia.forEach((d)=>{
+                        devices.push(d === "video" ? "cam" : "mic");
+                    });
+                    return new (0, $j6Pln$pipecataiclientjs.DeviceError)(devices, error.type, error.msg, {
+                        blockedBy: error.blockedBy
+                    });
+                case "not-found":
+                    error.missingMedia.forEach((d)=>{
+                        devices.push(d === "video" ? "cam" : "mic");
+                    });
+                    return new (0, $j6Pln$pipecataiclientjs.DeviceError)(devices, error.type, error.msg);
+                case "constraints":
+                    error.failedMedia.forEach((d)=>{
+                        devices.push(d === "video" ? "cam" : "mic");
+                    });
+                    return new (0, $j6Pln$pipecataiclientjs.DeviceError)(devices, error.type, error.msg, {
+                        reason: error.reason
+                    });
+                case "cam-in-use":
+                    devices.push("cam");
+                    return new (0, $j6Pln$pipecataiclientjs.DeviceError)(devices, "in-use", error.msg);
+                case "mic-in-use":
+                    devices.push("mic");
+                    return new (0, $j6Pln$pipecataiclientjs.DeviceError)(devices, "in-use", error.msg);
+                case "cam-mic-in-use":
+                    devices.push("cam");
+                    devices.push("mic");
+                    return new (0, $j6Pln$pipecataiclientjs.DeviceError)(devices, "in-use", error.msg);
+                case "undefined-mediadevices":
+                case "unknown":
+                default:
+                    devices.push("cam");
+                    devices.push("mic");
+                    return new (0, $j6Pln$pipecataiclientjs.DeviceError)(devices, error.type, error.msg);
+            }
+        };
+        const deviceError = generateDeviceError(ev.error);
+        // enableMic()/enableCam() set _micEnabled/_camEnabled optimistically,
+        // but setLocalAudio()/setLocalVideo() are fire-and-forget — no promise,
+        // no synchronous failure signal — so a failed request (blocked
+        // permission, device in use, etc.) leaves that optimistic value wrong
+        // with nothing to correct it: no track-started/stopped ever fires for
+        // an operation that didn't actually take effect. This is the only
+        // signal we get that the request failed, so resync from Daily's actual
+        // state for whichever device(s) it implicates.
+        if (deviceError.devices.includes("mic")) this._micEnabled = this._daily.localAudio();
+        if (deviceError.devices.includes("cam")) this._camEnabled = this._daily.localVideo();
+        this._callbacks.onDeviceError?.(deviceError);
+    }
+    _handleLocalAudioLevel(ev) {
+        this._callbacks.onLocalAudioLevel?.(ev.audioLevel);
+    }
+    _handleRemoteAudioLevel(audioLevel) {
+        this._callbacks.onRemoteAudioLevel?.(audioLevel, $00a190ef6aa79f0d$var$botParticipant());
+    }
+    async handleTrackStarted(event) {
+        if (!event.participant?.local) return;
+        if (event.track.kind === "audio") {
+            this._micEnabled = true;
+            if (this._mediaStreamRecorder) {
+                const status = this._mediaStreamRecorder.getStatus();
+                switch(status){
+                    case "ended":
+                        try {
+                            await this._mediaStreamRecorder.begin(event.track);
+                            if (this._connected) {
+                                this._startRecording();
+                                if (this._connectResolve) {
+                                    this._connectResolve();
+                                    this._connectResolve = null;
+                                }
+                            }
+                        } catch (e) {
+                        // void. nothing to do.
+                        }
+                        break;
+                    case "paused":
+                        this._startRecording();
+                        break;
+                    case "recording":
+                    default:
+                        if (this._currentAudioTrack !== event.track) {
+                            await this._mediaStreamRecorder.end();
+                            try {
+                                await this._mediaStreamRecorder.begin(event.track);
+                                this._startRecording();
+                            } catch (e) {
+                            // void. nothing to do.
+                            }
+                        } else console.warn("track-started event received for current track and already recording");
+                        break;
+                }
+            }
+            this._currentAudioTrack = event.track;
+        } else if (event.track.kind === "video") this._camEnabled = true;
+        this._callbacks.onTrackStarted?.(event.track, event.participant ? $00a190ef6aa79f0d$var$dailyParticipantToParticipant(event.participant) : undefined);
+        this.onTrackStartedCallback?.(event);
+    }
+    handleTrackStopped(event) {
+        if (!event.participant?.local) return;
+        if (event.track.kind === "audio") {
+            this._micEnabled = false;
+            if (this._mediaStreamRecorder && this._mediaStreamRecorder.getStatus() === "recording") this._mediaStreamRecorder.pause();
+        } else if (event.track.kind === "video") this._camEnabled = false;
+        this._callbacks.onTrackStopped?.(event.track, event.participant ? $00a190ef6aa79f0d$var$dailyParticipantToParticipant(event.participant) : undefined);
+        this.onTrackStoppedCallback?.(event);
+    }
+}
+const $00a190ef6aa79f0d$var$dailyParticipantToParticipant = (p)=>({
+        id: p.user_id,
+        local: p.local,
+        name: p.user_name
+    });
+const $00a190ef6aa79f0d$var$botParticipant = ()=>({
+        id: "bot",
+        local: false,
+        name: "Bot"
+    });
+
+
+
+const $7f41aaa208a19660$var$readyStates = [
+    "CONNECTING",
+    "OPEN",
+    "CLOSING",
+    "CLOSED"
+];
+const $7f41aaa208a19660$var$KEEP_ALIVE_INTERVAL = 5000;
+const $7f41aaa208a19660$var$KEEP_ALIVE_TIMEOUT = 15000;
+// client side code in soupSFU has a timeout of 15 seconds for command response
+// 5 seconds seems reasonable that it provides roughly 3 retry attempts
+const $7f41aaa208a19660$var$WEBSOCKET_CONNECTION_TIMEOUT = 150000;
+const $7f41aaa208a19660$var$DEFAULT_RECONNECT_ATTEMPTS = 2;
+const $7f41aaa208a19660$var$MAX_RECONNECT_ATTEMPTS = 10;
+const $7f41aaa208a19660$var$DEFAULT_RECONNECT_INTERVAL = 1000;
+const $7f41aaa208a19660$var$MAX_RECONNECT_INTERVAL = 30000;
+const $7f41aaa208a19660$var$DEFAULT_RECONNECT_DECAY = 1.5;
+const $7f41aaa208a19660$var$WEBSOCKET_TIMEOUT_CODE = 4100;
+const $7f41aaa208a19660$var$SIG_CONNECTION_CANCELED = "SIG_CONNECTION_CANCELED";
+const $7f41aaa208a19660$var$WEBSOCKET_ERROR = "WEBSOCKET_ERROR";
+var $7f41aaa208a19660$var$LOG_LEVEL;
+(function(LOG_LEVEL) {
+    LOG_LEVEL[LOG_LEVEL["DEBUG"] = 0] = "DEBUG";
+    LOG_LEVEL[LOG_LEVEL["ERROR"] = 1] = "ERROR";
+    LOG_LEVEL[LOG_LEVEL["INFO"] = 2] = "INFO";
+    LOG_LEVEL[LOG_LEVEL["WARN"] = 3] = "WARN";
+})($7f41aaa208a19660$var$LOG_LEVEL || ($7f41aaa208a19660$var$LOG_LEVEL = {}));
+class $7f41aaa208a19660$var$rWebSocket {
+    constructor(url, protocols){
+        this._closedManually = false;
+        this._errored = false;
+        this._rejected = false;
+        this._timed_out = false;
+        this._initialConnectionOk = false;
+        this._ws = new WebSocket(url, protocols);
+    }
+    addEventListener(type, listener) {
+        this._ws.addEventListener(type, listener);
+    }
+    // Add other WebSocket methods as needed
+    close(code, reason) {
+        this._ws.close(code, reason);
+    }
+    send(data) {
+        this._ws.send(data);
+    }
+    // Add getters for WebSocket properties
+    get url() {
+        return this._ws.url;
+    }
+    get readyState() {
+        return this._ws.readyState;
+    }
+}
+class $7f41aaa208a19660$export$4f3d0ffd941ebefb extends (0, $j6Pln$events.EventEmitter) {
+    constructor(address, protocols, options = {}){
+        super();
+        if (!address) throw new Error("Need a valid WebSocket URL");
+        this._ws = null;
+        this._url = address;
+        this._protocols = protocols;
+        this._parseBlobToJson = options?.parseBlobToJson ?? true;
+        this.init();
+    }
+    init() {
+        this._keepAliveTimeout = $7f41aaa208a19660$var$KEEP_ALIVE_TIMEOUT;
+        this._keepAliveInterval = $7f41aaa208a19660$var$KEEP_ALIVE_INTERVAL;
+        this._disconnected = false;
+        this._keepIntervalID = null;
+        this._shouldRetryFn = null;
+        this._connectionTimeout = $7f41aaa208a19660$var$WEBSOCKET_CONNECTION_TIMEOUT;
+        this._reconnectAttempts = 0;
+        this._allowedReconnectAttempts = $7f41aaa208a19660$var$DEFAULT_RECONNECT_ATTEMPTS;
+        this._reconnectInterval = $7f41aaa208a19660$var$DEFAULT_RECONNECT_INTERVAL;
+        this._maxReconnectInterval = $7f41aaa208a19660$var$MAX_RECONNECT_INTERVAL;
+        this._reconnectDecay = $7f41aaa208a19660$var$DEFAULT_RECONNECT_DECAY;
+    }
+    async connect() {
+        return new Promise((resolve, reject)=>{
+            this._disconnected = false;
+            this.clearReconnectTimeout();
+            let ws = new $7f41aaa208a19660$var$rWebSocket(this._url, this._protocols);
+            this.setConnectionTimeout();
+            ws.addEventListener("close", (evt)=>{
+                const closeEvent = evt;
+                let code = ws._timed_out ? $7f41aaa208a19660$var$WEBSOCKET_TIMEOUT_CODE : closeEvent.code;
+                let reason = ws._timed_out ? "websocket connection timed out" : closeEvent.reason;
+                ws._timed_out = false;
+                if (!ws._closedManually && ws._initialConnectionOk) {
+                    console.warn(`signaling socket closed unexpectedly: ${code}${reason ? " " + reason : ""}`);
+                    this._closeSocket();
+                    this.emit("close", code, reason);
+                } else this.log("signaling socket closed");
+                if (!ws._closedManually && (ws._errored || ws._timed_out)) {
+                    console.warn(`signaling socket closed on error: ${code}${reason ? " " + reason : ""}`);
+                    if (!ws._rejected) {
+                        ws._rejected = true;
+                        const err = new Error(`WebSocket connection error (${code}): ${reason}`);
+                        err.name = $7f41aaa208a19660$var$WEBSOCKET_ERROR;
+                        reject(err);
+                    }
+                }
+            });
+            ws.addEventListener("open", (evt)=>{
+                this.log("wss connection opened to", $7f41aaa208a19660$var$LOG_LEVEL.DEBUG, this._url);
+                this.clearConnectionTimeout();
+                // now that the timeout closes the socket, in theory this onopen
+                // callback should never happen in the first place, but seems
+                // harmless to leave these safeguards in
+                if (ws._rejected || ws._timed_out) return;
+                if (ws._closedManually || this._ws && this._ws !== ws) {
+                    ws._rejected = true;
+                    ws.close();
+                    let err = Error("wss connection interrupted by disconnect or newer connection");
+                    err.name = $7f41aaa208a19660$var$SIG_CONNECTION_CANCELED;
+                    reject(err);
+                    return;
+                }
+                ws._initialConnectionOk = this._url;
+                this._lastMsgRecvTime = Date.now();
+                if (this._keepAliveInterval) this._keepIntervalID = setInterval(()=>this.checkSocketHealthAndSendKeepAlive(), this._keepAliveInterval);
+                this._ws = ws;
+                this.emit("open");
+                resolve(ws);
+            });
+            ws.addEventListener("error", (evt)=>{
+                // fyi: evt is an Event here, with 0 amount of helpful info. If there
+                //   happens to be info about the error, it's included in the
+                //   accompanying close event (because that make sense. shakes head)
+                //   SO. We do not reject here. Instead, we just set the _errored
+                //   flag on the socket so when the close event occurs, it knows to
+                //   reject the promise
+                if (!ws._closedManually) {
+                    const wsTarget = evt.currentTarget;
+                    this.log(`websocket error event: ${wsTarget?.url}`);
+                }
+                ws._errored = true;
+            });
+            ws.addEventListener("message", (msg)=>{
+                this._handleMessage(msg);
+            });
+        });
+    }
+    setConnectionTimeout() {
+        this._connectionTimeoutID = setTimeout(async ()=>{
+            this.log("Connection reconnect attempt timed out.");
+            this.emit("connection-timeout");
+            this.clearConnectionTimeout();
+            await this._closeSocket();
+        }, this._connectionTimeout);
+    }
+    clearConnectionTimeout() {
+        clearTimeout(this._connectionTimeoutID);
+        this._connectionTimeoutID = undefined;
+    }
+    clearReconnectTimeout() {
+        clearTimeout(this._reconnectTimeoutID);
+        this._reconnectTimeoutID = undefined;
+    }
+    clearKeepAliveInterval() {
+        if (this._keepIntervalID) {
+            clearInterval(this._keepIntervalID);
+            this._keepIntervalID = null;
+        }
+    }
+    async checkSocketHealthAndSendKeepAlive() {
+        if (!(this._ws && this._ws.readyState === WebSocket.OPEN)) return;
+        if (!this._keepAliveTimeout || !this._keepAliveInterval) return;
+        // See if we haven't gotten a message back recently, and if we
+        // haven't, close the socket. the os timeouts to detect if a socket
+        // has gone stale are longer than we want.
+        if (Date.now() - this._lastMsgRecvTime > this._keepAliveTimeout) {
+            this.log("Connection is stale, need to reconnect", $7f41aaa208a19660$var$LOG_LEVEL.WARN);
+            await this._closeSocket();
+            return;
+        }
+        // Only emit the keep-alive event if we haven't sent anything else recently
+        if (Date.now() - this._lastMsgSendTime < this._keepAliveInterval) return;
+        this.log("Emitting keep-alive", $7f41aaa208a19660$var$LOG_LEVEL.DEBUG);
+        this.emit("keep-alive");
+    }
+    // We use the word manually here to imply the application using this code
+    // or this code itself will decide to close the socket.
+    async _closeSocket() {
+        this.log("Closing");
+        try {
+            this.clearKeepAliveInterval();
+            this._lastMsgRecvTime = 0;
+            if (this._ws) {
+                this._ws._closedManually = true;
+                this._ws.close();
+            }
+            // query retry function if we want to retry.
+            const shouldRetry = this._ws?._initialConnectionOk && this._shouldRetryFn && this._shouldRetryFn();
+            this._ws = null;
+            if (shouldRetry) {
+                this.log("Emitting reconnect", $7f41aaa208a19660$var$LOG_LEVEL.DEBUG);
+                this.emit("reconnecting");
+                await this.retryFailedConnection();
+            }
+        } catch (error) {
+            this.log(`Error while closing and retrying: ${error}`, $7f41aaa208a19660$var$LOG_LEVEL.ERROR);
+        }
+    }
+    async retryFailedConnection() {
+        if (this._reconnectAttempts < this._allowedReconnectAttempts) {
+            if (this._reconnectTimeoutID) {
+                this.log("Retry already scheduled");
+                return;
+            }
+            this.log("Retrying failed connection");
+            let timeout = // The timeout logic is taken from
+            // https://github.com/joewalnes/reconnecting-websocket
+            this._reconnectInterval * Math.pow(this._reconnectDecay, this._reconnectAttempts);
+            timeout = timeout > this._maxReconnectInterval ? this._maxReconnectInterval : timeout;
+            this.log(`Reconnecting in ${timeout / 1000} seconds`);
+            this._reconnectAttempts += 1;
+            this._reconnectTimeoutID = setTimeout(()=>this.connect(), timeout);
+        } else {
+            this.log("Maximum connection retry attempts exceeded", $7f41aaa208a19660$var$LOG_LEVEL.ERROR);
+            this.emit("reconnect-failed");
+        }
+    }
+    log(msg, log_level = $7f41aaa208a19660$var$LOG_LEVEL.DEBUG, ...args) {
+        switch(log_level){
+            case $7f41aaa208a19660$var$LOG_LEVEL.DEBUG:
+                console.debug(`websocket: ${msg}`, ...args);
+                break;
+            case $7f41aaa208a19660$var$LOG_LEVEL.ERROR:
+                console.error(`websocket: ${msg}`, ...args);
+                break;
+            case $7f41aaa208a19660$var$LOG_LEVEL.WARN:
+                console.warn(`websocket: ${msg}`, ...args);
+                break;
+            case $7f41aaa208a19660$var$LOG_LEVEL.INFO:
+            default:
+                console.log(`websocket: ${msg}`, ...args);
+                break;
+        }
+    }
+    async send(data) {
+        try {
+            if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+                this._lastMsgSendTime = Date.now();
+                this._ws.send(data);
+            } else this.log(`Failed to send data, web socket not open.`, $7f41aaa208a19660$var$LOG_LEVEL.ERROR);
+        } catch (error) {
+            this.log(`Failed to send data. ${error}`, $7f41aaa208a19660$var$LOG_LEVEL.ERROR);
+        }
+    }
+    async close() {
+        try {
+            this.log("Closing websocket");
+            this._disconnected = true;
+            this.clearReconnectTimeout();
+            this._closeSocket();
+        } catch (error) {
+            this.log(`Failed to close websocket. ${error}`);
+        }
+    }
+    get readyState() {
+        return this._ws?.readyState ?? WebSocket.CLOSED;
+    }
+    get url() {
+        return this._url;
+    }
+    get keepAliveTimeout() {
+        return this._keepAliveTimeout;
+    }
+    set keepAliveTimeout(keepAliveTimeout) {
+        if (typeof keepAliveTimeout === "number") {
+            this.log(`Setting ACK freshness timeout to ${keepAliveTimeout}`);
+            this._keepAliveTimeout = keepAliveTimeout;
+        }
+    }
+    get keepAliveInterval() {
+        return this._keepAliveInterval;
+    }
+    set keepAliveInterval(keepAliveInterval) {
+        if (typeof keepAliveInterval === "number") {
+            this.log(`Setting keep-alive interval to ${keepAliveInterval}`);
+            this._keepAliveInterval = keepAliveInterval;
+        }
+    }
+    set shouldRetryFn(cb) {
+        if (typeof cb === "function") this._shouldRetryFn = cb;
+    }
+    get connectionTimeout() {
+        return this._connectionTimeout;
+    }
+    set connectionTimeout(timeout) {
+        if (typeof timeout === "number") this._connectionTimeout = timeout;
+    }
+    get maxReconnectAttempts() {
+        return this._allowedReconnectAttempts;
+    }
+    set maxReconnectAttempts(attempts) {
+        if (attempts > 0 && attempts < $7f41aaa208a19660$var$MAX_RECONNECT_ATTEMPTS) {
+            this.log(`Setting maximum connection retry attempts to ${attempts}`);
+            this._allowedReconnectAttempts = attempts;
+        } else this._allowedReconnectAttempts = $7f41aaa208a19660$var$DEFAULT_RECONNECT_ATTEMPTS;
+    }
+    get reconnectInterval() {
+        return this._reconnectInterval;
+    }
+    set reconnectInterval(interval) {
+        if (typeof interval === "number") this._reconnectInterval = interval < this._maxReconnectInterval ? interval : this._maxReconnectInterval;
+    }
+    async _handleMessage(event) {
+        this._lastMsgRecvTime = Date.now();
+        const data = event.data;
+        const _parsePromise = new Promise((resolve, reject)=>{
+            if (typeof data === "string") // Handle text message
+            resolve(data);
+            else if (data instanceof ArrayBuffer) {
+                // Handle binary message
+                const arrayBuffer = data;
+                // Parse the ArrayBuffer as needed
+                // Example: Convert ArrayBuffer to Uint8Array
+                resolve(new Uint8Array(arrayBuffer));
+            // Process the Uint8Array as needed
+            } else if (data instanceof Blob) {
+                if (!this._parseBlobToJson) {
+                    resolve(data);
+                    return;
+                }
+                // Handle Blob message
+                const blob = data;
+                // Convert Blob to ArrayBuffer
+                const reader = new FileReader();
+                reader.onload = ()=>{
+                    const text = reader.result;
+                    try {
+                        const json = JSON.parse(text);
+                        resolve(json);
+                    } catch (e) {
+                        console.error("Failed to parse JSON from Blob:", e);
+                    }
+                };
+                reader.readAsText(blob);
+            }
+        });
+        let msg = await _parsePromise;
+        this.emit("message", msg);
+    }
+}
+[
+    "binaryType",
+    "bufferedAmount",
+    "extensions",
+    "protocol",
+    "readyState",
+    "url",
+    "keepAliveTimeout",
+    "keepAliveInterval",
+    "shouldRetryFn",
+    "connectionTimeout",
+    "maxReconnectAttempts",
+    "reconnectInterval"
+].forEach((property)=>{
+    Object.defineProperty($7f41aaa208a19660$export$4f3d0ffd941ebefb.prototype, property, {
+        enumerable: true
+    });
+});
+[
+    "CONNECTING",
+    "OPEN",
+    "CLOSING",
+    "CLOSED"
+].forEach((property)=>{
+    Object.defineProperty($7f41aaa208a19660$export$4f3d0ffd941ebefb.prototype, property, {
+        enumerable: true,
+        value: $7f41aaa208a19660$var$readyStates.indexOf(property)
+    });
+});
+[
+    "CONNECTING",
+    "OPEN",
+    "CLOSING",
+    "CLOSED"
+].forEach((property)=>{
+    Object.defineProperty($7f41aaa208a19660$export$4f3d0ffd941ebefb, property, {
+        enumerable: true,
+        value: $7f41aaa208a19660$var$readyStates.indexOf(property)
+    });
+});
+
+
+
+
+
+
+
+
+// @generated message type with reflection information, may provide speed optimized methods
+class $57e8402b597dc232$var$TextFrame$Type extends (0, $j6Pln$protobuftsruntime.MessageType) {
+    constructor(){
+        super("pipecat.TextFrame", [
+            {
+                no: 1,
+                name: "id",
+                kind: "scalar",
+                T: 4 /*ScalarType.UINT64*/ ,
+                L: 0 /*LongType.BIGINT*/
+            },
+            {
+                no: 2,
+                name: "name",
+                kind: "scalar",
+                T: 9 /*ScalarType.STRING*/
+            },
+            {
+                no: 3,
+                name: "text",
+                kind: "scalar",
+                T: 9 /*ScalarType.STRING*/
+            }
+        ]);
+    }
+    create(value) {
+        const message = globalThis.Object.create(this.messagePrototype);
+        message.id = 0n;
+        message.name = "";
+        message.text = "";
+        if (value !== undefined) (0, $j6Pln$protobuftsruntime.reflectionMergePartial)(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader, length, options, target) {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while(reader.pos < end){
+            let [fieldNo, wireType] = reader.tag();
+            switch(fieldNo){
+                case /* uint64 id */ 1:
+                    message.id = reader.uint64().toBigInt();
+                    break;
+                case /* string name */ 2:
+                    message.name = reader.string();
+                    break;
+                case /* string text */ 3:
+                    message.text = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw") throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false) (u === true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message, writer, options) {
+        /* uint64 id = 1; */ if (message.id !== 0n) writer.tag(1, (0, $j6Pln$protobuftsruntime.WireType).Varint).uint64(message.id);
+        /* string name = 2; */ if (message.name !== "") writer.tag(2, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).string(message.name);
+        /* string text = 3; */ if (message.text !== "") writer.tag(3, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).string(message.text);
+        let u = options.writeUnknownFields;
+        if (u !== false) (u == true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+const $57e8402b597dc232$export$78410ada03f6931b = new $57e8402b597dc232$var$TextFrame$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class $57e8402b597dc232$var$AudioRawFrame$Type extends (0, $j6Pln$protobuftsruntime.MessageType) {
+    constructor(){
+        super("pipecat.AudioRawFrame", [
+            {
+                no: 1,
+                name: "id",
+                kind: "scalar",
+                T: 4 /*ScalarType.UINT64*/ ,
+                L: 0 /*LongType.BIGINT*/
+            },
+            {
+                no: 2,
+                name: "name",
+                kind: "scalar",
+                T: 9 /*ScalarType.STRING*/
+            },
+            {
+                no: 3,
+                name: "audio",
+                kind: "scalar",
+                T: 12 /*ScalarType.BYTES*/
+            },
+            {
+                no: 4,
+                name: "sample_rate",
+                kind: "scalar",
+                T: 13 /*ScalarType.UINT32*/
+            },
+            {
+                no: 5,
+                name: "num_channels",
+                kind: "scalar",
+                T: 13 /*ScalarType.UINT32*/
+            },
+            {
+                no: 6,
+                name: "pts",
+                kind: "scalar",
+                opt: true,
+                T: 4 /*ScalarType.UINT64*/ ,
+                L: 0 /*LongType.BIGINT*/
+            }
+        ]);
+    }
+    create(value) {
+        const message = globalThis.Object.create(this.messagePrototype);
+        message.id = 0n;
+        message.name = "";
+        message.audio = new Uint8Array(0);
+        message.sampleRate = 0;
+        message.numChannels = 0;
+        if (value !== undefined) (0, $j6Pln$protobuftsruntime.reflectionMergePartial)(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader, length, options, target) {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while(reader.pos < end){
+            let [fieldNo, wireType] = reader.tag();
+            switch(fieldNo){
+                case /* uint64 id */ 1:
+                    message.id = reader.uint64().toBigInt();
+                    break;
+                case /* string name */ 2:
+                    message.name = reader.string();
+                    break;
+                case /* bytes audio */ 3:
+                    message.audio = reader.bytes();
+                    break;
+                case /* uint32 sample_rate */ 4:
+                    message.sampleRate = reader.uint32();
+                    break;
+                case /* uint32 num_channels */ 5:
+                    message.numChannels = reader.uint32();
+                    break;
+                case /* optional uint64 pts */ 6:
+                    message.pts = reader.uint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw") throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false) (u === true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message, writer, options) {
+        /* uint64 id = 1; */ if (message.id !== 0n) writer.tag(1, (0, $j6Pln$protobuftsruntime.WireType).Varint).uint64(message.id);
+        /* string name = 2; */ if (message.name !== "") writer.tag(2, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).string(message.name);
+        /* bytes audio = 3; */ if (message.audio.length) writer.tag(3, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).bytes(message.audio);
+        /* uint32 sample_rate = 4; */ if (message.sampleRate !== 0) writer.tag(4, (0, $j6Pln$protobuftsruntime.WireType).Varint).uint32(message.sampleRate);
+        /* uint32 num_channels = 5; */ if (message.numChannels !== 0) writer.tag(5, (0, $j6Pln$protobuftsruntime.WireType).Varint).uint32(message.numChannels);
+        /* optional uint64 pts = 6; */ if (message.pts !== undefined) writer.tag(6, (0, $j6Pln$protobuftsruntime.WireType).Varint).uint64(message.pts);
+        let u = options.writeUnknownFields;
+        if (u !== false) (u == true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+const $57e8402b597dc232$export$51d8721de3cbff8f = new $57e8402b597dc232$var$AudioRawFrame$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class $57e8402b597dc232$var$TranscriptionFrame$Type extends (0, $j6Pln$protobuftsruntime.MessageType) {
+    constructor(){
+        super("pipecat.TranscriptionFrame", [
+            {
+                no: 1,
+                name: "id",
+                kind: "scalar",
+                T: 4 /*ScalarType.UINT64*/ ,
+                L: 0 /*LongType.BIGINT*/
+            },
+            {
+                no: 2,
+                name: "name",
+                kind: "scalar",
+                T: 9 /*ScalarType.STRING*/
+            },
+            {
+                no: 3,
+                name: "text",
+                kind: "scalar",
+                T: 9 /*ScalarType.STRING*/
+            },
+            {
+                no: 4,
+                name: "user_id",
+                kind: "scalar",
+                T: 9 /*ScalarType.STRING*/
+            },
+            {
+                no: 5,
+                name: "timestamp",
+                kind: "scalar",
+                T: 9 /*ScalarType.STRING*/
+            }
+        ]);
+    }
+    create(value) {
+        const message = globalThis.Object.create(this.messagePrototype);
+        message.id = 0n;
+        message.name = "";
+        message.text = "";
+        message.userId = "";
+        message.timestamp = "";
+        if (value !== undefined) (0, $j6Pln$protobuftsruntime.reflectionMergePartial)(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader, length, options, target) {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while(reader.pos < end){
+            let [fieldNo, wireType] = reader.tag();
+            switch(fieldNo){
+                case /* uint64 id */ 1:
+                    message.id = reader.uint64().toBigInt();
+                    break;
+                case /* string name */ 2:
+                    message.name = reader.string();
+                    break;
+                case /* string text */ 3:
+                    message.text = reader.string();
+                    break;
+                case /* string user_id */ 4:
+                    message.userId = reader.string();
+                    break;
+                case /* string timestamp */ 5:
+                    message.timestamp = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw") throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false) (u === true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message, writer, options) {
+        /* uint64 id = 1; */ if (message.id !== 0n) writer.tag(1, (0, $j6Pln$protobuftsruntime.WireType).Varint).uint64(message.id);
+        /* string name = 2; */ if (message.name !== "") writer.tag(2, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).string(message.name);
+        /* string text = 3; */ if (message.text !== "") writer.tag(3, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).string(message.text);
+        /* string user_id = 4; */ if (message.userId !== "") writer.tag(4, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).string(message.userId);
+        /* string timestamp = 5; */ if (message.timestamp !== "") writer.tag(5, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).string(message.timestamp);
+        let u = options.writeUnknownFields;
+        if (u !== false) (u == true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+const $57e8402b597dc232$export$10b388c15a5cdc8a = new $57e8402b597dc232$var$TranscriptionFrame$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class $57e8402b597dc232$var$MessageFrame$Type extends (0, $j6Pln$protobuftsruntime.MessageType) {
+    constructor(){
+        super("pipecat.MessageFrame", [
+            {
+                no: 1,
+                name: "data",
+                kind: "scalar",
+                T: 9 /*ScalarType.STRING*/
+            }
+        ]);
+    }
+    create(value) {
+        const message = globalThis.Object.create(this.messagePrototype);
+        message.data = "";
+        if (value !== undefined) (0, $j6Pln$protobuftsruntime.reflectionMergePartial)(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader, length, options, target) {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while(reader.pos < end){
+            let [fieldNo, wireType] = reader.tag();
+            switch(fieldNo){
+                case /* string data */ 1:
+                    message.data = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw") throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false) (u === true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message, writer, options) {
+        /* string data = 1; */ if (message.data !== "") writer.tag(1, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).string(message.data);
+        let u = options.writeUnknownFields;
+        if (u !== false) (u == true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+const $57e8402b597dc232$export$bc3f45a6d434f14a = new $57e8402b597dc232$var$MessageFrame$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class $57e8402b597dc232$var$Frame$Type extends (0, $j6Pln$protobuftsruntime.MessageType) {
+    constructor(){
+        super("pipecat.Frame", [
+            {
+                no: 1,
+                name: "text",
+                kind: "message",
+                oneof: "frame",
+                T: ()=>$57e8402b597dc232$export$78410ada03f6931b
+            },
+            {
+                no: 2,
+                name: "audio",
+                kind: "message",
+                oneof: "frame",
+                T: ()=>$57e8402b597dc232$export$51d8721de3cbff8f
+            },
+            {
+                no: 3,
+                name: "transcription",
+                kind: "message",
+                oneof: "frame",
+                T: ()=>$57e8402b597dc232$export$10b388c15a5cdc8a
+            },
+            {
+                no: 4,
+                name: "message",
+                kind: "message",
+                oneof: "frame",
+                T: ()=>$57e8402b597dc232$export$bc3f45a6d434f14a
+            }
+        ]);
+    }
+    create(value) {
+        const message = globalThis.Object.create(this.messagePrototype);
+        message.frame = {
+            oneofKind: undefined
+        };
+        if (value !== undefined) (0, $j6Pln$protobuftsruntime.reflectionMergePartial)(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader, length, options, target) {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while(reader.pos < end){
+            let [fieldNo, wireType] = reader.tag();
+            switch(fieldNo){
+                case /* pipecat.TextFrame text */ 1:
+                    message.frame = {
+                        oneofKind: "text",
+                        text: $57e8402b597dc232$export$78410ada03f6931b.internalBinaryRead(reader, reader.uint32(), options, message.frame.text)
+                    };
+                    break;
+                case /* pipecat.AudioRawFrame audio */ 2:
+                    message.frame = {
+                        oneofKind: "audio",
+                        audio: $57e8402b597dc232$export$51d8721de3cbff8f.internalBinaryRead(reader, reader.uint32(), options, message.frame.audio)
+                    };
+                    break;
+                case /* pipecat.TranscriptionFrame transcription */ 3:
+                    message.frame = {
+                        oneofKind: "transcription",
+                        transcription: $57e8402b597dc232$export$10b388c15a5cdc8a.internalBinaryRead(reader, reader.uint32(), options, message.frame.transcription)
+                    };
+                    break;
+                case /* pipecat.MessageFrame message */ 4:
+                    message.frame = {
+                        oneofKind: "message",
+                        message: $57e8402b597dc232$export$bc3f45a6d434f14a.internalBinaryRead(reader, reader.uint32(), options, message.frame.message)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw") throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false) (u === true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message, writer, options) {
+        /* pipecat.TextFrame text = 1; */ if (message.frame.oneofKind === "text") $57e8402b597dc232$export$78410ada03f6931b.internalBinaryWrite(message.frame.text, writer.tag(1, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).fork(), options).join();
+        /* pipecat.AudioRawFrame audio = 2; */ if (message.frame.oneofKind === "audio") $57e8402b597dc232$export$51d8721de3cbff8f.internalBinaryWrite(message.frame.audio, writer.tag(2, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).fork(), options).join();
+        /* pipecat.TranscriptionFrame transcription = 3; */ if (message.frame.oneofKind === "transcription") $57e8402b597dc232$export$10b388c15a5cdc8a.internalBinaryWrite(message.frame.transcription, writer.tag(3, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).fork(), options).join();
+        /* pipecat.MessageFrame message = 4; */ if (message.frame.oneofKind === "message") $57e8402b597dc232$export$bc3f45a6d434f14a.internalBinaryWrite(message.frame.message, writer.tag(4, (0, $j6Pln$protobuftsruntime.WireType).LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false) (u == true ? (0, $j6Pln$protobuftsruntime.UnknownFieldHandler).onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+const $57e8402b597dc232$export$b89a827e9254211a = new $57e8402b597dc232$var$Frame$Type();
+
+
+class $1c22f68a017e26c0$export$4b2026f8e11b148a {
+    serialize(data) {}
+    serializeAudio(data, sampleRate, numChannels) {
+        const pcmByteArray = new Uint8Array(data);
+        const frame = (0, $57e8402b597dc232$export$b89a827e9254211a).create({
+            frame: {
+                oneofKind: "audio",
+                audio: {
+                    id: 0n,
+                    name: "audio",
+                    audio: pcmByteArray,
+                    sampleRate: sampleRate,
+                    numChannels: numChannels
+                }
+            }
+        });
+        return new Uint8Array((0, $57e8402b597dc232$export$b89a827e9254211a).toBinary(frame));
+    }
+    serializeMessage(msg) {
+        const frame = (0, $57e8402b597dc232$export$b89a827e9254211a).create({
+            frame: {
+                oneofKind: "message",
+                message: {
+                    data: JSON.stringify(msg)
+                }
+            }
+        });
+        return new Uint8Array((0, $57e8402b597dc232$export$b89a827e9254211a).toBinary(frame));
+    }
+    async deserialize(data) {
+        if (!(data instanceof Blob)) throw new Error("Unknown data type");
+        const arrayBuffer = await data.arrayBuffer();
+        const parsed = (0, $57e8402b597dc232$export$b89a827e9254211a).fromBinary(new Uint8Array(arrayBuffer)).frame;
+        if (parsed.oneofKind === "audio") {
+            const audioVector = Array.from(parsed.audio.audio);
+            const uint8Array = new Uint8Array(audioVector);
+            const int16Array = new Int16Array(uint8Array.buffer);
+            return {
+                type: "audio",
+                audio: int16Array
+            };
+        } else if (parsed.oneofKind === "message") {
+            const msg = JSON.parse(parsed.message.data);
+            return {
+                type: "message",
+                message: msg
+            };
+        } else throw new Error("Unknown frame kind");
+    }
+}
+
+
+class $4edb85de5b543ae3$export$de21836fc42c6f9c extends (0, $j6Pln$pipecataiclientjs.Transport) {
+    constructor(opts = {}){
+        super();
+        this._wsUrl = null;
+        this.audioQueue = [];
+        this._wsUrl = opts.wsUrl ?? opts.ws_url ?? null;
+        this._recorderSampleRate = opts.recorderSampleRate ?? $4edb85de5b543ae3$export$de21836fc42c6f9c.RECORDER_SAMPLE_RATE;
+        this._mediaManager = opts.mediaManager || new (0, $00a190ef6aa79f0d$export$c95c65abc5f47125)(true, true, undefined, undefined, 512, this._recorderSampleRate, opts.playerSampleRate ?? $4edb85de5b543ae3$export$de21836fc42c6f9c.PLAYER_SAMPLE_RATE);
+        this._mediaManager.setUserAudioCallback(this.handleUserAudioStream.bind(this));
+        this._ws = null;
+        this._serializer = opts.serializer || new (0, $1c22f68a017e26c0$export$4b2026f8e11b148a)();
+        this._maxMessageSize = 1048576; // python websockets default to 1MB
+    }
+    initialize(options, messageHandler) {
+        this._options = options;
+        this._callbacks = options.callbacks ?? {};
+        this._onMessage = messageHandler;
+        this._mediaManager.setClientOptions(options);
+        this.state = "disconnected";
+    }
+    async initDevices() {
+        this.state = "initializing";
+        await this._mediaManager.initialize();
+        this.state = "initialized";
+    }
+    _validateConnectionParams(connectParams) {
+        if (connectParams === undefined || connectParams === null) return undefined;
+        if (typeof connectParams !== "object") throw new (0, $j6Pln$pipecataiclientjs.RTVIError)("Invalid connection parameters");
+        const snakeToCamel = (snakeCaseString)=>{
+            return snakeCaseString.replace(/_([a-z,A-Z])/g, (_, letter)=>letter.toUpperCase());
+        };
+        const fixedParams = {};
+        for (const [key, val] of Object.entries(connectParams)){
+            const camelKey = snakeToCamel(key);
+            if (camelKey === "wsUrl") {
+                if (typeof val !== "string") throw new (0, $j6Pln$pipecataiclientjs.RTVIError)(`Invalid type for wsUrl: expected string, got ${typeof val}`);
+            } else if (camelKey === "token") {
+                if (typeof val !== "string") throw new (0, $j6Pln$pipecataiclientjs.RTVIError)(`Invalid type for token: expected string, got ${typeof val}`);
+            } else throw new (0, $j6Pln$pipecataiclientjs.RTVIError)(`Unrecognized connection parameter: ${key}.`);
+            fixedParams[camelKey] = val;
+        }
+        return fixedParams;
+    }
+    async _connect(connectParams) {
+        if (this._abortController?.signal.aborted) return;
+        this.state = "connecting";
+        this._wsUrl = connectParams?.wsUrl ?? connectParams?.ws_url ?? this._wsUrl;
+        if (connectParams?.token) {
+            const separator = this._wsUrl.includes("?") ? "&" : "?";
+            this._wsUrl = `${this._wsUrl}${separator}token=${encodeURIComponent(connectParams.token)}`;
+        }
+        if (!this._wsUrl) {
+            (0, $j6Pln$pipecataiclientjs.logger).error("No url provided for connection");
+            this.state = "error";
+            throw new (0, $j6Pln$pipecataiclientjs.TransportStartError)();
+        }
+        try {
+            this._ws = this.initializeWebsocket();
+            await this._ws.connect();
+            await this._mediaManager.connect();
+            if (this._abortController?.signal.aborted) return;
+            this.state = "connected";
+            this._callbacks.onConnected?.();
+        } catch (error) {
+            const msg = `Failed to connect to websocket: ${error}`;
+            (0, $j6Pln$pipecataiclientjs.logger).error(msg);
+            this.state = "error";
+            throw new (0, $j6Pln$pipecataiclientjs.TransportStartError)(msg);
+        }
+    }
+    async _disconnect() {
+        this.state = "disconnecting";
+        await this._mediaManager.disconnect();
+        await this._ws?.close();
+        this.state = "disconnected";
+        this._callbacks.onDisconnected?.();
+    }
+    getAllMics() {
+        return this._mediaManager.getAllMics();
+    }
+    getAllCams() {
+        return this._mediaManager.getAllCams();
+    }
+    getAllSpeakers() {
+        return this._mediaManager.getAllSpeakers();
+    }
+    async updateMic(micId) {
+        return this._mediaManager.updateMic(micId);
+    }
+    updateCam(camId) {
+        return this._mediaManager.updateCam(camId);
+    }
+    updateSpeaker(speakerId) {
+        return this._mediaManager.updateSpeaker(speakerId);
+    }
+    get selectedMic() {
+        return this._mediaManager.selectedMic;
+    }
+    get selectedSpeaker() {
+        return this._mediaManager.selectedSpeaker;
+    }
+    enableMic(enable) {
+        this._mediaManager.enableMic(enable);
+    }
+    get isMicEnabled() {
+        return this._mediaManager.isMicEnabled;
+    }
+    get state() {
+        return this._state;
+    }
+    set state(state) {
+        if (this._state === state) return;
+        this._state = state;
+        this._callbacks.onTransportStateChanged?.(state);
+    }
+    tracks() {
+        return this._mediaManager.tracks();
+    }
+    initializeWebsocket() {
+        const ws = new (0, $7f41aaa208a19660$export$4f3d0ffd941ebefb)(this._wsUrl, undefined, {
+            parseBlobToJson: false
+        });
+        // disabling the keep alive, there is no API for it inside Pipecat
+        ws.keepAliveInterval = 0;
+        ws.on("open", ()=>{
+            (0, $j6Pln$pipecataiclientjs.logger).debug("Websocket connection opened");
+        });
+        ws.on("message", async (data)=>{
+            try {
+                const parsed = await this._serializer.deserialize(data);
+                if (parsed.type === "audio") this._mediaManager.bufferBotAudio(parsed.audio);
+                else if (parsed.type === "message") {
+                    if (parsed.message.label === "rtvi-ai") this._onMessage(parsed.message);
+                }
+            } catch (e) {
+                (0, $j6Pln$pipecataiclientjs.logger).error("Failed to deserialize incoming message", e);
+            }
+        });
+        ws.on("error", (error)=>{
+            this.connectionError(`websocket error: ${error}`);
+        });
+        ws.on("connection-timeout", ()=>{
+            this.connectionError("websocket connection timed out");
+        });
+        ws.on("close", (code)=>{
+            this.connectionError(`websocket connection closed. Code: ${code}`);
+        });
+        ws.on("reconnect-failed", ()=>{
+            this.connectionError(`websocket reconnect failed`);
+        });
+        return ws;
+    }
+    sendReadyMessage() {
+        this.state = "ready";
+        this.sendMessage((0, $j6Pln$pipecataiclientjs.RTVIMessage).clientReady());
+    }
+    handleUserAudioStream(data) {
+        if (this.state === "ready") try {
+            this.flushAudioQueue();
+            this._sendAudioInput(data);
+        } catch (error) {
+            (0, $j6Pln$pipecataiclientjs.logger).error("Error sending audio stream to websocket:", error);
+            this.state = "error";
+        }
+        else this.audioQueue.push(data);
+    }
+    flushAudioQueue() {
+        if (this.audioQueue.length <= 0) return;
+        (0, $j6Pln$pipecataiclientjs.logger).info("Will flush audio queue", this.audioQueue.length);
+        while(this.audioQueue.length > 0){
+            const queuedData = this.audioQueue.shift();
+            if (queuedData) this._sendAudioInput(queuedData);
+        }
+    }
+    sendRawMessage(message) {
+        const encoded = this._serializer.serialize(message);
+        this._sendMsg(encoded);
+    }
+    sendMessage(message) {
+        const encoded = this._serializer.serializeMessage(message);
+        this._sendMsg(encoded);
+    }
+    async _sendAudioInput(data) {
+        try {
+            const encoded = this._serializer.serializeAudio(data, this._recorderSampleRate, 1);
+            await this._sendMsg(encoded);
+        } catch (e) {
+            (0, $j6Pln$pipecataiclientjs.logger).error("Error sending audio frame", e);
+        }
+    }
+    async _sendMsg(msg) {
+        if (!this._ws) {
+            (0, $j6Pln$pipecataiclientjs.logger).error("sendMsg called but WS is null");
+            return;
+        }
+        if (this._ws.readyState !== WebSocket.OPEN) {
+            (0, $j6Pln$pipecataiclientjs.logger).error("attempt to send to closed socket");
+            return;
+        }
+        if (!msg) return;
+        try {
+            await this._ws.send(msg);
+        } catch (e) {
+            (0, $j6Pln$pipecataiclientjs.logger).error("sendMsg error", e);
+        }
+    }
+    connectionError(errorMsg) {
+        this._callbacks.onError?.((0, $j6Pln$pipecataiclientjs.RTVIMessage).error(errorMsg, true));
+    }
+    // Not implemented
+    enableScreenShare(enable) {
+        (0, $j6Pln$pipecataiclientjs.logger).warn("enableScreenShare not implemented for WebSocketTransport");
+        throw new (0, $j6Pln$pipecataiclientjs.UnsupportedFeatureError)("enableScreenShare", "webSocketTransport", "This feature has not been implemented");
+    }
+    get isSharingScreen() {
+        (0, $j6Pln$pipecataiclientjs.logger).warn("isSharingScreen not implemented for WebSocketTransport");
+        return false;
+    }
+    enableCam(enable) {
+        (0, $j6Pln$pipecataiclientjs.logger).warn("enableCam not implemented for WebSocketTransport");
+        throw new (0, $j6Pln$pipecataiclientjs.UnsupportedFeatureError)("enableCam", "webSocketTransport", "This feature has not been implemented");
+    }
+    get isCamEnabled() {
+        (0, $j6Pln$pipecataiclientjs.logger).warn("isCamEnabled not implemented for WebSocketTransport");
+        return false;
+    }
+    get selectedCam() {
+        (0, $j6Pln$pipecataiclientjs.logger).warn("selectedCam not implemented for WebSocketTransport");
+        throw new (0, $j6Pln$pipecataiclientjs.UnsupportedFeatureError)("selectedCam", "webSocketTransport", "This feature has not been implemented");
+    }
+}
+$4edb85de5b543ae3$export$de21836fc42c6f9c.RECORDER_SAMPLE_RATE = 16000;
+$4edb85de5b543ae3$export$de21836fc42c6f9c.PLAYER_SAMPLE_RATE = 24000;
+
+
+
+
+class $19b28d1737bec5eb$export$44a8a077420336af {
+    serialize(data) {
+        return JSON.stringify(data);
+    }
+    serializeAudio(data, sampleRate, numChannels) {
+        const pcmSamples = new Int16Array(data);
+        const muLawSamples = (0, $j6Pln$xlaw.mulaw).encode(pcmSamples);
+        const base64Payload = this.arrayToBase64(muLawSamples);
+        const twilioMessage = {
+            event: "media",
+            media: {
+                payload: base64Payload
+            }
+        };
+        return JSON.stringify(twilioMessage);
+    }
+    serializeMessage(msg) {
+        // Twilio does not support RTVI messages, so just ignore them
+        return null;
+    }
+    arrayToBase64(bytes) {
+        let binary = "";
+        for(let i = 0; i < bytes.byteLength; i++)binary += String.fromCharCode(bytes[i]);
+        return btoa(binary);
+    }
+    base64ToUint8Array(base64) {
+        const binaryString = atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for(let i = 0; i < len; i++)bytes[i] = binaryString.charCodeAt(i);
+        return bytes;
+    }
+    async deserialize(data) {
+        const jsonMessage = JSON.parse(data); // Assuming 'data' is a JSON string
+        if (jsonMessage.event === "clear") return {
+            type: "raw",
+            message: jsonMessage
+        };
+        else if (jsonMessage.event === "media") {
+            // Deserialize 'media' event
+            const payload = jsonMessage.media.payload;
+            const serialized_data = this.base64ToUint8Array(payload);
+            //const decoded_audio = this.ulawToPcm(serialized_data);
+            const decoded_audio = (0, $j6Pln$xlaw.mulaw).decode(serialized_data);
+            return {
+                type: "audio",
+                audio: decoded_audio
+            };
+        } else // Deserialize other message types (assuming 'frame' has 'message' field)
+        return {
+            type: "message",
+            message: jsonMessage.message
+        };
+    }
+}
+
+
+
+
+//# sourceMappingURL=index.js.map
+
+},{"@pipecat-ai/client-js":23,"@daily-co/daily-js":48,"events":24,"@protobuf-ts/runtime":49,"x-law":77}],
+48:[function(module,exports,require,process){
+!function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.Daily=t():e.Daily=t()}(this,function(){return function(){var e={781:function(e,t,n){var r=n(948);e.exports=r.default},948:function(e,t,n){"use strict";function r(e,t){if(null==e)return{};var n,r,i=function(e,t){if(null==e)return{};var n={};for(var r in e)if({}.hasOwnProperty.call(e,r)){if(-1!==t.indexOf(r))continue;n[r]=e[r]}return n}(e,t);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);for(r=0;r<o.length;r++)n=o[r],-1===t.indexOf(n)&&{}.propertyIsEnumerable.call(e,n)&&(i[n]=e[n])}return i}function i(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}function o(e){return o="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(e){return typeof e}:function(e){return e&&"function"==typeof Symbol&&e.constructor===Symbol&&e!==Symbol.prototype?"symbol":typeof e},o(e)}function a(e){var t=function(e){if("object"!=o(e)||!e)return e;var t=e[Symbol.toPrimitive];if(void 0!==t){var n=t.call(e,"string");if("object"!=o(n))return n;throw new TypeError("@@toPrimitive must return a primitive value.")}return String(e)}(e);return"symbol"==o(t)?t:t+""}function s(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,a(r.key),r)}}function c(e,t,n){return t&&s(e.prototype,t),n&&s(e,n),Object.defineProperty(e,"prototype",{writable:!1}),e}function u(e,t){if(t&&("object"==o(t)||"function"==typeof t))return t;if(void 0!==t)throw new TypeError("Derived constructors may only return object or undefined");return function(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}(e)}function l(e){return l=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(e){return e.__proto__||Object.getPrototypeOf(e)},l(e)}function d(e,t){return d=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(e,t){return e.__proto__=t,e},d(e,t)}function f(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function");e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,writable:!0,configurable:!0}}),Object.defineProperty(e,"prototype",{writable:!1}),t&&d(e,t)}function p(e,t,n){return(t=a(t))in e?Object.defineProperty(e,t,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[t]=n,e}function h(e,t,n,r,i,o,a){try{var s=e[o](a),c=s.value}catch(e){return void n(e)}s.done?t(c):Promise.resolve(c).then(r,i)}function v(e){return function(){var t=this,n=arguments;return new Promise(function(r,i){var o=e.apply(t,n);function a(e){h(o,r,i,a,s,"next",e)}function s(e){h(o,r,i,a,s,"throw",e)}a(void 0)})}}function g(e,t){(null==t||t>e.length)&&(t=e.length);for(var n=0,r=Array(t);n<t;n++)r[n]=e[n];return r}function m(e,t){return function(e){if(Array.isArray(e))return e}(e)||function(e,t){var n=null==e?null:"undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(null!=n){var r,i,o,a,s=[],c=!0,u=!1;try{if(o=(n=n.call(e)).next,0===t){if(Object(n)!==n)return;c=!1}else for(;!(c=(r=o.call(n)).done)&&(s.push(r.value),s.length!==t);c=!0);}catch(e){u=!0,i=e}finally{try{if(!c&&null!=n.return&&(a=n.return(),Object(a)!==a))return}finally{if(u)throw i}}return s}}(e,t)||function(e,t){if(e){if("string"==typeof e)return g(e,t);var n={}.toString.call(e).slice(8,-1);return"Object"===n&&e.constructor&&(n=e.constructor.name),"Map"===n||"Set"===n?Array.from(e):"Arguments"===n||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)?g(e,t):void 0}}(e,t)||function(){throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}()}n.r(t),n.d(t,{DAILY_ACCESS_LEVEL_FULL:function(){return $r},DAILY_ACCESS_LEVEL_LOBBY:function(){return Wr},DAILY_ACCESS_LEVEL_NONE:function(){return Gr},DAILY_ACCESS_UNKNOWN:function(){return Yr},DAILY_CAMERA_ERROR_CAM_AND_MIC_IN_USE:function(){return si},DAILY_CAMERA_ERROR_CAM_IN_USE:function(){return oi},DAILY_CAMERA_ERROR_CONSTRAINTS:function(){return di},DAILY_CAMERA_ERROR_MIC_IN_USE:function(){return ai},DAILY_CAMERA_ERROR_NOT_FOUND:function(){return li},DAILY_CAMERA_ERROR_PERMISSIONS:function(){return ci},DAILY_CAMERA_ERROR_UNDEF_MEDIADEVICES:function(){return ui},DAILY_CAMERA_ERROR_UNKNOWN:function(){return fi},DAILY_EVENT_ACCESS_STATE_UPDATED:function(){return Oi},DAILY_EVENT_ACTIVE_SPEAKER_CHANGE:function(){return eo},DAILY_EVENT_ACTIVE_SPEAKER_MODE_CHANGE:function(){return to},DAILY_EVENT_APP_MSG:function(){return Gi},DAILY_EVENT_CAMERA_ERROR:function(){return bi},DAILY_EVENT_CPU_LOAD_CHANGE:function(){return io},DAILY_EVENT_ERROR:function(){return mo},DAILY_EVENT_EXIT_FULLSCREEN:function(){return so},DAILY_EVENT_FACE_COUNTS_UPDATED:function(){return oo},DAILY_EVENT_FULLSCREEN:function(){return ao},DAILY_EVENT_IFRAME_LAUNCH_CONFIG:function(){return hi},DAILY_EVENT_IFRAME_READY_FOR_LAUNCH_CONFIG:function(){return pi},DAILY_EVENT_INPUT_SETTINGS_UPDATED:function(){return vo},DAILY_EVENT_JOINED_MEETING:function(){return wi},DAILY_EVENT_JOINING_MEETING:function(){return Si},DAILY_EVENT_LANG_UPDATED:function(){return po},DAILY_EVENT_LEFT_MEETING:function(){return ki},DAILY_EVENT_LIVE_STREAMING_ERROR:function(){return fo},DAILY_EVENT_LIVE_STREAMING_STARTED:function(){return co},DAILY_EVENT_LIVE_STREAMING_STOPPED:function(){return lo},DAILY_EVENT_LIVE_STREAMING_UPDATED:function(){return uo},DAILY_EVENT_LOADED:function(){return yi},DAILY_EVENT_LOADING:function(){return gi},DAILY_EVENT_LOAD_ATTEMPT_FAILED:function(){return mi},DAILY_EVENT_LOCAL_SCREEN_SHARE_CANCELED:function(){return Zi},DAILY_EVENT_LOCAL_SCREEN_SHARE_STARTED:function(){return Qi},DAILY_EVENT_LOCAL_SCREEN_SHARE_STOPPED:function(){return Xi},DAILY_EVENT_MEETING_SESSION_DATA_ERROR:function(){return Ii},DAILY_EVENT_MEETING_SESSION_STATE_UPDATED:function(){return Pi},DAILY_EVENT_MEETING_SESSION_SUMMARY_UPDATED:function(){return Ci},DAILY_EVENT_NETWORK_CONNECTION:function(){return ro},DAILY_EVENT_NETWORK_QUALITY_CHANGE:function(){return no},DAILY_EVENT_NONFATAL_ERROR:function(){return go},DAILY_EVENT_PARTICIPANT_COUNTS_UPDATED:function(){return Ti},DAILY_EVENT_PARTICIPANT_JOINED:function(){return Ei},DAILY_EVENT_PARTICIPANT_LEFT:function(){return Ai},DAILY_EVENT_PARTICIPANT_UPDATED:function(){return Mi},DAILY_EVENT_RECEIVE_SETTINGS_UPDATED:function(){return ho},DAILY_EVENT_RECORDING_DATA:function(){return Wi},DAILY_EVENT_RECORDING_ERROR:function(){return Yi},DAILY_EVENT_RECORDING_STARTED:function(){return Vi},DAILY_EVENT_RECORDING_STATS:function(){return Ji},DAILY_EVENT_RECORDING_STOPPED:function(){return Ui},DAILY_EVENT_RECORDING_UPLOAD_COMPLETED:function(){return $i},DAILY_EVENT_REMOTE_MEDIA_PLAYER_STARTED:function(){return zi},DAILY_EVENT_REMOTE_MEDIA_PLAYER_STOPPED:function(){return Ki},DAILY_EVENT_REMOTE_MEDIA_PLAYER_UPDATED:function(){return Hi},DAILY_EVENT_STARTED_CAMERA:function(){return _i},DAILY_EVENT_THEME_UPDATED:function(){return vi},DAILY_EVENT_TRACK_STARTED:function(){return xi},DAILY_EVENT_TRACK_STOPPED:function(){return ji},DAILY_EVENT_TRANSCRIPTION_ERROR:function(){return Bi},DAILY_EVENT_TRANSCRIPTION_MSG:function(){return qi},DAILY_EVENT_TRANSCRIPTION_STARTED:function(){return Ri},DAILY_EVENT_TRANSCRIPTION_STOPPED:function(){return Fi},DAILY_EVENT_WAITING_PARTICIPANT_ADDED:function(){return Li},DAILY_EVENT_WAITING_PARTICIPANT_REMOVED:function(){return Ni},DAILY_EVENT_WAITING_PARTICIPANT_UPDATED:function(){return Di},DAILY_FATAL_ERROR_CONNECTION:function(){return ii},DAILY_FATAL_ERROR_EJECTED:function(){return Hr},DAILY_FATAL_ERROR_EOL:function(){return ni},DAILY_FATAL_ERROR_EXP_ROOM:function(){return Xr},DAILY_FATAL_ERROR_EXP_TOKEN:function(){return Zr},DAILY_FATAL_ERROR_MEETING_FULL:function(){return ti},DAILY_FATAL_ERROR_NBF_ROOM:function(){return Kr},DAILY_FATAL_ERROR_NBF_TOKEN:function(){return Qr},DAILY_FATAL_ERROR_NOT_ALLOWED:function(){return ri},DAILY_FATAL_ERROR_NO_ROOM:function(){return ei},DAILY_RECEIVE_SETTINGS_ALL_PARTICIPANTS_KEY:function(){return zr},DAILY_RECEIVE_SETTINGS_BASE_KEY:function(){return qr},DAILY_STATE_ERROR:function(){return jr},DAILY_STATE_JOINED:function(){return Nr},DAILY_STATE_JOINING:function(){return Dr},DAILY_STATE_LEFT:function(){return xr},DAILY_STATE_NEW:function(){return Pr},DAILY_TRACK_STATE_BLOCKED:function(){return Rr},DAILY_TRACK_STATE_INTERRUPTED:function(){return Ur},DAILY_TRACK_STATE_LOADING:function(){return Vr},DAILY_TRACK_STATE_OFF:function(){return Fr},DAILY_TRACK_STATE_PLAYABLE:function(){return Jr},DAILY_TRACK_STATE_SENDABLE:function(){return Br},default:function(){return ms}});var y=n(7),_=n.n(y),b=Object.prototype.hasOwnProperty;function S(e,t,n){for(n of e.keys())if(w(n,t))return n}function w(e,t){var n,r,i;if(e===t)return!0;if(e&&t&&(n=e.constructor)===t.constructor){if(n===Date)return e.getTime()===t.getTime();if(n===RegExp)return e.toString()===t.toString();if(n===Array){if((r=e.length)===t.length)for(;r--&&w(e[r],t[r]););return-1===r}if(n===Set){if(e.size!==t.size)return!1;for(r of e){if((i=r)&&"object"==typeof i&&!(i=S(t,i)))return!1;if(!t.has(i))return!1}return!0}if(n===Map){if(e.size!==t.size)return!1;for(r of e){if((i=r[0])&&"object"==typeof i&&!(i=S(t,i)))return!1;if(!w(r[1],t.get(i)))return!1}return!0}if(n===ArrayBuffer)e=new Uint8Array(e),t=new Uint8Array(t);else if(n===DataView){if((r=e.byteLength)===t.byteLength)for(;r--&&e.getInt8(r)===t.getInt8(r););return-1===r}if(ArrayBuffer.isView(e)){if((r=e.byteLength)===t.byteLength)for(;r--&&e[r]===t[r];);return-1===r}if(!n||"object"==typeof e){for(n in r=0,e){if(b.call(e,n)&&++r&&!b.call(t,n))return!1;if(!(n in t)||!w(e[n],t[n]))return!1}return Object.keys(t).length===r}}return e!=e&&t!=t}var k=n(880),E=n.n(k);function M(){return Date.now()+Math.random().toString()}function A(){throw new Error("Method must be implemented in subclass")}function T(e,t){return null!=t&&t.proxyUrl?t.proxyUrl+("/"===t.proxyUrl.slice(-1)?"":"/")+e.substring(8):e}function O(e){if(null!=e&&e.callObjectBundleUrlOverride)return console.warn("The callObjectBundleUrlOverride property is deprecated and will be removed. Please use bundlePathOverride instead. When providing a bundlePathOverride, the URL should point to the directory containing all Daily bundles (call-machine-object-bundle.js and audio-processor-bundle.js)."),e.callObjectBundleUrlOverride;var t=function(e){if(null!=e&&e.bundlePathOverride){var t=e.bundlePathOverride;return t.endsWith("/")?t.slice(0,-1):t}if(null!=e&&e.callObjectBundleUrlOverride){var n=e.callObjectBundleUrlOverride,r=n.substring(0,n.lastIndexOf("/"));return r.endsWith("/")?r.slice(0,-1):r}var i=T("https://c.daily.co/call-machine/versioned/".concat("0.90.0","/static"),e);return i.endsWith("/")?i.slice(0,-1):i}(e)+"/call-machine-object-bundle.js";return t}function C(e){try{new URL(e)}catch(e){return!1}return!0}const P="undefined"==typeof __SENTRY_DEBUG__||__SENTRY_DEBUG__,I="undefined"==typeof __SENTRY_DEBUG__||__SENTRY_DEBUG__,L="8.55.2",D=globalThis;function N(e,t,n){const r=n||D,i=r.__SENTRY__=r.__SENTRY__||{},o=i[L]=i[L]||{};return o[e]||(o[e]=t())}const x=["debug","info","warn","error","log","assert","trace"],j={};function R(e){if(!("console"in D))return e();const t=D.console,n={},r=Object.keys(j);r.forEach(e=>{const r=j[e];n[e]=t[e],t[e]=r});try{return e()}finally{r.forEach(e=>{t[e]=n[e]})}}const F=N("logger",function(){let e=!1;const t={enable:()=>{e=!0},disable:()=>{e=!1},isEnabled:()=>e};return I?x.forEach(n=>{t[n]=(...t)=>{e&&R(()=>{D.console[n](`Sentry Logger [${n}]:`,...t)})}}):x.forEach(e=>{t[e]=()=>{}}),t}),B=[];function V(e,t){for(const n of t)n&&n.afterAllSetup&&n.afterAllSetup(e)}function U(e,t,n){if(n[t.name])P&&F.log(`Integration skipped because it was already installed: ${t.name}`);else{if(n[t.name]=t,-1===B.indexOf(t.name)&&"function"==typeof t.setupOnce&&(t.setupOnce(),B.push(t.name)),t.setup&&"function"==typeof t.setup&&t.setup(e),"function"==typeof t.preprocessEvent){const n=t.preprocessEvent.bind(t);e.on("preprocessEvent",(t,r)=>n(t,r,e))}if("function"==typeof t.processEvent){const n=t.processEvent.bind(t),r=Object.assign((t,r)=>n(t,r,e),{id:t.name});e.addEventProcessor(r)}P&&F.log(`Integration installed: ${t.name}`)}}const J=Object.prototype.toString;function Y(e){switch(J.call(e)){case"[object Error]":case"[object Exception]":case"[object DOMException]":case"[object WebAssembly.Exception]":return!0;default:return Z(e,Error)}}function $(e,t){return J.call(e)===`[object ${t}]`}function W(e){return $(e,"ErrorEvent")}function G(e){return $(e,"DOMError")}function q(e){return $(e,"String")}function z(e){return"object"==typeof e&&null!==e&&"__sentry_template_string__"in e&&"__sentry_template_values__"in e}function H(e){return null===e||z(e)||"object"!=typeof e&&"function"!=typeof e}function K(e){return $(e,"Object")}function Q(e){return"undefined"!=typeof Event&&Z(e,Event)}function X(e){return Boolean(e&&e.then&&"function"==typeof e.then)}function Z(e,t){try{return e instanceof t}catch(e){return!1}}function ee(e){return!("object"!=typeof e||null===e||!e.__isVue&&!e._isVue)}const te=D;function ne(e,t={}){if(!e)return"<unknown>";try{let n=e;const r=5,i=[];let o=0,a=0;const s=" > ",c=s.length;let u;const l=Array.isArray(t)?t:t.keyAttrs,d=!Array.isArray(t)&&t.maxStringLength||80;for(;n&&o++<r&&(u=re(n,l),!("html"===u||o>1&&a+i.length*c+u.length>=d));)i.push(u),a+=u.length,n=n.parentNode;return i.reverse().join(s)}catch(e){return"<unknown>"}}function re(e,t){const n=e,r=[];if(!n||!n.tagName)return"";if(te.HTMLElement&&n instanceof HTMLElement&&n.dataset){if(n.dataset.sentryComponent)return n.dataset.sentryComponent;if(n.dataset.sentryElement)return n.dataset.sentryElement}r.push(n.tagName.toLowerCase());const i=t&&t.length?t.filter(e=>n.getAttribute(e)).map(e=>[e,n.getAttribute(e)]):null;if(i&&i.length)i.forEach(e=>{r.push(`[${e[0]}="${e[1]}"]`)});else{n.id&&r.push(`#${n.id}`);const e=n.className;if(e&&q(e)){const t=e.split(/\s+/);for(const e of t)r.push(`.${e}`)}}const o=["aria-label","type","name","title","alt"];for(const e of o){const t=n.getAttribute(e);t&&r.push(`[${e}="${t}"]`)}return r.join("")}function ie(e,t=0){return"string"!=typeof e||0===t||e.length<=t?e:`${e.slice(0,t)}...`}function oe(e,t){if(!Array.isArray(e))return"";const n=[];for(let t=0;t<e.length;t++){const r=e[t];try{ee(r)?n.push("[VueViewModel]"):n.push(String(r))}catch(e){n.push("[value cannot be serialized]")}}return n.join(t)}function ae(e,t=[],n=!1){return t.some(t=>function(e,t,n=!1){return!!q(e)&&($(t,"RegExp")?t.test(e):!!q(t)&&(n?e===t:e.includes(t)))}(e,t,n))}function se(e,t,n){if(!(t in e))return;const r=e[t],i=n(r);"function"==typeof i&&ue(i,r);try{e[t]=i}catch(n){I&&F.log(`Failed to replace method "${t}" in object`,e)}}function ce(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!0,configurable:!0})}catch(n){I&&F.log(`Failed to add non-enumerable property "${t}" to object`,e)}}function ue(e,t){try{const n=t.prototype||{};e.prototype=t.prototype=n,ce(e,"__sentry_original__",t)}catch(e){}}function le(e){return e.__sentry_original__}function de(e){if(Y(e))return{message:e.message,name:e.name,stack:e.stack,...pe(e)};if(Q(e)){const t={type:e.type,target:fe(e.target),currentTarget:fe(e.currentTarget),...pe(e)};return"undefined"!=typeof CustomEvent&&Z(e,CustomEvent)&&(t.detail=e.detail),t}return e}function fe(e){try{return"undefined"!=typeof Element&&Z(e,Element)?ne(e):Object.prototype.toString.call(e)}catch(e){return"<unknown>"}}function pe(e){if("object"==typeof e&&null!==e){const t={};for(const n in e)Object.prototype.hasOwnProperty.call(e,n)&&(t[n]=e[n]);return t}return{}}function he(e){return ve(e,new Map)}function ve(e,t){if(function(e){if(!K(e))return!1;try{const t=Object.getPrototypeOf(e).constructor.name;return!t||"Object"===t}catch(e){return!0}}(e)){const n=t.get(e);if(void 0!==n)return n;const r={};t.set(e,r);for(const n of Object.getOwnPropertyNames(e))void 0!==e[n]&&(r[n]=ve(e[n],t));return r}if(Array.isArray(e)){const n=t.get(e);if(void 0!==n)return n;const r=[];return t.set(e,r),e.forEach(e=>{r.push(ve(e,t))}),r}return e}function ge(){const e=D,t=e.crypto||e.msCrypto;let n=()=>16*Math.random();try{if(t&&t.randomUUID)return t.randomUUID().replace(/-/g,"");t&&t.getRandomValues&&(n=()=>{const e=new Uint8Array(1);return t.getRandomValues(e),e[0]})}catch(e){}return([1e7]+1e3+4e3+8e3+1e11).replace(/[018]/g,e=>(e^(15&n())>>e/4).toString(16))}function me(e){return e.exception&&e.exception.values?e.exception.values[0]:void 0}function ye(e){const{message:t,event_id:n}=e;if(t)return t;const r=me(e);return r?r.type&&r.value?`${r.type}: ${r.value}`:r.type||r.value||n||"<unknown>":n||"<unknown>"}function _e(e,t,n){const r=e.exception=e.exception||{},i=r.values=r.values||[],o=i[0]=i[0]||{};o.value||(o.value=t||""),o.type||(o.type=n||"Error")}function be(e,t){const n=me(e);if(!n)return;const r=n.mechanism;if(n.mechanism={type:"generic",handled:!0,...r,...t},t&&"data"in t){const e={...r&&r.data,...t.data};n.mechanism.data=e}}function Se(e){if(function(e){try{return e.__sentry_captured__}catch(e){}}(e))return!0;try{ce(e,"__sentry_captured__",!0)}catch(e){}return!1}const we=[/^Script error\.?$/,/^Javascript error: Script error\.? on line 0$/,/^ResizeObserver loop completed with undelivered notifications.$/,/^Cannot redefine property: googletag$/,/^Can't find variable: gmo$/,"undefined is not an object (evaluating 'a.L')",'can\'t redefine non-configurable property "solana"',"vv().getRestrictions is not a function. (In 'vv().getRestrictions(1,a)', 'vv().getRestrictions' is undefined)","Can't find variable: _AutofillCallbackHandler",/^Non-Error promise rejection captured with value: Object Not Found Matching Id:\d+, MethodName:simulateEvent, ParamCount:\d+$/,/^Java exception was raised during method invocation$/],ke=(e={})=>({name:"InboundFilters",processEvent(t,n,r){const i=r.getOptions(),o=function(e={},t={}){return{allowUrls:[...e.allowUrls||[],...t.allowUrls||[]],denyUrls:[...e.denyUrls||[],...t.denyUrls||[]],ignoreErrors:[...e.ignoreErrors||[],...t.ignoreErrors||[],...e.disableErrorDefaults?[]:we],ignoreTransactions:[...e.ignoreTransactions||[],...t.ignoreTransactions||[]],ignoreInternal:void 0===e.ignoreInternal||e.ignoreInternal}}(e,i);return function(e,t){return t.ignoreInternal&&function(e){try{return"SentryError"===e.exception.values[0].type}catch(e){}return!1}(e)?(P&&F.warn(`Event dropped due to being internal Sentry Error.\nEvent: ${ye(e)}`),!0):function(e,t){return!(e.type||!t||!t.length)&&function(e){const t=[];let n;e.message&&t.push(e.message);try{n=e.exception.values[e.exception.values.length-1]}catch(e){}return n&&n.value&&(t.push(n.value),n.type&&t.push(`${n.type}: ${n.value}`)),t}(e).some(e=>ae(e,t))}(e,t.ignoreErrors)?(P&&F.warn(`Event dropped due to being matched by \`ignoreErrors\` option.\nEvent: ${ye(e)}`),!0):function(e){return!e.type&&(!(!e.exception||!e.exception.values||0===e.exception.values.length)&&(!e.message&&!e.exception.values.some(e=>e.stacktrace||e.type&&"Error"!==e.type||e.value)))}(e)?(P&&F.warn(`Event dropped due to not having an error message, error type or stacktrace.\nEvent: ${ye(e)}`),!0):function(e,t){if("transaction"!==e.type||!t||!t.length)return!1;const n=e.transaction;return!!n&&ae(n,t)}(e,t.ignoreTransactions)?(P&&F.warn(`Event dropped due to being matched by \`ignoreTransactions\` option.\nEvent: ${ye(e)}`),!0):function(e,t){if(!t||!t.length)return!1;const n=Ee(e);return!!n&&ae(n,t)}(e,t.denyUrls)?(P&&F.warn(`Event dropped due to being matched by \`denyUrls\` option.\nEvent: ${ye(e)}.\nUrl: ${Ee(e)}`),!0):!function(e,t){if(!t||!t.length)return!0;const n=Ee(e);return!n||ae(n,t)}(e,t.allowUrls)&&(P&&F.warn(`Event dropped due to not being matched by \`allowUrls\` option.\nEvent: ${ye(e)}.\nUrl: ${Ee(e)}`),!0)}(t,o)?null:t}});function Ee(e){try{let t;try{t=e.exception.values[0].stacktrace.frames}catch(e){}return t?function(e=[]){for(let t=e.length-1;t>=0;t--){const n=e[t];if(n&&"<anonymous>"!==n.filename&&"[native code]"!==n.filename)return n.filename||null}return null}(t):null}catch(t){return P&&F.error(`Cannot extract url for event ${ye(e)}`),null}}function Me(){return Ae(D),D}function Ae(e){const t=e.__SENTRY__=e.__SENTRY__||{};return t.version=t.version||L,t[L]=t[L]||{}}function Te(){return Date.now()/1e3}const Oe=function(){const{performance:e}=D;if(!e||!e.now)return Te;const t=Date.now()-e.now(),n=null==e.timeOrigin?t:e.timeOrigin;return()=>(n+e.now())/1e3}();let Ce;function Pe(e,t={}){if(t.user&&(!e.ipAddress&&t.user.ip_address&&(e.ipAddress=t.user.ip_address),e.did||t.did||(e.did=t.user.id||t.user.email||t.user.username)),e.timestamp=t.timestamp||Oe(),t.abnormal_mechanism&&(e.abnormal_mechanism=t.abnormal_mechanism),t.ignoreDuration&&(e.ignoreDuration=t.ignoreDuration),t.sid&&(e.sid=32===t.sid.length?t.sid:ge()),void 0!==t.init&&(e.init=t.init),!e.did&&t.did&&(e.did=`${t.did}`),"number"==typeof t.started&&(e.started=t.started),e.ignoreDuration)e.duration=void 0;else if("number"==typeof t.duration)e.duration=t.duration;else{const t=e.timestamp-e.started;e.duration=t>=0?t:0}t.release&&(e.release=t.release),t.environment&&(e.environment=t.environment),!e.ipAddress&&t.ipAddress&&(e.ipAddress=t.ipAddress),!e.userAgent&&t.userAgent&&(e.userAgent=t.userAgent),"number"==typeof t.errors&&(e.errors=t.errors),t.status&&(e.status=t.status)}function Ie(){return ge()}function Le(){return ge().substring(16)}function De(e,t,n=2){if(!t||"object"!=typeof t||n<=0)return t;if(e&&t&&0===Object.keys(t).length)return e;const r={...e};for(const e in t)Object.prototype.hasOwnProperty.call(t,e)&&(r[e]=De(r[e],t[e],n-1));return r}(()=>{const{performance:e}=D;if(!e||!e.now)return void(Ce="none");const t=36e5,n=e.now(),r=Date.now(),i=e.timeOrigin?Math.abs(e.timeOrigin+n-r):t,o=i<t,a=e.timing&&e.timing.navigationStart,s="number"==typeof a?Math.abs(a+n-r):t;o||s<t?i<=s?(Ce="timeOrigin",e.timeOrigin):Ce="navigationStart":Ce="dateNow"})();const Ne="_sentrySpan";function xe(e,t){t?ce(e,Ne,t):delete e[Ne]}function je(e){return e[Ne]}class Re{constructor(){this._notifyingListeners=!1,this._scopeListeners=[],this._eventProcessors=[],this._breadcrumbs=[],this._attachments=[],this._user={},this._tags={},this._extra={},this._contexts={},this._sdkProcessingMetadata={},this._propagationContext={traceId:Ie(),spanId:Le()}}clone(){const e=new Re;return e._breadcrumbs=[...this._breadcrumbs],e._tags={...this._tags},e._extra={...this._extra},e._contexts={...this._contexts},this._contexts.flags&&(e._contexts.flags={values:[...this._contexts.flags.values]}),e._user=this._user,e._level=this._level,e._session=this._session,e._transactionName=this._transactionName,e._fingerprint=this._fingerprint,e._eventProcessors=[...this._eventProcessors],e._requestSession=this._requestSession,e._attachments=[...this._attachments],e._sdkProcessingMetadata={...this._sdkProcessingMetadata},e._propagationContext={...this._propagationContext},e._client=this._client,e._lastEventId=this._lastEventId,xe(e,je(this)),e}setClient(e){this._client=e}setLastEventId(e){this._lastEventId=e}getClient(){return this._client}lastEventId(){return this._lastEventId}addScopeListener(e){this._scopeListeners.push(e)}addEventProcessor(e){return this._eventProcessors.push(e),this}setUser(e){return this._user=e||{email:void 0,id:void 0,ip_address:void 0,username:void 0},this._session&&Pe(this._session,{user:e}),this._notifyScopeListeners(),this}getUser(){return this._user}getRequestSession(){return this._requestSession}setRequestSession(e){return this._requestSession=e,this}setTags(e){return this._tags={...this._tags,...e},this._notifyScopeListeners(),this}setTag(e,t){return this._tags={...this._tags,[e]:t},this._notifyScopeListeners(),this}setExtras(e){return this._extra={...this._extra,...e},this._notifyScopeListeners(),this}setExtra(e,t){return this._extra={...this._extra,[e]:t},this._notifyScopeListeners(),this}setFingerprint(e){return this._fingerprint=e,this._notifyScopeListeners(),this}setLevel(e){return this._level=e,this._notifyScopeListeners(),this}setTransactionName(e){return this._transactionName=e,this._notifyScopeListeners(),this}setContext(e,t){return null===t?delete this._contexts[e]:this._contexts[e]=t,this._notifyScopeListeners(),this}setSession(e){return e?this._session=e:delete this._session,this._notifyScopeListeners(),this}getSession(){return this._session}update(e){if(!e)return this;const t="function"==typeof e?e(this):e,[n,r]=t instanceof Fe?[t.getScopeData(),t.getRequestSession()]:K(t)?[e,e.requestSession]:[],{tags:i,extra:o,user:a,contexts:s,level:c,fingerprint:u=[],propagationContext:l}=n||{};return this._tags={...this._tags,...i},this._extra={...this._extra,...o},this._contexts={...this._contexts,...s},a&&Object.keys(a).length&&(this._user=a),c&&(this._level=c),u.length&&(this._fingerprint=u),l&&(this._propagationContext=l),r&&(this._requestSession=r),this}clear(){return this._breadcrumbs=[],this._tags={},this._extra={},this._user={},this._contexts={},this._level=void 0,this._transactionName=void 0,this._fingerprint=void 0,this._requestSession=void 0,this._session=void 0,xe(this,void 0),this._attachments=[],this.setPropagationContext({traceId:Ie()}),this._notifyScopeListeners(),this}addBreadcrumb(e,t){const n="number"==typeof t?t:100;if(n<=0)return this;const r={timestamp:Te(),...e};return this._breadcrumbs.push(r),this._breadcrumbs.length>n&&(this._breadcrumbs=this._breadcrumbs.slice(-n),this._client&&this._client.recordDroppedEvent("buffer_overflow","log_item")),this._notifyScopeListeners(),this}getLastBreadcrumb(){return this._breadcrumbs[this._breadcrumbs.length-1]}clearBreadcrumbs(){return this._breadcrumbs=[],this._notifyScopeListeners(),this}addAttachment(e){return this._attachments.push(e),this}clearAttachments(){return this._attachments=[],this}getScopeData(){return{breadcrumbs:this._breadcrumbs,attachments:this._attachments,contexts:this._contexts,tags:this._tags,extra:this._extra,user:this._user,level:this._level,fingerprint:this._fingerprint||[],eventProcessors:this._eventProcessors,propagationContext:this._propagationContext,sdkProcessingMetadata:this._sdkProcessingMetadata,transactionName:this._transactionName,span:je(this)}}setSDKProcessingMetadata(e){return this._sdkProcessingMetadata=De(this._sdkProcessingMetadata,e,2),this}setPropagationContext(e){return this._propagationContext={spanId:Le(),...e},this}getPropagationContext(){return this._propagationContext}captureException(e,t){const n=t&&t.event_id?t.event_id:ge();if(!this._client)return F.warn("No client configured on scope - will not capture exception!"),n;const r=new Error("Sentry syntheticException");return this._client.captureException(e,{originalException:e,syntheticException:r,...t,event_id:n},this),n}captureMessage(e,t,n){const r=n&&n.event_id?n.event_id:ge();if(!this._client)return F.warn("No client configured on scope - will not capture message!"),r;const i=new Error(e);return this._client.captureMessage(e,t,{originalException:e,syntheticException:i,...n,event_id:r},this),r}captureEvent(e,t){const n=t&&t.event_id?t.event_id:ge();return this._client?(this._client.captureEvent(e,{...t,event_id:n},this),n):(F.warn("No client configured on scope - will not capture event!"),n)}_notifyScopeListeners(){this._notifyingListeners||(this._notifyingListeners=!0,this._scopeListeners.forEach(e=>{e(this)}),this._notifyingListeners=!1)}}const Fe=Re;class Be{constructor(e,t){let n,r;n=e||new Fe,r=t||new Fe,this._stack=[{scope:n}],this._isolationScope=r}withScope(e){const t=this._pushScope();let n;try{n=e(t)}catch(e){throw this._popScope(),e}return X(n)?n.then(e=>(this._popScope(),e),e=>{throw this._popScope(),e}):(this._popScope(),n)}getClient(){return this.getStackTop().client}getScope(){return this.getStackTop().scope}getIsolationScope(){return this._isolationScope}getStackTop(){return this._stack[this._stack.length-1]}_pushScope(){const e=this.getScope().clone();return this._stack.push({client:this.getClient(),scope:e}),e}_popScope(){return!(this._stack.length<=1||!this._stack.pop())}}function Ve(){const e=Ae(Me());return e.stack=e.stack||new Be(N("defaultCurrentScope",()=>new Fe),N("defaultIsolationScope",()=>new Fe))}function Ue(e){return Ve().withScope(e)}function Je(e,t){const n=Ve();return n.withScope(()=>(n.getStackTop().scope=e,t(e)))}function Ye(e){return Ve().withScope(()=>e(Ve().getIsolationScope()))}function $e(e){const t=Ae(e);return t.acs?t.acs:{withIsolationScope:Ye,withScope:Ue,withSetScope:Je,withSetIsolationScope:(e,t)=>Ye(t),getCurrentScope:()=>Ve().getScope(),getIsolationScope:()=>Ve().getIsolationScope()}}function We(){return $e(Me()).getCurrentScope()}function Ge(){return $e(Me()).getIsolationScope()}function qe(){return We().getClient()}function ze(e){const t=e.getPropagationContext(),{traceId:n,spanId:r,parentSpanId:i}=t;return he({trace_id:n,span_id:r,parent_span_id:i})}let He;const Ke=new WeakMap,Qe=()=>({name:"FunctionToString",setupOnce(){He=Function.prototype.toString;try{Function.prototype.toString=function(...e){const t=le(this),n=Ke.has(qe())&&void 0!==t?t:this;return He.apply(n,e)}}catch(e){}},setup(e){Ke.set(e,!0)}}),Xe="?",Ze=/\(error: (.*)\)/,et=/captureMessage|captureException/;function tt(e){return e[e.length-1]||{}}const nt="<anonymous>";function rt(e){try{return e&&"function"==typeof e&&e.name||nt}catch(e){return nt}}function it(e){const t=e.exception;if(t){const e=[];try{return t.values.forEach(t=>{t.stacktrace.frames&&e.push(...t.stacktrace.frames)}),e}catch(e){return}}}const ot=()=>{let e;return{name:"Dedupe",processEvent(t){if(t.type)return t;try{if(function(e,t){return!!t&&(!!function(e,t){const n=e.message,r=t.message;return!(!n&&!r)&&(!(n&&!r||!n&&r)&&(n===r&&(!!st(e,t)&&!!at(e,t))))}(e,t)||!!function(e,t){const n=ct(t),r=ct(e);return!(!n||!r)&&(n.type===r.type&&n.value===r.value&&(!!st(e,t)&&!!at(e,t)))}(e,t))}(t,e))return P&&F.warn("Event dropped due to being a duplicate of previously captured event."),null}catch(e){}return e=t}}};function at(e,t){let n=it(e),r=it(t);if(!n&&!r)return!0;if(n&&!r||!n&&r)return!1;if(r.length!==n.length)return!1;for(let e=0;e<r.length;e++){const t=r[e],i=n[e];if(t.filename!==i.filename||t.lineno!==i.lineno||t.colno!==i.colno||t.function!==i.function)return!1}return!0}function st(e,t){let n=e.fingerprint,r=t.fingerprint;if(!n&&!r)return!0;if(n&&!r||!n&&r)return!1;try{return!(n.join("")!==r.join(""))}catch(e){return!1}}function ct(e){return e.exception&&e.exception.values&&e.exception.values[0]}const ut={},lt={};function dt(e,t){ut[e]=ut[e]||[],ut[e].push(t)}function ft(e,t){if(!lt[e]){lt[e]=!0;try{t()}catch(t){I&&F.error(`Error while instrumenting ${e}`,t)}}}function pt(e,t){const n=e&&ut[e];if(n)for(const r of n)try{r(t)}catch(t){I&&F.error(`Error while triggering instrumentation handler.\nType: ${e}\nName: ${rt(r)}\nError:`,t)}}const ht=D;let vt,gt,mt;function yt(){if(!ht.document)return;const e=pt.bind(null,"dom"),t=_t(e,!0);ht.document.addEventListener("click",t,!1),ht.document.addEventListener("keypress",t,!1),["EventTarget","Node"].forEach(t=>{const n=ht[t],r=n&&n.prototype;r&&r.hasOwnProperty&&r.hasOwnProperty("addEventListener")&&(se(r,"addEventListener",function(t){return function(n,r,i){if("click"===n||"keypress"==n)try{const r=this.__sentry_instrumentation_handlers__=this.__sentry_instrumentation_handlers__||{},o=r[n]=r[n]||{refCount:0};if(!o.handler){const r=_t(e);o.handler=r,t.call(this,n,r,i)}o.refCount++}catch(e){}return t.call(this,n,r,i)}}),se(r,"removeEventListener",function(e){return function(t,n,r){if("click"===t||"keypress"==t)try{const n=this.__sentry_instrumentation_handlers__||{},i=n[t];i&&(i.refCount--,i.refCount<=0&&(e.call(this,t,i.handler,r),i.handler=void 0,delete n[t]),0===Object.keys(n).length&&delete this.__sentry_instrumentation_handlers__)}catch(e){}return e.call(this,t,n,r)}}))})}function _t(e,t=!1){return n=>{if(!n||n._sentryCaptured)return;const r=function(e){try{return e.target}catch(e){return null}}(n);if(function(e,t){return"keypress"===e&&(!t||!t.tagName||"INPUT"!==t.tagName&&"TEXTAREA"!==t.tagName&&!t.isContentEditable)}(n.type,r))return;ce(n,"_sentryCaptured",!0),r&&!r._sentryId&&ce(r,"_sentryId",ge());const i="keypress"===n.type?"input":n.type;(function(e){if(e.type!==gt)return!1;try{if(!e.target||e.target._sentryId!==mt)return!1}catch(e){}return!0})(n)||(e({event:n,name:i,global:t}),gt=n.type,mt=r?r._sentryId:void 0),clearTimeout(vt),vt=ht.setTimeout(()=>{mt=void 0,gt=void 0},1e3)}}const bt="__sentry_xhr_v3__";function St(){if(!ht.XMLHttpRequest)return;const e=XMLHttpRequest.prototype;e.open=new Proxy(e.open,{apply(e,t,n){const r=new Error,i=1e3*Oe(),o=q(n[0])?n[0].toUpperCase():void 0,a=function(e){if(q(e))return e;try{return e.toString()}catch(e){}}(n[1]);if(!o||!a)return e.apply(t,n);t[bt]={method:o,url:a,request_headers:{}},"POST"===o&&a.match(/sentry_key/)&&(t.__sentry_own_request__=!0);const s=()=>{const e=t[bt];if(e&&4===t.readyState){try{e.status_code=t.status}catch(e){}pt("xhr",{endTimestamp:1e3*Oe(),startTimestamp:i,xhr:t,virtualError:r})}};return"onreadystatechange"in t&&"function"==typeof t.onreadystatechange?t.onreadystatechange=new Proxy(t.onreadystatechange,{apply(e,t,n){return s(),e.apply(t,n)}}):t.addEventListener("readystatechange",s),t.setRequestHeader=new Proxy(t.setRequestHeader,{apply(e,t,n){const[r,i]=n,o=t[bt];return o&&q(r)&&q(i)&&(o.request_headers[r.toLowerCase()]=i),e.apply(t,n)}}),e.apply(t,n)}}),e.send=new Proxy(e.send,{apply(e,t,n){const r=t[bt];return r?(void 0!==n[0]&&(r.body=n[0]),pt("xhr",{startTimestamp:1e3*Oe(),xhr:t}),e.apply(t,n)):e.apply(t,n)}})}const wt=D;let kt;function Et(e){const t="history";dt(t,e),ft(t,Mt)}function Mt(){if(!function(){const e=wt.chrome,t=e&&e.app&&e.app.runtime,n="history"in wt&&!!wt.history.pushState&&!!wt.history.replaceState;return!t&&n}())return;const e=ht.onpopstate;function t(e){return function(...t){const n=t.length>2?t[2]:void 0;if(n){const e=kt,t=String(n);kt=t,pt("history",{from:e,to:t})}return e.apply(this,t)}}ht.onpopstate=function(...t){const n=ht.location.href,r=kt;if(kt=n,pt("history",{from:r,to:n}),e)try{return e.apply(this,t)}catch(e){}},se(ht.history,"pushState",t),se(ht.history,"replaceState",t)}function At(){"console"in D&&x.forEach(function(e){e in D.console&&se(D.console,e,function(t){return j[e]=t,function(...t){pt("console",{args:t,level:e});const n=j[e];n&&n.apply(D.console,t)}})})}const Tt=D;function Ot(e){return e&&/^function\s+\w+\(\)\s+\{\s+\[native code\]\s+\}$/.test(e.toString())}function Ct(e,t=!1){t&&!function(){if("string"==typeof EdgeRuntime)return!0;if(!function(){if(!("fetch"in Tt))return!1;try{return new Headers,new Request("http://www.example.com"),new Response,!0}catch(e){return!1}}())return!1;if(Ot(Tt.fetch))return!0;let e=!1;const t=Tt.document;if(t&&"function"==typeof t.createElement)try{const n=t.createElement("iframe");n.hidden=!0,t.head.appendChild(n),n.contentWindow&&n.contentWindow.fetch&&(e=Ot(n.contentWindow.fetch)),t.head.removeChild(n)}catch(e){I&&F.warn("Could not create sandbox iframe for pure fetch check, bailing to window.fetch: ",e)}return e}()||se(D,"fetch",function(t){return function(...n){const r=new Error,{method:i,url:o}=function(e){if(0===e.length)return{method:"GET",url:""};if(2===e.length){const[t,n]=e;return{url:It(t),method:Pt(n,"method")?String(n.method).toUpperCase():"GET"}}const t=e[0];return{url:It(t),method:Pt(t,"method")?String(t.method).toUpperCase():"GET"}}(n),a={args:n,fetchData:{method:i,url:o},startTimestamp:1e3*Oe(),virtualError:r};return e||pt("fetch",{...a}),t.apply(D,n).then(async t=>(e?e(t):pt("fetch",{...a,endTimestamp:1e3*Oe(),response:t}),t),e=>{throw pt("fetch",{...a,endTimestamp:1e3*Oe(),error:e}),Y(e)&&void 0===e.stack&&(e.stack=r.stack,ce(e,"framesToPop",1)),e})}})}function Pt(e,t){return!!e&&"object"==typeof e&&!!e[t]}function It(e){return"string"==typeof e?e:e?Pt(e,"url")?e.url:e.toString?e.toString():"":""}const Lt=100;function Dt(e,t){const n=qe(),r=Ge();if(!n)return;const{beforeBreadcrumb:i=null,maxBreadcrumbs:o=Lt}=n.getOptions();if(o<=0)return;const a={timestamp:Te(),...e},s=i?R(()=>i(a,t)):a;null!==s&&(n.emit&&n.emit("beforeAddBreadcrumb",s,t),r.addBreadcrumb(s,o))}function Nt(e){return void 0===e?void 0:e>=400&&e<500?"warning":e>=500?"error":void 0}function xt(e){if(!e)return{};const t=e.match(/^(([^:/?#]+):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$/);if(!t)return{};const n=t[6]||"",r=t[8]||"";return{host:t[4],path:t[5],protocol:t[2],search:n,hash:r,relative:t[5]+n+r}}const jt="undefined"==typeof __SENTRY_DEBUG__||__SENTRY_DEBUG__,Rt="production";var Ft;function Bt(e){return new Ut(t=>{t(e)})}function Vt(e){return new Ut((t,n)=>{n(e)})}!function(e){e[e.PENDING=0]="PENDING",e[e.RESOLVED=1]="RESOLVED",e[e.REJECTED=2]="REJECTED"}(Ft||(Ft={}));class Ut{constructor(e){Ut.prototype.__init.call(this),Ut.prototype.__init2.call(this),Ut.prototype.__init3.call(this),Ut.prototype.__init4.call(this),this._state=Ft.PENDING,this._handlers=[];try{e(this._resolve,this._reject)}catch(e){this._reject(e)}}then(e,t){return new Ut((n,r)=>{this._handlers.push([!1,t=>{if(e)try{n(e(t))}catch(e){r(e)}else n(t)},e=>{if(t)try{n(t(e))}catch(e){r(e)}else r(e)}]),this._executeHandlers()})}catch(e){return this.then(e=>e,e)}finally(e){return new Ut((t,n)=>{let r,i;return this.then(t=>{i=!1,r=t,e&&e()},t=>{i=!0,r=t,e&&e()}).then(()=>{i?n(r):t(r)})})}__init(){this._resolve=e=>{this._setResult(Ft.RESOLVED,e)}}__init2(){this._reject=e=>{this._setResult(Ft.REJECTED,e)}}__init3(){this._setResult=(e,t)=>{this._state===Ft.PENDING&&(X(t)?t.then(this._resolve,this._reject):(this._state=e,this._value=t,this._executeHandlers()))}}__init4(){this._executeHandlers=()=>{if(this._state===Ft.PENDING)return;const e=this._handlers.slice();this._handlers=[],e.forEach(e=>{e[0]||(this._state===Ft.RESOLVED&&e[1](this._value),this._state===Ft.REJECTED&&e[2](this._value),e[0]=!0)})}}}function Jt(e,t,n,r=0){return new Ut((i,o)=>{const a=e[r];if(null===t||"function"!=typeof a)i(t);else{const s=a({...t},n);P&&a.id&&null===s&&F.log(`Event processor "${a.id}" dropped event`),X(s)?s.then(t=>Jt(e,t,n,r+1).then(i)).then(null,o):Jt(e,s,n,r+1).then(i).then(null,o)}})}let Yt,$t,Wt;function Gt(e,t=100,n=1/0){try{return zt("",e,t,n)}catch(e){return{ERROR:`**non-serializable** (${e})`}}}function qt(e,t=3,n=102400){const r=Gt(e,t);return i=r,function(e){return~-encodeURI(e).split(/%..|./).length}(JSON.stringify(i))>n?qt(e,t-1,n):r;var i}function zt(e,t,n=1/0,r=1/0,i=function(){const e="function"==typeof WeakSet,t=e?new WeakSet:[];return[function(n){if(e)return!!t.has(n)||(t.add(n),!1);for(let e=0;e<t.length;e++)if(t[e]===n)return!0;return t.push(n),!1},function(n){if(e)t.delete(n);else for(let e=0;e<t.length;e++)if(t[e]===n){t.splice(e,1);break}}]}()){const[o,a]=i;if(null==t||["boolean","string"].includes(typeof t)||"number"==typeof t&&Number.isFinite(t))return t;const s=function(e,t){try{if("domain"===e&&t&&"object"==typeof t&&t._events)return"[Domain]";if("domainEmitter"===e)return"[DomainEmitter]";if("undefined"!=typeof window&&t===window)return"[Global]";if("undefined"!=typeof window&&t===window)return"[Window]";if("undefined"!=typeof document&&t===document)return"[Document]";if(ee(t))return"[VueViewModel]";if(K(n=t)&&"nativeEvent"in n&&"preventDefault"in n&&"stopPropagation"in n)return"[SyntheticEvent]";if("number"==typeof t&&!Number.isFinite(t))return`[${t}]`;if("function"==typeof t)return`[Function: ${rt(t)}]`;if("symbol"==typeof t)return`[${String(t)}]`;if("bigint"==typeof t)return`[BigInt: ${String(t)}]`;const r=function(e){const t=Object.getPrototypeOf(e);return t?t.constructor.name:"null prototype"}(t);return/^HTML(\w*)Element$/.test(r)?`[HTMLElement: ${r}]`:`[object ${r}]`}catch(e){return`**non-serializable** (${e})`}var n}(e,t);if(!s.startsWith("[object "))return s;if(t.__sentry_skip_normalization__)return t;const c="number"==typeof t.__sentry_override_normalization_depth__?t.__sentry_override_normalization_depth__:n;if(0===c)return s.replace("object ","");if(o(t))return"[Circular ~]";const u=t;if(u&&"function"==typeof u.toJSON)try{return zt("",u.toJSON(),c-1,r,i)}catch(e){}const l=Array.isArray(t)?[]:{};let d=0;const f=de(t);for(const e in f){if(!Object.prototype.hasOwnProperty.call(f,e))continue;if(d>=r){l[e]="[MaxProperties ~]";break}const t=f[e];l[e]=zt(e,t,c-1,r,i),d++}return a(t),l}const Ht=/^sentry-/;function Kt(e){return e.split(",").map(e=>e.split("=").map(e=>decodeURIComponent(e.trim()))).reduce((e,[t,n])=>(t&&n&&(e[t]=n),e),{})}function Qt(e){const t=e._sentryMetrics;if(!t)return;const n={};for(const[,[e,r]]of t)(n[e]||(n[e]=[])).push(he(r));return n}let Xt=!1;function Zt(e){const{spanId:t,traceId:n,isRemote:r}=e.spanContext();return he({parent_span_id:r?t:nn(e).parent_span_id,span_id:r?Le():t,trace_id:n})}function en(e){return"number"==typeof e?tn(e):Array.isArray(e)?e[0]+e[1]/1e9:e instanceof Date?tn(e.getTime()):Oe()}function tn(e){return e>9999999999?e/1e3:e}function nn(e){if(function(e){return"function"==typeof e.getSpanJSON}(e))return e.getSpanJSON();try{const{spanId:t,traceId:n}=e.spanContext();if(function(e){const t=e;return!!(t.attributes&&t.startTime&&t.name&&t.endTime&&t.status)}(e)){const{attributes:r,startTime:i,name:o,endTime:a,parentSpanId:s,status:c}=e;return he({span_id:t,trace_id:n,data:r,description:o,parent_span_id:s,start_timestamp:en(i),timestamp:en(a)||void 0,status:rn(c),op:r["sentry.op"],origin:r["sentry.origin"],_metrics_summary:Qt(e)})}return{span_id:t,trace_id:n}}catch(e){return{}}}function rn(e){if(e&&0!==e.code)return 1===e.code?"ok":e.message||"unknown_error"}function on(e){return e._sentryRootSpan||e}function an(){Xt||(R(()=>{console.warn("[Sentry] Deprecation warning: Returning null from `beforeSendSpan` will be disallowed from SDK version 9.0.0 onwards. The callback will only support mutating spans. To drop certain spans, configure the respective integrations directly.")}),Xt=!0)}function sn(e,t){const n=t.getOptions(),{publicKey:r}=t.getDsn()||{},i=he({environment:n.environment||Rt,release:n.release,public_key:r,trace_id:e});return t.emit("createDsc",i),i}function cn(e){const t=qe();if(!t)return{};const n=on(e),r=n._frozenDsc;if(r)return r;const i=n.spanContext().traceState,o=i&&i.get("sentry.dsc"),a=o&&function(e){const t=function(e){if(e&&(q(e)||Array.isArray(e)))return Array.isArray(e)?e.reduce((e,t)=>{const n=Kt(t);return Object.entries(n).forEach(([t,n])=>{e[t]=n}),e},{}):Kt(e)}(e);if(!t)return;const n=Object.entries(t).reduce((e,[t,n])=>(t.match(Ht)&&(e[t.slice(7)]=n),e),{});return Object.keys(n).length>0?n:void 0}(o);if(a)return a;const s=sn(e.spanContext().traceId,t),c=nn(n),u=c.data||{},l=u["sentry.sample_rate"];null!=l&&(s.sample_rate=`${l}`);const d=u["sentry.source"],f=c.description;return"url"!==d&&f&&(s.transaction=f),function(){if("boolean"==typeof __SENTRY_TRACING__&&!__SENTRY_TRACING__)return!1;const e=qe(),t=e&&e.getOptions();return!!t&&(t.enableTracing||"tracesSampleRate"in t||"tracesSampler"in t)}()&&(s.sampled=String(function(e){const{traceFlags:t}=e.spanContext();return 1===t}(n))),t.emit("createDsc",s,n),s}function un(e,t){const{extra:n,tags:r,user:i,contexts:o,level:a,sdkProcessingMetadata:s,breadcrumbs:c,fingerprint:u,eventProcessors:l,attachments:d,propagationContext:f,transactionName:p,span:h}=t;ln(e,"extra",n),ln(e,"tags",r),ln(e,"user",i),ln(e,"contexts",o),e.sdkProcessingMetadata=De(e.sdkProcessingMetadata,s,2),a&&(e.level=a),p&&(e.transactionName=p),h&&(e.span=h),c.length&&(e.breadcrumbs=[...e.breadcrumbs,...c]),u.length&&(e.fingerprint=[...e.fingerprint,...u]),l.length&&(e.eventProcessors=[...e.eventProcessors,...l]),d.length&&(e.attachments=[...e.attachments,...d]),e.propagationContext={...e.propagationContext,...f}}function ln(e,t,n){e[t]=De(e[t],n,1)}function dn(e,t,n,r,i,o){const{normalizeDepth:a=3,normalizeMaxBreadth:s=1e3}=e,c={...t,event_id:t.event_id||n.event_id||ge(),timestamp:t.timestamp||Te()},u=n.integrations||e.integrations.map(e=>e.name);!function(e,t){const{environment:n,release:r,dist:i,maxValueLength:o=250}=t;e.environment=e.environment||n||Rt,!e.release&&r&&(e.release=r),!e.dist&&i&&(e.dist=i),e.message&&(e.message=ie(e.message,o));const a=e.exception&&e.exception.values&&e.exception.values[0];a&&a.value&&(a.value=ie(a.value,o));const s=e.request;s&&s.url&&(s.url=ie(s.url,o))}(c,e),function(e,t){t.length>0&&(e.sdk=e.sdk||{},e.sdk.integrations=[...e.sdk.integrations||[],...t])}(c,u),i&&i.emit("applyFrameMetadata",t),void 0===t.type&&function(e,t){const n=function(e){const t=D._sentryDebugIds;if(!t)return{};const n=Object.keys(t);return Wt&&n.length===$t||($t=n.length,Wt=n.reduce((n,r)=>{Yt||(Yt={});const i=Yt[r];if(i)n[i[0]]=i[1];else{const i=e(r);for(let e=i.length-1;e>=0;e--){const o=i[e],a=o&&o.filename,s=t[r];if(a&&s){n[a]=s,Yt[r]=[a,s];break}}}return n},{})),Wt}(t);try{e.exception.values.forEach(e=>{e.stacktrace.frames.forEach(e=>{n&&e.filename&&(e.debug_id=n[e.filename])})})}catch(e){}}(c,e.stackParser);const l=function(e,t){if(!t)return e;const n=e?e.clone():new Fe;return n.update(t),n}(r,n.captureContext);n.mechanism&&be(c,n.mechanism);const d=i?i.getEventProcessors():[],f=N("globalScope",()=>new Fe).getScopeData();o&&un(f,o.getScopeData()),l&&un(f,l.getScopeData());const p=[...n.attachments||[],...f.attachments];return p.length&&(n.attachments=p),function(e,t){const{fingerprint:n,span:r,breadcrumbs:i,sdkProcessingMetadata:o}=t;!function(e,t){const{extra:n,tags:r,user:i,contexts:o,level:a,transactionName:s}=t,c=he(n);c&&Object.keys(c).length&&(e.extra={...c,...e.extra});const u=he(r);u&&Object.keys(u).length&&(e.tags={...u,...e.tags});const l=he(i);l&&Object.keys(l).length&&(e.user={...l,...e.user});const d=he(o);d&&Object.keys(d).length&&(e.contexts={...d,...e.contexts}),a&&(e.level=a),s&&"transaction"!==e.type&&(e.transaction=s)}(e,t),r&&function(e,t){e.contexts={trace:Zt(t),...e.contexts},e.sdkProcessingMetadata={dynamicSamplingContext:cn(t),...e.sdkProcessingMetadata};const n=nn(on(t)).description;n&&!e.transaction&&"transaction"===e.type&&(e.transaction=n)}(e,r),function(e,t){e.fingerprint=e.fingerprint?Array.isArray(e.fingerprint)?e.fingerprint:[e.fingerprint]:[],t&&(e.fingerprint=e.fingerprint.concat(t)),e.fingerprint&&!e.fingerprint.length&&delete e.fingerprint}(e,n),function(e,t){const n=[...e.breadcrumbs||[],...t];e.breadcrumbs=n.length?n:void 0}(e,i),function(e,t){e.sdkProcessingMetadata={...e.sdkProcessingMetadata,...t}}(e,o)}(c,f),Jt([...d,...f.eventProcessors],c,n).then(e=>(e&&function(e){const t={};try{e.exception.values.forEach(e=>{e.stacktrace.frames.forEach(e=>{e.debug_id&&(e.abs_path?t[e.abs_path]=e.debug_id:e.filename&&(t[e.filename]=e.debug_id),delete e.debug_id)})})}catch(e){}if(0===Object.keys(t).length)return;e.debug_meta=e.debug_meta||{},e.debug_meta.images=e.debug_meta.images||[];const n=e.debug_meta.images;Object.entries(t).forEach(([e,t])=>{n.push({type:"sourcemap",code_file:e,debug_id:t})})}(e),"number"==typeof a&&a>0?function(e,t,n){if(!e)return null;const r={...e,...e.breadcrumbs&&{breadcrumbs:e.breadcrumbs.map(e=>({...e,...e.data&&{data:Gt(e.data,t,n)}}))},...e.user&&{user:Gt(e.user,t,n)},...e.contexts&&{contexts:Gt(e.contexts,t,n)},...e.extra&&{extra:Gt(e.extra,t,n)}};return e.contexts&&e.contexts.trace&&r.contexts&&(r.contexts.trace=e.contexts.trace,e.contexts.trace.data&&(r.contexts.trace.data=Gt(e.contexts.trace.data,t,n))),e.spans&&(r.spans=e.spans.map(e=>({...e,...e.data&&{data:Gt(e.data,t,n)}}))),e.contexts&&e.contexts.flags&&r.contexts&&(r.contexts.flags=Gt(e.contexts.flags,3,n)),r}(e,a,s):e))}const fn=["user","level","extra","contexts","tags","fingerprint","requestSession","propagationContext"];function pn(e,t){return We().captureEvent(e,t)}function hn(e){const t=qe(),n=Ge(),r=We(),{release:i,environment:o=Rt}=t&&t.getOptions()||{},{userAgent:a}=D.navigator||{},s=function(e){const t=Oe(),n={sid:ge(),init:!0,timestamp:t,started:t,duration:0,status:"ok",errors:0,ignoreDuration:!1,toJSON:()=>function(e){return he({sid:`${e.sid}`,init:e.init,started:new Date(1e3*e.started).toISOString(),timestamp:new Date(1e3*e.timestamp).toISOString(),status:e.status,errors:e.errors,did:"number"==typeof e.did||"string"==typeof e.did?`${e.did}`:void 0,duration:e.duration,abnormal_mechanism:e.abnormal_mechanism,attrs:{release:e.release,environment:e.environment,ip_address:e.ipAddress,user_agent:e.userAgent}})}(n)};return e&&Pe(n,e),n}({release:i,environment:o,user:r.getUser()||n.getUser(),...a&&{userAgent:a},...e}),c=n.getSession();return c&&"ok"===c.status&&Pe(c,{status:"exited"}),vn(),n.setSession(s),r.setSession(s),s}function vn(){const e=Ge(),t=We(),n=t.getSession()||e.getSession();n&&function(e){let t={};"ok"===e.status&&(t={status:"exited"}),Pe(e,t)}(n),gn(),e.setSession(),t.setSession()}function gn(){const e=Ge(),t=We(),n=qe(),r=t.getSession()||e.getSession();r&&n&&n.captureSession(r)}function mn(e=!1){e?vn():gn()}const yn=D;let _n=0;function bn(){return _n>0}function Sn(e,t={}){if(!function(e){return"function"==typeof e}(e))return e;try{const t=e.__sentry_wrapped__;if(t)return"function"==typeof t?t:e;if(le(e))return e}catch(t){return e}const n=function(...n){try{const r=n.map(e=>Sn(e,t));return e.apply(this,r)}catch(e){throw _n++,setTimeout(()=>{_n--}),function(...e){const t=$e(Me());if(2===e.length){const[n,r]=e;return n?t.withSetScope(n,r):t.withScope(r)}t.withScope(e[0])}(r=>{var i;r.addEventProcessor(e=>(t.mechanism&&(_e(e,void 0,void 0),be(e,t.mechanism)),e.extra={...e.extra,arguments:n},e)),i=e,We().captureException(i,function(e){if(e)return function(e){return e instanceof Fe||"function"==typeof e}(e)||function(e){return Object.keys(e).some(e=>fn.includes(e))}(e)?{captureContext:e}:e}(void 0))}),e}};try{for(const t in e)Object.prototype.hasOwnProperty.call(e,t)&&(n[t]=e[t])}catch(e){}ue(n,e),ce(e,"__sentry_wrapped__",n);try{Object.getOwnPropertyDescriptor(n,"name").configurable&&Object.defineProperty(n,"name",{get(){return e.name}})}catch(e){}return n}const wn=(e={})=>{const t={console:!0,dom:!0,fetch:!0,history:!0,sentry:!0,xhr:!0,...e};return{name:"Breadcrumbs",setup(e){var n;t.console&&function(e){const t="console";dt(t,e),ft(t,At)}(function(e){return function(t){if(qe()!==e)return;const n={category:"console",data:{arguments:t.args,logger:"console"},level:(r=t.level,"warn"===r?"warning":["fatal","error","warning","log","info","debug"].includes(r)?r:"log"),message:oe(t.args," ")};var r;if("assert"===t.level){if(!1!==t.args[0])return;n.message=`Assertion failed: ${oe(t.args.slice(1)," ")||"console.assert"}`,n.data.arguments=t.args.slice(1)}Dt(n,{input:t.args,level:t.level})}}(e)),t.dom&&(n=function(e,t){return function(n){if(qe()!==e)return;let r,i,o="object"==typeof t?t.serializeAttribute:void 0,a="object"==typeof t&&"number"==typeof t.maxStringLength?t.maxStringLength:void 0;a&&a>1024&&(jt&&F.warn(`\`dom.maxStringLength\` cannot exceed 1024, but a value of ${a} was configured. Sentry will use 1024 instead.`),a=1024),"string"==typeof o&&(o=[o]);try{const e=n.event,t=function(e){return!!e&&!!e.target}(e)?e.target:e;r=ne(t,{keyAttrs:o,maxStringLength:a}),i=function(e){if(!te.HTMLElement)return null;let t=e;for(let e=0;e<5;e++){if(!t)return null;if(t instanceof HTMLElement){if(t.dataset.sentryComponent)return t.dataset.sentryComponent;if(t.dataset.sentryElement)return t.dataset.sentryElement}t=t.parentNode}return null}(t)}catch(e){r="<unknown>"}if(0===r.length)return;const s={category:`ui.${n.name}`,message:r};i&&(s.data={"ui.component_name":i}),Dt(s,{event:n.event,name:n.name,global:n.global})}}(e,t.dom),dt("dom",n),ft("dom",yt)),t.xhr&&function(e){dt("xhr",e),ft("xhr",St)}(function(e){return function(t){if(qe()!==e)return;const{startTimestamp:n,endTimestamp:r}=t,i=t.xhr[bt];if(!n||!r||!i)return;const{method:o,url:a,status_code:s,body:c}=i,u={method:o,url:a,status_code:s},l={xhr:t.xhr,input:c,startTimestamp:n,endTimestamp:r};Dt({category:"xhr",data:u,type:"http",level:Nt(s)},l)}}(e)),t.fetch&&function(e){const t="fetch";dt(t,e),ft(t,()=>Ct(void 0,void 0))}(function(e){return function(t){if(qe()!==e)return;const{startTimestamp:n,endTimestamp:r}=t;if(r&&(!t.fetchData.url.match(/sentry_key/)||"POST"!==t.fetchData.method))if(t.error)Dt({category:"fetch",data:t.fetchData,level:"error",type:"http"},{data:t.error,input:t.args,startTimestamp:n,endTimestamp:r});else{const e=t.response,i={...t.fetchData,status_code:e&&e.status},o={input:t.args,response:e,startTimestamp:n,endTimestamp:r};Dt({category:"fetch",data:i,type:"http",level:Nt(i.status_code)},o)}}}(e)),t.history&&Et(function(e){return function(t){if(qe()!==e)return;let n=t.from,r=t.to;const i=xt(yn.location.href);let o=n?xt(n):void 0;const a=xt(r);o&&o.path||(o=i),i.protocol===a.protocol&&i.host===a.host&&(r=a.relative),i.protocol===o.protocol&&i.host===o.host&&(n=o.relative),Dt({category:"navigation",data:{from:n,to:r}})}}(e)),t.sentry&&e.on("beforeSendEvent",function(e){return function(t){qe()===e&&Dt({category:"sentry."+("transaction"===t.type?"transaction":"event"),event_id:t.event_id,level:t.level,message:ye(t)},{event:t})}}(e))}}},kn=["EventTarget","Window","Node","ApplicationCache","AudioTrackList","BroadcastChannel","ChannelMergerNode","CryptoOperation","EventSource","FileReader","HTMLUnknownElement","IDBDatabase","IDBRequest","IDBTransaction","KeyOperation","MediaController","MessagePort","ModalWindow","Notification","SVGElementInstance","Screen","SharedWorker","TextTrack","TextTrackCue","TextTrackList","WebSocket","WebSocketWorker","Worker","XMLHttpRequest","XMLHttpRequestEventTarget","XMLHttpRequestUpload"],En=(e={})=>{const t={XMLHttpRequest:!0,eventTarget:!0,requestAnimationFrame:!0,setInterval:!0,setTimeout:!0,...e};return{name:"BrowserApiErrors",setupOnce(){t.setTimeout&&se(yn,"setTimeout",Mn),t.setInterval&&se(yn,"setInterval",Mn),t.requestAnimationFrame&&se(yn,"requestAnimationFrame",An),t.XMLHttpRequest&&"XMLHttpRequest"in yn&&se(XMLHttpRequest.prototype,"send",Tn);const e=t.eventTarget;e&&(Array.isArray(e)?e:kn).forEach(On)}}};function Mn(e){return function(...t){const n=t[0];return t[0]=Sn(n,{mechanism:{data:{function:rt(e)},handled:!1,type:"instrument"}}),e.apply(this,t)}}function An(e){return function(t){return e.apply(this,[Sn(t,{mechanism:{data:{function:"requestAnimationFrame",handler:rt(e)},handled:!1,type:"instrument"}})])}}function Tn(e){return function(...t){const n=this;return["onload","onerror","onprogress","onreadystatechange"].forEach(e=>{e in n&&"function"==typeof n[e]&&se(n,e,function(t){const n={mechanism:{data:{function:e,handler:rt(t)},handled:!1,type:"instrument"}},r=le(t);return r&&(n.mechanism.data.handler=rt(r)),Sn(t,n)})}),e.apply(this,t)}}function On(e){const t=yn[e],n=t&&t.prototype;n&&n.hasOwnProperty&&n.hasOwnProperty("addEventListener")&&(se(n,"addEventListener",function(t){return function(n,r,i){try{"function"==typeof r.handleEvent&&(r.handleEvent=Sn(r.handleEvent,{mechanism:{data:{function:"handleEvent",handler:rt(r),target:e},handled:!1,type:"instrument"}}))}catch(e){}return t.apply(this,[n,Sn(r,{mechanism:{data:{function:"addEventListener",handler:rt(r),target:e},handled:!1,type:"instrument"}}),i])}}),se(n,"removeEventListener",function(e){return function(t,n,r){try{const i=n.__sentry_wrapped__;i&&e.call(this,t,i,r)}catch(e){}return e.call(this,t,n,r)}}))}let Cn=null;function Pn(){Cn=D.onerror,D.onerror=function(e,t,n,r,i){return pt("error",{column:r,error:i,line:n,msg:e,url:t}),!!Cn&&Cn.apply(this,arguments)},D.onerror.__SENTRY_INSTRUMENTED__=!0}let In=null;function Ln(){In=D.onunhandledrejection,D.onunhandledrejection=function(e){return pt("unhandledrejection",e),!In||In.apply(this,arguments)},D.onunhandledrejection.__SENTRY_INSTRUMENTED__=!0}function Dn(e,t){const n=xn(e,t),r={type:Fn(t),value:Bn(t)};return n.length&&(r.stacktrace={frames:n}),void 0===r.type&&""===r.value&&(r.value="Unrecoverable error caught"),r}function Nn(e,t){return{exception:{values:[Dn(e,t)]}}}function xn(e,t){const n=t.stacktrace||t.stack||"",r=function(e){return e&&jn.test(e.message)?1:0}(t),i=function(e){return"number"==typeof e.framesToPop?e.framesToPop:0}(t);try{return e(n,r,i)}catch(e){}return[]}const jn=/Minified React error #\d+;/i;function Rn(e){return"undefined"!=typeof WebAssembly&&void 0!==WebAssembly.Exception&&e instanceof WebAssembly.Exception}function Fn(e){const t=e&&e.name;return!t&&Rn(e)?e.message&&Array.isArray(e.message)&&2==e.message.length?e.message[0]:"WebAssembly.Exception":t}function Bn(e){const t=e&&e.message;return t?t.error&&"string"==typeof t.error.message?t.error.message:Rn(e)&&Array.isArray(e.message)&&2==e.message.length?e.message[1]:t:"No error message"}function Vn(e,t,n,r,i){let o;if(W(t)&&t.error)return Nn(e,t.error);if(G(t)||$(t,"DOMException")){const i=t;if("stack"in t)o=Nn(e,t);else{const t=i.name||(G(i)?"DOMError":"DOMException"),a=i.message?`${t}: ${i.message}`:t;o=Un(e,a,n,r),_e(o,a)}return"code"in i&&(o.tags={...o.tags,"DOMException.code":`${i.code}`}),o}return Y(t)?Nn(e,t):K(t)||Q(t)?(o=function(e,t,n,r){const i=qe(),o=i&&i.getOptions().normalizeDepth,a=function(e){for(const t in e)if(Object.prototype.hasOwnProperty.call(e,t)){const n=e[t];if(n instanceof Error)return n}}(t),s={__serialized__:qt(t,o)};if(a)return{exception:{values:[Dn(e,a)]},extra:s};const c={exception:{values:[{type:Q(t)?t.constructor.name:r?"UnhandledRejection":"Error",value:Jn(t,{isUnhandledRejection:r})}]},extra:s};if(n){const t=xn(e,n);t.length&&(c.exception.values[0].stacktrace={frames:t})}return c}(e,t,n,i),be(o,{synthetic:!0}),o):(o=Un(e,t,n,r),_e(o,`${t}`,void 0),be(o,{synthetic:!0}),o)}function Un(e,t,n,r){const i={};if(r&&n){const r=xn(e,n);r.length&&(i.exception={values:[{value:t,stacktrace:{frames:r}}]}),be(i,{synthetic:!0})}if(z(t)){const{__sentry_template_string__:e,__sentry_template_values__:n}=t;return i.logentry={message:e,params:n},i}return i.message=t,i}function Jn(e,{isUnhandledRejection:t}){const n=function(e,t=40){const n=Object.keys(de(e));n.sort();const r=n[0];if(!r)return"[object has no keys]";if(r.length>=t)return ie(r,t);for(let e=n.length;e>0;e--){const r=n.slice(0,e).join(", ");if(!(r.length>t))return e===n.length?r:ie(r,t)}return""}(e),r=t?"promise rejection":"exception";return W(e)?`Event \`ErrorEvent\` captured as ${r} with message \`${e.message}\``:Q(e)?`Event \`${function(e){try{const t=Object.getPrototypeOf(e);return t?t.constructor.name:void 0}catch(e){}}(e)}\` (type=${e.type}) captured as ${r}`:`Object captured as ${r} with keys: ${n}`}const Yn=(e={})=>{const t={onerror:!0,onunhandledrejection:!0,...e};return{name:"GlobalHandlers",setupOnce(){Error.stackTraceLimit=50},setup(e){t.onerror&&(function(e){!function(){const t="error";dt(t,t=>{const{stackParser:n,attachStacktrace:r}=Wn();if(qe()!==e||bn())return;const{msg:i,url:o,line:a,column:s,error:c}=t,u=function(e,t,n,r){const i=e.exception=e.exception||{},o=i.values=i.values||[],a=o[0]=o[0]||{},s=a.stacktrace=a.stacktrace||{},c=s.frames=s.frames||[],u=r,l=n,d=q(t)&&t.length>0?t:function(){try{return te.document.location.href}catch(e){return""}}();return 0===c.length&&c.push({colno:u,filename:d,function:Xe,in_app:!0,lineno:l}),e}(Vn(n,c||i,void 0,r,!1),o,a,s);u.level="error",pn(u,{originalException:c,mechanism:{handled:!1,type:"onerror"}})}),ft(t,Pn)}()}(e),$n("onerror")),t.onunhandledrejection&&(function(e){!function(){const t="unhandledrejection";dt(t,t=>{const{stackParser:n,attachStacktrace:r}=Wn();if(qe()!==e||bn())return;const i=function(e){if(H(e))return e;try{if("reason"in e)return e.reason;if("detail"in e&&"reason"in e.detail)return e.detail.reason}catch(e){}return e}(t),o=H(i)?{exception:{values:[{type:"UnhandledRejection",value:`Non-Error promise rejection captured with value: ${String(i)}`}]}}:Vn(n,i,void 0,r,!0);o.level="error",pn(o,{originalException:i,mechanism:{handled:!1,type:"onunhandledrejection"}})}),ft(t,Ln)}()}(e),$n("onunhandledrejection"))}}};function $n(e){jt&&F.log(`Global Handler attached: ${e}`)}function Wn(){const e=qe();return e&&e.getOptions()||{stackParser:()=>[],attachStacktrace:!1}}function Gn(e,t,n=250,r,i,o,a){if(!(o.exception&&o.exception.values&&a&&Z(a.originalException,Error)))return;const s=o.exception.values.length>0?o.exception.values[o.exception.values.length-1]:void 0;var c,u;s&&(o.exception.values=(c=qn(e,t,i,a.originalException,r,o.exception.values,s,0),u=n,c.map(e=>(e.value&&(e.value=ie(e.value,u)),e))))}function qn(e,t,n,r,i,o,a,s){if(o.length>=n+1)return o;let c=[...o];if(Z(r[i],Error)){zn(a,s);const o=e(t,r[i]),u=c.length;Hn(o,i,u,s),c=qn(e,t,n,r[i],i,[o,...c],o,u)}return Array.isArray(r.errors)&&r.errors.forEach((r,o)=>{if(Z(r,Error)){zn(a,s);const u=e(t,r),l=c.length;Hn(u,`errors[${o}]`,l,s),c=qn(e,t,n,r,i,[u,...c],u,l)}}),c}function zn(e,t){e.mechanism=e.mechanism||{type:"generic",handled:!0},e.mechanism={...e.mechanism,..."AggregateError"===e.type&&{is_exception_group:!0},exception_id:t}}function Hn(e,t,n,r){e.mechanism=e.mechanism||{type:"generic",handled:!0},e.mechanism={...e.mechanism,type:"chained",source:t,exception_id:n,parent_id:r}}const Kn=(e={})=>{const t=e.limit||5,n=e.key||"cause";return{name:"LinkedErrors",preprocessEvent(e,r,i){const o=i.getOptions();Gn(Dn,o.stackParser,o.maxValueLength,n,t,e,r)}}};function Qn(e){const t=[ke(),Qe(),En(),wn(),Yn(),Kn(),ot(),{name:"HttpContext",preprocessEvent(e){if(!yn.navigator&&!yn.location&&!yn.document)return;const t=e.request&&e.request.url||yn.location&&yn.location.href,{referrer:n}=yn.document||{},{userAgent:r}=yn.navigator||{},i={...e.request&&e.request.headers,...n&&{Referer:n},...r&&{"User-Agent":r}},o={...e.request,...t&&{url:t},headers:i};e.request=o}}];return!1!==e.autoSessionTracking&&t.push({name:"BrowserSession",setupOnce(){void 0!==yn.document?(hn({ignoreDuration:!0}),mn(),Et(({from:e,to:t})=>{void 0!==e&&e!==t&&(hn({ignoreDuration:!0}),mn())})):jt&&F.warn("Using the `browserSessionIntegration` in non-browser environments is not supported.")}}),t}const Xn=/^(?:(\w+):)\/\/(?:(\w+)(?::(\w+)?)?@)([\w.-]+)(?::(\d+))?\/(.+)/;function Zn(e,t=!1){const{host:n,path:r,pass:i,port:o,projectId:a,protocol:s,publicKey:c}=e;return`${s}://${c}${t&&i?`:${i}`:""}@${n}${o?`:${o}`:""}/${r?`${r}/`:r}${a}`}function er(e){return{protocol:e.protocol,publicKey:e.publicKey||"",pass:e.pass||"",host:e.host,port:e.port||"",path:e.path||"",projectId:e.projectId}}function tr(e,t=[]){return[e,t]}function nr(e,t){const[n,r]=e;return[n,[...r,t]]}function rr(e,t){const n=e[1];for(const e of n)if(t(e,e[0].type))return!0;return!1}function ir(e){return D.__SENTRY__&&D.__SENTRY__.encodePolyfill?D.__SENTRY__.encodePolyfill(e):(new TextEncoder).encode(e)}function or(e){const[t,n]=e;let r=JSON.stringify(t);function i(e){"string"==typeof r?r="string"==typeof e?r+e:[ir(r),e]:r.push("string"==typeof e?ir(e):e)}for(const e of n){const[t,n]=e;if(i(`\n${JSON.stringify(t)}\n`),"string"==typeof n||n instanceof Uint8Array)i(n);else{let e;try{e=JSON.stringify(n)}catch(t){e=JSON.stringify(Gt(n))}i(e)}}return"string"==typeof r?r:function(e){const t=e.reduce((e,t)=>e+t.length,0),n=new Uint8Array(t);let r=0;for(const t of e)n.set(t,r),r+=t.length;return n}(r)}function ar(e){const t="string"==typeof e.data?ir(e.data):e.data;return[he({type:"attachment",length:t.length,filename:e.filename,content_type:e.contentType,attachment_type:e.attachmentType}),t]}const sr={session:"session",sessions:"session",attachment:"attachment",transaction:"transaction",event:"error",client_report:"internal",user_report:"default",profile:"profile",profile_chunk:"profile",replay_event:"replay",replay_recording:"replay",check_in:"monitor",feedback:"feedback",span:"span",statsd:"metric_bucket",raw_security:"security"};function cr(e){return sr[e]}function ur(e){if(!e||!e.sdk)return;const{name:t,version:n}=e.sdk;return{name:t,version:n}}class lr extends Error{constructor(e,t="warn"){super(e),this.message=e,this.logLevel=t}}const dr="Not capturing exception because it's already been captured.";class fr{constructor(e){if(this._options=e,this._integrations={},this._numProcessing=0,this._outcomes={},this._hooks={},this._eventProcessors=[],e.dsn?this._dsn=function(e){const t="string"==typeof e?function(e){const t=Xn.exec(e);if(!t)return void R(()=>{console.error(`Invalid Sentry Dsn: ${e}`)});const[n,r,i="",o="",a="",s=""]=t.slice(1);let c="",u=s;const l=u.split("/");if(l.length>1&&(c=l.slice(0,-1).join("/"),u=l.pop()),u){const e=u.match(/^\d+/);e&&(u=e[0])}return er({host:o,pass:i,path:c,projectId:u,port:a,protocol:n,publicKey:r})}(e):er(e);if(t&&function(e){if(!I)return!0;const{port:t,projectId:n,protocol:r}=e;return!(["protocol","publicKey","host","projectId"].find(t=>!e[t]&&(F.error(`Invalid Sentry Dsn: ${t} missing`),!0))||(n.match(/^\d+$/)?function(e){return"http"===e||"https"===e}(r)?t&&isNaN(parseInt(t,10))&&(F.error(`Invalid Sentry Dsn: Invalid port ${t}`),1):(F.error(`Invalid Sentry Dsn: Invalid protocol ${r}`),1):(F.error(`Invalid Sentry Dsn: Invalid projectId ${n}`),1)))}(t))return t}(e.dsn):P&&F.warn("No DSN provided, client will not send events."),this._dsn){const i=(t=this._dsn,n=e.tunnel,r=e._metadata?e._metadata.sdk:void 0,n||`${function(e){return`${function(e){const t=e.protocol?`${e.protocol}:`:"",n=e.port?`:${e.port}`:"";return`${t}//${e.host}${n}${e.path?`/${e.path}`:""}/api/`}(e)}${e.projectId}/envelope/`}(t)}?${function(e,t){const n={sentry_version:"7"};return e.publicKey&&(n.sentry_key=e.publicKey),t&&(n.sentry_client=`${t.name}/${t.version}`),new URLSearchParams(n).toString()}(t,r)}`);this._transport=e.transport({tunnel:this._options.tunnel,recordDroppedEvent:this.recordDroppedEvent.bind(this),...e.transportOptions,url:i})}var t,n,r;const i=["enableTracing","tracesSampleRate","tracesSampler"].find(t=>t in e&&null==e[t]);i&&R(()=>{console.warn(`[Sentry] Deprecation warning: \`${i}\` is set to undefined, which leads to tracing being enabled. In v9, a value of \`undefined\` will result in tracing being disabled.`)})}captureException(e,t,n){const r=ge();if(Se(e))return P&&F.log(dr),r;const i={event_id:r,...t};return this._process(this.eventFromException(e,i).then(e=>this._captureEvent(e,i,n))),i.event_id}captureMessage(e,t,n,r){const i={event_id:ge(),...n},o=z(e)?e:String(e),a=H(e)?this.eventFromMessage(o,t,i):this.eventFromException(e,i);return this._process(a.then(e=>this._captureEvent(e,i,r))),i.event_id}captureEvent(e,t,n){const r=ge();if(t&&t.originalException&&Se(t.originalException))return P&&F.log(dr),r;const i={event_id:r,...t},o=(e.sdkProcessingMetadata||{}).capturedSpanScope;return this._process(this._captureEvent(e,i,o||n)),i.event_id}captureSession(e){"string"!=typeof e.release?P&&F.warn("Discarded session because of missing or non-string release"):(this.sendSession(e),Pe(e,{init:!1}))}getDsn(){return this._dsn}getOptions(){return this._options}getSdkMetadata(){return this._options._metadata}getTransport(){return this._transport}flush(e){const t=this._transport;return t?(this.emit("flush"),this._isClientDoneProcessing(e).then(n=>t.flush(e).then(e=>n&&e))):Bt(!0)}close(e){return this.flush(e).then(e=>(this.getOptions().enabled=!1,this.emit("close"),e))}getEventProcessors(){return this._eventProcessors}addEventProcessor(e){this._eventProcessors.push(e)}init(){(this._isEnabled()||this._options.integrations.some(({name:e})=>e.startsWith("Spotlight")))&&this._setupIntegrations()}getIntegrationByName(e){return this._integrations[e]}addIntegration(e){const t=this._integrations[e.name];U(this,e,this._integrations),t||V(this,[e])}sendEvent(e,t={}){this.emit("beforeSendEvent",e,t);let n=function(e,t,n,r){const i=ur(n),o=e.type&&"replay_event"!==e.type?e.type:"event";!function(e,t){t&&(e.sdk=e.sdk||{},e.sdk.name=e.sdk.name||t.name,e.sdk.version=e.sdk.version||t.version,e.sdk.integrations=[...e.sdk.integrations||[],...t.integrations||[]],e.sdk.packages=[...e.sdk.packages||[],...t.packages||[]])}(e,n&&n.sdk);const a=function(e,t,n,r){const i=e.sdkProcessingMetadata&&e.sdkProcessingMetadata.dynamicSamplingContext;return{event_id:e.event_id,sent_at:(new Date).toISOString(),...t&&{sdk:t},...!!n&&r&&{dsn:Zn(r)},...i&&{trace:he({...i})}}}(e,i,r,t);return delete e.sdkProcessingMetadata,tr(a,[[{type:o},e]])}(e,this._dsn,this._options._metadata,this._options.tunnel);for(const e of t.attachments||[])n=nr(n,ar(e));const r=this.sendEnvelope(n);r&&r.then(t=>this.emit("afterSendEvent",e,t),null)}sendSession(e){const t=function(e,t,n,r){const i=ur(n);return tr({sent_at:(new Date).toISOString(),...i&&{sdk:i},...!!r&&t&&{dsn:Zn(t)}},["aggregates"in e?[{type:"sessions"},e]:[{type:"session"},e.toJSON()]])}(e,this._dsn,this._options._metadata,this._options.tunnel);this.sendEnvelope(t)}recordDroppedEvent(e,t,n){if(this._options.sendClientReports){const r="number"==typeof n?n:1,i=`${e}:${t}`;P&&F.log(`Recording outcome: "${i}"${r>1?` (${r} times)`:""}`),this._outcomes[i]=(this._outcomes[i]||0)+r}}on(e,t){const n=this._hooks[e]=this._hooks[e]||[];return n.push(t),()=>{const e=n.indexOf(t);e>-1&&n.splice(e,1)}}emit(e,...t){const n=this._hooks[e];n&&n.forEach(e=>e(...t))}sendEnvelope(e){return this.emit("beforeEnvelope",e),this._isEnabled()&&this._transport?this._transport.send(e).then(null,e=>(P&&F.error("Error while sending envelope:",e),e)):(P&&F.error("Transport disabled"),Bt({}))}_setupIntegrations(){const{integrations:e}=this._options;this._integrations=function(e,t){const n={};return t.forEach(t=>{t&&U(e,t,n)}),n}(this,e),V(this,e)}_updateSessionFromEvent(e,t){let n="fatal"===t.level,r=!1;const i=t.exception&&t.exception.values;if(i){r=!0;for(const e of i){const t=e.mechanism;if(t&&!1===t.handled){n=!0;break}}}const o="ok"===e.status;(o&&0===e.errors||o&&n)&&(Pe(e,{...n&&{status:"crashed"},errors:e.errors||Number(r||n)}),this.captureSession(e))}_isClientDoneProcessing(e){return new Ut(t=>{let n=0;const r=setInterval(()=>{0==this._numProcessing?(clearInterval(r),t(!0)):(n+=1,e&&n>=e&&(clearInterval(r),t(!1)))},1)})}_isEnabled(){return!1!==this.getOptions().enabled&&void 0!==this._transport}_prepareEvent(e,t,n=We(),r=Ge()){const i=this.getOptions(),o=Object.keys(this._integrations);return!t.integrations&&o.length>0&&(t.integrations=o),this.emit("preprocessEvent",e,t),e.type||r.setLastEventId(e.event_id||t.event_id),dn(i,e,t,n,this,r).then(e=>{if(null===e)return e;e.contexts={trace:ze(n),...e.contexts};const t=function(e,t){const n=t.getPropagationContext();return n.dsc||sn(n.traceId,e)}(this,n);return e.sdkProcessingMetadata={dynamicSamplingContext:t,...e.sdkProcessingMetadata},e})}_captureEvent(e,t={},n){return this._processEvent(e,t,n).then(e=>e.event_id,e=>{P&&(e instanceof lr&&"log"===e.logLevel?F.log(e.message):F.warn(e))})}_processEvent(e,t,n){const r=this.getOptions(),{sampleRate:i}=r,o=hr(e),a=pr(e),s=e.type||"error",c=`before send for type \`${s}\``,u=void 0===i?void 0:function(e){if("boolean"==typeof e)return Number(e);const t="string"==typeof e?parseFloat(e):e;if(!("number"!=typeof t||isNaN(t)||t<0||t>1))return t;P&&F.warn(`[Tracing] Given sample rate is invalid. Sample rate must be a boolean or a number between 0 and 1. Got ${JSON.stringify(e)} of type ${JSON.stringify(typeof e)}.`)}(i);if(a&&"number"==typeof u&&Math.random()>u)return this.recordDroppedEvent("sample_rate","error",e),Vt(new lr(`Discarding event because it's not included in the random sample (sampling rate = ${i})`,"log"));const l="replay_event"===s?"replay":s,d=(e.sdkProcessingMetadata||{}).capturedSpanIsolationScope;return this._prepareEvent(e,t,n,d).then(n=>{if(null===n)throw this.recordDroppedEvent("event_processor",l,e),new lr("An event processor returned `null`, will not send event.","log");if(t.data&&!0===t.data.__sentry__)return n;const i=function(e,t,n,r){const{beforeSend:i,beforeSendTransaction:o,beforeSendSpan:a}=t;if(pr(n)&&i)return i(n,r);if(hr(n)){if(n.spans&&a){const t=[];for(const r of n.spans){const n=a(r);n?t.push(n):(an(),e.recordDroppedEvent("before_send","span"))}n.spans=t}if(o){if(n.spans){const e=n.spans.length;n.sdkProcessingMetadata={...n.sdkProcessingMetadata,spanCountBeforeProcessing:e}}return o(n,r)}}return n}(this,r,n,t);return function(e,t){const n=`${t} must return \`null\` or a valid event.`;if(X(e))return e.then(e=>{if(!K(e)&&null!==e)throw new lr(n);return e},e=>{throw new lr(`${t} rejected with ${e}`)});if(!K(e)&&null!==e)throw new lr(n);return e}(i,c)}).then(r=>{if(null===r){if(this.recordDroppedEvent("before_send",l,e),o){const t=1+(e.spans||[]).length;this.recordDroppedEvent("before_send","span",t)}throw new lr(`${c} returned \`null\`, will not send event.`,"log")}const i=n&&n.getSession();if(!o&&i&&this._updateSessionFromEvent(i,r),o){const e=(r.sdkProcessingMetadata&&r.sdkProcessingMetadata.spanCountBeforeProcessing||0)-(r.spans?r.spans.length:0);e>0&&this.recordDroppedEvent("before_send","span",e)}const a=r.transaction_info;if(o&&a&&r.transaction!==e.transaction){const e="custom";r.transaction_info={...a,source:e}}return this.sendEvent(r,t),r}).then(null,e=>{if(e instanceof lr)throw e;throw this.captureException(e,{data:{__sentry__:!0},originalException:e}),new lr(`Event processing pipeline threw an error, original event will not be sent. Details have been sent as a new event.\nReason: ${e}`)})}_process(e){this._numProcessing++,e.then(e=>(this._numProcessing--,e),e=>(this._numProcessing--,e))}_clearOutcomes(){const e=this._outcomes;return this._outcomes={},Object.entries(e).map(([e,t])=>{const[n,r]=e.split(":");return{reason:n,category:r,quantity:t}})}_flushOutcomes(){P&&F.log("Flushing outcomes...");const e=this._clearOutcomes();if(0===e.length)return void(P&&F.log("No outcomes to send"));if(!this._dsn)return void(P&&F.log("No dsn provided, will not send outcomes"));P&&F.log("Sending outcomes:",e);const t=(n=e,tr((r=this._options.tunnel&&Zn(this._dsn))?{dsn:r}:{},[[{type:"client_report"},{timestamp:Te(),discarded_events:n}]]));var n,r;this.sendEnvelope(t)}}function pr(e){return void 0===e.type}function hr(e){return"transaction"===e.type}class vr extends fr{constructor(e){const t={parentSpanIsAlwaysRootSpan:!0,...e};!function(e,t,n=[t],r="npm"){const i=e._metadata||{};i.sdk||(i.sdk={name:`sentry.javascript.${t}`,packages:n.map(e=>({name:`${r}:@sentry/${e}`,version:L})),version:L}),e._metadata=i}(t,"browser",["browser"],yn.SENTRY_SDK_SOURCE||"npm"),super(t),t.sendClientReports&&yn.document&&yn.document.addEventListener("visibilitychange",()=>{"hidden"===yn.document.visibilityState&&this._flushOutcomes()})}eventFromException(e,t){return function(e,t,n,r){const i=Vn(e,t,n&&n.syntheticException||void 0,r);return be(i),i.level="error",n&&n.event_id&&(i.event_id=n.event_id),Bt(i)}(this._options.stackParser,e,t,this._options.attachStacktrace)}eventFromMessage(e,t="info",n){return function(e,t,n="info",r,i){const o=Un(e,t,r&&r.syntheticException||void 0,i);return o.level=n,r&&r.event_id&&(o.event_id=r.event_id),Bt(o)}(this._options.stackParser,e,t,n,this._options.attachStacktrace)}captureUserFeedback(e){if(!this._isEnabled())return void(jt&&F.warn("SDK not enabled, will not capture user feedback."));const t=function(e,{metadata:t,tunnel:n,dsn:r}){const i={event_id:e.event_id,sent_at:(new Date).toISOString(),...t&&t.sdk&&{sdk:{name:t.sdk.name,version:t.sdk.version}},...!!n&&!!r&&{dsn:Zn(r)}},o=function(e){return[{type:"user_report"},e]}(e);return tr(i,[o])}(e,{metadata:this.getSdkMetadata(),dsn:this.getDsn(),tunnel:this.getOptions().tunnel});this.sendEnvelope(t)}_prepareEvent(e,t,n){return e.platform=e.platform||"javascript",super._prepareEvent(e,t,n)}}const gr="undefined"==typeof __SENTRY_DEBUG__||__SENTRY_DEBUG__,mr={};function yr(e){mr[e]=void 0}function _r(e,t,n=function(e){const t=[];function n(e){return t.splice(t.indexOf(e),1)[0]||Promise.resolve(void 0)}return{$:t,add:function(r){if(!(void 0===e||t.length<e))return Vt(new lr("Not adding Promise because buffer limit was reached."));const i=r();return-1===t.indexOf(i)&&t.push(i),i.then(()=>n(i)).then(null,()=>n(i).then(null,()=>{})),i},drain:function(e){return new Ut((n,r)=>{let i=t.length;if(!i)return n(!0);const o=setTimeout(()=>{e&&e>0&&n(!1)},e);t.forEach(e=>{Bt(e).then(()=>{--i||(clearTimeout(o),n(!0))},r)})})}}}(e.bufferSize||64)){let r={};return{send:function(i){const o=[];if(rr(i,(t,n)=>{const i=cr(n);if(function(e,t,n=Date.now()){return function(e,t){return e[t]||e.all||0}(e,t)>n}(r,i)){const r=br(t,n);e.recordDroppedEvent("ratelimit_backoff",i,r)}else o.push(t)}),0===o.length)return Bt({});const a=tr(i[0],o),s=t=>{rr(a,(n,r)=>{const i=br(n,r);e.recordDroppedEvent(t,cr(r),i)})};return n.add(()=>t({body:or(a)}).then(e=>(void 0!==e.statusCode&&(e.statusCode<200||e.statusCode>=300)&&P&&F.warn(`Sentry responded with status code ${e.statusCode} to sent event.`),r=function(e,{statusCode:t,headers:n},r=Date.now()){const i={...e},o=n&&n["x-sentry-rate-limits"],a=n&&n["retry-after"];if(o)for(const e of o.trim().split(",")){const[t,n,,,o]=e.split(":",5),a=parseInt(t,10),s=1e3*(isNaN(a)?60:a);if(n)for(const e of n.split(";"))"metric_bucket"===e&&o&&!o.split(";").includes("custom")||(i[e]=r+s);else i.all=r+s}else a?i.all=r+function(e,t=Date.now()){const n=parseInt(`${e}`,10);if(!isNaN(n))return 1e3*n;const r=Date.parse(`${e}`);return isNaN(r)?6e4:r-t}(a,r):429===t&&(i.all=r+6e4);return i}(r,e),e),e=>{throw s("network_error"),e})).then(e=>e,e=>{if(e instanceof lr)return P&&F.error("Skipped sending event because buffer is full."),s("queue_overflow"),Bt({});throw e})},flush:e=>n.drain(e)}}function br(e,t){if("event"===t||"transaction"===t)return Array.isArray(e)?e[1]:void 0}function Sr(e,t=function(e){const t=mr[e];if(t)return t;let n=ht[e];if(Ot(n))return mr[e]=n.bind(ht);const r=ht.document;if(r&&"function"==typeof r.createElement)try{const t=r.createElement("iframe");t.hidden=!0,r.head.appendChild(t);const i=t.contentWindow;i&&i[e]&&(n=i[e]),r.head.removeChild(t)}catch(t){gr&&F.warn(`Could not create sandbox iframe for ${e} check, bailing to window.${e}: `,t)}return n?mr[e]=n.bind(ht):n}("fetch")){let n=0,r=0;return _r(e,function(i){const o=i.body.length;n+=o,r++;const a={body:i.body,method:"POST",referrerPolicy:"origin",headers:e.headers,keepalive:n<=6e4&&r<15,...e.fetchOptions};if(!t)return yr("fetch"),Vt("No fetch implementation available");try{return t(e.url,a).then(e=>(n-=o,r--,{statusCode:e.status,headers:{"x-sentry-rate-limits":e.headers.get("X-Sentry-Rate-Limits"),"retry-after":e.headers.get("Retry-After")}}))}catch(e){return yr("fetch"),n-=o,r--,Vt(e)}})}function wr(e,t,n,r){const i={filename:e,function:"<anonymous>"===t?Xe:t,in_app:!0};return void 0!==n&&(i.lineno=n),void 0!==r&&(i.colno=r),i}const kr=/^\s*at (\S+?)(?::(\d+))(?::(\d+))\s*$/i,Er=/^\s*at (?:(.+?\)(?: \[.+\])?|.*?) ?\((?:address at )?)?(?:async )?((?:<anonymous>|[-a-z]+:|.*bundle|\/)?.*?)(?::(\d+))?(?::(\d+))?\)?\s*$/i,Mr=/\((\S*)(?::(\d+))(?::(\d+))\)/,Ar=/^\s*(.*?)(?:\((.*?)\))?(?:^|@)?((?:[-a-z]+)?:\/.*?|\[native code\]|[^@]*(?:bundle|\d+\.js)|\/[\w\-. /=]+)(?::(\d+))?(?::(\d+))?\s*$/i,Tr=/(\S+) line (\d+)(?: > eval line \d+)* > eval/i,Or=function(...e){const t=e.sort((e,t)=>e[0]-t[0]).map(e=>e[1]);return(e,n=0,r=0)=>{const i=[],o=e.split("\n");for(let e=n;e<o.length;e++){const n=o[e];if(n.length>1024)continue;const a=Ze.test(n)?n.replace(Ze,"$1"):n;if(!a.match(/\S*Error: /)){for(const e of t){const t=e(a);if(t){i.push(t);break}}if(i.length>=50+r)break}}return function(e){if(!e.length)return[];const t=Array.from(e);return/sentryWrapped/.test(tt(t).function||"")&&t.pop(),t.reverse(),et.test(tt(t).function||"")&&(t.pop(),et.test(tt(t).function||"")&&t.pop()),t.slice(0,50).map(e=>({...e,filename:e.filename||tt(t).filename,function:e.function||Xe}))}(i.slice(r))}}([30,e=>{const t=kr.exec(e);if(t){const[,e,n,r]=t;return wr(e,Xe,+n,+r)}const n=Er.exec(e);if(n){if(n[2]&&0===n[2].indexOf("eval")){const e=Mr.exec(n[2]);e&&(n[2]=e[1],n[3]=e[2],n[4]=e[3])}const[e,t]=Cr(n[1]||Xe,n[2]);return wr(t,e,n[3]?+n[3]:void 0,n[4]?+n[4]:void 0)}}],[50,e=>{const t=Ar.exec(e);if(t){if(t[3]&&t[3].indexOf(" > eval")>-1){const e=Tr.exec(t[3]);e&&(t[1]=t[1]||"eval",t[3]=e[1],t[4]=e[2],t[5]="")}let e=t[3],n=t[1]||Xe;return[n,e]=Cr(n,e),wr(e,n,t[4]?+t[4]:void 0,t[5]?+t[5]:void 0)}}]),Cr=(e,t)=>{const n=-1!==e.indexOf("safari-extension"),r=-1!==e.indexOf("safari-web-extension");return n||r?[-1!==e.indexOf("@")?e.split("@")[0]:Xe,n?`safari-extension:${t}`:`safari-web-extension:${t}`]:[e,t]};var Pr="new",Ir="loading",Lr="loaded",Dr="joining-meeting",Nr="joined-meeting",xr="left-meeting",jr="error",Rr="blocked",Fr="off",Br="sendable",Vr="loading",Ur="interrupted",Jr="playable",Yr="unknown",$r="full",Wr="lobby",Gr="none",qr="base",zr="*",Hr="ejected",Kr="nbf-room",Qr="nbf-token",Xr="exp-room",Zr="exp-token",ei="no-room",ti="meeting-full",ni="end-of-life",ri="not-allowed",ii="connection-error",oi="cam-in-use",ai="mic-in-use",si="cam-mic-in-use",ci="permissions",ui="undefined-mediadevices",li="not-found",di="constraints",fi="unknown",pi="iframe-ready-for-launch-config",hi="iframe-launch-config",vi="theme-updated",gi="loading",mi="load-attempt-failed",yi="loaded",_i="started-camera",bi="camera-error",Si="joining-meeting",wi="joined-meeting",ki="left-meeting",Ei="participant-joined",Mi="participant-updated",Ai="participant-left",Ti="participant-counts-updated",Oi="access-state-updated",Ci="meeting-session-summary-updated",Pi="meeting-session-state-updated",Ii="meeting-session-data-error",Li="waiting-participant-added",Di="waiting-participant-updated",Ni="waiting-participant-removed",xi="track-started",ji="track-stopped",Ri="transcription-started",Fi="transcription-stopped",Bi="transcription-error",Vi="recording-started",Ui="recording-stopped",Ji="recording-stats",Yi="recording-error",$i="recording-upload-completed",Wi="recording-data",Gi="app-message",qi="transcription-message",zi="remote-media-player-started",Hi="remote-media-player-updated",Ki="remote-media-player-stopped",Qi="local-screen-share-started",Xi="local-screen-share-stopped",Zi="local-screen-share-canceled",eo="active-speaker-change",to="active-speaker-mode-change",no="network-quality-change",ro="network-connection",io="cpu-load-change",oo="face-counts-updated",ao="fullscreen",so="exited-fullscreen",co="live-streaming-started",uo="live-streaming-updated",lo="live-streaming-stopped",fo="live-streaming-error",po="lang-updated",ho="receive-settings-updated",vo="input-settings-updated",go="nonfatal-error",mo="error",yo=4096,_o=102400,bo="iframe-call-message",So="local-screen-start",wo="daily-method-update-live-streaming-endpoints",ko="transmit-log",Eo="daily-custom-track",Mo={NONE:"none",BGBLUR:"background-blur",BGIMAGE:"background-image",FACE_DETECTION:"face-detection"},Ao={NONE:"none",NOISE_CANCELLATION:"noise-cancellation"},To={PLAY:"play",PAUSE:"pause"},Oo="daily",Co="signalwire",Po=["jpg","png","jpeg"],Io="sip-call-transfer";function Lo(){return!Do()&&"undefined"!=typeof window&&window.navigator&&window.navigator.userAgent?window.navigator.userAgent:""}function Do(){return"undefined"!=typeof navigator&&navigator.product&&"ReactNative"===navigator.product}function No(){return navigator&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia}function xo(){if(Do())return!1;if(!document)return!1;var e=document.createElement("iframe");return!!e.requestFullscreen||!!e.webkitRequestFullscreen}var jo="none",Ro=function(){try{var e,t=document.createElement("canvas"),n=!1;(e=t.getContext("webgl2",{failIfMajorPerformanceCaveat:!0}))||(n=!0,e=t.getContext("webgl2"));var r=null!=e;return t.remove(),r?n?"software":"hardware":jo}catch(e){return jo}}();function Fo(){var e=arguments.length>0&&void 0!==arguments[0]&&arguments[0];return!Do()&&!(Ro===jo)&&(e?!Jo()&&["Chrome","Firefox"].includes(Yo()):function(){if(Jo())return!1;var e=Yo();if("Safari"===e){var t=zo();if(t.major<15||15===t.major&&t.minor<4)return!1}return"Chrome"===e?Wo().major>=77:"Firefox"===e?Ho().major>=97:["Chrome","Firefox","Safari"].includes(e)}())}function Bo(){if(Do())return!1;if(Uo())return!1;if("undefined"==typeof AudioWorkletNode)return!1;switch(Yo()){case"Chrome":case"Firefox":return!0;case"Safari":var e=$o();return e.major>17||17===e.major&&e.minor>=4}return!1}function Vo(){return No()&&"undefined"!=typeof MediaStreamTrack&&!function(){var e,t=Yo();if(!Lo())return!0;switch(t){case"Chrome":return(e=Wo()).major&&e.major>0&&e.major<75;case"Firefox":return(e=Ho()).major<91;case"Safari":return(e=zo()).major<13||13===e.major&&e.minor<1;default:return!0}}()}function Uo(){return Lo().match(/Linux; Android/)}function Jo(){var e,t=Lo(),n=t.match(/Mac/)&&(!Do()&&"undefined"!=typeof window&&null!==(e=window)&&void 0!==e&&null!==(e=e.navigator)&&void 0!==e&&e.maxTouchPoints?window.navigator.maxTouchPoints:0)>=5;return!!(t.match(/Mobi/)||t.match(/Android/)||n)||!!Lo().match(/DailyAnd\//)||void 0}function Yo(){if("undefined"!=typeof window){var e=Lo();return Go()?"Safari":e.indexOf("Edge")>-1?"Edge":e.match(/Chrome\//)?"Chrome":e.indexOf("Safari")>-1||qo()?"Safari":e.indexOf("Firefox")>-1?"Firefox":e.indexOf("MSIE")>-1||e.indexOf(".NET")>-1?"IE":"Unknown Browser"}}function $o(){switch(Yo()){case"Chrome":return Wo();case"Safari":return zo();case"Firefox":return Ho();case"Edge":return function(){var e=0,t=0;if("undefined"!=typeof window){var n=Lo().match(/Edge\/(\d+).(\d+)/);if(n)try{e=parseInt(n[1]),t=parseInt(n[2])}catch(e){}}return{major:e,minor:t}}()}}function Wo(){var e=0,t=0,n=0,r=0,i=!1;if("undefined"!=typeof window){var o=Lo(),a=o.match(/Chrome\/(\d+).(\d+).(\d+).(\d+)/);if(a)try{e=parseInt(a[1]),t=parseInt(a[2]),n=parseInt(a[3]),r=parseInt(a[4]),i=o.indexOf("OPR/")>-1}catch(e){}}return{major:e,minor:t,build:n,patch:r,opera:i}}function Go(){return!!Lo().match(/\((iPad|iPhone|iPod)/i)&&No()}function qo(){return Lo().indexOf("AppleWebKit/605.1.15")>-1}function zo(){var e=0,t=0,n=0;if("undefined"!=typeof window){var r=Lo().match(/Version\/(\d+).(\d+)(.(\d+))?/);if(r)try{e=parseInt(r[1]),t=parseInt(r[2]),n=parseInt(r[4])}catch(e){}else(Go()||qo())&&(e=14,t=0,n=3)}return{major:e,minor:t,point:n}}function Ho(){var e=0,t=0;if("undefined"!=typeof window){var n=Lo().match(/Firefox\/(\d+).(\d+)/);if(n)try{e=parseInt(n[1]),t=parseInt(n[2])}catch(e){}}return{major:e,minor:t}}var Ko=function(){return c(function e(){i(this,e)},[{key:"addListenerForMessagesFromCallMachine",value:function(e,t,n){A()}},{key:"addListenerForMessagesFromDailyJs",value:function(e,t,n){A()}},{key:"sendMessageToCallMachine",value:function(e,t,n,r){A()}},{key:"sendMessageToDailyJs",value:function(e,t){A()}},{key:"removeListener",value:function(e){A()}}])}();function Qo(e,t){var n=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);t&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),n.push.apply(n,r)}return n}function Xo(e){for(var t=1;t<arguments.length;t++){var n=null!=arguments[t]?arguments[t]:{};t%2?Qo(Object(n),!0).forEach(function(t){p(e,t,n[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(n)):Qo(Object(n)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(n,t))})}return e}function Zo(){try{var e=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(e){}return(Zo=function(){return!!e})()}var ea=function(e){function t(){var e,n,r,o;return i(this,t),n=this,r=l(r=t),(e=u(n,Zo()?Reflect.construct(r,[],l(n).constructor):r.apply(n,o)))._wrappedListeners={},e._messageCallbacks={},e}return f(t,e),c(t,[{key:"addListenerForMessagesFromCallMachine",value:function(e,t,n){var r=this,i=function(i){if(i.data&&"iframe-call-message"===i.data.what&&(!i.data.callClientId||i.data.callClientId===t)&&(!i.data.from||"module"!==i.data.from)){var o=Xo({},i.data);if(delete o.from,o.callbackStamp&&r._messageCallbacks[o.callbackStamp]){var a=o.callbackStamp;r._messageCallbacks[a].call(n,o),delete r._messageCallbacks[a]}delete o.what,delete o.callbackStamp,e.call(n,o)}};this._wrappedListeners[e]=i,window.addEventListener("message",i)}},{key:"addListenerForMessagesFromDailyJs",value:function(e,t,n){var r=function(r){var i;if(!(!r.data||r.data.what!==bo||!r.data.action||r.data.from&&"module"!==r.data.from||r.data.callClientId&&t&&r.data.callClientId!==t||null!=r&&null!==(i=r.data)&&void 0!==i&&i.callFrameId)){var o=r.data;e.call(n,o)}};this._wrappedListeners[e]=r,window.addEventListener("message",r)}},{key:"sendMessageToCallMachine",value:function(e,t,n,r){if(!n)throw new Error("undefined callClientId. Are you trying to use a DailyCall instance previously destroyed?");var i=Xo({},e);if(i.what=bo,i.from="module",i.callClientId=n,t){var o=M();this._messageCallbacks[o]=t,i.callbackStamp=o}var a=r?r.contentWindow:window,s=this._callMachineTargetOrigin(r);s&&a.postMessage(i,s)}},{key:"sendMessageToDailyJs",value:function(e,t){e.what=bo,e.callClientId=t,e.from="embedded",window.postMessage(e,this._targetOriginFromWindowLocation())}},{key:"removeListener",value:function(e){var t=this._wrappedListeners[e];t&&(window.removeEventListener("message",t),delete this._wrappedListeners[e])}},{key:"forwardPackagedMessageToCallMachine",value:function(e,t,n){var r=Xo({},e);r.callClientId=n;var i=t?t.contentWindow:window,o=this._callMachineTargetOrigin(t);o&&i.postMessage(r,o)}},{key:"addListenerForPackagedMessagesFromCallMachine",value:function(e,t){var n=function(n){if(n.data&&"iframe-call-message"===n.data.what&&(!n.data.callClientId||n.data.callClientId===t)&&(!n.data.from||"module"!==n.data.from)){var r=n.data;e(r)}};return this._wrappedListeners[e]=n,window.addEventListener("message",n),e}},{key:"removeListenerForPackagedMessagesFromCallMachine",value:function(e){var t=this._wrappedListeners[e];t&&(window.removeEventListener("message",t),delete this._wrappedListeners[e])}},{key:"_callMachineTargetOrigin",value:function(e){return e?e.src?new URL(e.src).origin:void 0:this._targetOriginFromWindowLocation()}},{key:"_targetOriginFromWindowLocation",value:function(){return"file:"===window.location.protocol?"*":window.location.origin}}])}(Ko);function ta(e,t){var n=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);t&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),n.push.apply(n,r)}return n}function na(){try{var e=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(e){}return(na=function(){return!!e})()}var ra=function(e){function t(){var e,n,r,o;return i(this,t),n=this,r=l(r=t),e=u(n,na()?Reflect.construct(r,[],l(n).constructor):r.apply(n,o)),window.callMachineToDailyJsEmitter=window.callMachineToDailyJsEmitter||new y.EventEmitter,window.dailyJsToCallMachineEmitter=window.dailyJsToCallMachineEmitter||new y.EventEmitter,e._wrappedListeners={},e._messageCallbacks={},e}return f(t,e),c(t,[{key:"addListenerForMessagesFromCallMachine",value:function(e,t,n){this._addListener(e,window.callMachineToDailyJsEmitter,t,n,"received call machine message")}},{key:"addListenerForMessagesFromDailyJs",value:function(e,t,n){this._addListener(e,window.dailyJsToCallMachineEmitter,t,n,"received daily-js message")}},{key:"sendMessageToCallMachine",value:function(e,t,n){this._sendMessage(e,window.dailyJsToCallMachineEmitter,n,t,"sending message to call machine")}},{key:"sendMessageToDailyJs",value:function(e,t){this._sendMessage(e,window.callMachineToDailyJsEmitter,t,null,"sending message to daily-js")}},{key:"removeListener",value:function(e){var t=this._wrappedListeners[e];t&&(window.callMachineToDailyJsEmitter.removeListener("message",t),window.dailyJsToCallMachineEmitter.removeListener("message",t),delete this._wrappedListeners[e])}},{key:"_addListener",value:function(e,t,n,r,i){var o=this,a=function(t){if(t.callClientId===n){if(t.callbackStamp&&o._messageCallbacks[t.callbackStamp]){var i=t.callbackStamp;o._messageCallbacks[i].call(r,t),delete o._messageCallbacks[i]}e.call(r,t)}};this._wrappedListeners[e]=a,t.addListener("message",a)}},{key:"_sendMessage",value:function(e,t,n,r,i){var o=function(e){for(var t=1;t<arguments.length;t++){var n=null!=arguments[t]?arguments[t]:{};t%2?ta(Object(n),!0).forEach(function(t){p(e,t,n[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(n)):ta(Object(n)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(n,t))})}return e}({},e);if(o.callClientId=n,r){var a=M();this._messageCallbacks[a]=r,o.callbackStamp=a}t.emit("message",o)}}])}(Ko),ia="replace",oa="shallow-merge",aa=[ia,oa];var sa=function(){function e(){var t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{},n=t.data,r=t.mergeStrategy,o=void 0===r?ia:r;i(this,e),e._validateMergeStrategy(o),e._validateData(n,o),this.mergeStrategy=o,this.data=n}return c(e,[{key:"isNoOp",value:function(){return e.isNoOpUpdate(this.data,this.mergeStrategy)}}],[{key:"isNoOpUpdate",value:function(e,t){return 0===Object.keys(e).length&&t===oa}},{key:"_validateMergeStrategy",value:function(e){if(!aa.includes(e))throw Error("Unrecognized mergeStrategy provided. Options are: [".concat(aa,"]"))}},{key:"_validateData",value:function(e,t){if(!function(e){if(null==e||"object"!==o(e))return!1;var t=Object.getPrototypeOf(e);return null==t||t===Object.prototype}(e))throw Error("Meeting session data must be a plain (map-like) object");var n;try{if(n=JSON.stringify(e),t===ia){var r=JSON.parse(n);w(r,e)||console.warn("The meeting session data provided will be modified when serialized.",r,e)}else if(t===oa)for(var i in e)if(Object.hasOwnProperty.call(e,i)&&void 0!==e[i]){var a=JSON.parse(JSON.stringify(e[i]));w(e[i],a)||console.warn("At least one key in the meeting session data provided will be modified when serialized.",a,e[i])}}catch(e){throw Error("Meeting session data must be serializable to JSON: ".concat(e))}if(n.length>_o)throw Error("Meeting session data is too large (".concat(n.length," characters). Maximum size suppported is ").concat(_o,"."))}}])}();function ca(){try{var e=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(e){}return(ca=function(){return!!e})()}function ua(e){var t="function"==typeof Map?new Map:void 0;return ua=function(e){if(null===e||!function(e){try{return-1!==Function.toString.call(e).indexOf("[native code]")}catch(t){return"function"==typeof e}}(e))return e;if("function"!=typeof e)throw new TypeError("Super expression must either be null or a function");if(void 0!==t){if(t.has(e))return t.get(e);t.set(e,n)}function n(){return function(e,t,n){if(ca())return Reflect.construct.apply(null,arguments);var r=[null];r.push.apply(r,t);var i=new(e.bind.apply(e,r));return n&&d(i,n.prototype),i}(e,arguments,l(this).constructor)}return n.prototype=Object.create(e.prototype,{constructor:{value:n,enumerable:!1,writable:!0,configurable:!0}}),d(n,e)},ua(e)}function la(){try{var e=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(e){}return(la=function(){return!!e})()}function da(e){var t,n=null===(t=window._daily)||void 0===t?void 0:t.pendings;if(n){var r=n.indexOf(e);-1!==r&&n.splice(r,1)}}var fa=function(){return c(function e(t){i(this,e),this._currentLoad=null,this._callClientId=t,this._publicPath=null},[{key:"load",value:function(){var e,t=this,n=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{},r=arguments.length>1?arguments[1]:void 0,i=arguments.length>2?arguments[2]:void 0;if(this.loaded)return window._daily.instances[this._callClientId].callMachine.reset(),window._daily.instances[this._callClientId].publicPath=this._publicPath,void r(!0);e=this._callClientId,window._daily.pendings.push(e),this._currentLoad&&this._currentLoad.cancel(),this._currentLoad=new pa(n,function(e){var n=e.substring(0,e.lastIndexOf("/"));n.length&&"/"!==n.slice(-1)&&(n+="/"),t._publicPath=n,window._daily.instances[t._callClientId].publicPath=n,r(!1)},function(e,n){n||da(t._callClientId),i(e,n)}),this._currentLoad.start()}},{key:"cancel",value:function(){this._currentLoad&&this._currentLoad.cancel(),da(this._callClientId)}},{key:"loaded",get:function(){return this._currentLoad&&this._currentLoad.succeeded}}])}(),pa=function(){return c(function e(){var t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{},n=arguments.length>1?arguments[1]:void 0,r=arguments.length>2?arguments[2]:void 0;i(this,e),this._attemptsRemaining=3,this._currentAttempt=null,this._dailyConfig=t,this._successCallback=n,this._failureCallback=r},[{key:"start",value:function(){var e=this;if(!this._currentAttempt){var t=function(n){e._currentAttempt.cancelled||(e._attemptsRemaining--,e._failureCallback(n,e._attemptsRemaining>0),e._attemptsRemaining<=0||setTimeout(function(){e._currentAttempt.cancelled||(e._currentAttempt=new ga(e._dailyConfig,e._successCallback,t),e._currentAttempt.start())},3e3))};this._currentAttempt=new ga(this._dailyConfig,this._successCallback,t),this._currentAttempt.start()}}},{key:"cancel",value:function(){this._currentAttempt&&this._currentAttempt.cancel()}},{key:"cancelled",get:function(){return this._currentAttempt&&this._currentAttempt.cancelled}},{key:"succeeded",get:function(){return this._currentAttempt&&this._currentAttempt.succeeded}}])}(),ha=function(e){function t(){return i(this,t),e=this,r=arguments,n=l(n=t),u(e,la()?Reflect.construct(n,r||[],l(e).constructor):n.apply(e,r));var e,n,r}return f(t,e),c(t)}(ua(Error)),va=2e4,ga=function(){return c(function e(t,n,r){i(this,e),this._loadAttemptImpl=Do()||!t.avoidEval?new ma(t,n,r):new ya(t,n,r)},[{key:"start",value:(e=v(function*(){return this._loadAttemptImpl.start()}),function(){return e.apply(this,arguments)})},{key:"cancel",value:function(){this._loadAttemptImpl.cancel()}},{key:"cancelled",get:function(){return this._loadAttemptImpl.cancelled}},{key:"succeeded",get:function(){return this._loadAttemptImpl.succeeded}}]);var e}(),ma=function(){return c(function e(t,n,r){i(this,e),this.cancelled=!1,this.succeeded=!1,this._networkTimedOut=!1,this._networkTimeout=null,this._iosCache="undefined"!=typeof iOSCallObjectBundleCache&&iOSCallObjectBundleCache,this._refetchHeaders=null,this._dailyConfig=t,this._successCallback=n,this._failureCallback=r},[{key:"start",value:(r=v(function*(){var e=O(this._dailyConfig);!(yield this._tryLoadFromIOSCache(e))&&this._loadFromNetwork(e)}),function(){return r.apply(this,arguments)})},{key:"cancel",value:function(){clearTimeout(this._networkTimeout),this.cancelled=!0}},{key:"_tryLoadFromIOSCache",value:(n=v(function*(e){if(!this._iosCache)return!1;try{var t=yield this._iosCache.get(e);return!!this.cancelled||!!t&&(t.code?(Function('"use strict";'+t.code)(),this.succeeded=!0,this._successCallback(e),!0):(this._refetchHeaders=t.refetchHeaders,!1))}catch(e){return!1}}),function(e){return n.apply(this,arguments)})},{key:"_loadFromNetwork",value:(t=v(function*(e){var t=this;this._networkTimeout=setTimeout(function(){t._networkTimedOut=!0,t._failureCallback({msg:"Timed out (>".concat(va," ms) when loading call object bundle ").concat(e),type:"timeout"})},va);try{var n=this._refetchHeaders?{headers:this._refetchHeaders}:{},r=yield fetch(e,n);if(clearTimeout(this._networkTimeout),this.cancelled||this._networkTimedOut)throw new ha;var i=yield this._getBundleCodeFromResponse(e,r);if(this.cancelled)throw new ha;Function('"use strict";'+i)(),this._iosCache&&this._iosCache.set(e,i,r.headers),this.succeeded=!0,this._successCallback(e)}catch(t){if(clearTimeout(this._networkTimeout),t instanceof ha||this.cancelled||this._networkTimedOut)return;this._failureCallback({msg:"Failed to load call object bundle ".concat(e,": ").concat(t),type:t.message})}}),function(e){return t.apply(this,arguments)})},{key:"_getBundleCodeFromResponse",value:(e=v(function*(e,t){if(t.ok)return yield t.text();if(this._iosCache&&304===t.status)return(yield this._iosCache.renew(e,t.headers)).code;throw new Error("Received ".concat(t.status," response"))}),function(t,n){return e.apply(this,arguments)})}]);var e,t,n,r}(),ya=function(){return c(function e(t,n,r){i(this,e),this.cancelled=!1,this.succeeded=!1,this._dailyConfig=t,this._successCallback=n,this._failureCallback=r,this._attemptId=M(),this._networkTimeout=null,this._scriptElement=null},[{key:"start",value:function(){window._dailyCallMachineLoadWaitlist||(window._dailyCallMachineLoadWaitlist=new Set);var e=O(this._dailyConfig);"object"===("undefined"==typeof document?"undefined":o(document))?this._startLoading(e):this._failureCallback({msg:"Call object bundle must be loaded in a DOM/web context",type:"missing context"})}},{key:"cancel",value:function(){this._stopLoading(),this.cancelled=!0}},{key:"_startLoading",value:function(e){var t=this;this._signUpForCallMachineLoadWaitlist(),this._networkTimeout=setTimeout(function(){t._stopLoading(),t._failureCallback({msg:"Timed out (>".concat(va," ms) when loading call object bundle ").concat(e),type:"timeout"})},va);var n=document.getElementsByTagName("head")[0],r=document.createElement("script");this._scriptElement=r,r.onload=function(){t._stopLoading(),t.succeeded=!0,t._successCallback(e)},r.onerror=function(e){t._stopLoading(),t._failureCallback({msg:"Failed to load call object bundle ".concat(e.target.src),type:e.message})},r.src=e,n.appendChild(r)}},{key:"_stopLoading",value:function(){this._withdrawFromCallMachineLoadWaitlist(),clearTimeout(this._networkTimeout),this._scriptElement&&(this._scriptElement.onload=null,this._scriptElement.onerror=null)}},{key:"_signUpForCallMachineLoadWaitlist",value:function(){window._dailyCallMachineLoadWaitlist.add(this._attemptId)}},{key:"_withdrawFromCallMachineLoadWaitlist",value:function(){window._dailyCallMachineLoadWaitlist.delete(this._attemptId)}}])}(),_a=function(e,t,n){return!0===wa(e.local,t,n)},ba=function(e,t,n){return e.local.streams&&e.local.streams[t]&&e.local.streams[t].stream&&e.local.streams[t].stream["get".concat("video"===n?"Video":"Audio","Tracks")]()[0]},Sa=function(e,t,n,r){var i=ka(e,t,n,r);return i&&i.pendingTrack},wa=function(e,t,n){if(!e)return!1;var r=function(e){switch(e){case"avatar":return!0;case"staged":return e;default:return!!e}},i=e.public.subscribedTracks;return i&&i[t]?-1===["cam-audio","cam-video","screen-video","screen-audio","rmpAudio","rmpVideo"].indexOf(n)&&i[t].custom?[!0,"staged"].includes(i[t].custom)?r(i[t].custom):r(i[t].custom[n]):r(i[t][n]):!i||r(i.ALL)},ka=function(e,t,n,r){var i=Object.values(e.streams||{}).filter(function(e){return e.participantId===t&&e.type===n&&e.pendingTrack&&e.pendingTrack.kind===r}).sort(function(e,t){return new Date(t.starttime)-new Date(e.starttime)});return i&&i[0]},Ea=function(e,t){var n=e.local.public.customTracks;if(n&&n[t])return n[t].track};function Ma(e,t){for(var n=t.getState(),r=0,i=["cam","screen"];r<i.length;r++)for(var o=i[r],a=0,s=["video","audio"];a<s.length;a++){var c=s[a],u="cam"===o?c:"screen".concat(c.charAt(0).toUpperCase()+c.slice(1)),l=e.tracks[u];if(l){var d=e.local?ba(n,o,c):Sa(n,e.session_id,o,c);"playable"===l.state&&(l.track=d),l.persistentTrack=d}}}function Aa(e,t){try{var n=t.getState();for(var r in e.tracks)if(!Ta(r)){var i=e.tracks[r].kind;if(i){var o=e.tracks[r];if(o){var a=e.local?Ea(n,r):Sa(n,e.session_id,r,i);"playable"===o.state&&(e.tracks[r].track=a),o.persistentTrack=a}}else console.error("unknown type for custom track")}}catch(e){console.error(e)}}function Ta(e){return["video","audio","screenVideo","screenAudio"].includes(e)}function Oa(e,t,n){var r=n.getState();if(e.local){if(e.audio)try{e.audioTrack=r.local.streams.cam.stream.getAudioTracks()[0],e.audioTrack||(e.audio=!1)}catch(e){}if(e.video)try{e.videoTrack=r.local.streams.cam.stream.getVideoTracks()[0],e.videoTrack||(e.video=!1)}catch(e){}if(e.screen)try{e.screenVideoTrack=r.local.streams.screen.stream.getVideoTracks()[0],e.screenAudioTrack=r.local.streams.screen.stream.getAudioTracks()[0],e.screenVideoTrack||e.screenAudioTrack||(e.screen=!1)}catch(e){}}else{var i=!0;try{var o=r.participants[e.session_id];o&&o.public&&o.public.rtcType&&"peer-to-peer"===o.public.rtcType.impl&&o.private&&!["connected","completed"].includes(o.private.peeringState)&&(i=!1)}catch(e){console.error(e)}if(!i)return e.audio=!1,e.audioTrack=!1,e.video=!1,e.videoTrack=!1,e.screen=!1,void(e.screenTrack=!1);try{if(r.streams,e.audio&&_a(r,e.session_id,"cam-audio")){var a=Sa(r,e.session_id,"cam","audio");a&&(t&&t.audioTrack&&t.audioTrack.id===a.id?e.audioTrack=a:a.muted||(e.audioTrack=a)),e.audioTrack||(e.audio=!1)}if(e.video&&_a(r,e.session_id,"cam-video")){var s=Sa(r,e.session_id,"cam","video");s&&(t&&t.videoTrack&&t.videoTrack.id===s.id?e.videoTrack=s:s.muted||(e.videoTrack=s)),e.videoTrack||(e.video=!1)}if(e.screen&&_a(r,e.session_id,"screen-audio")){var c=Sa(r,e.session_id,"screen","audio");c&&(t&&t.screenAudioTrack&&t.screenAudioTrack.id===c.id?e.screenAudioTrack=c:c.muted||(e.screenAudioTrack=c))}if(e.screen&&_a(r,e.session_id,"screen-video")){var u=Sa(r,e.session_id,"screen","video");u&&(t&&t.screenVideoTrack&&t.screenVideoTrack.id===u.id?e.screenVideoTrack=u:u.muted||(e.screenVideoTrack=u))}e.screenVideoTrack||e.screenAudioTrack||(e.screen=!1)}catch(e){console.error("unexpected error matching up tracks",e)}}}function Ca(e,t){(null==t||t>e.length)&&(t=e.length);for(var n=0,r=Array(t);n<t;n++)r[n]=e[n];return r}var Pa=new Map,Ia=null;function La(e,t){(null==t||t>e.length)&&(t=e.length);for(var n=0,r=Array(t);n<t;n++)r[n]=e[n];return r}var Da=new Map,Na=null;function xa(e){ja()?function(e){Pa.has(e)||(Pa.set(e,{}),navigator.mediaDevices.enumerateDevices().then(function(t){Pa.has(e)&&(Pa.get(e).lastDevicesString=JSON.stringify(t),Ia||(Ia=function(){var e=v(function*(){var e,t=yield navigator.mediaDevices.enumerateDevices(),n=function(e,t){var n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!n){if(Array.isArray(e)||(n=function(e,t){if(e){if("string"==typeof e)return Ca(e,t);var n={}.toString.call(e).slice(8,-1);return"Object"===n&&e.constructor&&(n=e.constructor.name),"Map"===n||"Set"===n?Array.from(e):"Arguments"===n||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)?Ca(e,t):void 0}}(e))||t&&e&&"number"==typeof e.length){n&&(e=n);var r=0,i=function(){};return{s:i,n:function(){return r>=e.length?{done:!0}:{done:!1,value:e[r++]}},e:function(e){throw e},f:i}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var o,a=!0,s=!1;return{s:function(){n=n.call(e)},n:function(){var e=n.next();return a=e.done,e},e:function(e){s=!0,o=e},f:function(){try{a||null==n.return||n.return()}finally{if(s)throw o}}}}(Pa.keys());try{for(n.s();!(e=n.n()).done;){var r=e.value,i=JSON.stringify(t);i!==Pa.get(r).lastDevicesString&&(Pa.get(r).lastDevicesString=i,r(t))}}catch(e){n.e(e)}finally{n.f()}});return function(){return e.apply(this,arguments)}}(),navigator.mediaDevices.addEventListener("devicechange",Ia)))}).catch(function(){}))}(e):function(e){Da.has(e)||(Da.set(e,{}),navigator.mediaDevices.enumerateDevices().then(function(t){Da.has(e)&&(Da.get(e).lastDevicesString=JSON.stringify(t),Na||(Na=setInterval(v(function*(){var e,t=yield navigator.mediaDevices.enumerateDevices(),n=function(e,t){var n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!n){if(Array.isArray(e)||(n=function(e,t){if(e){if("string"==typeof e)return La(e,t);var n={}.toString.call(e).slice(8,-1);return"Object"===n&&e.constructor&&(n=e.constructor.name),"Map"===n||"Set"===n?Array.from(e):"Arguments"===n||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)?La(e,t):void 0}}(e))||t&&e&&"number"==typeof e.length){n&&(e=n);var r=0,i=function(){};return{s:i,n:function(){return r>=e.length?{done:!0}:{done:!1,value:e[r++]}},e:function(e){throw e},f:i}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var o,a=!0,s=!1;return{s:function(){n=n.call(e)},n:function(){var e=n.next();return a=e.done,e},e:function(e){s=!0,o=e},f:function(){try{a||null==n.return||n.return()}finally{if(s)throw o}}}}(Da.keys());try{for(n.s();!(e=n.n()).done;){var r=e.value,i=JSON.stringify(t);i!==Da.get(r).lastDevicesString&&(Da.get(r).lastDevicesString=i,r(t))}}catch(e){n.e(e)}finally{n.f()}}),3e3)))}))}(e)}function ja(){var e;return Do()||void 0!==(null===(e=navigator.mediaDevices)||void 0===e?void 0:e.ondevicechange)}var Ra=new Set;function Fa(e,t){var n=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);t&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),n.push.apply(n,r)}return n}function Ba(e){for(var t=1;t<arguments.length;t++){var n=null!=arguments[t]?arguments[t]:{};t%2?Fa(Object(n),!0).forEach(function(t){p(e,t,n[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(n)):Fa(Object(n)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(n,t))})}return e}var Va=Object.freeze({VIDEO:"video",AUDIO:"audio",SCREEN_VIDEO:"screenVideo",SCREEN_AUDIO:"screenAudio",CUSTOM_VIDEO:"customVideo",CUSTOM_AUDIO:"customAudio"}),Ua=Object.freeze({PARTICIPANTS:"participants",STREAMING:"streaming",TRANSCRIPTION:"transcription"}),Ja=Object.values(Va),Ya=["v","a","sv","sa","cv","ca"],$a=(Object.freeze(Ja.reduce(function(e,t,n){return e[t]=Ya[n],e},{})),Object.freeze(Ya.reduce(function(e,t,n){return e[t]=Ja[n],e},{})),[Va.VIDEO,Va.AUDIO,Va.SCREEN_VIDEO,Va.SCREEN_AUDIO]),Wa=Object.values(Ua),Ga=["p","s","t"],qa=(Object.freeze(Wa.reduce(function(e,t,n){return e[t]=Ga[n],e},{})),Object.freeze(Ga.reduce(function(e,t,n){return e[t]=Wa[n],e},{})),function(){function e(){var t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{},n=t.base,r=t.byUserId,o=t.byParticipantId;i(this,e),this.base=n,this.byUserId=r,this.byParticipantId=o}return c(e,[{key:"clone",value:function(){var t=new e;if(this.base instanceof za?t.base=this.base.clone():t.base=this.base,void 0!==this.byUserId)for(var n in t.byUserId={},this.byUserId){var r=this.byUserId[n];t.byUserId[n]=r instanceof za?r.clone():r}if(void 0!==this.byParticipantId)for(var i in t.byParticipantId={},this.byParticipantId){var o=this.byParticipantId[i];t.byParticipantId[i]=o instanceof za?o.clone():o}return t}},{key:"toJSONObject",value:function(){var e={};if("boolean"==typeof this.base?e.base=this.base:this.base instanceof za&&(e.base=this.base.toJSONObject()),void 0!==this.byUserId)for(var t in e.byUserId={},this.byUserId){var n=this.byUserId[t];e.byUserId[t]=n instanceof za?n.toJSONObject():n}if(void 0!==this.byParticipantId)for(var r in e.byParticipantId={},this.byParticipantId){var i=this.byParticipantId[r];e.byParticipantId[r]=i instanceof za?i.toJSONObject():i}return e}},{key:"toMinifiedJSONObject",value:function(){var e={};if(void 0!==this.base&&("boolean"==typeof this.base?e.b=this.base:e.b=this.base.toMinifiedJSONObject()),void 0!==this.byUserId)for(var t in e.u={},this.byUserId){var n=this.byUserId[t];e.u[t]="boolean"==typeof n?n:n.toMinifiedJSONObject()}if(void 0!==this.byParticipantId)for(var r in e.p={},this.byParticipantId){var i=this.byParticipantId[r];e.p[r]="boolean"==typeof i?i:i.toMinifiedJSONObject()}return e}},{key:"normalize",value:function(){return this.base instanceof za&&(this.base=this.base.normalize()),this.byUserId&&(this.byUserId=Object.fromEntries(Object.entries(this.byUserId).map(function(e){var t=m(e,2),n=t[0],r=t[1];return[n,r instanceof za?r.normalize():r]}))),this.byParticipantId&&(this.byParticipantId=Object.fromEntries(Object.entries(this.byParticipantId).map(function(e){var t=m(e,2),n=t[0],r=t[1];return[n,r instanceof za?r.normalize():r]}))),this}}],[{key:"fromJSONObject",value:function(t){var n,r,i;if(void 0!==t.base&&(n="boolean"==typeof t.base?t.base:za.fromJSONObject(t.base)),void 0!==t.byUserId)for(var o in r={},t.byUserId){var a=t.byUserId[o];r[o]="boolean"==typeof a?a:za.fromJSONObject(a)}if(void 0!==t.byParticipantId)for(var s in i={},t.byParticipantId){var c=t.byParticipantId[s];i[s]="boolean"==typeof c?c:za.fromJSONObject(c)}return new e({base:n,byUserId:r,byParticipantId:i})}},{key:"fromMinifiedJSONObject",value:function(t){var n,r,i;if(void 0!==t.b&&(n="boolean"==typeof t.b?t.b:za.fromMinifiedJSONObject(t.b)),void 0!==t.u)for(var o in r={},t.u){var a=t.u[o];r[o]="boolean"==typeof a?a:za.fromMinifiedJSONObject(a)}if(void 0!==t.p)for(var s in i={},t.p){var c=t.p[s];i[s]="boolean"==typeof c?c:za.fromMinifiedJSONObject(c)}return new e({base:n,byUserId:r,byParticipantId:i})}},{key:"validateJSONObject",value:function(e){if("object"!==o(e))return[!1,"canReceive must be an object"];for(var t=["base","byUserId","byParticipantId"],n=0,r=Object.keys(e);n<r.length;n++){var i=r[n];if(!t.includes(i))return[!1,"canReceive can only contain keys (".concat(t.join(", "),")")];if("base"===i){var a=m(za.validateJSONObject(e.base,!0),2),s=a[0],c=a[1];if(!s)return[!1,c]}else{if("object"!==o(e[i]))return[!1,"invalid (non-object) value for field '".concat(i,"' in canReceive")];for(var u=0,l=Object.values(e[i]);u<l.length;u++){var d=l[u],f=m(za.validateJSONObject(d),2),p=f[0],h=f[1];if(!p)return[!1,h]}}}return[!0]}}])}()),za=function(){function e(){var t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{},n=t.video,r=t.audio,o=t.screenVideo,a=t.screenAudio,s=t.customVideo,c=t.customAudio;i(this,e),this.video=n,this.audio=r,this.screenVideo=o,this.screenAudio=a,this.customVideo=s,this.customAudio=c}return c(e,[{key:"clone",value:function(){var t=new e;return void 0!==this.video&&(t.video=this.video),void 0!==this.audio&&(t.audio=this.audio),void 0!==this.screenVideo&&(t.screenVideo=this.screenVideo),void 0!==this.screenAudio&&(t.screenAudio=this.screenAudio),void 0!==this.customVideo&&(t.customVideo=Ba({},this.customVideo)),void 0!==this.customAudio&&(t.customAudio=Ba({},this.customAudio)),t}},{key:"toJSONObject",value:function(){var e={};return void 0!==this.video&&(e.video=this.video),void 0!==this.audio&&(e.audio=this.audio),void 0!==this.screenVideo&&(e.screenVideo=this.screenVideo),void 0!==this.screenAudio&&(e.screenAudio=this.screenAudio),void 0!==this.customVideo&&(e.customVideo=Ba({},this.customVideo)),void 0!==this.customAudio&&(e.customAudio=Ba({},this.customAudio)),e}},{key:"toMinifiedJSONObject",value:function(){var e={};return void 0!==this.video&&(e.v=this.video),void 0!==this.audio&&(e.a=this.audio),void 0!==this.screenVideo&&(e.sv=this.screenVideo),void 0!==this.screenAudio&&(e.sa=this.screenAudio),void 0!==this.customVideo&&(e.cv=Ba({},this.customVideo)),void 0!==this.customAudio&&(e.ca=Ba({},this.customAudio)),e}},{key:"normalize",value:function(){function e(e,t){return e&&1===Object.keys(e).length&&e["*"]===t}return!(!0!==this.video||!0!==this.audio||!0!==this.screenVideo||!0!==this.screenAudio||!e(this.customVideo,!0)||!e(this.customAudio,!0))||(!1!==this.video||!1!==this.audio||!1!==this.screenVideo||!1!==this.screenAudio||!e(this.customVideo,!1)||!e(this.customAudio,!1))&&this}}],[{key:"fromBoolean",value:function(t){return new e({video:t,audio:t,screenVideo:t,screenAudio:t,customVideo:{"*":t},customAudio:{"*":t}})}},{key:"fromJSONObject",value:function(t){return new e({video:t.video,audio:t.audio,screenVideo:t.screenVideo,screenAudio:t.screenAudio,customVideo:void 0!==t.customVideo?Ba({},t.customVideo):void 0,customAudio:void 0!==t.customAudio?Ba({},t.customAudio):void 0})}},{key:"fromMinifiedJSONObject",value:function(t){return new e({video:t.v,audio:t.a,screenVideo:t.sv,screenAudio:t.sa,customVideo:t.cv,customAudio:t.ca})}},{key:"validateJSONObject",value:function(e,t){if("boolean"==typeof e)return[!0];if("object"!==o(e))return[!1,"invalid (non-object, non-boolean) value in canReceive"];for(var n=Object.keys(e),r=0,i=n;r<i.length;r++){var a=i[r];if(!Ja.includes(a))return[!1,"invalid media type '".concat(a,"' in canReceive")];if($a.includes(a)){if("boolean"!=typeof e[a])return[!1,"invalid (non-boolean) value for media type '".concat(a,"' in canReceive")]}else{if("object"!==o(e[a]))return[!1,"invalid (non-object) value for media type '".concat(a,"' in canReceive")];for(var s=0,c=Object.values(e[a]);s<c.length;s++)if("boolean"!=typeof c[s])return[!1,"invalid (non-boolean) value for entry within '".concat(a,"' in canReceive")];if(t&&void 0===e[a]["*"])return[!1,'canReceive "base" permission must specify "*" as an entry within \''.concat(a,"'")]}}return t&&n.length!==Ja.length?[!1,'canReceive "base" permission must specify all media types: '.concat(Ja.join(", ")," (or be set to a boolean shorthand)")]:[!0]}}])}(),Ha=["result"],Ka=["preserveIframe"];function Qa(e,t){var n=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);t&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),n.push.apply(n,r)}return n}function Xa(e){for(var t=1;t<arguments.length;t++){var n=null!=arguments[t]?arguments[t]:{};t%2?Qa(Object(n),!0).forEach(function(t){p(e,t,n[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(n)):Qa(Object(n)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(n,t))})}return e}function Za(){try{var e=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(e){}return(Za=function(){return!!e})()}function es(e,t){var n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!n){if(Array.isArray(e)||(n=function(e,t){if(e){if("string"==typeof e)return ts(e,t);var n={}.toString.call(e).slice(8,-1);return"Object"===n&&e.constructor&&(n=e.constructor.name),"Map"===n||"Set"===n?Array.from(e):"Arguments"===n||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)?ts(e,t):void 0}}(e))||t&&e&&"number"==typeof e.length){n&&(e=n);var r=0,i=function(){};return{s:i,n:function(){return r>=e.length?{done:!0}:{done:!1,value:e[r++]}},e:function(e){throw e},f:i}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var o,a=!0,s=!1;return{s:function(){n=n.call(e)},n:function(){var e=n.next();return a=e.done,e},e:function(e){s=!0,o=e},f:function(){try{a||null==n.return||n.return()}finally{if(s)throw o}}}}function ts(e,t){(null==t||t>e.length)&&(t=e.length);for(var n=0,r=Array(t);n<t;n++)r[n]=e[n];return r}var ns={},rs="video",is="voice",os=Do()?{data:{}}:{data:{},topology:"none"},as={present:0,hidden:0},ss={maxBitrate:{min:1e5,max:25e5},maxFramerate:{min:1,max:30},scaleResolutionDownBy:{min:1,max:8}},cs=Object.keys(ss),us=["state","volume","simulcastEncodings"],ls={androidInCallNotification:{title:"string",subtitle:"string",iconName:"string",disableForCustomOverride:"boolean"},disableAutoDeviceManagement:{audio:"boolean",video:"boolean"}},ds={id:{iconPath:"string",iconPathDarkMode:"string",label:"string",tooltip:"string",visualState:"'default' | 'sidebar-open' | 'active'"}},fs={id:{allow:"string",controlledBy:"'*' | 'owners' | string[]",csp:"string",iconURL:"string",label:"string",loading:"'eager' | 'lazy'",location:"'main' | 'sidebar'",name:"string",referrerPolicy:"string",sandbox:"string",src:"string",srcdoc:"string",shared:"string[] | 'owners' | boolean"}},ps=/^[a-zA-Z0-9_-]+$/;function hs(e){if(null!=e&&"object"===o(e)&&!Array.isArray(e)){var t,n={},r=es(Object.entries(e).slice(0,10));try{for(r.s();!(t=r.n()).done;){var i=m(t.value,2),a=i[0],s=i[1];"string"!=typeof a||a.length>64||ps.test(a)&&"string"==typeof s&&(n[a]=s.slice(0,256))}}catch(e){r.e(e)}finally{r.f()}return Object.keys(n).length?n:void 0}}var vs={customIntegrations:{validate:Vs,help:Fs()},customTrayButtons:{validate:Bs,help:"customTrayButtons should be a dictionary of the type ".concat(JSON.stringify(ds))},url:{validate:function(e){return"string"==typeof e},help:"url should be a string"},baseUrl:{validate:function(e){return console.warn("baseUrl is deprecated and has no effect"),"string"==typeof e},help:"baseUrl should be a string"},token:{validate:function(e){return"string"==typeof e},help:"token should be a string",queryString:"t"},dailyConfig:{validate:function(e,t){try{return t.validateDailyConfig(e),!0}catch(e){console.error("Failed to validate dailyConfig",e)}return!1},help:"Unsupported dailyConfig. Check error logs for detailed info."},reactNativeConfig:{validate:function(e){return Us(e,ls)},help:"reactNativeConfig should look like ".concat(JSON.stringify(ls),", all fields optional")},lang:{validate:function(e){return["da","de","en-us","en","es","fi","fr","it","jp","ka","nl","no","pl","pt","pt-BR","ru","sv","tr","user"].includes(e)},help:"language not supported. Options are: da, de, en-us, en, es, fi, fr, it, jp, ka, nl, no, pl, pt, pt-BR, ru, sv, tr, user"},userName:!0,userData:{validate:function(e){try{return Cs(e),!0}catch(e){return console.error(e),!1}},help:"invalid userData type provided"},startVideoOff:!0,startAudioOff:!0,allowLocalVideo:!0,allowLocalAudio:!0,activeSpeakerMode:!0,showLeaveButton:!0,showLocalVideo:!0,showParticipantsBar:!0,showFullscreenButton:!0,showUserNameChangeUI:!0,iframeStyle:!0,customLayout:!0,cssFile:!0,cssText:!0,bodyClass:!0,videoSource:{validate:function(e,t){if("boolean"==typeof e)return t._preloadCache.allowLocalVideo=e,!0;var n;if(e instanceof MediaStreamTrack)t._sharedTracks.videoTrack=e,n={customTrack:Eo};else{if(delete t._sharedTracks.videoTrack,"string"!=typeof e)return console.error("videoSource must be a MediaStreamTrack, boolean, or a string"),!1;n={deviceId:e}}return t._updatePreloadCacheInputSettings({video:{settings:n}},!1),!0}},audioSource:{validate:function(e,t){if("boolean"==typeof e)return t._preloadCache.allowLocalAudio=e,!0;var n;if(e instanceof MediaStreamTrack)t._sharedTracks.audioTrack=e,n={customTrack:Eo};else{if(delete t._sharedTracks.audioTrack,"string"!=typeof e)return console.error("audioSource must be a MediaStreamTrack, boolean, or a string"),!1;n={deviceId:e}}return t._updatePreloadCacheInputSettings({audio:{settings:n}},!1),!0}},subscribeToTracksAutomatically:{validate:function(e,t){return t._preloadCache.subscribeToTracksAutomatically=e,!0}},theme:{validate:function(e){var t=["accent","accentText","background","backgroundAccent","baseText","border","mainAreaBg","mainAreaBgAccent","mainAreaText","supportiveText"],n=function(e){for(var n=0,r=Object.keys(e);n<r.length;n++){var i=r[n];if(!t.includes(i))return console.error('unsupported color "'.concat(i,'". Valid colors: ').concat(t.join(", "))),!1;if(!e[i].match(/^#[0-9a-f]{6}|#[0-9a-f]{3}$/i))return console.error("".concat(i,' theme color should be provided in valid hex color format. Received: "').concat(e[i],'"')),!1}return!0};return"object"===o(e)&&("light"in e&&"dark"in e||"colors"in e)?"light"in e&&"dark"in e?"colors"in e.light?"colors"in e.dark?n(e.light.colors)&&n(e.dark.colors):(console.error('Dark theme is missing "colors" property.',e),!1):(console.error('Light theme is missing "colors" property.',e),!1):n(e.colors):(console.error('Theme must contain either both "light" and "dark" properties, or "colors".',e),!1)},help:"unsupported theme configuration. Check error logs for detailed info."},layoutConfig:{validate:function(e){if("grid"in e){var t=e.grid;if("maxTilesPerPage"in t){if(!Number.isInteger(t.maxTilesPerPage))return console.error("grid.maxTilesPerPage should be an integer. You passed ".concat(t.maxTilesPerPage,".")),!1;if(t.maxTilesPerPage>49)return console.error("grid.maxTilesPerPage can't be larger than 49 without sacrificing browser performance. Please contact us at https://www.daily.co/contact to talk about your use case."),!1}if("minTilesPerPage"in t){if(!Number.isInteger(t.minTilesPerPage))return console.error("grid.minTilesPerPage should be an integer. You passed ".concat(t.minTilesPerPage,".")),!1;if(t.minTilesPerPage<1)return console.error("grid.minTilesPerPage can't be lower than 1."),!1;if("maxTilesPerPage"in t&&t.minTilesPerPage>t.maxTilesPerPage)return console.error("grid.minTilesPerPage can't be higher than grid.maxTilesPerPage."),!1}}return!0},help:"unsupported layoutConfig. Check error logs for detailed info."},receiveSettings:{validate:function(e){return Ps(e,{allowAllParticipantsKey:!1})},help:Rs({allowAllParticipantsKey:!1})},sendSettings:{validate:function(e,t){return!!function(e,t){try{return t.validateUpdateSendSettings(e),!0}catch(e){return console.error("Failed to validate send settings",e),!1}}(e,t)&&(t._preloadCache.sendSettings=e,!0)},help:"Invalid sendSettings provided. Check error logs for detailed info."},inputSettings:{validate:function(e,t){var n;return!!Is(e)&&(t._inputSettings||(t._inputSettings={}),Ls(e,null===(n=t.properties)||void 0===n?void 0:n.dailyConfig,t._sharedTracks),t._updatePreloadCacheInputSettings(e,!0),!0)},help:js()},layout:{validate:function(e){return"custom-v1"===e||"browser"===e||"none"===e},help:'layout may only be set to "custom-v1"',queryString:"layout"},emb:{queryString:"emb"},embHref:{queryString:"embHref"},dailyJsVersion:{queryString:"dailyJsVersion"},aboutClient:{validate:function(e){if(null==e)return!0;if("object"!==o(e)||Array.isArray(e))return!1;var t=Object.entries(e);if(t.length>10)return!1;for(var n=0,r=t;n<r.length;n++){var i=m(r[n],2),a=i[0],s=i[1];if("string"!=typeof a||a.length>64)return!1;if(!ps.test(a))return!1;if("string"!=typeof s||s.length>256)return!1}return!0},help:"aboutClient must be an object with up to ".concat(10," entries; keys must be strings made up of characters (a-z, 0-9, _, -) and a max length of ").concat(64,"; values must be strings with a max length of ").concat(256)},proxy:{queryString:"proxy"},strictMode:!0,allowMultipleCallInstances:!0},gs={styles:{validate:function(e){for(var t in e)if("cam"!==t&&"screen"!==t)return!1;if(e.cam)for(var n in e.cam)if("div"!==n&&"video"!==n)return!1;if(e.screen)for(var r in e.screen)if("div"!==r&&"video"!==r)return!1;return!0},help:"styles format should be a subset of: { cam: {div: {}, video: {}}, screen: {div: {}, video: {}} }"},setSubscribedTracks:{validate:function(e,t){if(t._preloadCache.subscribeToTracksAutomatically)return!1;var n=[!0,!1,"staged"];if(n.includes(e)||!Do()&&"avatar"===e)return!0;var r=["audio","video","screenAudio","screenVideo","rmpAudio","rmpVideo"],i=function(e){var t=arguments.length>1&&void 0!==arguments[1]&&arguments[1];for(var o in e)if("custom"===o){if(!n.includes(e[o])&&!i(e[o],!0))return!1}else{var a=!t&&!r.includes(o),s=!n.includes(e[o]);if(a||s)return!1}return!0};return i(e)},help:"setSubscribedTracks cannot be used when setSubscribeToTracksAutomatically is enabled, and should be of the form: "+"true".concat(Do()?"":" | 'avatar'"," | false | 'staged' | { [audio: true|false|'staged'], [video: true|false|'staged'], [screenAudio: true|false|'staged'], [screenVideo: true|false|'staged'] }")},setAudio:!0,setVideo:!0,setScreenShare:{validate:function(e){return!1===e},help:"setScreenShare must be false, as it's only meant for stopping remote participants' screen shares"},eject:!0,updatePermissions:{validate:function(e){for(var t=0,n=Object.entries(e);t<n.length;t++){var r=m(n[t],2),i=r[0],o=r[1];switch(i){case"hasPresence":if("boolean"!=typeof o)return!1;break;case"canSend":if(o instanceof Set||o instanceof Array||Array.isArray(o)){var a,s=["video","audio","screenVideo","screenAudio","customVideo","customAudio"],c=es(o);try{for(c.s();!(a=c.n()).done;){var u=a.value;if(!s.includes(u))return!1}}catch(e){c.e(e)}finally{c.f()}}else if("boolean"!=typeof o)return!1;(o instanceof Array||Array.isArray(o))&&(e.canSend=new Set(o));break;case"canReceive":var l=m(qa.validateJSONObject(o),2),d=l[0],f=l[1];if(!d)return console.error(f),!1;break;case"canAdmin":if(o instanceof Set||o instanceof Array||Array.isArray(o)){var p,h=["participants","streaming","transcription"],v=es(o);try{for(v.s();!(p=v.n()).done;){var g=p.value;if(!h.includes(g))return!1}}catch(e){v.e(e)}finally{v.f()}}else if("boolean"!=typeof o)return!1;(o instanceof Array||Array.isArray(o))&&(e.canAdmin=new Set(o));break;default:return!1}}return!0},help:"updatePermissions can take hasPresence, canSend, canReceive, and canAdmin permissions. hasPresence must be a boolean. canSend can be a boolean or an Array or Set of media types (video, audio, screenVideo, screenAudio, customVideo, customAudio). canReceive must be an object specifying base, byUserId, and/or byParticipantId fields (see documentation for more details). canAdmin can be a boolean or an Array or Set of admin types (participants, streaming, transcription)."}};Promise.any||(Promise.any=function(){var e=v(function*(e){return new Promise(function(t,n){var r=[];e.forEach(function(i){return Promise.resolve(i).then(function(e){t(e)}).catch(function(t){r.push(t),r.length===e.length&&n(r)})})})});return function(t){return e.apply(this,arguments)}}());var ms=function(e){function t(e){var n,r,o,a,s,c,d=arguments.length>1&&void 0!==arguments[1]?arguments[1]:{};if(i(this,t),o=this,a=l(a=t),p(r=u(o,Za()?Reflect.construct(a,[],l(o).constructor):a.apply(o,s)),"startListeningForDeviceChanges",function(){xa(r.handleDeviceChange)}),p(r,"stopListeningForDeviceChanges",function(){var e;e=r.handleDeviceChange,ja()?function(e){Pa.has(e)&&(Pa.delete(e),0===Pa.size&&Ia&&(navigator.mediaDevices.removeEventListener("devicechange",Ia),Ia=null))}(e):function(e){Da.has(e)&&(Da.delete(e),0===Da.size&&Na&&(clearInterval(Na),Na=null))}(e)}),p(r,"handleDeviceChange",function(e){e=e.map(function(e){return JSON.parse(JSON.stringify(e))}),r.emitDailyJSEvent({action:"available-devices-updated",availableDevices:e})}),p(r,"handleNativeAppStateChange",function(){var e=v(function*(e){if("destroyed"===e)return console.warn("App has been destroyed before leaving the meeting. Cleaning up all the resources!"),void(yield r.destroy());var t="active"===e;r.disableReactNativeAutoDeviceManagement("video")||(t?r.camUnmutedBeforeLosingNativeActiveState&&r.setLocalVideo(!0):(r.camUnmutedBeforeLosingNativeActiveState=r.localVideo(),r.camUnmutedBeforeLosingNativeActiveState&&r.setLocalVideo(!1)))});return function(t){return e.apply(this,arguments)}}()),p(r,"handleNativeAudioFocusChange",function(e){r.disableReactNativeAutoDeviceManagement("audio")||(r._hasNativeAudioFocus=e,r.toggleParticipantAudioBasedOnNativeAudioFocus(),r._hasNativeAudioFocus?r.micUnmutedBeforeLosingNativeAudioFocus&&r.setLocalAudio(!0):(r.micUnmutedBeforeLosingNativeAudioFocus=r.localAudio(),r.setLocalAudio(!1)))}),p(r,"handleNativeSystemScreenCaptureStop",function(){r.stopScreenShare()}),!Vo()&&!Do())throw new Error("WebRTC not supported or suppressed");if(r.strictMode=void 0===d.strictMode||d.strictMode,r.allowMultipleCallInstances=null!==(n=d.allowMultipleCallInstances)&&void 0!==n&&n,Object.keys(ns).length&&(r._logDuplicateInstanceAttempt(),!r.allowMultipleCallInstances)){if(r.strictMode)throw new Error("Duplicate DailyIframe instances are not allowed");console.warn("Using strictMode: false to allow multiple call instances is now deprecated. Set `allowMultipleCallInstances: true`")}if(window._daily||(window._daily={pendings:[],instances:{}}),r.callClientId=M(),ns[(c=r).callClientId]=c,window._daily.instances[r.callClientId]={},r._sharedTracks={},window._daily.instances[r.callClientId].tracks=r._sharedTracks,d.dailyJsVersion=t.version(),void 0!==d.aboutClient&&(d.aboutClient=hs(d.aboutClient)),r._iframe=e,r._callObjectMode="none"===d.layout&&!r._iframe,r._preloadCache={subscribeToTracksAutomatically:!0,outputDeviceId:null,inputSettings:null,sendSettings:null,videoTrackForNetworkConnectivityTest:null,videoTrackForConnectionQualityTest:null},void 0!==d.showLocalVideo?r._callObjectMode?console.error("showLocalVideo is not available in call object mode"):r._showLocalVideo=!!d.showLocalVideo:r._showLocalVideo=!0,void 0!==d.showParticipantsBar?r._callObjectMode?console.error("showParticipantsBar is not available in call object mode"):r._showParticipantsBar=!!d.showParticipantsBar:r._showParticipantsBar=!0,void 0!==d.customIntegrations?r._callObjectMode?console.error("customIntegrations is not available in call object mode"):r._customIntegrations=d.customIntegrations:r._customIntegrations={},void 0!==d.customTrayButtons?r._callObjectMode?console.error("customTrayButtons is not available in call object mode"):r._customTrayButtons=d.customTrayButtons:r._customTrayButtons={},void 0!==d.activeSpeakerMode?r._callObjectMode?console.error("activeSpeakerMode is not available in call object mode"):r._activeSpeakerMode=!!d.activeSpeakerMode:r._activeSpeakerMode=!1,d.receiveSettings?r._callObjectMode?r._receiveSettings=d.receiveSettings:console.error("receiveSettings is only available in call object mode"):r._receiveSettings={},r.validateProperties(d),r.properties=Xa({},d),void 0!==r.properties.aboutClient&&(r.properties.aboutClient=hs(r.properties.aboutClient)),r._inputSettings||(r._inputSettings={}),r._callObjectLoader=r._callObjectMode?new fa(r.callClientId):null,r._callState=Pr,r._isPreparingToJoin=!1,r._accessState={access:Yr},r._meetingSessionSummary={},r._finalSummaryOfPrevSession={},r._meetingSessionState=Ws(os,r._callObjectMode),r._nativeInCallAudioMode=rs,r._participants={},r._isScreenSharing=!1,r._participantCounts=as,r._rmpPlayerState={},r._waitingParticipants={},r._network={threshold:"good",quality:100,networkState:"unknown",stats:{}},r._activeSpeaker={},r._localAudioLevel=0,r._isLocalAudioLevelObserverRunning=!1,r._remoteParticipantsAudioLevel={},r._isRemoteParticipantsAudioLevelObserverRunning=!1,r._maxAppMessageSize=yo,r._messageChannel=Do()?new ra:new ea,r._iframe&&(r._iframe.requestFullscreen?r._iframe.addEventListener("fullscreenchange",function(){document.fullscreenElement===r._iframe?(r.emitDailyJSEvent({action:ao}),r.sendMessageToCallMachine({action:ao})):(r.emitDailyJSEvent({action:so}),r.sendMessageToCallMachine({action:so}))}):r._iframe.webkitRequestFullscreen&&r._iframe.addEventListener("webkitfullscreenchange",function(){document.webkitFullscreenElement===r._iframe?(r.emitDailyJSEvent({action:ao}),r.sendMessageToCallMachine({action:ao})):(r.emitDailyJSEvent({action:so}),r.sendMessageToCallMachine({action:so}))})),Do()){var f=r.nativeUtils();f.addAudioFocusChangeListener&&f.removeAudioFocusChangeListener&&f.addAppStateChangeListener&&f.removeAppStateChangeListener&&f.addSystemScreenCaptureStopListener&&f.removeSystemScreenCaptureStopListener||console.warn("expected (add|remove)(AudioFocusChange|AppActiveStateChange|SystemScreenCaptureStop)Listener to be available in React Native"),r._hasNativeAudioFocus=!0,f.addAudioFocusChangeListener(r.handleNativeAudioFocusChange),f.addAppStateChangeListener(r.handleNativeAppStateChange),f.addSystemScreenCaptureStopListener(r.handleNativeSystemScreenCaptureStop)}return r._callObjectMode&&r.startListeningForDeviceChanges(),r._messageChannel.addListenerForMessagesFromCallMachine(r.handleMessageFromCallMachine,r.callClientId,r),r}return f(t,e),c(t,[{key:"destroy",value:(te=v(function*(){var e;try{yield this.leave()}catch(e){}var t=this._iframe;if(t){var n=t.parentElement;n&&n.removeChild(t)}if(this._messageChannel.removeListener(this.handleMessageFromCallMachine),Do()){var r=this.nativeUtils();r.removeAudioFocusChangeListener(this.handleNativeAudioFocusChange),r.removeAppStateChangeListener(this.handleNativeAppStateChange),r.removeSystemScreenCaptureStopListener(this.handleNativeSystemScreenCaptureStop)}this._callObjectMode&&this.stopListeningForDeviceChanges(),this.resetMeetingDependentVars(),this._destroyed=!0,this.emitDailyJSEvent({action:"call-instance-destroyed"}),delete ns[this.callClientId],(null===(e=window)||void 0===e||null===(e=e._daily)||void 0===e?void 0:e.instances)&&delete window._daily.instances[this.callClientId],this.strictMode&&(this.callClientId=void 0)}),function(){return te.apply(this,arguments)})},{key:"isDestroyed",value:function(){return!!this._destroyed}},{key:"loadCss",value:function(e){var t=e.bodyClass,n=e.cssFile,r=e.cssText;return Ts(),this.sendMessageToCallMachine({action:"load-css",cssFile:this.absoluteUrl(n),bodyClass:t,cssText:r}),this}},{key:"iframe",value:function(){return Ts(),this._iframe}},{key:"meetingState",value:function(){return this._callState}},{key:"accessState",value:function(){return Ms(this._callObjectMode,"accessState()"),this._accessState}},{key:"participants",value:function(){return this._participants}},{key:"participantCounts",value:function(){return this._participantCounts}},{key:"waitingParticipants",value:function(){return Ms(this._callObjectMode,"waitingParticipants()"),this._waitingParticipants}},{key:"validateParticipantProperties",value:function(e,t){for(var n in t){if(!gs[n])throw new Error("unrecognized updateParticipant property ".concat(n));if(gs[n].validate&&!gs[n].validate(t[n],this,this._participants[e]))throw new Error(gs[n].help)}}},{key:"updateParticipant",value:function(e,t){return this._participants.local&&this._participants.local.session_id===e&&(e="local"),e&&t&&(this.validateParticipantProperties(e,t),this.sendMessageToCallMachine({action:"update-participant",id:e,properties:t})),this}},{key:"updateParticipants",value:function(e){var t=this._participants.local&&this._participants.local.session_id;for(var n in e)n===t&&(n="local"),n&&e[n]&&this.validateParticipantProperties(n,e[n]);return this.sendMessageToCallMachine({action:"update-participants",participants:e}),this}},{key:"updateWaitingParticipant",value:(ee=v(function*(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:"",n=arguments.length>1&&void 0!==arguments[1]?arguments[1]:{};if(Ms(this._callObjectMode,"updateWaitingParticipant()"),bs(this._callState,"updateWaitingParticipant()"),"string"!=typeof t||"object"!==o(n))throw new Error("updateWaitingParticipant() must take an id string and a updates object");return new Promise(function(r,i){e.sendMessageToCallMachine({action:"daily-method-update-waiting-participant",id:t,updates:n},function(e){e.error&&i(e.error),e.id||i(new Error("unknown error in updateWaitingParticipant()")),r({id:e.id})})})}),function(){return ee.apply(this,arguments)})},{key:"updateWaitingParticipants",value:(Z=v(function*(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};if(Ms(this._callObjectMode,"updateWaitingParticipants()"),bs(this._callState,"updateWaitingParticipants()"),"object"!==o(t))throw new Error("updateWaitingParticipants() must take a mapping between ids and update objects");return new Promise(function(n,r){e.sendMessageToCallMachine({action:"daily-method-update-waiting-participants",updatesById:t},function(e){e.error&&r(e.error),e.ids||r(new Error("unknown error in updateWaitingParticipants()")),n({ids:e.ids})})})}),function(){return Z.apply(this,arguments)})},{key:"requestAccess",value:(X=v(function*(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{},n=t.access,r=void 0===n?{level:$r}:n,i=t.name,o=void 0===i?"":i;return Ms(this._callObjectMode,"requestAccess()"),bs(this._callState,"requestAccess()"),new Promise(function(t,n){e.sendMessageToCallMachine({action:"daily-method-request-access",access:r,name:o},function(e){e.error&&n(e.error),e.access||n(new Error("unknown error in requestAccess()")),t({access:e.access,granted:e.granted})})})}),function(){return X.apply(this,arguments)})},{key:"localAudio",value:function(){return this._participants.local?!["blocked","off"].includes(this._participants.local.tracks.audio.state):null}},{key:"localVideo",value:function(){return this._participants.local?!["blocked","off"].includes(this._participants.local.tracks.video.state):null}},{key:"setLocalAudio",value:function(e){var t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:{};return"forceDiscardTrack"in t&&(Do()?(console.warn("forceDiscardTrack option not supported in React Native; ignoring"),t={}):e&&(console.warn("forceDiscardTrack option only supported when calling setLocalAudio(false); ignoring"),t={})),this.sendMessageToCallMachine({action:"local-audio",state:e,options:t}),this}},{key:"localScreenAudio",value:function(){return this._participants.local?!["blocked","off"].includes(this._participants.local.tracks.screenAudio.state):null}},{key:"localScreenVideo",value:function(){return this._participants.local?!["blocked","off"].includes(this._participants.local.tracks.screenVideo.state):null}},{key:"updateScreenShare",value:function(e){if(this._isScreenSharing)return this.sendMessageToCallMachine({action:"local-screen-update",options:e}),this;console.warn("There is no screen share in progress. Try calling startScreenShare first.")}},{key:"setLocalVideo",value:function(e){return this.sendMessageToCallMachine({action:"local-video",state:e}),this}},{key:"_setAllowLocalAudio",value:function(e){if(this._preloadCache.allowLocalAudio=e,this._callMachineInitialized)return this.sendMessageToCallMachine({action:"set-allow-local-audio",state:e}),this}},{key:"_setAllowLocalVideo",value:function(e){if(this._preloadCache.allowLocalVideo=e,this._callMachineInitialized)return this.sendMessageToCallMachine({action:"set-allow-local-video",state:e}),this}},{key:"getReceiveSettings",value:(Q=v(function*(e){var t=this,n=(arguments.length>1&&void 0!==arguments[1]?arguments[1]:{}).showInheritedValues,r=void 0!==n&&n;if(Ms(this._callObjectMode,"getReceiveSettings()"),!this._callMachineInitialized)return this._receiveSettings;switch(o(e)){case"string":return new Promise(function(n){t.sendMessageToCallMachine({action:"get-single-participant-receive-settings",id:e,showInheritedValues:r},function(e){n(e.receiveSettings)})});case"undefined":return this._receiveSettings;default:throw new Error('first argument to getReceiveSettings() must be a participant id (or "base"), or there should be no arguments')}}),function(e){return Q.apply(this,arguments)})},{key:"updateReceiveSettings",value:(K=v(function*(e){var t=this;if(Ms(this._callObjectMode,"updateReceiveSettings()"),!Ps(e,{allowAllParticipantsKey:!0}))throw new Error(Rs({allowAllParticipantsKey:!0}));return bs(this._callState,"updateReceiveSettings()","To specify receive settings earlier, use the receiveSettings config property."),new Promise(function(n){t.sendMessageToCallMachine({action:"update-receive-settings",receiveSettings:e},function(e){n({receiveSettings:e.receiveSettings})})})}),function(e){return K.apply(this,arguments)})},{key:"_prepInputSettingsForSharing",value:function(e,t){if(e){var n={};if(e.audio){var r,i,o;e.audio.settings&&(!Object.keys(e.audio.settings).length&&t||(n.audio={settings:Xa({},e.audio.settings)})),t&&null!==(r=n.audio)&&void 0!==r&&null!==(r=r.settings)&&void 0!==r&&r.customTrack&&(n.audio.settings={customTrack:this._sharedTracks.audioTrack});var a="none"===(null===(i=e.audio.processor)||void 0===i?void 0:i.type)&&(null===(o=e.audio.processor)||void 0===o?void 0:o._isDefaultWhenNone);if(e.audio.processor&&!a){var s=Xa({},e.audio.processor);delete s._isDefaultWhenNone,n.audio=Xa(Xa({},n.audio),{},{processor:s})}}if(e.video){var c,u,l;e.video.settings&&(!Object.keys(e.video.settings).length&&t||(n.video={settings:Xa({},e.video.settings)})),t&&null!==(c=n.video)&&void 0!==c&&null!==(c=c.settings)&&void 0!==c&&c.customTrack&&(n.video.settings={customTrack:this._sharedTracks.videoTrack});var d="none"===(null===(u=e.video.processor)||void 0===u?void 0:u.type)&&(null===(l=e.video.processor)||void 0===l?void 0:l._isDefaultWhenNone);if(e.video.processor&&!d){var f=Xa({},e.video.processor);delete f._isDefaultWhenNone,n.video=Xa(Xa({},n.video),{},{processor:f})}}return n}}},{key:"getInputSettings",value:function(){var e=this;return Ts(),new Promise(function(t){t(e._getInputSettings())})}},{key:"_getInputSettings",value:function(){var e,t,n,r,i,o,a={processor:{type:"none",_isDefaultWhenNone:!0}};this._inputSettings?(e=(null===(n=this._inputSettings)||void 0===n?void 0:n.video)||a,t=(null===(r=this._inputSettings)||void 0===r?void 0:r.audio)||a):(e=(null===(i=this._preloadCache)||void 0===i||null===(i=i.inputSettings)||void 0===i?void 0:i.video)||a,t=(null===(o=this._preloadCache)||void 0===o||null===(o=o.inputSettings)||void 0===o?void 0:o.audio)||a);var s={audio:t,video:e};return this._prepInputSettingsForSharing(s,!0)}},{key:"_updatePreloadCacheInputSettings",value:function(e,t){var n,r,i,o,a,s,c=this._inputSettings||{},u={};e.video?(u.video={},e.video.settings?(u.video.settings={},t||e.video.settings.customTrack||null===(i=c.video)||void 0===i||!i.settings?u.video.settings=e.video.settings:u.video.settings=Xa(Xa({},c.video.settings),e.video.settings),Object.keys(u.video.settings).length||delete u.video.settings):null!==(n=c.video)&&void 0!==n&&n.settings&&(u.video.settings=c.video.settings),e.video.processor?u.video.processor=e.video.processor:null!==(r=c.video)&&void 0!==r&&r.processor&&(u.video.processor=c.video.processor)):c.video&&(u.video=c.video);e.audio?(u.audio={},e.audio.settings?(u.audio.settings={},t||e.audio.settings.customTrack||null===(s=c.audio)||void 0===s||!s.settings?u.audio.settings=e.audio.settings:u.audio.settings=Xa(Xa({},c.audio.settings),e.audio.settings),Object.keys(u.audio.settings).length||delete u.audio.settings):null!==(o=c.audio)&&void 0!==o&&o.settings&&(u.audio.settings=c.audio.settings),e.audio.processor?u.audio.processor=e.audio.processor:null!==(a=c.audio)&&void 0!==a&&a.processor&&(u.audio.processor=c.audio.processor)):c.audio&&(u.audio=c.audio);this._maybeUpdateInputSettings(u)}},{key:"_devicesFromInputSettings",value:function(e){var t,n,r=(null==e||null===(t=e.video)||void 0===t||null===(t=t.settings)||void 0===t?void 0:t.deviceId)||null,i=(null==e||null===(n=e.audio)||void 0===n||null===(n=n.settings)||void 0===n?void 0:n.deviceId)||null,o=this._preloadCache.outputDeviceId||null;return{camera:r?{deviceId:r}:{},mic:i?{deviceId:i}:{},speaker:o?{deviceId:o}:{}}}},{key:"updateInputSettings",value:(H=v(function*(e){var t=this;return Ts(),Is(e)?e.video||e.audio?(Ls(e,this.properties.dailyConfig,this._sharedTracks),this._callObjectMode&&!this._callMachineInitialized?(this._updatePreloadCacheInputSettings(e,!0),this._getInputSettings()):new Promise(function(n,r){t.sendMessageToCallMachine({action:"update-input-settings",inputSettings:e},function(i){if(i.error)r(i.error);else{if(i.returnPreloadCache)return t._updatePreloadCacheInputSettings(e,!0),void n(t._getInputSettings());t._maybeUpdateInputSettings(i.inputSettings),n(t._prepInputSettingsForSharing(i.inputSettings,!0))}})})):this._getInputSettings():(console.error(js()),Promise.reject(js()))}),function(e){return H.apply(this,arguments)})},{key:"setBandwidth",value:function(e){var t=e.kbs,n=e.trackConstraints;if(Ts(),this._callMachineInitialized)return this.sendMessageToCallMachine({action:"set-bandwidth",kbs:t,trackConstraints:n}),this}},{key:"getDailyLang",value:function(){var e=this;if(Ts(),this._callMachineInitialized)return new Promise(function(t){e.sendMessageToCallMachine({action:"get-daily-lang"},function(e){delete e.action,delete e.callbackStamp,t(e)})})}},{key:"setDailyLang",value:function(e){return Ts(),this.sendMessageToCallMachine({action:"set-daily-lang",lang:e}),this}},{key:"setProxyUrl",value:function(e){return this.sendMessageToCallMachine({action:"set-proxy-url",proxyUrl:e}),this}},{key:"setIceConfig",value:function(e){return this.sendMessageToCallMachine({action:"set-ice-config",iceConfig:e}),this}},{key:"meetingSessionSummary",value:function(){return[xr,jr].includes(this._callState)?this._finalSummaryOfPrevSession:this._meetingSessionSummary}},{key:"getMeetingSession",value:(z=v(function*(){var e=this;return console.warn("getMeetingSession() is deprecated: use meetingSessionSummary(), which will return immediately"),bs(this._callState,"getMeetingSession()"),new Promise(function(t){e.sendMessageToCallMachine({action:"get-meeting-session"},function(e){delete e.action,delete e.callbackStamp,t(e)})})}),function(){return z.apply(this,arguments)})},{key:"meetingSessionState",value:function(){return bs(this._callState,"meetingSessionState"),this._meetingSessionState}},{key:"setMeetingSessionData",value:function(e){var t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:"replace";Ms(this._callObjectMode,"setMeetingSessionData()"),bs(this._callState,"setMeetingSessionData");try{!function(e,t){new sa({data:e,mergeStrategy:t})}(e,t)}catch(e){throw console.error(e),e}try{this.sendMessageToCallMachine({action:"set-session-data",data:e,mergeStrategy:t})}catch(e){throw new Error("Error setting meeting session data: ".concat(e))}}},{key:"setUserName",value:function(e,t){var n=this;return this.properties.userName=e,new Promise(function(r){n.sendMessageToCallMachine({action:"set-user-name",name:null!=e?e:"",thisMeetingOnly:Do()||!!t&&!!t.thisMeetingOnly},function(e){delete e.action,delete e.callbackStamp,r(e)})})}},{key:"setUserData",value:(q=v(function*(e){var t=this;try{Cs(e)}catch(e){throw console.error(e),e}if(this.properties.userData=e,this._callMachineInitialized)return new Promise(function(n){try{t.sendMessageToCallMachine({action:"set-user-data",userData:e},function(e){delete e.action,delete e.callbackStamp,n(e)})}catch(e){throw new Error("Error setting user data: ".concat(e))}})}),function(e){return q.apply(this,arguments)})},{key:"validateAudioLevelInterval",value:function(e){if(e&&(e<100||"number"!=typeof e))throw new Error("The interval must be a number greater than or equal to 100 milliseconds.")}},{key:"startLocalAudioLevelObserver",value:function(e){var t=this;if("undefined"==typeof AudioWorkletNode&&!Do())throw new Error("startLocalAudioLevelObserver() is not supported on this browser");if(this.validateAudioLevelInterval(e),this._callMachineInitialized)return this._isLocalAudioLevelObserverRunning=!0,new Promise(function(n,r){t.sendMessageToCallMachine({action:"start-local-audio-level-observer",interval:e},function(e){t._isLocalAudioLevelObserverRunning=!e.error,e.error?r({error:e.error}):n()})});this._preloadCache.localAudioLevelObserver={enabled:!0,interval:e}}},{key:"isLocalAudioLevelObserverRunning",value:function(){return this._isLocalAudioLevelObserverRunning}},{key:"stopLocalAudioLevelObserver",value:function(){this._preloadCache.localAudioLevelObserver=null,this._localAudioLevel=0,this._isLocalAudioLevelObserverRunning=!1,this.sendMessageToCallMachine({action:"stop-local-audio-level-observer"})}},{key:"startRemoteParticipantsAudioLevelObserver",value:function(e){var t=this;if(this.validateAudioLevelInterval(e),this._callMachineInitialized)return this._isRemoteParticipantsAudioLevelObserverRunning=!0,new Promise(function(n,r){t.sendMessageToCallMachine({action:"start-remote-participants-audio-level-observer",interval:e},function(e){t._isRemoteParticipantsAudioLevelObserverRunning=!e.error,e.error?r({error:e.error}):n()})});this._preloadCache.remoteParticipantsAudioLevelObserver={enabled:!0,interval:e}}},{key:"isRemoteParticipantsAudioLevelObserverRunning",value:function(){return this._isRemoteParticipantsAudioLevelObserverRunning}},{key:"stopRemoteParticipantsAudioLevelObserver",value:function(){this._preloadCache.remoteParticipantsAudioLevelObserver=null,this._remoteParticipantsAudioLevel={},this._isRemoteParticipantsAudioLevelObserverRunning=!1,this.sendMessageToCallMachine({action:"stop-remote-participants-audio-level-observer"})}},{key:"startCamera",value:(G=v(function*(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};if(Ms(this._callObjectMode,"startCamera()"),ws(this._callState,this._isPreparingToJoin,"startCamera()","Did you mean to use setLocalAudio() and/or setLocalVideo() instead?"),this.needsLoad())try{yield this.load(t)}catch(e){return Promise.reject(e)}else{if(this._didPreAuth){if(t.url&&t.url!==this.properties.url)return console.error("url in startCamera() is different than the one used in preAuth()"),Promise.reject();if(t.token&&t.token!==this.properties.token)return console.error("token in startCamera() is different than the one used in preAuth()"),Promise.reject()}this.validateProperties(t),this.properties=Xa(Xa({},this.properties),t)}return new Promise(function(t,n){e._preloadCache.inputSettings=e._prepInputSettingsForSharing(e._inputSettings,!1),e.sendMessageToCallMachine({action:"start-camera",properties:_s(e.properties,e.callClientId),preloadCache:_s(e._preloadCache,e.callClientId)},function(e){e.error?n(e.error):t({camera:e.camera,mic:e.mic,speaker:e.speaker})})})}),function(){return G.apply(this,arguments)})},{key:"validateCustomTrack",value:function(e,t,n){if(n&&n.length>50)throw new Error("Custom track `trackName` must not be more than 50 characters");if(t&&"music"!==t&&"speech"!==t&&!(t instanceof Object))throw new Error("Custom track `mode` must be either `music` | `speech` | `DailyMicAudioModeSettings` or `undefined`");if(n&&["cam-audio","cam-video","screen-video","screen-audio","rmpAudio","rmpVideo","customVideoDefaults"].includes(n))throw new Error("Custom track `trackName` must not match a track name already used by daily: cam-audio, cam-video, customVideoDefaults, screen-video, screen-audio, rmpAudio, rmpVideo");if(!(e instanceof MediaStreamTrack))throw new Error("Custom tracks provided must be instances of MediaStreamTrack")}},{key:"startCustomTrack",value:function(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{track:track,mode:mode,trackName:trackName,ignoreAudioLevel:ignoreAudioLevel};return Ts(),bs(this._callState,"startCustomTrack()"),this.validateCustomTrack(t.track,t.mode,t.trackName),new Promise(function(n,r){e._sharedTracks.customTrack=t.track,t.track=Eo,e.sendMessageToCallMachine({action:"start-custom-track",properties:t},function(e){e.error?r({error:e.error}):n(e.mediaTag)})})}},{key:"stopCustomTrack",value:function(e){var t=this;return Ts(),bs(this._callState,"stopCustomTrack()"),new Promise(function(n){t.sendMessageToCallMachine({action:"stop-custom-track",mediaTag:e},function(e){n(e.mediaTag)})})}},{key:"setCamera",value:function(e){var t=this;return Os(),ks(this._callMachineInitialized,"setCamera()"),new Promise(function(n){t.sendMessageToCallMachine({action:"set-camera",cameraDeviceId:e},function(e){n({device:e.device})})})}},{key:"setAudioDevice",value:(W=v(function*(e){return Os(),this.nativeUtils().setAudioDevice(e),{deviceId:yield this.nativeUtils().getAudioDevice()}}),function(e){return W.apply(this,arguments)})},{key:"cycleCamera",value:function(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};return new Promise(function(n){e.sendMessageToCallMachine({action:"cycle-camera",properties:t},function(e){n({device:e.device})})})}},{key:"cycleMic",value:function(){var e=this;return Ts(),new Promise(function(t){e.sendMessageToCallMachine({action:"cycle-mic"},function(e){t({device:e.device})})})}},{key:"getCameraFacingMode",value:function(){var e=this;return Os(),new Promise(function(t){e.sendMessageToCallMachine({action:"get-camera-facing-mode"},function(e){t(e.facingMode)})})}},{key:"setInputDevicesAsync",value:($=v(function*(e){var t=this,n=e.audioDeviceId,r=e.videoDeviceId,i=e.audioSource,o=e.videoSource;if(Ts(),void 0!==i&&(n=i),void 0!==o&&(r=o),"boolean"==typeof n&&(this._setAllowLocalAudio(n),n=void 0),"boolean"==typeof r&&(this._setAllowLocalVideo(r),r=void 0),!n&&!r)return yield this.getInputDevices();var a={};return n&&(n instanceof MediaStreamTrack?(this._sharedTracks.audioTrack=n,n=Eo,a.audio={settings:{customTrack:n}}):(delete this._sharedTracks.audioTrack,a.audio={settings:{deviceId:n}})),r&&(r instanceof MediaStreamTrack?(this._sharedTracks.videoTrack=r,r=Eo,a.video={settings:{customTrack:r}}):(delete this._sharedTracks.videoTrack,a.video={settings:{deviceId:r}})),this._callObjectMode&&this.needsLoad()?(this._updatePreloadCacheInputSettings(a,!1),this._devicesFromInputSettings(this._inputSettings)):new Promise(function(e){t.sendMessageToCallMachine({action:"set-input-devices",audioDeviceId:n,videoDeviceId:r},function(n){if(delete n.action,delete n.callbackStamp,n.returnPreloadCache)return t._updatePreloadCacheInputSettings(a,!1),void e(t._devicesFromInputSettings(t._inputSettings));e(n)})})}),function(e){return $.apply(this,arguments)})},{key:"setOutputDeviceAsync",value:(Y=v(function*(e){var t=this,n=e.outputDeviceId;if(Ts(),!n||"string"!=typeof n)throw new Error("outputDeviceId must be provided and must be a valid device id");return this._preloadCache.outputDeviceId=n,this._callObjectMode&&this.needsLoad()?this._devicesFromInputSettings(this._inputSettings):new Promise(function(e,r){t.sendMessageToCallMachine({action:"set-output-device",outputDeviceId:n},function(n){if(delete n.action,delete n.callbackStamp,n.error){var i=new Error(n.error.message);return i.type=n.error.type,void r(i)}n.returnPreloadCache?e(t._devicesFromInputSettings(t._inputSettings)):e(n)})})}),function(e){return Y.apply(this,arguments)})},{key:"getInputDevices",value:(J=v(function*(){var e=this;return this._callObjectMode&&this.needsLoad()?this._devicesFromInputSettings(this._inputSettings):new Promise(function(t){e.sendMessageToCallMachine({action:"get-input-devices"},function(n){n.returnPreloadCache?t(e._devicesFromInputSettings(e._inputSettings)):t({camera:n.camera,mic:n.mic,speaker:n.speaker})})})}),function(){return J.apply(this,arguments)})},{key:"nativeInCallAudioMode",value:function(){return Os(),this._nativeInCallAudioMode}},{key:"setNativeInCallAudioMode",value:function(e){if(Os(),[rs,is].includes(e)){if(e!==this._nativeInCallAudioMode)return this._nativeInCallAudioMode=e,!this.disableReactNativeAutoDeviceManagement("audio")&&Ss(this._callState,this._isPreparingToJoin)&&this.nativeUtils().setAudioMode(this._nativeInCallAudioMode),this}else console.error("invalid in-call audio mode specified: ",e)}},{key:"preAuth",value:(U=v(function*(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};if(Ms(this._callObjectMode,"preAuth()"),ws(this._callState,this._isPreparingToJoin,"preAuth()"),this.needsLoad()&&(yield this.load(t)),!t.url)throw new Error("preAuth() requires at least a url to be provided");return this.validateProperties(t),this.properties=Xa(Xa({},this.properties),t),new Promise(function(t,n){e._preloadCache.inputSettings=e._prepInputSettingsForSharing(e._inputSettings,!1),e.sendMessageToCallMachine({action:"daily-method-preauth",properties:_s(e.properties,e.callClientId),preloadCache:_s(e._preloadCache,e.callClientId)},function(r){return r.error?n(r.error):r.access?(e._didPreAuth=!0,void t({access:r.access})):n(new Error("unknown error in preAuth()"))})})}),function(){return U.apply(this,arguments)})},{key:"load",value:(V=v(function*(e){var t=this;if(this.needsLoad()){if(this._destroyed&&(this._logUseAfterDestroy(),this.strictMode))throw new Error("Use after destroy");if(e&&(this.validateProperties(e),this.properties=Xa(Xa({},this.properties),e)),!this._callObjectMode&&!this.properties.url)throw new Error("can't load iframe meeting because url property isn't set");return this._updateCallState(Ir),this.emitDailyJSEvent({action:gi}),this._callObjectMode?new Promise(function(e,n){t._callObjectLoader.cancel();var r=Date.now();t._callObjectLoader.load(t.properties.dailyConfig,function(n){t._bundleLoadTime=n?"no-op":Date.now()-r,t._updateCallState(Lr),n&&t.emitDailyJSEvent({action:yi}),e()},function(e,r){if(t.emitDailyJSEvent({action:mi}),!r){t._updateCallState(jr),t.resetMeetingDependentVars();var i={action:mo,errorMsg:e.msg,error:{type:"connection-error",msg:"Failed to load call object bundle.",details:{on:"load",sourceError:e,bundleUrl:O(t.properties.dailyConfig)}}};t._maybeSendToSentry(i),t.emitDailyJSEvent(i),n(e.msg)}})}):(this._iframe.src=T(this.assembleMeetingUrl(),this.properties.dailyConfig),new Promise(function(e,n){t._loadedCallback=function(r){t._callState!==jr?(t._updateCallState(Lr),(t.properties.cssFile||t.properties.cssText)&&t.loadCss(t.properties),e()):n(r)}}))}}),function(e){return V.apply(this,arguments)})},{key:"join",value:(B=v(function*(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};if(this._testCallInProgress&&this.stopTestCallQuality(),!t.url&&!this.properties.url){var n="No room URL has been provided";return console.error(n),Promise.reject(new Error(n))}var r=!1;if(this.needsLoad()){this.updateIsPreparingToJoin(!0);try{yield this.load(t)}catch(e){return this.updateIsPreparingToJoin(!1),Promise.reject(e)}}else{if(r=!(!this.properties.cssFile&&!this.properties.cssText),this._didPreAuth){if(t.url&&t.url!==this.properties.url)return console.error("url in join() is different than the one used in preAuth()"),this.updateIsPreparingToJoin(!1),Promise.reject();if(t.token&&t.token!==this.properties.token)return console.error("token in join() is different than the one used in preAuth()"),this.updateIsPreparingToJoin(!1),Promise.reject()}if(t.url&&!this._callObjectMode&&t.url&&t.url!==this.properties.url)return console.error("url in join() is different than the one used in load() (".concat(this.properties.url," -> ").concat(t.url,")")),this.updateIsPreparingToJoin(!1),Promise.reject();this.validateProperties(t),this.properties=Xa(Xa({},this.properties),t)}return void 0!==t.showLocalVideo&&(this._callObjectMode?console.error("showLocalVideo is not available in callObject mode"):this._showLocalVideo=!!t.showLocalVideo),void 0!==t.showParticipantsBar&&(this._callObjectMode?console.error("showParticipantsBar is not available in callObject mode"):this._showParticipantsBar=!!t.showParticipantsBar),this._callState===Nr||this._callState===Dr?(console.warn("already joined meeting, call leave() before joining again"),void this.updateIsPreparingToJoin(!1)):(this._updateCallState(Dr,!1),this.emitDailyJSEvent({action:Si}),this._preloadCache.inputSettings=this._prepInputSettingsForSharing(this._inputSettings||{},!1),this.sendMessageToCallMachine({action:"join-meeting",properties:_s(this.properties,this.callClientId),preloadCache:_s(this._preloadCache,this.callClientId)},function(t){t.error&&e._joinedCallback&&(e._joinedCallback(null,t.error),e._joinedCallback=null)}),new Promise(function(t,n){e._joinedCallback=function(i,o){if(e._callState!==jr){if(o)return e._updateCallState(xr),void n(o);if(e._updateCallState(Nr),i)for(var a in i){if(e._callObjectMode){var s=e._callMachine().store;Ma(i[a],s),Aa(i[a],s),Oa(i[a],e._participants[a],s)}e._participants[a]=Xa({},i[a]),e.toggleParticipantAudioBasedOnNativeAudioFocus()}r&&e.loadCss(e.properties),t(i)}else n(o)}}))}),function(){return B.apply(this,arguments)})},{key:"leave",value:(F=v(function*(){var e=this;return this._testCallInProgress&&this.stopTestCallQuality(),new Promise(function(t){e._callState===xr||e._callState===jr?t():e._callObjectLoader&&!e._callObjectLoader.loaded?(e._callObjectLoader.cancel(),e._updateCallState(xr),e.resetMeetingDependentVars(),e.emitDailyJSEvent({action:xr}),t()):(e._resolveLeave=t,e.sendMessageToCallMachine({action:"leave-meeting"}))})}),function(){return F.apply(this,arguments)})},{key:"startScreenShare",value:(R=v(function*(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};if(ks(this._callMachineInitialized,"startScreenShare()"),t.screenVideoSendSettings&&this._validateVideoSendSettings("screenVideo",t.screenVideoSendSettings),t.mediaStream&&(this._sharedTracks.screenMediaStream=t.mediaStream,t.mediaStream=Eo),"undefined"!=typeof DailyNativeUtils&&void 0!==DailyNativeUtils.isIOS&&DailyNativeUtils.isIOS){var n=this.nativeUtils();if(yield n.isScreenBeingCaptured())return void this.emitDailyJSEvent({action:go,type:"screen-share-error",errorMsg:"Could not start the screen sharing. The screen is already been captured!"});n.setSystemScreenCaptureStartCallback(function(){n.setSystemScreenCaptureStartCallback(null),e.sendMessageToCallMachine({action:So,captureOptions:t})}),n.presentSystemScreenCapturePrompt()}else this.sendMessageToCallMachine({action:So,captureOptions:t})}),function(){return R.apply(this,arguments)})},{key:"stopScreenShare",value:function(){ks(this._callMachineInitialized,"stopScreenShare()"),this.sendMessageToCallMachine({action:"local-screen-stop"})}},{key:"startRecording",value:function(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{},t=e.type;if(t&&"cloud"!==t&&"cloud-audio-only"!==t&&"raw-tracks"!==t&&"local"!==t)throw new Error("invalid type: ".concat(t,", allowed values 'cloud', 'cloud-audio-only', 'raw-tracks', or 'local'"));this.sendMessageToCallMachine(Xa({action:"local-recording-start"},e))}},{key:"updateRecording",value:function(e){var t=e.layout,n=void 0===t?{preset:"default"}:t,r=e.instanceId;this.sendMessageToCallMachine({action:"daily-method-update-recording",layout:n,instanceId:r})}},{key:"stopRecording",value:function(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};this.sendMessageToCallMachine(Xa({action:"local-recording-stop"},e))}},{key:"startLiveStreaming",value:function(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};this.sendMessageToCallMachine(Xa({action:"daily-method-start-live-streaming"},e))}},{key:"updateLiveStreaming",value:function(e){var t=e.layout,n=void 0===t?{preset:"default"}:t,r=e.instanceId;this.sendMessageToCallMachine({action:"daily-method-update-live-streaming",layout:n,instanceId:r})}},{key:"addLiveStreamingEndpoints",value:function(e){var t=e.endpoints,n=e.instanceId;this.sendMessageToCallMachine({action:wo,endpointsOp:"add-endpoints",endpoints:t,instanceId:n})}},{key:"removeLiveStreamingEndpoints",value:function(e){var t=e.endpoints,n=e.instanceId;this.sendMessageToCallMachine({action:wo,endpointsOp:"remove-endpoints",endpoints:t,instanceId:n})}},{key:"stopLiveStreaming",value:function(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};this.sendMessageToCallMachine(Xa({action:"daily-method-stop-live-streaming"},e))}},{key:"validateDailyConfig",value:function(e){e.camSimulcastEncodings&&(console.warn("camSimulcastEncodings is deprecated. Use sendSettings, found in DailyCallOptions, to provide camera simulcast settings."),this.validateSimulcastEncodings(e.camSimulcastEncodings)),e.screenSimulcastEncodings&&console.warn("screenSimulcastEncodings is deprecated. Use sendSettings, found in DailyCallOptions, to provide screen simulcast settings."),Uo()&&e.noAutoDefaultDeviceChange&&console.warn("noAutoDefaultDeviceChange is not supported on Android, and will be ignored.")}},{key:"validateSimulcastEncodings",value:function(e){var t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:null,n=arguments.length>2&&void 0!==arguments[2]&&arguments[2];if(e){if(!(e instanceof Array||Array.isArray(e)))throw new Error("encodings must be an Array");if(!$s(e.length,1,3))throw new Error("encodings must be an Array with between 1 to ".concat(3," layers"));for(var r=0;r<e.length;r++){var i=e[r];for(var o in this._validateEncodingLayerHasValidProperties(i),i)if(cs.includes(o)){if("number"!=typeof i[o])throw new Error("".concat(o," must be a number"));if(t){var a=t[o],s=a.min,c=a.max;if(!$s(i[o],s,c))throw new Error("".concat(o," value not in range. valid range: ").concat(s," to ").concat(c))}}else if(!["active","scalabilityMode"].includes(o))throw new Error("Invalid key ".concat(o,", valid keys are:")+Object.values(cs));if(n&&!i.hasOwnProperty("maxBitrate"))throw new Error("maxBitrate is not specified")}}}},{key:"startRemoteMediaPlayer",value:(j=v(function*(e){var t=this,n=e.url,r=e.settings,i=void 0===r?{state:To.PLAY}:r;try{!function(e){if("string"!=typeof e)throw new Error('url parameter must be "string" type')}(n),Ys(i),function(e){for(var t in e)if(!us.includes(t))throw new Error("Invalid key ".concat(t,", valid keys are: ").concat(us));e.simulcastEncodings&&this.validateSimulcastEncodings(e.simulcastEncodings,ss,!0)}(i)}catch(e){throw console.error("invalid argument Error: ".concat(e)),console.error('startRemoteMediaPlayer arguments must be of the form:\n  { url: "playback url",\n  settings?:\n  {state: "play"|"pause", simulcastEncodings?: [{}] } }'),e}return new Promise(function(e,r){t.sendMessageToCallMachine({action:"daily-method-start-remote-media-player",url:n,settings:i},function(t){t.error?r({error:t.error,errorMsg:t.errorMsg}):e({session_id:t.session_id,remoteMediaPlayerState:{state:t.state,settings:t.settings}})})})}),function(e){return j.apply(this,arguments)})},{key:"stopRemoteMediaPlayer",value:(x=v(function*(e){var t=this;if("string"!=typeof e)throw new Error(" remotePlayerID must be of type string");return new Promise(function(n,r){t.sendMessageToCallMachine({action:"daily-method-stop-remote-media-player",session_id:e},function(e){e.error?r({error:e.error,errorMsg:e.errorMsg}):n()})})}),function(e){return x.apply(this,arguments)})},{key:"updateRemoteMediaPlayer",value:(N=v(function*(e){var t=this,n=e.session_id,r=e.settings;try{Ys(r)}catch(e){throw console.error("invalid argument Error: ".concat(e)),console.error('updateRemoteMediaPlayer arguments must be of the form:\n  session_id: "participant session",\n  { settings?: {state: "play"|"pause"} }'),e}return new Promise(function(e,i){t.sendMessageToCallMachine({action:"daily-method-update-remote-media-player",session_id:n,settings:r},function(t){t.error?i({error:t.error,errorMsg:t.errorMsg}):e({session_id:t.session_id,remoteMediaPlayerState:{state:t.state,settings:t.settings}})})})}),function(e){return N.apply(this,arguments)})},{key:"startTranscription",value:function(e){bs(this._callState,"startTranscription()"),this.sendMessageToCallMachine(Xa({action:"daily-method-start-transcription"},e))}},{key:"updateTranscription",value:function(e){if(bs(this._callState,"updateTranscription()"),!e)throw new Error("updateTranscription Error: options is mandatory");if("object"!==o(e))throw new Error("updateTranscription Error: options must be object type");if(e.participants&&!Array.isArray(e.participants))throw new Error("updateTranscription Error: participants must be an array");this.sendMessageToCallMachine(Xa({action:"daily-method-update-transcription"},e))}},{key:"stopTranscription",value:function(e){if(bs(this._callState,"stopTranscription()"),e&&"object"!==o(e))throw new Error("stopTranscription Error: options must be object type");if(e&&!e.instanceId)throw new Error('"instanceId" not provided');this.sendMessageToCallMachine(Xa({action:"daily-method-stop-transcription"},e))}},{key:"startDialOut",value:(D=v(function*(e){var t=this;bs(this._callState,"startDialOut()");var n=function(e){if(e){if(!Array.isArray(e))throw new Error("Error starting dial out: audio codec must be an array");if(e.length<=0)throw new Error("Error starting dial out: audio codec array specified but empty");e.forEach(function(e){if("string"!=typeof e)throw new Error("Error starting dial out: audio codec must be a string");if("OPUS"!==e&&"PCMU"!==e&&"PCMA"!==e&&"G722"!==e)throw new Error("Error starting dial out: audio codec must be one of OPUS, PCMU, PCMA, G722")})}};if(!e.sipUri&&!e.phoneNumber)throw new Error("Error starting dial out: either a sip uri or phone number must be provided");if(e.sipUri&&e.phoneNumber)throw new Error("Error starting dial out: only one of sip uri or phone number must be provided");if(e.sipUri){if("string"!=typeof e.sipUri)throw new Error("Error starting dial out: sipUri must be a string");if(!e.sipUri.startsWith("sip:"))throw new Error("Error starting dial out: Invalid SIP URI, must start with 'sip:'");if(e.video&&"boolean"!=typeof e.video)throw new Error("Error starting dial out: video must be a boolean value");!function(e){if(e&&(n(e.audio),e.video)){if(!Array.isArray(e.video))throw new Error("Error starting dial out: video codec must be an array");if(e.video.length<=0)throw new Error("Error starting dial out: video codec array specified but empty");e.video.forEach(function(e){if("string"!=typeof e)throw new Error("Error starting dial out: video codec must be a string");if("H264"!==e&&"VP8"!==e)throw new Error("Error starting dial out: video codec must be H264 or VP8")})}}(e.codecs)}if(e.phoneNumber){if("string"!=typeof e.phoneNumber)throw new Error("Error starting dial out: phoneNumber must be a string");if(!/^\+\d{1,}$/.test(e.phoneNumber))throw new Error("Error starting dial out: Invalid phone number, must be valid phone number as per E.164");e.codecs&&n(e.codecs.audio)}if(e.callerId){if("string"!=typeof e.callerId)throw new Error("Error starting dial out: callerId must be a string");if(e.sipUri)throw new Error("Error starting dial out: callerId not allowed with sipUri")}if(e.displayName){if("string"!=typeof e.displayName)throw new Error("Error starting dial out: displayName must be a string");if(e.displayName.length>=200)throw new Error("Error starting dial out: displayName length must be less than 200")}if(e.userId){if("string"!=typeof e.userId)throw new Error("Error starting dial out: userId must be a string");if(e.userId.length>36)throw new Error("Error starting dial out: userId length must be less than or equal to 36")}if(ys(e),e.permissions&&e.permissions.canReceive){var r=m(qa.validateJSONObject(e.permissions.canReceive),2),i=r[0],o=r[1];if(!i)throw new Error(o)}if(e.provider){if(e.provider!==Oo&&e.provider!==Co)throw new Error("Error: provider can be set only to '".concat(Oo,"' or '").concat(Co,"', got: ").concat(e.provider));if(e.phoneNumber)throw new Error("Error starting dial out: provider valid only for sipUri, not phoneNumber");e.provider===Oo&&console.warn("(pre-beta) provider=".concat(Oo," is currently in pre-beta, things might break!"))}else e.provider=Co;return new Promise(function(n,r){t.sendMessageToCallMachine(Xa({action:"dialout-start"},e),function(e){e.error?r(e.error):n(e)})})}),function(e){return D.apply(this,arguments)})},{key:"stopDialOut",value:function(e){var t=this;return bs(this._callState,"stopDialOut()"),new Promise(function(n,r){t.sendMessageToCallMachine(Xa({action:"dialout-stop"},e),function(e){e.error?r(e.error):n(e)})})}},{key:"sipCallTransfer",value:(L=v(function*(e){var t=this;if(bs(this._callState,"sipCallTransfer()"),!e)throw new Error("sipCallTransfer() requires a sessionId and toEndPoint");return e.useSipRefer=!1,Js(e,"sipCallTransfer"),ys(e),new Promise(function(n,r){t.sendMessageToCallMachine(Xa({action:Io},e),function(e){e.error?r(e.error):n(e)})})}),function(e){return L.apply(this,arguments)})},{key:"sipRefer",value:(I=v(function*(e){var t=this;if(bs(this._callState,"sipRefer()"),!e)throw new Error("sessionId and toEndPoint are mandatory parameter");return e.useSipRefer=!0,Js(e,"sipRefer"),new Promise(function(n,r){t.sendMessageToCallMachine(Xa({action:Io},e),function(e){e.error?r(e.error):n(e)})})}),function(e){return I.apply(this,arguments)})},{key:"sendDTMF",value:(P=v(function*(e){var t=this;return bs(this._callState,"sendDTMF()"),function(e){var t=e.sessionId,n=e.tones,r=e.method,i=e.digitDurationMs;if(!t||!n)throw new Error("sessionId and tones are mandatory parameter");if("string"!=typeof t||"string"!=typeof n)throw new Error("sessionId and tones should be of string type");if(n.length>20)throw new Error("tones string must be upto 20 characters");var o=n.match(/[^0-9A-D*#]/g);if(o&&o[0])throw new Error("".concat(o[0]," is not valid DTMF tone"));if(r&&!["sip-info","telephone-event","auto"].includes(r))throw new Error("method must be one of 'sip-info', 'telephone-event', or 'auto'");if(void 0!==i){if("number"!=typeof i)throw new Error("digitDurationMs must be a number");if(!Number.isFinite(i)||!Number.isInteger(i))throw new Error("digitDurationMs must be a finite integer number");if(i<50||i>2e3)throw new Error("digitDurationMs must be between 50ms and 2000ms")}}(e),e.method=e.method||"auto",e.digitDurationMs=e.digitDurationMs||500,new Promise(function(n,r){t.sendMessageToCallMachine(Xa({action:"send-dtmf"},e),function(e){e.error?r(e.error):n(e)})})}),function(e){return P.apply(this,arguments)})},{key:"getNetworkStats",value:function(){var e=this;return this._callState!==Nr?Promise.resolve(Xa({stats:{latest:{}}},this._network)):new Promise(function(t){e.sendMessageToCallMachine({action:"get-calc-stats"},function(n){t(Xa(Xa({},e._network),{},{stats:n.stats}))})})}},{key:"testWebsocketConnectivity",value:(C=v(function*(){var e=this;if(Es(this._testCallInProgress,"testWebsocketConnectivity()"),this.needsLoad())try{yield this.load()}catch(e){return Promise.reject(e)}return new Promise(function(t,n){e.sendMessageToCallMachine({action:"test-websocket-connectivity"},function(e){e.error?n(e.error):t(e.results)})})}),function(){return C.apply(this,arguments)})},{key:"abortTestWebsocketConnectivity",value:function(){this.sendMessageToCallMachine({action:"abort-test-websocket-connectivity"})}},{key:"_validateVideoTrackForNetworkTests",value:function(e){return e?e instanceof MediaStreamTrack?!!function(e,t){var n=t.isLocalScreenVideo;return e&&"live"===e.readyState&&!function(e,t){return(!t.isLocalScreenVideo||"Chrome"!==Yo())&&e.muted&&!Ra.has(e.id)}(e,{isLocalScreenVideo:n})}(e,{isLocalScreenVideo:!1})||(console.error("Video track is not playable. This test needs a live video track."),!1):(console.error("Video track needs to be of type `MediaStreamTrack`."),!1):(console.error("Missing video track. You must provide a video track in order to run this test."),!1)}},{key:"testCallQuality",value:(A=v(function*(){var e=this;Ts(),Ms(this._callObjectMode,"testCallQuality()"),ks(this._callMachineInitialized,"testCallQuality()",null,!0),ws(this._callState,this._isPreparingToJoin,"testCallQuality()");var t=this._testCallAlreadyInProgress,n=function(n){t||(e._testCallInProgress=n)};if(n(!0),this.needsLoad())try{var i=this._callState;yield this.load(),this._callState=i}catch(e){return n(!1),Promise.reject(e)}return new Promise(function(t){e.sendMessageToCallMachine({action:"test-call-quality",dailyJsVersion:e.properties.dailyJsVersion},function(i){var o=i.results,a=o.result,s=r(o,Ha);if("failed"===a){var c,u=Xa({},s);null!==(c=s.error)&&void 0!==c&&c.details?(s.error.details=JSON.parse(s.error.details),u.error=Xa(Xa({},u.error),{},{details:Xa({},u.error.details)}),u.error.details.duringTest="testCallQuality"):(u.error=u.error?Xa({},u.error):{},u.error.details={duringTest:"testCallQuality"}),e._maybeSendToSentry(u)}n(!1),t(Xa({result:a},s))})})}),function(){return A.apply(this,arguments)})},{key:"stopTestCallQuality",value:function(){this.sendMessageToCallMachine({action:"stop-test-call-quality"})}},{key:"testConnectionQuality",value:(k=v(function*(e){var t;Do()?(console.warn("testConnectionQuality() is deprecated: use testPeerToPeerCallQuality() instead"),t=yield this.testPeerToPeerCallQuality(e)):(console.warn("testConnectionQuality() is deprecated: use testCallQuality() instead"),t=yield this.testCallQuality());var n={result:t.result,secondsElapsed:t.secondsElapsed};return t.data&&(n.data={maxRTT:t.data.maxRoundTripTime,packetLoss:t.data.avgRecvPacketLoss}),n}),function(e){return k.apply(this,arguments)})},{key:"testPeerToPeerCallQuality",value:(S=v(function*(e){var t=this;if(Es(this._testCallInProgress,"testPeerToPeerCallQuality()"),this.needsLoad())try{yield this.load()}catch(e){return Promise.reject(e)}var n=e.videoTrack,r=e.duration;if(!this._validateVideoTrackForNetworkTests(n))throw new Error("Video track error");return this._sharedTracks.videoTrackForConnectionQualityTest=n,new Promise(function(e,n){t.sendMessageToCallMachine({action:"test-p2p-call-quality",duration:r},function(t){t.error?n(t.error):e(t.results)})})}),function(e){return S.apply(this,arguments)})},{key:"stopTestConnectionQuality",value:function(){Do()?(console.warn("stopTestConnectionQuality() is deprecated: use testPeerToPeerCallQuality() and stopTestPeerToPeerCallQuality() instead"),this.stopTestPeerToPeerCallQuality()):(console.warn("stopTestConnectionQuality() is deprecated: use testCallQuality() and stopTestCallQuality() instead"),this.stopTestCallQuality())}},{key:"stopTestPeerToPeerCallQuality",value:function(){this.sendMessageToCallMachine({action:"stop-test-p2p-call-quality"})}},{key:"testNetworkConnectivity",value:(b=v(function*(e){var t=this;if(Es(this._testCallInProgress,"testNetworkConnectivity()"),this.needsLoad())try{yield this.load()}catch(e){return Promise.reject(e)}if(!this._validateVideoTrackForNetworkTests(e))throw new Error("Video track error");return this._sharedTracks.videoTrackForNetworkConnectivityTest=e,new Promise(function(e,n){t.sendMessageToCallMachine({action:"test-network-connectivity"},function(t){t.error?n(t.error):e(t.results)})})}),function(e){return b.apply(this,arguments)})},{key:"abortTestNetworkConnectivity",value:function(){this.sendMessageToCallMachine({action:"abort-test-network-connectivity"})}},{key:"getCpuLoadStats",value:function(){var e=this;return new Promise(function(t){e._callState===Nr?e.sendMessageToCallMachine({action:"get-cpu-load-stats"},function(e){t(e.cpuStats)}):t({cpuLoadState:void 0,cpuLoadStateReason:void 0,stats:{}})})}},{key:"_validateEncodingLayerHasValidProperties",value:function(e){var t;if(!((null===(t=Object.keys(e))||void 0===t?void 0:t.length)>0))throw new Error("Empty encoding is not allowed. At least one of these valid keys should be specified:"+Object.values(cs))}},{key:"_validateVideoSendSettings",value:function(e,t){var n="screenVideo"===e?["default-screen-video","detail-optimized","motion-optimized","motion-and-detail-balanced"]:["default-video","bandwidth-optimized","bandwidth-and-quality-balanced","quality-optimized","adaptive-2-layers","adaptive-3-layers"],r="Video send settings should be either an object or one of the supported presets: ".concat(n.join());if("string"==typeof t){if(!n.includes(t))throw new Error(r)}else{if("object"!==o(t))throw new Error(r);if(!t.maxQuality&&!t.encodings&&void 0===t.allowAdaptiveLayers)throw new Error("Video send settings must contain at least maxQuality, allowAdaptiveLayers or encodings attribute");if(t.maxQuality&&-1===["low","medium","high"].indexOf(t.maxQuality))throw new Error("maxQuality must be either low, medium or high");if(t.encodings){var i=!1;switch(Object.keys(t.encodings).length){case 1:i=!t.encodings.low;break;case 2:i=!t.encodings.low||!t.encodings.medium;break;case 3:i=!t.encodings.low||!t.encodings.medium||!t.encodings.high;break;default:i=!0}if(i)throw new Error("Encodings must be defined as: low, low and medium, or low, medium and high.");t.encodings.low&&this._validateEncodingLayerHasValidProperties(t.encodings.low),t.encodings.medium&&this._validateEncodingLayerHasValidProperties(t.encodings.medium),t.encodings.high&&this._validateEncodingLayerHasValidProperties(t.encodings.high)}}}},{key:"validateUpdateSendSettings",value:function(e){var t=this;if(!e||0===Object.keys(e).length)throw new Error("Send settings must contain at least information for one track!");Object.entries(e).forEach(function(e){var n=m(e,2),r=n[0],i=n[1];t._validateVideoSendSettings(r,i)})}},{key:"updateSendSettings",value:function(e){var t=this;return this.validateUpdateSendSettings(e),this.needsLoad()?(this._preloadCache.sendSettings=e,{sendSettings:this._preloadCache.sendSettings}):new Promise(function(n,r){t.sendMessageToCallMachine({action:"update-send-settings",sendSettings:e},function(e){e.error?r(e.error):n(e.sendSettings)})})}},{key:"getSendSettings",value:function(){return this._sendSettings||this._preloadCache.sendSettings}},{key:"getLocalAudioLevel",value:function(){return this._localAudioLevel}},{key:"getRemoteParticipantsAudioLevel",value:function(){return this._remoteParticipantsAudioLevel}},{key:"getActiveSpeaker",value:function(){return Ts(),this._activeSpeaker}},{key:"setActiveSpeakerMode",value:function(e){return Ts(),this.sendMessageToCallMachine({action:"set-active-speaker-mode",enabled:e}),this}},{key:"activeSpeakerMode",value:function(){return Ts(),this._activeSpeakerMode}},{key:"subscribeToTracksAutomatically",value:function(){return this._preloadCache.subscribeToTracksAutomatically}},{key:"setSubscribeToTracksAutomatically",value:function(e){return bs(this._callState,"setSubscribeToTracksAutomatically()","Use the subscribeToTracksAutomatically configuration property."),this._preloadCache.subscribeToTracksAutomatically=e,this.sendMessageToCallMachine({action:"daily-method-subscribe-to-tracks-automatically",enabled:e}),this}},{key:"enumerateDevices",value:(y=v(function*(){var e=this;if(this._callObjectMode){var t=yield navigator.mediaDevices.enumerateDevices();return"Firefox"===Yo()&&$o().major>115&&$o().major<123&&(t=t.filter(function(e){return"audiooutput"!==e.kind})),{devices:t.map(function(e){var t=JSON.parse(JSON.stringify(e));if(!Do()&&"videoinput"===e.kind&&e.getCapabilities){var n,r=e.getCapabilities();t.facing=(null==r||null===(n=r.facingMode)||void 0===n?void 0:n.length)>=1?r.facingMode[0]:void 0}return t})}}return new Promise(function(t){e.sendMessageToCallMachine({action:"enumerate-devices"},function(e){t({devices:e.devices})})})}),function(){return y.apply(this,arguments)})},{key:"sendAppMessage",value:function(e){var t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:"*";if(bs(this._callState,"sendAppMessage()"),JSON.stringify(e).length>this._maxAppMessageSize)throw new Error("Message data too large. Max size is "+this._maxAppMessageSize);return this.sendMessageToCallMachine({action:"app-msg",data:e,to:t}),this}},{key:"addFakeParticipant",value:function(e){return Ts(),bs(this._callState,"addFakeParticipant()"),this.sendMessageToCallMachine(Xa({action:"add-fake-participant"},e)),this}},{key:"setShowNamesMode",value:function(e){return As(this._callObjectMode,"setShowNamesMode()"),Ts(),e&&"always"!==e&&"never"!==e?(console.error('setShowNamesMode argument should be "always", "never", or false'),this):(this.sendMessageToCallMachine({action:"set-show-names",mode:e}),this)}},{key:"setShowLocalVideo",value:function(){var e=!(arguments.length>0&&void 0!==arguments[0])||arguments[0];return As(this._callObjectMode,"setShowLocalVideo()"),Ts(),bs(this._callState,"setShowLocalVideo()"),"boolean"!=typeof e?(console.error("setShowLocalVideo only accepts a boolean value"),this):(this.sendMessageToCallMachine({action:"set-show-local-video",show:e}),this._showLocalVideo=e,this)}},{key:"showLocalVideo",value:function(){return As(this._callObjectMode,"showLocalVideo()"),Ts(),this._showLocalVideo}},{key:"setShowParticipantsBar",value:function(){var e=!(arguments.length>0&&void 0!==arguments[0])||arguments[0];return As(this._callObjectMode,"setShowParticipantsBar()"),Ts(),bs(this._callState,"setShowParticipantsBar()"),"boolean"!=typeof e?(console.error("setShowParticipantsBar only accepts a boolean value"),this):(this.sendMessageToCallMachine({action:"set-show-participants-bar",show:e}),this._showParticipantsBar=e,this)}},{key:"showParticipantsBar",value:function(){return As(this._callObjectMode,"showParticipantsBar()"),Ts(),this._showParticipantsBar}},{key:"customIntegrations",value:function(){return Ts(),As(this._callObjectMode,"customIntegrations()"),this._customIntegrations}},{key:"setCustomIntegrations",value:function(e){return Ts(),As(this._callObjectMode,"setCustomIntegrations()"),bs(this._callState,"setCustomIntegrations()"),Vs(e)?(this.sendMessageToCallMachine({action:"set-custom-integrations",integrations:e}),this._customIntegrations=e,this):this}},{key:"startCustomIntegrations",value:function(e){var t=this;if(Ts(),As(this._callObjectMode,"startCustomIntegrations()"),bs(this._callState,"startCustomIntegrations()"),Array.isArray(e)&&e.some(function(e){return"string"!=typeof e})||!Array.isArray(e)&&"string"!=typeof e)return console.error("startCustomIntegrations() only accepts string | string[]"),this;var n="string"==typeof e?[e]:e,r=n.filter(function(e){return!(e in t._customIntegrations)});return r.length?(console.error("Can't find custom integration(s): \"".concat(r.join(", "),'"')),this):(this.sendMessageToCallMachine({action:"start-custom-integrations",ids:n}),this)}},{key:"stopCustomIntegrations",value:function(e){var t=this;if(Ts(),As(this._callObjectMode,"stopCustomIntegrations()"),bs(this._callState,"stopCustomIntegrations()"),Array.isArray(e)&&e.some(function(e){return"string"!=typeof e})||!Array.isArray(e)&&"string"!=typeof e)return console.error("stopCustomIntegrations() only accepts string | string[]"),this;var n="string"==typeof e?[e]:e,r=n.filter(function(e){return!(e in t._customIntegrations)});return r.length?(console.error("Can't find custom integration(s): \"".concat(r.join(", "),'"')),this):(this.sendMessageToCallMachine({action:"stop-custom-integrations",ids:n}),this)}},{key:"customTrayButtons",value:function(){return As(this._callObjectMode,"customTrayButtons()"),Ts(),this._customTrayButtons}},{key:"updateCustomTrayButtons",value:function(e){return As(this._callObjectMode,"updateCustomTrayButtons()"),Ts(),bs(this._callState,"updateCustomTrayButtons()"),Bs(e)?(this.sendMessageToCallMachine({action:"update-custom-tray-buttons",btns:e}),this._customTrayButtons=e,this):(console.error("updateCustomTrayButtons only accepts a dictionary of the type ".concat(JSON.stringify(ds))),this)}},{key:"theme",value:function(){return As(this._callObjectMode,"theme()"),this.properties.theme}},{key:"setTheme",value:function(e){var t=this;return As(this._callObjectMode,"setTheme()"),new Promise(function(n,r){try{t.validateProperties({theme:e}),t.properties.theme=Xa({},e),t.sendMessageToCallMachine({action:"set-theme",theme:t.properties.theme});try{t.emitDailyJSEvent({action:vi,theme:t.properties.theme})}catch(e){console.log("could not emit 'theme-updated'",e)}n(t.properties.theme)}catch(e){r(e)}})}},{key:"requestFullscreen",value:(g=v(function*(){if(Ts(),this._iframe&&!document.fullscreenElement&&xo())try{(yield this._iframe.requestFullscreen)?this._iframe.requestFullscreen():this._iframe.webkitRequestFullscreen()}catch(e){console.log("could not make video call fullscreen",e)}}),function(){return g.apply(this,arguments)})},{key:"exitFullscreen",value:function(){Ts(),document.fullscreenElement?document.exitFullscreen():document.webkitFullscreenElement&&document.webkitExitFullscreen()}},{key:"getSidebarView",value:(h=v(function*(){var e=this;return this._callObjectMode?(console.error("getSidebarView is not available in callObject mode"),Promise.resolve(null)):new Promise(function(t){e.sendMessageToCallMachine({action:"get-sidebar-view"},function(e){t(e.view)})})}),function(){return h.apply(this,arguments)})},{key:"setSidebarView",value:function(e){return this._callObjectMode?(console.error("setSidebarView is not available in callObject mode"),this):(this.sendMessageToCallMachine({action:"set-sidebar-view",view:e}),this)}},{key:"room",value:(d=v(function*(){var e=this,t=(arguments.length>0&&void 0!==arguments[0]?arguments[0]:{}).includeRoomConfigDefaults,n=void 0===t||t;return this._accessState.access===Yr||this.needsLoad()?this.properties.url?{roomUrlPendingJoin:this.properties.url}:null:new Promise(function(t){e.sendMessageToCallMachine({action:"lib-room-info",includeRoomConfigDefaults:n},function(e){delete e.action,delete e.callbackStamp,t(e)})})}),function(){return d.apply(this,arguments)})},{key:"geo",value:(s=v(function*(){return console.error("The geo() function is no longer supported. Geographical decisions now depend upon domain and room settings."),{current:""}}),function(){return s.apply(this,arguments)})},{key:"setNetworkTopology",value:(a=v(function*(e){var t=this;return Ts(),bs(this._callState,"setNetworkTopology()"),new Promise(function(n,r){t.sendMessageToCallMachine({action:"set-network-topology",opts:e},function(e){e.error?r({error:e.error}):n({workerId:e.workerId})})})}),function(e){return a.apply(this,arguments)})},{key:"getNetworkTopology",value:(n=v(function*(){var e=this;return new Promise(function(t,n){e.needsLoad()&&t({topology:"none"}),e.sendMessageToCallMachine({action:"get-network-topology"},function(e){e.error?n({error:e.error}):t({topology:e.topology})})})}),function(){return n.apply(this,arguments)})},{key:"setPlayNewParticipantSound",value:function(e){if(Ts(),"number"!=typeof e&&!0!==e&&!1!==e)throw new Error("argument to setShouldPlayNewParticipantSound should be true, false, or a number, but is ".concat(e));this.sendMessageToCallMachine({action:"daily-method-set-play-ding",arg:e})}},{key:"on",value:function(e,t){return _().prototype.on.call(this,e,t)}},{key:"once",value:function(e,t){return _().prototype.once.call(this,e,t)}},{key:"off",value:function(e,t){return _().prototype.off.call(this,e,t)}},{key:"validateProperties",value:function(e){var t,n;if(null!=e&&null!==(t=e.dailyConfig)&&void 0!==t&&t.userMediaAudioConstraints){var r,i;Do()||console.warn("userMediaAudioConstraints is deprecated. You can override constraints with inputSettings.audio.settings, found in DailyCallOptions.");var o=e.inputSettings||{};o.audio=(null===(r=e.inputSettings)||void 0===r?void 0:r.audio)||{},o.audio.settings=(null===(i=e.inputSettings)||void 0===i||null===(i=i.audio)||void 0===i?void 0:i.settings)||{},o.audio.settings=Xa(Xa({},o.audio.settings),e.dailyConfig.userMediaAudioConstraints),e.inputSettings=o,delete e.dailyConfig.userMediaAudioConstraints}if(null!=e&&null!==(n=e.dailyConfig)&&void 0!==n&&n.userMediaVideoConstraints){var a,s;Do()||console.warn("userMediaVideoConstraints is deprecated. You can override constraints with inputSettings.video.settings, found in DailyCallOptions.");var c=e.inputSettings||{};c.video=(null===(a=e.inputSettings)||void 0===a?void 0:a.video)||{},c.video.settings=(null===(s=e.inputSettings)||void 0===s||null===(s=s.video)||void 0===s?void 0:s.settings)||{},c.video.settings=Xa(Xa({},c.video.settings),e.dailyConfig.userMediaVideoConstraints),e.inputSettings=c,delete e.dailyConfig.userMediaVideoConstraints}for(var u in e)if(vs[u]){if(vs[u].validate&&!vs[u].validate(e[u],this))throw new Error("property '".concat(u,"': ").concat(vs[u].help))}else console.warn("Ignoring unrecognized property '".concat(u,"'")),delete e[u]}},{key:"assembleMeetingUrl",value:function(){var e,t,n=Xa(Xa({},this.properties),{},{emb:this.callClientId,embHref:encodeURIComponent(window.location.href),proxy:null!==(e=this.properties.dailyConfig)&&void 0!==e&&e.proxyUrl?encodeURIComponent(null===(t=this.properties.dailyConfig)||void 0===t?void 0:t.proxyUrl):void 0}),r=n.url.match(/\?/)?"&":"?";return n.url+r+Object.keys(vs).filter(function(e){return vs[e].queryString&&void 0!==n[e]}).map(function(e){return"".concat(vs[e].queryString,"=").concat(n[e])}).join("&")}},{key:"needsLoad",value:function(){return[Pr,Ir,xr,jr].includes(this._callState)}},{key:"sendMessageToCallMachine",value:function(e,t){if(this._destroyed&&(this._logUseAfterDestroy(),this.strictMode))throw new Error("Use after destroy");this._messageChannel.sendMessageToCallMachine(e,t,this.callClientId,this._iframe)}},{key:"forwardPackagedMessageToCallMachine",value:function(e){this._messageChannel.forwardPackagedMessageToCallMachine(e,this._iframe,this.callClientId)}},{key:"addListenerForPackagedMessagesFromCallMachine",value:function(e){return this._messageChannel.addListenerForPackagedMessagesFromCallMachine(e,this.callClientId)}},{key:"removeListenerForPackagedMessagesFromCallMachine",value:function(e){this._messageChannel.removeListenerForPackagedMessagesFromCallMachine(e)}},{key:"handleMessageFromCallMachine",value:function(e){switch(e.action){case pi:this.sendMessageToCallMachine(Xa({action:hi},this.properties));break;case"call-machine-initialized":this._callMachineInitialized=!0;var t={action:ko,level:"log",code:1011,stats:{event:"bundle load",time:"no-op"===this._bundleLoadTime?0:this._bundleLoadTime,preLoaded:"no-op"===this._bundleLoadTime,url:O(this.properties.dailyConfig)}};this.sendMessageToCallMachine(t),this._delayDuplicateInstanceLog&&this._logDuplicateInstanceAttempt();break;case yi:this._loadedCallback&&(this._loadedCallback(),this._loadedCallback=null),this.emitDailyJSEvent(e);break;case wi:var n,i=Xa({},e);delete i.internal,this._maxAppMessageSize=(null===(n=e.internal)||void 0===n?void 0:n._maxAppMessageSize)||yo,this._joinedCallback&&(this._joinedCallback(e.participants),this._joinedCallback=null),this.emitDailyJSEvent(i);break;case Ei:case Mi:if(this._callState===xr)return;if(e.participant&&e.participant.session_id){var o=e.participant.local?"local":e.participant.session_id;if(this._callObjectMode){var a=this._callMachine().store;Ma(e.participant,a),Aa(e.participant,a),Oa(e.participant,this._participants[o],a)}try{this.maybeParticipantTracksStopped(this._participants[o],e.participant),this.maybeParticipantTracksStarted(this._participants[o],e.participant),this.maybeEventRecordingStopped(this._participants[o],e.participant),this.maybeEventRecordingStarted(this._participants[o],e.participant)}catch(e){console.error("track events error",e)}this.compareEqualForParticipantUpdateEvent(e.participant,this._participants[o])||(this._participants[o]=Xa({},e.participant),this.toggleParticipantAudioBasedOnNativeAudioFocus(),this.emitDailyJSEvent(e))}break;case Ai:if(e.participant&&e.participant.session_id){var s=this._participants[e.participant.session_id];s&&this.maybeParticipantTracksStopped(s,null),delete this._participants[e.participant.session_id],this.emitDailyJSEvent(e)}break;case Ti:w(this._participantCounts,e.participantCounts)||(this._participantCounts=e.participantCounts,this.emitDailyJSEvent(e));break;case Oi:var c={access:e.access};e.awaitingAccess&&(c.awaitingAccess=e.awaitingAccess),w(this._accessState,c)||(this._accessState=c,this.emitDailyJSEvent(e));break;case Ci:if(e.meetingSession){this._meetingSessionSummary=e.meetingSession,this.emitDailyJSEvent(e);var u=Xa(Xa({},e),{},{action:"meeting-session-updated"});this.emitDailyJSEvent(u)}break;case mo:var l;this._iframe&&!e.preserveIframe&&(this._iframe.src=""),this._updateCallState(jr),this.resetMeetingDependentVars(),this._loadedCallback&&(this._loadedCallback(e.errorMsg),this._loadedCallback=null),e.preserveIframe;var d=r(e,Ka);null!=d&&null!==(l=d.error)&&void 0!==l&&l.details&&(d.error.details=JSON.parse(d.error.details)),this._maybeSendToSentry(e),this._joinedCallback&&(this._joinedCallback(null,d),this._joinedCallback=null),this.emitDailyJSEvent(d);break;case ki:this._callState!==jr&&this._updateCallState(xr),this.resetMeetingDependentVars(),this._resolveLeave&&(this._resolveLeave(),this._resolveLeave=null),this.emitDailyJSEvent(e);break;case"selected-devices-updated":e.devices&&this.emitDailyJSEvent(e);break;case no:var f=e.state,p=e.threshold,h=e.quality,v=f.state,g=f.reasons;v===this._network.networkState&&w(g,this._network.networkStateReasons)&&p===this._network.threshold&&h===this._network.quality||(this._network.networkState=v,this._network.networkStateReasons=g,this._network.quality=h,this._network.threshold=p,e.networkState=v,g.length&&(e.networkStateReasons=g),delete e.state,this.emitDailyJSEvent(e));break;case io:e&&e.cpuLoadState&&this.emitDailyJSEvent(e);break;case oo:e&&void 0!==e.faceCounts&&this.emitDailyJSEvent(e);break;case eo:var m=e.activeSpeaker;this._activeSpeaker.peerId!==m.peerId&&(this._activeSpeaker.peerId=m.peerId,this.emitDailyJSEvent({action:e.action,activeSpeaker:this._activeSpeaker}));break;case"show-local-video-changed":if(this._callObjectMode)return;var y=e.show;this._showLocalVideo=y,this.emitDailyJSEvent({action:e.action,show:y});break;case to:var _=e.enabled;this._activeSpeakerMode!==_&&(this._activeSpeakerMode=_,this.emitDailyJSEvent({action:e.action,enabled:this._activeSpeakerMode}));break;case Li:case Di:case Ni:this._waitingParticipants=e.allWaitingParticipants,this.emitDailyJSEvent({action:e.action,participant:e.participant});break;case ho:w(this._receiveSettings,e.receiveSettings)||(this._receiveSettings=e.receiveSettings,this.emitDailyJSEvent({action:e.action,receiveSettings:e.receiveSettings}));break;case vo:this._maybeUpdateInputSettings(e.inputSettings);break;case"send-settings-updated":w(this._sendSettings,e.sendSettings)||(this._sendSettings=e.sendSettings,this._preloadCache.sendSettings=null,this.emitDailyJSEvent({action:e.action,sendSettings:e.sendSettings}));break;case"local-audio-level":this._localAudioLevel=e.audioLevel,this._preloadCache.localAudioLevelObserver=null,this.emitDailyJSEvent(e);break;case"remote-participants-audio-level":this._remoteParticipantsAudioLevel=e.participantsAudioLevel,this._preloadCache.remoteParticipantsAudioLevelObserver=null,this.emitDailyJSEvent(e);break;case zi:var b=e.session_id;this._rmpPlayerState[b]=e.playerState,this.emitDailyJSEvent(e);break;case Ki:delete this._rmpPlayerState[e.session_id],this.emitDailyJSEvent(e);break;case Hi:var S=e.session_id,k=this._rmpPlayerState[S];k&&this.compareEqualForRMPUpdateEvent(k,e.remoteMediaPlayerState)||(this._rmpPlayerState[S]=e.remoteMediaPlayerState,this.emitDailyJSEvent(e));break;case"custom-button-click":case"sidebar-view-changed":case"pip-started":case"pip-stopped":this.emitDailyJSEvent(e);break;case Pi:var E=this._meetingSessionState.topology!==(e.meetingSessionState&&e.meetingSessionState.topology);this._meetingSessionState=Ws(e.meetingSessionState,this._callObjectMode),(this._callObjectMode||E)&&this.emitDailyJSEvent(e);break;case Qi:this._isScreenSharing=!0,this.emitDailyJSEvent(e);break;case Xi:case Zi:this._isScreenSharing=!1,this.emitDailyJSEvent(e);break;case Vi:case Ui:case Ji:case Yi:case $i:case Ri:case Fi:case Bi:case _i:case bi:case Gi:case qi:case"test-completed":case ro:case Wi:case co:case uo:case lo:case fo:case go:case po:case"dialin-ready":case"dialin-connected":case"dialin-error":case"dialin-stopped":case"dialin-warning":case"dialout-connected":case"dtmf-event":case"dialout-answered":case"dialout-error":case"dialout-stopped":case"dialout-warning":this.emitDailyJSEvent(e);break;case"request-fullscreen":this.requestFullscreen();break;case"request-exit-fullscreen":this.exitFullscreen()}}},{key:"maybeEventRecordingStopped",value:function(e,t){var n="record";e&&(t.local||!1!==t[n]||e[n]===t[n]||this.emitDailyJSEvent({action:Ui}))}},{key:"maybeEventRecordingStarted",value:function(e,t){var n="record";e&&(t.local||!0!==t[n]||e[n]===t[n]||this.emitDailyJSEvent({action:Vi}))}},{key:"_trackStatePlayable",value:function(e){return!(!e||e.state!==Jr)}},{key:"_trackChanged",value:function(e,t){return!((null==e?void 0:e.id)===(null==t?void 0:t.id))}},{key:"maybeEventTrackStopped",value:function(e,t,n){var r,i,o=null!==(r=null==t?void 0:t.tracks[e])&&void 0!==r?r:null,a=null!==(i=null==n?void 0:n.tracks[e])&&void 0!==i?i:null,s=null==o?void 0:o.track;if(s){var c=this._trackStatePlayable(o),u=this._trackStatePlayable(a),l=this._trackChanged(s,null==a?void 0:a.track);c&&(u&&!l||this.emitDailyJSEvent({action:ji,track:s,participant:null!=n?n:t,type:e}))}}},{key:"maybeEventTrackStarted",value:function(e,t,n){var r,i,o=null!==(r=null==t?void 0:t.tracks[e])&&void 0!==r?r:null,a=null!==(i=null==n?void 0:n.tracks[e])&&void 0!==i?i:null,s=null==a?void 0:a.track;if(s){var c=this._trackStatePlayable(o),u=this._trackStatePlayable(a),l=this._trackChanged(null==o?void 0:o.track,s);u&&(c&&!l||this.emitDailyJSEvent({action:xi,track:s,participant:n,type:e}))}}},{key:"maybeParticipantTracksStopped",value:function(e,t){if(e)for(var n in e.tracks)this.maybeEventTrackStopped(n,e,t)}},{key:"maybeParticipantTracksStarted",value:function(e,t){if(t)for(var n in t.tracks)this.maybeEventTrackStarted(n,e,t)}},{key:"compareEqualForRMPUpdateEvent",value:function(e,t){var n,r;return e.state===t.state&&(null===(n=e.settings)||void 0===n?void 0:n.volume)===(null===(r=t.settings)||void 0===r?void 0:r.volume)}},{key:"emitDailyJSEvent",value:function(e){try{e.callClientId=this.callClientId,this.emit(e.action,e)}catch(t){console.log("could not emit",e,t)}}},{key:"compareEqualForParticipantUpdateEvent",value:function(e,t){return!(!w(e,t)||e.videoTrack&&t.videoTrack&&(e.videoTrack.id!==t.videoTrack.id||e.videoTrack.muted!==t.videoTrack.muted||e.videoTrack.enabled!==t.videoTrack.enabled)||e.audioTrack&&t.audioTrack&&(e.audioTrack.id!==t.audioTrack.id||e.audioTrack.muted!==t.audioTrack.muted||e.audioTrack.enabled!==t.audioTrack.enabled))}},{key:"nativeUtils",value:function(){return Do()?"undefined"==typeof DailyNativeUtils?(console.warn("in React Native, DailyNativeUtils is expected to be available"),null):DailyNativeUtils:null}},{key:"updateIsPreparingToJoin",value:function(e){this._updateCallState(this._callState,e)}},{key:"_updateCallState",value:function(e){var t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:this._isPreparingToJoin;if(e!==this._callState||t!==this._isPreparingToJoin){var n=this._callState,r=this._isPreparingToJoin;this._callState=e,this._isPreparingToJoin=t;var i=this._callState===Nr;this.updateShowAndroidOngoingMeetingNotification(i);var o=Ss(n,r),a=Ss(this._callState,this._isPreparingToJoin);o!==a&&(this.updateKeepDeviceAwake(a),this.updateDeviceAudioMode(a),this.updateNoOpRecordingEnsuringBackgroundContinuity(a))}}},{key:"resetMeetingDependentVars",value:function(){this._participants={},this._participantCounts=as,this._waitingParticipants={},this._activeSpeaker={},this._activeSpeakerMode=!1,this._didPreAuth=!1,this._accessState={access:Yr},this._finalSummaryOfPrevSession=this._meetingSessionSummary,this._meetingSessionSummary={},this._meetingSessionState=Ws(os,this._callObjectMode),this._isScreenSharing=!1,this._receiveSettings={},this._inputSettings=void 0,this._sendSettings={},this._localAudioLevel=0,this._isLocalAudioLevelObserverRunning=!1,this._remoteParticipantsAudioLevel={},this._isRemoteParticipantsAudioLevelObserverRunning=!1,this._maxAppMessageSize=yo,this._callMachineInitialized=!1,this._bundleLoadTime=void 0,this._preloadCache}},{key:"updateKeepDeviceAwake",value:function(e){Do()&&this.nativeUtils().setKeepDeviceAwake(e,this.callClientId)}},{key:"updateDeviceAudioMode",value:function(e){if(Do()&&!this.disableReactNativeAutoDeviceManagement("audio")){var t=e?this._nativeInCallAudioMode:"idle";this.nativeUtils().setAudioMode(t)}}},{key:"updateShowAndroidOngoingMeetingNotification",value:function(e){if(Do()&&this.nativeUtils().setShowOngoingMeetingNotification){var t,n,r,i;if(this.properties.reactNativeConfig&&this.properties.reactNativeConfig.androidInCallNotification){var o=this.properties.reactNativeConfig.androidInCallNotification;t=o.title,n=o.subtitle,r=o.iconName,i=o.disableForCustomOverride}i&&(e=!1),this.nativeUtils().setShowOngoingMeetingNotification(e,t,n,r,this.callClientId)}}},{key:"updateNoOpRecordingEnsuringBackgroundContinuity",value:function(e){Do()&&this.nativeUtils().enableNoOpRecordingEnsuringBackgroundContinuity&&this.nativeUtils().enableNoOpRecordingEnsuringBackgroundContinuity(e)}},{key:"toggleParticipantAudioBasedOnNativeAudioFocus",value:function(){var e;if(Do()){var t=null===(e=this._callMachine())||void 0===e||null===(e=e.store)||void 0===e?void 0:e.getState();for(var n in null==t?void 0:t.streams){var r=t.streams[n];r&&r.pendingTrack&&"audio"===r.pendingTrack.kind&&(r.pendingTrack.enabled=this._hasNativeAudioFocus)}}}},{key:"disableReactNativeAutoDeviceManagement",value:function(e){return this.properties.reactNativeConfig&&this.properties.reactNativeConfig.disableAutoDeviceManagement&&this.properties.reactNativeConfig.disableAutoDeviceManagement[e]}},{key:"absoluteUrl",value:function(e){if(void 0!==e){var t=document.createElement("a");return t.href=e,t.href}}},{key:"sayHello",value:function(){var e="hello, world.";return console.log(e),e}},{key:"_logUseAfterDestroy",value:function(){var e=Object.values(ns)[0];if(this.needsLoad())if(e&&!e.needsLoad()){var t={action:ko,level:"error",code:this.strictMode?9995:9997};e.sendMessageToCallMachine(t)}else this.strictMode||console.error("You are are attempting to use a call instance that was previously destroyed, which is unsupported. Please remove `strictMode: false` from your constructor properties to enable strict mode to track down and fix this unsupported usage.");else{var n={action:ko,level:"error",code:this.strictMode?9995:9997};this._messageChannel.sendMessageToCallMachine(n,null,this.callClientId,this._iframe)}}},{key:"_logDuplicateInstanceAttempt",value:function(){for(var e=0,t=Object.values(ns);e<t.length;e++){var n=t[e];n._callMachineInitialized?(n.sendMessageToCallMachine({action:ko,level:"warn",code:this.allowMultipleCallInstances?9993:9992}),n._delayDuplicateInstanceLog=!1):n._delayDuplicateInstanceLog=!0}}},{key:"_maybeSendToSentry",value:function(e){var n,r,i,o,a;if(null!==(n=e.error)&&void 0!==n&&n.type){if(![ii,ni,ei].includes(e.error.type))return;if(e.error.type===ei&&e.error.msg.includes("deleted"))return}var s=null!==(r=this.properties)&&void 0!==r&&r.url?new URL(this.properties.url):void 0,c="production";s&&s.host.includes(".staging.daily")&&(c="staging");var u,l,d,f,p,h=Qn({}).filter(function(e){return!["BrowserApiErrors","Breadcrumbs","GlobalHandlers"].includes(e.name)}),v=new vr({dsn:"https://f10f1c81e5d44a4098416c0867a8b740@o77906.ingest.sentry.io/168844",transport:Sr,stackParser:Or,integrations:h,environment:c}),g=new Fe;if(g.setClient(v),v.init(),(null===(i=this._participants)||void 0===i||null===(i=i.local)||void 0===i?void 0:i.session_id)&&g.setExtra("sessionId",this._participants.local.session_id),this.properties){var m=Xa({},this.properties);m.userName=m.userName?"[Filtered]":void 0,m.userData=m.userData?"[Filtered]":void 0,m.token=m.token?"[Filtered]":void 0,g.setExtra("properties",m)}if(s){var y=s.searchParams.get("domain");if(!y){var _=s.host.match(/(.*?)\./);y=_&&_[1]||""}y&&g.setTag("domain",y)}e.error&&(g.setTag("fatalErrorType",e.error.type),g.setExtra("errorDetails",e.error.details),(null===(u=e.error.details)||void 0===u?void 0:u.uri)&&g.setTag("serverAddress",e.error.details.uri),(null===(l=e.error.details)||void 0===l?void 0:l.workerGroup)&&g.setTag("workerGroup",e.error.details.workerGroup),(null===(d=e.error.details)||void 0===d?void 0:d.geoGroup)&&g.setTag("geoGroup",e.error.details.geoGroup),(null===(f=e.error.details)||void 0===f?void 0:f.on)&&g.setTag("connectionAttempt",e.error.details.on),null!==(p=e.error.details)&&void 0!==p&&p.bundleUrl&&(g.setTag("bundleUrl",e.error.details.bundleUrl),g.setTag("bundleError",e.error.details.sourceError.type))),g.setTags({callMode:this._callObjectMode?Do()?"reactNative":null!==(o=this.properties)&&void 0!==o&&null!==(o=o.dailyConfig)&&void 0!==o&&null!==(o=o.callMode)&&void 0!==o&&o.includes("prebuilt")?this.properties.dailyConfig.callMode:"custom":"prebuilt-frame",version:t.version()});var b=(null===(a=e.error)||void 0===a?void 0:a.msg)||e.errorMsg;g.captureException(new Error(b))}},{key:"_callMachine",value:function(){var e;return null===(e=window._daily)||void 0===e||null===(e=e.instances)||void 0===e||null===(e=e[this.callClientId])||void 0===e?void 0:e.callMachine}},{key:"_maybeUpdateInputSettings",value:function(e){if(!w(this._inputSettings,e)){var t=this._getInputSettings();this._inputSettings=e;var n=this._getInputSettings();w(t,n)||this.emitDailyJSEvent({action:vo,inputSettings:n})}}}],[{key:"supportedBrowser",value:function(){if(Do())return{supported:!0,mobile:!0,name:"React Native",version:null,supportsScreenShare:!0,supportsSfu:!0,supportsVideoProcessing:!1,supportsAudioProcessing:!1};var e=E().getParser(Lo());return{supported:!!Vo(),mobile:"mobile"===e.getPlatformType(),name:e.getBrowserName(),version:e.getBrowserVersion(),supportsFullscreen:!!xo(),supportsScreenShare:!!(navigator&&navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia&&(function(e,t){if(!e||!t)return!0;switch(e){case"Chrome":return t.major>=75;case"Safari":return RTCRtpTransceiver.prototype.hasOwnProperty("currentDirection")&&!(13===t.major&&0===t.minor&&0===t.point);case"Firefox":return t.major>=67}return!0}(Yo(),$o())||Do())),supportsSfu:!!Vo(),supportsVideoProcessing:Fo(),supportsAudioProcessing:Bo()}}},{key:"version",value:function(){return"0.90.0"}},{key:"createCallObject",value:function(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};return e.layout="none",new t(null,e)}},{key:"wrap",value:function(e){var n=arguments.length>1&&void 0!==arguments[1]?arguments[1]:{};if(Ts(),!e||!e.contentWindow||"string"!=typeof e.src)throw new Error("DailyIframe::Wrap needs an iframe-like first argument");return n.layout||(n.customLayout?n.layout="custom-v1":n.layout="browser"),new t(e,n)}},{key:"createFrame",value:function(e,n){var r,i;Ts(),e&&n?(r=e,i=n):e&&e.append?(r=e,i={}):(r=document.body,i=e||{});var o=i.iframeStyle;o||(o=r===document.body?{position:"fixed",border:"1px solid black",backgroundColor:"white",width:"375px",height:"450px",right:"1em",bottom:"1em"}:{border:0,width:"100%",height:"100%"});var a=document.createElement("iframe");window.navigator&&window.navigator.userAgent.match(/Chrome\/61\./)?a.allow="microphone, camera":a.allow="microphone; camera; autoplay; display-capture; screen-wake-lock; compute-pressure;",a.style.visibility="hidden",r.appendChild(a),a.style.visibility=null,Object.keys(o).forEach(function(e){return a.style[e]=o[e]}),i.layout||(i.customLayout?i.layout="custom-v1":i.layout="browser");try{return new t(a,i)}catch(e){throw r.removeChild(a),e}}},{key:"createTransparentFrame",value:function(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};Ts();var n=document.createElement("iframe");return n.allow="microphone; camera; autoplay",n.style.cssText="\n      position: fixed;\n      top: 0;\n      left: 0;\n      width: 100%;\n      height: 100%;\n      border: 0;\n      pointer-events: none;\n    ",document.body.appendChild(n),e.layout||(e.layout="custom-v1"),t.wrap(n,e)}},{key:"getCallInstance",value:function(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:void 0;return e?ns[e]:Object.values(ns)[0]}}]);var n,a,s,d,h,g,y,b,S,k,A,C,P,I,L,D,N,x,j,R,F,B,V,U,J,Y,$,W,G,q,z,H,K,Q,X,Z,ee,te}(_());function ys(e){if(e.extension){if("string"!=typeof e.extension)throw new Error("Error starting dial out: extension must be a string");if(e.extension.length>20)throw new Error("Error starting dial out: extension length must be less than or equal to 20")}if(e.waitBeforeExtensionDialSec){if("number"!=typeof e.waitBeforeExtensionDialSec)throw new Error("Error starting dial out: waitBeforeExtensionDialSec must be a number");if(e.waitBeforeExtensionDialSec>60)throw new Error("Error starting dial out: waitBeforeExtensionDialSec must be less than or equal to 60");if(!e.extension)throw new Error("Error starting dial out: waitBeforeExtensionDialSec requires a phoneNumber and extension")}}function _s(e,t){var n={};for(var r in e)if(e[r]instanceof MediaStreamTrack)console.warn("MediaStreamTrack found in props or cache.",r),n[r]=Eo;else if("dailyConfig"===r){if(e[r].modifyLocalSdpHook){var i=window._daily.instances[t].customCallbacks||{};i.modifyLocalSdpHook=e[r].modifyLocalSdpHook,window._daily.instances[t].customCallbacks=i,delete e[r].modifyLocalSdpHook}if(e[r].modifyRemoteSdpHook){var o=window._daily.instances[t].customCallbacks||{};o.modifyRemoteSdpHook=e[r].modifyRemoteSdpHook,window._daily.instances[t].customCallbacks=o,delete e[r].modifyRemoteSdpHook}n[r]=e[r]}else n[r]=e[r];return n}function bs(e){var t=arguments.length>2?arguments[2]:void 0;if(e!==Nr){var n="".concat(arguments.length>1&&void 0!==arguments[1]?arguments[1]:"This daily-js method"," only supported after join.");throw t&&(n+=" ".concat(t)),console.error(n),new Error(n)}}function Ss(e,t){return[Dr,Nr].includes(e)||t}function ws(e,t){var n=arguments.length>2&&void 0!==arguments[2]?arguments[2]:"This daily-js method",r=arguments.length>3?arguments[3]:void 0;if(Ss(e,t)){var i="".concat(n," not supported after joining a meeting.");throw r&&(i+=" ".concat(r)),console.error(i),new Error(i)}}function ks(e){var t=arguments.length>2?arguments[2]:void 0;if(!e){var n="".concat(arguments.length>1&&void 0!==arguments[1]?arguments[1]:"This daily-js method",arguments.length>3&&void 0!==arguments[3]&&arguments[3]?" requires preAuth() or startCamera() to initialize call state.":" requires preAuth(), startCamera(), or join() to initialize call state.");throw t&&(n+=" ".concat(t)),console.error(n),new Error(n)}}function Es(e){if(e){var t="A pre-call quality test is in progress. Please try ".concat(arguments.length>1&&void 0!==arguments[1]?arguments[1]:"This daily-js method"," again once testing has completed. Use stopTestCallQuality() to end it early.");throw console.error(t),new Error(t)}}function Ms(e){if(!e){var t="".concat(arguments.length>1&&void 0!==arguments[1]?arguments[1]:"This daily-js method"," is only supported on custom callObject instances");throw console.error(t),new Error(t)}}function As(e){if(e){var t="".concat(arguments.length>1&&void 0!==arguments[1]?arguments[1]:"This daily-js method"," is only supported as part of Daily's Prebuilt");throw console.error(t),new Error(t)}}function Ts(){if(Do())throw new Error("This daily-js method is not currently supported in React Native")}function Os(){if(!Do())throw new Error("This daily-js method is only supported in React Native")}function Cs(e){if(void 0===e)return!0;var t;if("string"==typeof e)t=e;else try{t=JSON.stringify(e),w(JSON.parse(t),e)||console.warn("The userData provided will be modified when serialized.")}catch(e){throw Error("userData must be serializable to JSON: ".concat(e))}if(t.length>4096)throw Error("userData is too large (".concat(t.length," characters). Maximum size suppported is ").concat(4096,"."));return!0}function Ps(e,t){for(var n=t.allowAllParticipantsKey,r=function(e){var t=["local"];return n||t.push("*"),e&&!t.includes(e)},i=function(e){return!!(void 0===e.layer||Number.isInteger(e.layer)&&e.layer>=0||"inherit"===e.layer)},o=function(e){return!(!e||e.video&&!i(e.video)||e.screenVideo&&!i(e.screenVideo))},a=0,s=Object.entries(e);a<s.length;a++){var c=m(s[a],2),u=c[0],l=c[1];if(!r(u)||!o(l))return!1}return!0}function Is(e){if("object"!==o(e))return!1;for(var t=0,n=Object.entries(e);t<n.length;t++){var r=m(n[t],2),i=r[0],a=r[1];switch(i){case"video":if("object"!==o(a))return!1;for(var s=0,c=Object.entries(a);s<c.length;s++){var u=m(c[s],2),l=u[0],d=u[1];switch(l){case"processor":if(!Ns(d))return!1;break;case"settings":if(!xs(d))return!1;break;default:return!1}}break;case"audio":if("object"!==o(a))return!1;for(var f=0,p=Object.entries(a);f<p.length;f++){var h=m(p[f],2),v=h[0],g=h[1];switch(v){case"processor":if(!Ds(g))return!1;break;case"settings":if(!xs(g))return!1;break;default:return!1}}break;default:return!1}}return!0}function Ls(e,t,n){var r,i=[];e.video&&e.video.processor&&(Fo(null!==(r=null==t?void 0:t.useLegacyVideoProcessor)&&void 0!==r&&r)||(e.video.settings?delete e.video.processor:delete e.video,i.push("video"))),e.audio&&e.audio.processor&&(Bo()||(e.audio.settings?delete e.audio.processor:delete e.audio,i.push("audio"))),i.length>0&&console.error("Ignoring settings for browser- or platform-unsupported input processor(s): ".concat(i.join(", "))),e.audio&&e.audio.settings&&(e.audio.settings.customTrack?(n.audioTrack=e.audio.settings.customTrack,e.audio.settings={customTrack:Eo}):delete n.audioTrack),e.video&&e.video.settings&&(e.video.settings.customTrack?(n.videoTrack=e.video.settings.customTrack,e.video.settings={customTrack:Eo}):delete n.videoTrack)}function Ds(e){if(Do())return console.warn("Video processing is not yet supported in React Native"),!1;var t,n=["type"];return!(!e||"object"!==o(e)||(Object.keys(e).filter(function(e){return!n.includes(e)}).forEach(function(t){console.warn("invalid key inputSettings -> audio -> processor : ".concat(t)),delete e[t]}),t=e.type,"string"!=typeof t||!Object.values(Ao).includes(t)&&(console.error("inputSettings audio processor type invalid"),1)))}function Ns(e){if(Do())return console.warn("Video processing is not yet supported in React Native"),!1;var t,n=["type","config"];if(!e)return!1;if("object"!==o(e))return!1;if("string"!=typeof(t=e.type)||!Object.values(Mo).includes(t)&&(console.error("inputSettings video processor type invalid"),1))return!1;if(e.config){if("object"!==o(e.config))return!1;if(!function(e,t){var n=Object.keys(t);if(0===n.length)return!0;var r="invalid object in inputSettings -> video -> processor -> config";switch(e){case Mo.BGBLUR:return n.length>1||"strength"!==n[0]?(console.error(r),!1):!("number"!=typeof t.strength||t.strength<=0||t.strength>1||isNaN(t.strength))||(console.error("".concat(r,"; expected: {0 < strength <= 1}, got: ").concat(t.strength)),!1);case Mo.BGIMAGE:return!(void 0!==t.source&&!function(e){return"default"===e.source?(e.type="default",!0):e.source instanceof ArrayBuffer||(C(e.source)?(e.type="url",!!function(e){var t=new URL(e),n=t.pathname;if("data:"===t.protocol)try{var r=n.substring(n.indexOf(":")+1,n.indexOf(";")).split("/")[1];return Po.includes(r)}catch(e){return console.error("failed to deduce blob content type",e),!1}var i=n.split(".").at(-1).toLowerCase().trim();return Po.includes(i)}(e.source)||(console.error("invalid image type; supported types: [".concat(Po.join(", "),"]")),!1)):(t=e.source,n=Number(t),isNaN(n)||!Number.isInteger(n)||n<=0||n>10?(console.error("invalid image selection; must be an int, > 0, <= ".concat(10)),!1):(e.type="daily-preselect",!0)));var t,n}(t));default:return!0}}(e.type,e.config))return!1}return Object.keys(e).filter(function(e){return!n.includes(e)}).forEach(function(t){console.warn("invalid key inputSettings -> video -> processor : ".concat(t)),delete e[t]}),!0}function xs(e){return"object"===o(e)&&(!e.customTrack||e.customTrack instanceof MediaStreamTrack)}function js(){var e=Object.values(Mo).join(" | "),t=Object.values(Ao).join(" | ");return"inputSettings must be of the form: { video?: { processor?: { type: [ ".concat(e," ], config?: {} } }, audio?: { processor: {type: [ ").concat(t," ] } } }")}function Rs(e){var t=e.allowAllParticipantsKey;return"receiveSettings must be of the form { [<remote participant id> | ".concat(qr).concat(t?' | "'.concat(zr,'"'):"","]: ")+'{ [video: [{ layer: [<non-negative integer> | "inherit"] } | "inherit"]], [screenVideo: [{ layer: [<non-negative integer> | "inherit"] } | "inherit"]] }}}'}function Fs(){return"customIntegrations should be an object of type ".concat(JSON.stringify(fs),".")}function Bs(e){if(e&&"object"!==o(e)||Array.isArray(e))return console.error("customTrayButtons should be an Object of the type ".concat(JSON.stringify(ds),".")),!1;if(e)for(var t=0,n=Object.entries(e);t<n.length;t++)for(var r=m(n[t],1)[0],i=0,a=Object.entries(e[r]);i<a.length;i++){var s=m(a[i],2),c=s[0],u=s[1],l=ds.id[c];if(!l)return console.error("customTrayButton does not support key ".concat(c)),!1;switch(c){case"iconPath":case"iconPathDarkMode":if(!C(u))return console.error("customTrayButton ".concat(c," should be a url.")),!1;break;case"visualState":if(!["default","sidebar-open","active"].includes(u))return console.error("customTrayButton ".concat(c," should be ").concat(l,". Got: ").concat(u)),!1;break;default:if(o(u)!==l)return console.error("customTrayButton ".concat(c," should be a ").concat(l,".")),!1}}return!0}function Vs(e){if(!e||e&&"object"!==o(e)||Array.isArray(e))return console.error(Fs()),!1;for(var t=function(e){return"".concat(e," should be ").concat(fs.id[e])},n=function(e,t){return console.error("customIntegration ".concat(e,": ").concat(t))},r=0,i=Object.entries(e);r<i.length;r++){var a=m(i[r],1)[0];if(!("label"in e[a]))return n(a,"label is required"),!1;if(!("location"in e[a]))return n(a,"location is required"),!1;if(!("src"in e[a])&&!("srcdoc"in e[a]))return n(a,"src or srcdoc is required"),!1;for(var s=0,c=Object.entries(e[a]);s<c.length;s++){var u=m(c[s],2),l=u[0],d=u[1];switch(l){case"allow":case"csp":case"name":case"referrerPolicy":case"sandbox":if("string"!=typeof d)return n(a,t(l)),!1;break;case"iconURL":if(!C(d))return n(a,"".concat(l," should be a url")),!1;break;case"src":if("srcdoc"in e[a])return n(a,"cannot have both src and srcdoc"),!1;if(!C(d))return n(a,'src "'.concat(d,'" is not a valid URL')),!1;break;case"srcdoc":if("src"in e[a])return n(a,"cannot have both src and srcdoc"),!1;if("string"!=typeof d)return n(a,t(l)),!1;break;case"location":if(!["main","sidebar"].includes(d))return n(a,t(l)),!1;break;case"controlledBy":if("*"!==d&&"owners"!==d&&(!Array.isArray(d)||d.some(function(e){return"string"!=typeof e})))return n(a,t(l)),!1;break;case"shared":if((!Array.isArray(d)||d.some(function(e){return"string"!=typeof e}))&&"owners"!==d&&"boolean"!=typeof d)return n(a,t(l)),!1;break;default:if(!fs.id[l])return console.error("customIntegration does not support key ".concat(l)),!1}}}return!0}function Us(e,t){if(void 0===t)return!1;switch(o(t)){case"string":return o(e)===t;case"object":if("object"!==o(e))return!1;for(var n in e)if(!Us(e[n],t[n]))return!1;return!0;default:return!1}}function Js(e,t){var n=e.sessionId,r=e.toEndPoint,i=e.callerId,o=e.useSipRefer;if(!n||!r)throw new Error("".concat(t,"() requires a sessionId and toEndPoint"));if("string"!=typeof n||"string"!=typeof r)throw new Error("Invalid paramater: sessionId and toEndPoint must be of type string");if(o&&!r.startsWith("sip:"))throw new Error('"toEndPoint" must be a "sip" address');if(!r.startsWith("sip:")&&!r.startsWith("+"))throw new Error("toEndPoint: ".concat(r,' must starts with either "sip:" or "+"'));if(i&&"string"!=typeof i)throw new Error("callerId must be of type string");if(i&&!r.startsWith("+"))throw new Error("callerId is only valid when transferring to a PSTN number")}function Ys(e){if("object"!==o(e))throw new Error('RemoteMediaPlayerSettings: must be "object" type');if(e.state&&!Object.values(To).includes(e.state))throw new Error("Invalid value for RemoteMediaPlayerSettings.state, valid values are: "+JSON.stringify(To));if(e.volume){if("number"!=typeof e.volume)throw new Error('RemoteMediaPlayerSettings.volume: must be "number" type');if(e.volume<0||e.volume>2)throw new Error("RemoteMediaPlayerSettings.volume: must be between 0.0 - 2.0")}}function $s(e,t,n){return!("number"!=typeof e||e<t||e>n)}function Ws(e,t){return e&&!t&&delete e.data,e}},880:function(e){e.exports=function(e){var t={};function n(r){if(t[r])return t[r].exports;var i=t[r]={i:r,l:!1,exports:{}};return e[r].call(i.exports,i,i.exports,n),i.l=!0,i.exports}return n.m=e,n.c=t,n.d=function(e,t,r){n.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:r})},n.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},n.t=function(e,t){if(1&t&&(e=n(e)),8&t)return e;if(4&t&&"object"==typeof e&&e&&e.__esModule)return e;var r=Object.create(null);if(n.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:e}),2&t&&"string"!=typeof e)for(var i in e)n.d(r,i,function(t){return e[t]}.bind(null,i));return r},n.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return n.d(t,"a",t),t},n.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},n.p="",n(n.s=90)}({17:function(e,t,n){"use strict";t.__esModule=!0,t.default=void 0;var r=n(18),i=function(){function e(){}return e.getFirstMatch=function(e,t){var n=t.match(e);return n&&n.length>0&&n[1]||""},e.getSecondMatch=function(e,t){var n=t.match(e);return n&&n.length>1&&n[2]||""},e.matchAndReturnConst=function(e,t,n){if(e.test(t))return n},e.getWindowsVersionName=function(e){switch(e){case"NT":return"NT";case"XP":case"NT 5.1":return"XP";case"NT 5.0":return"2000";case"NT 5.2":return"2003";case"NT 6.0":return"Vista";case"NT 6.1":return"7";case"NT 6.2":return"8";case"NT 6.3":return"8.1";case"NT 10.0":return"10";default:return}},e.getMacOSVersionName=function(e){var t=e.split(".").splice(0,2).map(function(e){return parseInt(e,10)||0});t.push(0);var n=t[0],r=t[1];if(10===n)switch(r){case 5:return"Leopard";case 6:return"Snow Leopard";case 7:return"Lion";case 8:return"Mountain Lion";case 9:return"Mavericks";case 10:return"Yosemite";case 11:return"El Capitan";case 12:return"Sierra";case 13:return"High Sierra";case 14:return"Mojave";case 15:return"Catalina";default:return}switch(n){case 11:return"Big Sur";case 12:return"Monterey";case 13:return"Ventura";case 14:return"Sonoma";case 15:return"Sequoia";default:return}},e.getAndroidVersionName=function(e){var t=e.split(".").splice(0,2).map(function(e){return parseInt(e,10)||0});if(t.push(0),!(1===t[0]&&t[1]<5))return 1===t[0]&&t[1]<6?"Cupcake":1===t[0]&&t[1]>=6?"Donut":2===t[0]&&t[1]<2?"Eclair":2===t[0]&&2===t[1]?"Froyo":2===t[0]&&t[1]>2?"Gingerbread":3===t[0]?"Honeycomb":4===t[0]&&t[1]<1?"Ice Cream Sandwich":4===t[0]&&t[1]<4?"Jelly Bean":4===t[0]&&t[1]>=4?"KitKat":5===t[0]?"Lollipop":6===t[0]?"Marshmallow":7===t[0]?"Nougat":8===t[0]?"Oreo":9===t[0]?"Pie":void 0},e.getVersionPrecision=function(e){return e.split(".").length},e.compareVersions=function(t,n,r){void 0===r&&(r=!1);var i=e.getVersionPrecision(t),o=e.getVersionPrecision(n),a=Math.max(i,o),s=0,c=e.map([t,n],function(t){var n=a-e.getVersionPrecision(t),r=t+new Array(n+1).join(".0");return e.map(r.split("."),function(e){return new Array(20-e.length).join("0")+e}).reverse()});for(r&&(s=a-Math.min(i,o)),a-=1;a>=s;){if(c[0][a]>c[1][a])return 1;if(c[0][a]===c[1][a]){if(a===s)return 0;a-=1}else if(c[0][a]<c[1][a])return-1}},e.map=function(e,t){var n,r=[];if(Array.prototype.map)return Array.prototype.map.call(e,t);for(n=0;n<e.length;n+=1)r.push(t(e[n]));return r},e.find=function(e,t){var n,r;if(Array.prototype.find)return Array.prototype.find.call(e,t);for(n=0,r=e.length;n<r;n+=1){var i=e[n];if(t(i,n))return i}},e.assign=function(e){for(var t,n,r=e,i=arguments.length,o=new Array(i>1?i-1:0),a=1;a<i;a++)o[a-1]=arguments[a];if(Object.assign)return Object.assign.apply(Object,[e].concat(o));var s=function(){var e=o[t];"object"==typeof e&&null!==e&&Object.keys(e).forEach(function(t){r[t]=e[t]})};for(t=0,n=o.length;t<n;t+=1)s();return e},e.getBrowserAlias=function(e){return r.BROWSER_ALIASES_MAP[e]},e.getBrowserTypeByAlias=function(e){return r.BROWSER_MAP[e]||""},e}();t.default=i,e.exports=t.default},18:function(e,t,n){"use strict";t.__esModule=!0,t.ENGINE_MAP=t.OS_MAP=t.PLATFORMS_MAP=t.BROWSER_MAP=t.BROWSER_ALIASES_MAP=void 0,t.BROWSER_ALIASES_MAP={AmazonBot:"amazonbot","Amazon Silk":"amazon_silk","Android Browser":"android",BaiduSpider:"baiduspider",Bada:"bada",BingCrawler:"bingcrawler",Brave:"brave",BlackBerry:"blackberry","ChatGPT-User":"chatgpt_user",Chrome:"chrome",ClaudeBot:"claudebot",Chromium:"chromium",Diffbot:"diffbot",DuckDuckBot:"duckduckbot",DuckDuckGo:"duckduckgo",Electron:"electron",Epiphany:"epiphany",FacebookExternalHit:"facebookexternalhit",Firefox:"firefox",Focus:"focus",Generic:"generic","Google Search":"google_search",Googlebot:"googlebot",GPTBot:"gptbot","Internet Explorer":"ie",InternetArchiveCrawler:"internetarchivecrawler","K-Meleon":"k_meleon",LibreWolf:"librewolf",Linespider:"linespider",Maxthon:"maxthon","Meta-ExternalAds":"meta_externalads","Meta-ExternalAgent":"meta_externalagent","Meta-ExternalFetcher":"meta_externalfetcher","Meta-WebIndexer":"meta_webindexer","Microsoft Edge":"edge","MZ Browser":"mz","NAVER Whale Browser":"naver","OAI-SearchBot":"oai_searchbot",Omgilibot:"omgilibot",Opera:"opera","Opera Coast":"opera_coast","Pale Moon":"pale_moon",PerplexityBot:"perplexitybot","Perplexity-User":"perplexity_user",PhantomJS:"phantomjs",PingdomBot:"pingdombot",Puffin:"puffin",QQ:"qq",QQLite:"qqlite",QupZilla:"qupzilla",Roku:"roku",Safari:"safari",Sailfish:"sailfish","Samsung Internet for Android":"samsung_internet",SlackBot:"slackbot",SeaMonkey:"seamonkey",Sleipnir:"sleipnir","Sogou Browser":"sogou",Swing:"swing",Tizen:"tizen","UC Browser":"uc",Vivaldi:"vivaldi","WebOS Browser":"webos",WeChat:"wechat",YahooSlurp:"yahooslurp","Yandex Browser":"yandex",YandexBot:"yandexbot",YouBot:"youbot"},t.BROWSER_MAP={amazonbot:"AmazonBot",amazon_silk:"Amazon Silk",android:"Android Browser",baiduspider:"BaiduSpider",bada:"Bada",bingcrawler:"BingCrawler",blackberry:"BlackBerry",brave:"Brave",chatgpt_user:"ChatGPT-User",chrome:"Chrome",claudebot:"ClaudeBot",chromium:"Chromium",diffbot:"Diffbot",duckduckbot:"DuckDuckBot",duckduckgo:"DuckDuckGo",edge:"Microsoft Edge",electron:"Electron",epiphany:"Epiphany",facebookexternalhit:"FacebookExternalHit",firefox:"Firefox",focus:"Focus",generic:"Generic",google_search:"Google Search",googlebot:"Googlebot",gptbot:"GPTBot",ie:"Internet Explorer",internetarchivecrawler:"InternetArchiveCrawler",k_meleon:"K-Meleon",librewolf:"LibreWolf",linespider:"Linespider",maxthon:"Maxthon",meta_externalads:"Meta-ExternalAds",meta_externalagent:"Meta-ExternalAgent",meta_externalfetcher:"Meta-ExternalFetcher",meta_webindexer:"Meta-WebIndexer",mz:"MZ Browser",naver:"NAVER Whale Browser",oai_searchbot:"OAI-SearchBot",omgilibot:"Omgilibot",opera:"Opera",opera_coast:"Opera Coast",pale_moon:"Pale Moon",perplexitybot:"PerplexityBot",perplexity_user:"Perplexity-User",phantomjs:"PhantomJS",pingdombot:"PingdomBot",puffin:"Puffin",qq:"QQ Browser",qqlite:"QQ Browser Lite",qupzilla:"QupZilla",roku:"Roku",safari:"Safari",sailfish:"Sailfish",samsung_internet:"Samsung Internet for Android",seamonkey:"SeaMonkey",slackbot:"SlackBot",sleipnir:"Sleipnir",sogou:"Sogou Browser",swing:"Swing",tizen:"Tizen",uc:"UC Browser",vivaldi:"Vivaldi",webos:"WebOS Browser",wechat:"WeChat",yahooslurp:"YahooSlurp",yandex:"Yandex Browser",yandexbot:"YandexBot",youbot:"YouBot"},t.PLATFORMS_MAP={bot:"bot",desktop:"desktop",mobile:"mobile",tablet:"tablet",tv:"tv"},t.OS_MAP={Android:"Android",Bada:"Bada",BlackBerry:"BlackBerry",ChromeOS:"Chrome OS",HarmonyOS:"HarmonyOS",iOS:"iOS",Linux:"Linux",MacOS:"macOS",PlayStation4:"PlayStation 4",Roku:"Roku",Tizen:"Tizen",WebOS:"WebOS",Windows:"Windows",WindowsPhone:"Windows Phone"},t.ENGINE_MAP={Blink:"Blink",EdgeHTML:"EdgeHTML",Gecko:"Gecko",Presto:"Presto",Trident:"Trident",WebKit:"WebKit"}},90:function(e,t,n){"use strict";t.__esModule=!0,t.default=void 0;var r,i=(r=n(91))&&r.__esModule?r:{default:r},o=n(18);function a(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,r.key,r)}}var s=function(){function e(){}var t,n;return e.getParser=function(e,t,n){if(void 0===t&&(t=!1),void 0===n&&(n=null),"string"!=typeof e)throw new Error("UserAgent should be a string");return new i.default(e,t,n)},e.parse=function(e,t){return void 0===t&&(t=null),new i.default(e,t).getResult()},t=e,n=[{key:"BROWSER_MAP",get:function(){return o.BROWSER_MAP}},{key:"ENGINE_MAP",get:function(){return o.ENGINE_MAP}},{key:"OS_MAP",get:function(){return o.OS_MAP}},{key:"PLATFORMS_MAP",get:function(){return o.PLATFORMS_MAP}}],null&&a(t.prototype,null),n&&a(t,n),e}();t.default=s,e.exports=t.default},91:function(e,t,n){"use strict";t.__esModule=!0,t.default=void 0;var r=c(n(92)),i=c(n(93)),o=c(n(94)),a=c(n(95)),s=c(n(17));function c(e){return e&&e.__esModule?e:{default:e}}var u=function(){function e(e,t,n){if(void 0===t&&(t=!1),void 0===n&&(n=null),null==e||""===e)throw new Error("UserAgent parameter can't be empty");this._ua=e;var r=!1;"boolean"==typeof t?(r=t,this._hints=n):this._hints=null!=t&&"object"==typeof t?t:null,this.parsedResult={},!0!==r&&this.parse()}var t=e.prototype;return t.getHints=function(){return this._hints},t.hasBrand=function(e){if(!this._hints||!Array.isArray(this._hints.brands))return!1;var t=e.toLowerCase();return this._hints.brands.some(function(e){return e.brand&&e.brand.toLowerCase()===t})},t.getBrandVersion=function(e){if(this._hints&&Array.isArray(this._hints.brands)){var t=e.toLowerCase(),n=this._hints.brands.find(function(e){return e.brand&&e.brand.toLowerCase()===t});return n?n.version:void 0}},t.getUA=function(){return this._ua},t.test=function(e){return e.test(this._ua)},t.parseBrowser=function(){var e=this;this.parsedResult.browser={};var t=s.default.find(r.default,function(t){if("function"==typeof t.test)return t.test(e);if(Array.isArray(t.test))return t.test.some(function(t){return e.test(t)});throw new Error("Browser's test function is not valid")});return t&&(this.parsedResult.browser=t.describe(this.getUA(),this)),this.parsedResult.browser},t.getBrowser=function(){return this.parsedResult.browser?this.parsedResult.browser:this.parseBrowser()},t.getBrowserName=function(e){return e?String(this.getBrowser().name).toLowerCase()||"":this.getBrowser().name||""},t.getBrowserVersion=function(){return this.getBrowser().version},t.getOS=function(){return this.parsedResult.os?this.parsedResult.os:this.parseOS()},t.parseOS=function(){var e=this;this.parsedResult.os={};var t=s.default.find(i.default,function(t){if("function"==typeof t.test)return t.test(e);if(Array.isArray(t.test))return t.test.some(function(t){return e.test(t)});throw new Error("Browser's test function is not valid")});return t&&(this.parsedResult.os=t.describe(this.getUA())),this.parsedResult.os},t.getOSName=function(e){var t=this.getOS().name;return e?String(t).toLowerCase()||"":t||""},t.getOSVersion=function(){return this.getOS().version},t.getPlatform=function(){return this.parsedResult.platform?this.parsedResult.platform:this.parsePlatform()},t.getPlatformType=function(e){void 0===e&&(e=!1);var t=this.getPlatform().type;return e?String(t).toLowerCase()||"":t||""},t.parsePlatform=function(){var e=this;this.parsedResult.platform={};var t=s.default.find(o.default,function(t){if("function"==typeof t.test)return t.test(e);if(Array.isArray(t.test))return t.test.some(function(t){return e.test(t)});throw new Error("Browser's test function is not valid")});return t&&(this.parsedResult.platform=t.describe(this.getUA())),this.parsedResult.platform},t.getEngine=function(){return this.parsedResult.engine?this.parsedResult.engine:this.parseEngine()},t.getEngineName=function(e){return e?String(this.getEngine().name).toLowerCase()||"":this.getEngine().name||""},t.parseEngine=function(){var e=this;this.parsedResult.engine={};var t=s.default.find(a.default,function(t){if("function"==typeof t.test)return t.test(e);if(Array.isArray(t.test))return t.test.some(function(t){return e.test(t)});throw new Error("Browser's test function is not valid")});return t&&(this.parsedResult.engine=t.describe(this.getUA())),this.parsedResult.engine},t.parse=function(){return this.parseBrowser(),this.parseOS(),this.parsePlatform(),this.parseEngine(),this},t.getResult=function(){return s.default.assign({},this.parsedResult)},t.satisfies=function(e){var t=this,n={},r=0,i={},o=0;if(Object.keys(e).forEach(function(t){var a=e[t];"string"==typeof a?(i[t]=a,o+=1):"object"==typeof a&&(n[t]=a,r+=1)}),r>0){var a=Object.keys(n),c=s.default.find(a,function(e){return t.isOS(e)});if(c){var u=this.satisfies(n[c]);if(void 0!==u)return u}var l=s.default.find(a,function(e){return t.isPlatform(e)});if(l){var d=this.satisfies(n[l]);if(void 0!==d)return d}}if(o>0){var f=Object.keys(i),p=s.default.find(f,function(e){return t.isBrowser(e,!0)});if(void 0!==p)return this.compareVersion(i[p])}},t.isBrowser=function(e,t){void 0===t&&(t=!1);var n=this.getBrowserName().toLowerCase(),r=e.toLowerCase(),i=s.default.getBrowserTypeByAlias(r);return t&&i&&(r=i.toLowerCase()),r===n},t.compareVersion=function(e){var t=[0],n=e,r=!1,i=this.getBrowserVersion();if("string"==typeof i)return">"===e[0]||"<"===e[0]?(n=e.substr(1),"="===e[1]?(r=!0,n=e.substr(2)):t=[],">"===e[0]?t.push(1):t.push(-1)):"="===e[0]?n=e.substr(1):"~"===e[0]&&(r=!0,n=e.substr(1)),t.indexOf(s.default.compareVersions(i,n,r))>-1},t.isOS=function(e){return this.getOSName(!0)===String(e).toLowerCase()},t.isPlatform=function(e){return this.getPlatformType(!0)===String(e).toLowerCase()},t.isEngine=function(e){return this.getEngineName(!0)===String(e).toLowerCase()},t.is=function(e,t){return void 0===t&&(t=!1),this.isBrowser(e,t)||this.isOS(e)||this.isPlatform(e)},t.some=function(e){var t=this;return void 0===e&&(e=[]),e.some(function(e){return t.is(e)})},e}();t.default=u,e.exports=t.default},92:function(e,t,n){"use strict";t.__esModule=!0,t.default=void 0;var r,i=(r=n(17))&&r.__esModule?r:{default:r},o=/version\/(\d+(\.?_?\d+)+)/i,a=[{test:[/gptbot/i],describe:function(e){var t={name:"GPTBot"},n=i.default.getFirstMatch(/gptbot\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/chatgpt-user/i],describe:function(e){var t={name:"ChatGPT-User"},n=i.default.getFirstMatch(/chatgpt-user\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/oai-searchbot/i],describe:function(e){var t={name:"OAI-SearchBot"},n=i.default.getFirstMatch(/oai-searchbot\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/claudebot/i,/claude-web/i,/claude-user/i,/claude-searchbot/i],describe:function(e){var t={name:"ClaudeBot"},n=i.default.getFirstMatch(/(?:claudebot|claude-web|claude-user|claude-searchbot)\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/omgilibot/i,/webzio-extended/i],describe:function(e){var t={name:"Omgilibot"},n=i.default.getFirstMatch(/(?:omgilibot|webzio-extended)\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/diffbot/i],describe:function(e){var t={name:"Diffbot"},n=i.default.getFirstMatch(/diffbot\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/perplexitybot/i],describe:function(e){var t={name:"PerplexityBot"},n=i.default.getFirstMatch(/perplexitybot\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/perplexity-user/i],describe:function(e){var t={name:"Perplexity-User"},n=i.default.getFirstMatch(/perplexity-user\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/youbot/i],describe:function(e){var t={name:"YouBot"},n=i.default.getFirstMatch(/youbot\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/meta-webindexer/i],describe:function(e){var t={name:"Meta-WebIndexer"},n=i.default.getFirstMatch(/meta-webindexer\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/meta-externalads/i],describe:function(e){var t={name:"Meta-ExternalAds"},n=i.default.getFirstMatch(/meta-externalads\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/meta-externalagent/i],describe:function(e){var t={name:"Meta-ExternalAgent"},n=i.default.getFirstMatch(/meta-externalagent\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/meta-externalfetcher/i],describe:function(e){var t={name:"Meta-ExternalFetcher"},n=i.default.getFirstMatch(/meta-externalfetcher\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/googlebot/i],describe:function(e){var t={name:"Googlebot"},n=i.default.getFirstMatch(/googlebot\/(\d+(\.\d+))/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/linespider/i],describe:function(e){var t={name:"Linespider"},n=i.default.getFirstMatch(/(?:linespider)(?:-[-\w]+)?[\s/](\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/amazonbot/i],describe:function(e){var t={name:"AmazonBot"},n=i.default.getFirstMatch(/amazonbot\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/bingbot/i],describe:function(e){var t={name:"BingCrawler"},n=i.default.getFirstMatch(/bingbot\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/baiduspider/i],describe:function(e){var t={name:"BaiduSpider"},n=i.default.getFirstMatch(/baiduspider\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/duckduckbot/i],describe:function(e){var t={name:"DuckDuckBot"},n=i.default.getFirstMatch(/duckduckbot\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/ia_archiver/i],describe:function(e){var t={name:"InternetArchiveCrawler"},n=i.default.getFirstMatch(/ia_archiver\/(\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/facebookexternalhit/i,/facebookcatalog/i],describe:function(){return{name:"FacebookExternalHit"}}},{test:[/slackbot/i,/slack-imgProxy/i],describe:function(e){var t={name:"SlackBot"},n=i.default.getFirstMatch(/(?:slackbot|slack-imgproxy)(?:-[-\w]+)?[\s/](\d+(\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/yahoo!?[\s/]*slurp/i],describe:function(){return{name:"YahooSlurp"}}},{test:[/yandexbot/i,/yandexmobilebot/i],describe:function(){return{name:"YandexBot"}}},{test:[/pingdom/i],describe:function(){return{name:"PingdomBot"}}},{test:[/opera/i],describe:function(e){var t={name:"Opera"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:opera)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/opr\/|opios/i],describe:function(e){var t={name:"Opera"},n=i.default.getFirstMatch(/(?:opr|opios)[\s/](\S+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/SamsungBrowser/i],describe:function(e){var t={name:"Samsung Internet for Android"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:SamsungBrowser)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/Whale/i],describe:function(e){var t={name:"NAVER Whale Browser"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:whale)[\s/](\d+(?:\.\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/PaleMoon/i],describe:function(e){var t={name:"Pale Moon"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:PaleMoon)[\s/](\d+(?:\.\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/MZBrowser/i],describe:function(e){var t={name:"MZ Browser"},n=i.default.getFirstMatch(/(?:MZBrowser)[\s/](\d+(?:\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/focus/i],describe:function(e){var t={name:"Focus"},n=i.default.getFirstMatch(/(?:focus)[\s/](\d+(?:\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/swing/i],describe:function(e){var t={name:"Swing"},n=i.default.getFirstMatch(/(?:swing)[\s/](\d+(?:\.\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/coast/i],describe:function(e){var t={name:"Opera Coast"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:coast)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/opt\/\d+(?:.?_?\d+)+/i],describe:function(e){var t={name:"Opera Touch"},n=i.default.getFirstMatch(/(?:opt)[\s/](\d+(\.?_?\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/yabrowser/i],describe:function(e){var t={name:"Yandex Browser"},n=i.default.getFirstMatch(/(?:yabrowser)[\s/](\d+(\.?_?\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/ucbrowser/i],describe:function(e){var t={name:"UC Browser"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:ucbrowser)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/Maxthon|mxios/i],describe:function(e){var t={name:"Maxthon"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:Maxthon|mxios)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/epiphany/i],describe:function(e){var t={name:"Epiphany"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:epiphany)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/puffin/i],describe:function(e){var t={name:"Puffin"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:puffin)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/sleipnir/i],describe:function(e){var t={name:"Sleipnir"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:sleipnir)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/k-meleon/i],describe:function(e){var t={name:"K-Meleon"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/(?:k-meleon)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/micromessenger/i],describe:function(e){var t={name:"WeChat"},n=i.default.getFirstMatch(/(?:micromessenger)[\s/](\d+(\.?_?\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/qqbrowser/i],describe:function(e){var t={name:/qqbrowserlite/i.test(e)?"QQ Browser Lite":"QQ Browser"},n=i.default.getFirstMatch(/(?:qqbrowserlite|qqbrowser)[/](\d+(\.?_?\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/msie|trident/i],describe:function(e){var t={name:"Internet Explorer"},n=i.default.getFirstMatch(/(?:msie |rv:)(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/\sedg\//i],describe:function(e){var t={name:"Microsoft Edge"},n=i.default.getFirstMatch(/\sedg\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/edg([ea]|ios)/i],describe:function(e){var t={name:"Microsoft Edge"},n=i.default.getSecondMatch(/edg([ea]|ios)\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/vivaldi/i],describe:function(e){var t={name:"Vivaldi"},n=i.default.getFirstMatch(/vivaldi\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/seamonkey/i],describe:function(e){var t={name:"SeaMonkey"},n=i.default.getFirstMatch(/seamonkey\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/sailfish/i],describe:function(e){var t={name:"Sailfish"},n=i.default.getFirstMatch(/sailfish\s?browser\/(\d+(\.\d+)?)/i,e);return n&&(t.version=n),t}},{test:[/silk/i],describe:function(e){var t={name:"Amazon Silk"},n=i.default.getFirstMatch(/silk\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/phantom/i],describe:function(e){var t={name:"PhantomJS"},n=i.default.getFirstMatch(/phantomjs\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/slimerjs/i],describe:function(e){var t={name:"SlimerJS"},n=i.default.getFirstMatch(/slimerjs\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/blackberry|\bbb\d+/i,/rim\stablet/i],describe:function(e){var t={name:"BlackBerry"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/blackberry[\d]+\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/(web|hpw)[o0]s/i],describe:function(e){var t={name:"WebOS Browser"},n=i.default.getFirstMatch(o,e)||i.default.getFirstMatch(/w(?:eb)?[o0]sbrowser\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/bada/i],describe:function(e){var t={name:"Bada"},n=i.default.getFirstMatch(/dolfin\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/tizen/i],describe:function(e){var t={name:"Tizen"},n=i.default.getFirstMatch(/(?:tizen\s?)?browser\/(\d+(\.?_?\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/qupzilla/i],describe:function(e){var t={name:"QupZilla"},n=i.default.getFirstMatch(/(?:qupzilla)[\s/](\d+(\.?_?\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/librewolf/i],describe:function(e){var t={name:"LibreWolf"},n=i.default.getFirstMatch(/(?:librewolf)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/firefox|iceweasel|fxios/i],describe:function(e){var t={name:"Firefox"},n=i.default.getFirstMatch(/(?:firefox|iceweasel|fxios)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/electron/i],describe:function(e){var t={name:"Electron"},n=i.default.getFirstMatch(/(?:electron)\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/sogoumobilebrowser/i,/metasr/i,/se 2\.[x]/i],describe:function(e){var t={name:"Sogou Browser"},n=i.default.getFirstMatch(/(?:sogoumobilebrowser)[\s/](\d+(\.?_?\d+)+)/i,e),r=i.default.getFirstMatch(/(?:chrome|crios|crmo)\/(\d+(\.?_?\d+)+)/i,e),o=i.default.getFirstMatch(/se ([\d.]+)x/i,e),a=n||r||o;return a&&(t.version=a),t}},{test:[/MiuiBrowser/i],describe:function(e){var t={name:"Miui"},n=i.default.getFirstMatch(/(?:MiuiBrowser)[\s/](\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:function(e){return!!e.hasBrand("DuckDuckGo")||e.test(/\sDdg\/[\d.]+$/i)},describe:function(e,t){var n={name:"DuckDuckGo"};if(t){var r=t.getBrandVersion("DuckDuckGo");if(r)return n.version=r,n}var o=i.default.getFirstMatch(/\sDdg\/([\d.]+)$/i,e);return o&&(n.version=o),n}},{test:function(e){return e.hasBrand("Brave")},describe:function(e,t){var n={name:"Brave"};if(t){var r=t.getBrandVersion("Brave");if(r)return n.version=r,n}return n}},{test:[/chromium/i],describe:function(e){var t={name:"Chromium"},n=i.default.getFirstMatch(/(?:chromium)[\s/](\d+(\.?_?\d+)+)/i,e)||i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/chrome|crios|crmo/i],describe:function(e){var t={name:"Chrome"},n=i.default.getFirstMatch(/(?:chrome|crios|crmo)\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/GSA/i],describe:function(e){var t={name:"Google Search"},n=i.default.getFirstMatch(/(?:GSA)\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:function(e){var t=!e.test(/like android/i),n=e.test(/android/i);return t&&n},describe:function(e){var t={name:"Android Browser"},n=i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/playstation 4/i],describe:function(e){var t={name:"PlayStation 4"},n=i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/safari|applewebkit/i],describe:function(e){var t={name:"Safari"},n=i.default.getFirstMatch(o,e);return n&&(t.version=n),t}},{test:[/.*/i],describe:function(e){var t=-1!==e.search("\\(")?/^(.*)\/(.*)[ \t]\((.*)/:/^(.*)\/(.*) /;return{name:i.default.getFirstMatch(t,e),version:i.default.getSecondMatch(t,e)}}}];t.default=a,e.exports=t.default},93:function(e,t,n){"use strict";t.__esModule=!0,t.default=void 0;var r,i=(r=n(17))&&r.__esModule?r:{default:r},o=n(18),a=[{test:[/Roku\/DVP/],describe:function(e){var t=i.default.getFirstMatch(/Roku\/DVP-(\d+\.\d+)/i,e);return{name:o.OS_MAP.Roku,version:t}}},{test:[/windows phone/i],describe:function(e){var t=i.default.getFirstMatch(/windows phone (?:os)?\s?(\d+(\.\d+)*)/i,e);return{name:o.OS_MAP.WindowsPhone,version:t}}},{test:[/windows /i],describe:function(e){var t=i.default.getFirstMatch(/Windows ((NT|XP)( \d\d?.\d)?)/i,e),n=i.default.getWindowsVersionName(t);return{name:o.OS_MAP.Windows,version:t,versionName:n}}},{test:[/Macintosh(.*?) FxiOS(.*?)\//],describe:function(e){var t={name:o.OS_MAP.iOS},n=i.default.getSecondMatch(/(Version\/)(\d[\d.]+)/,e);return n&&(t.version=n),t}},{test:[/macintosh/i],describe:function(e){var t=i.default.getFirstMatch(/mac os x (\d+(\.?_?\d+)+)/i,e).replace(/[_\s]/g,"."),n=i.default.getMacOSVersionName(t),r={name:o.OS_MAP.MacOS,version:t};return n&&(r.versionName=n),r}},{test:[/(ipod|iphone|ipad)/i],describe:function(e){var t=i.default.getFirstMatch(/os (\d+([_\s]\d+)*) like mac os x/i,e).replace(/[_\s]/g,".");return{name:o.OS_MAP.iOS,version:t}}},{test:[/OpenHarmony/i],describe:function(e){var t=i.default.getFirstMatch(/OpenHarmony\s+(\d+(\.\d+)*)/i,e);return{name:o.OS_MAP.HarmonyOS,version:t}}},{test:function(e){var t=!e.test(/like android/i),n=e.test(/android/i);return t&&n},describe:function(e){var t=i.default.getFirstMatch(/android[\s/-](\d+(\.\d+)*)/i,e),n=i.default.getAndroidVersionName(t),r={name:o.OS_MAP.Android,version:t};return n&&(r.versionName=n),r}},{test:[/(web|hpw)[o0]s/i],describe:function(e){var t=i.default.getFirstMatch(/(?:web|hpw)[o0]s\/(\d+(\.\d+)*)/i,e),n={name:o.OS_MAP.WebOS};return t&&t.length&&(n.version=t),n}},{test:[/blackberry|\bbb\d+/i,/rim\stablet/i],describe:function(e){var t=i.default.getFirstMatch(/rim\stablet\sos\s(\d+(\.\d+)*)/i,e)||i.default.getFirstMatch(/blackberry\d+\/(\d+([_\s]\d+)*)/i,e)||i.default.getFirstMatch(/\bbb(\d+)/i,e);return{name:o.OS_MAP.BlackBerry,version:t}}},{test:[/bada/i],describe:function(e){var t=i.default.getFirstMatch(/bada\/(\d+(\.\d+)*)/i,e);return{name:o.OS_MAP.Bada,version:t}}},{test:[/tizen/i],describe:function(e){var t=i.default.getFirstMatch(/tizen[/\s](\d+(\.\d+)*)/i,e);return{name:o.OS_MAP.Tizen,version:t}}},{test:[/linux/i],describe:function(){return{name:o.OS_MAP.Linux}}},{test:[/CrOS/],describe:function(){return{name:o.OS_MAP.ChromeOS}}},{test:[/PlayStation 4/],describe:function(e){var t=i.default.getFirstMatch(/PlayStation 4[/\s](\d+(\.\d+)*)/i,e);return{name:o.OS_MAP.PlayStation4,version:t}}}];t.default=a,e.exports=t.default},94:function(e,t,n){"use strict";t.__esModule=!0,t.default=void 0;var r,i=(r=n(17))&&r.__esModule?r:{default:r},o=n(18),a=[{test:[/googlebot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Google"}}},{test:[/linespider/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Line"}}},{test:[/amazonbot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Amazon"}}},{test:[/gptbot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"OpenAI"}}},{test:[/chatgpt-user/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"OpenAI"}}},{test:[/oai-searchbot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"OpenAI"}}},{test:[/baiduspider/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Baidu"}}},{test:[/bingbot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Bing"}}},{test:[/duckduckbot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"DuckDuckGo"}}},{test:[/claudebot/i,/claude-web/i,/claude-user/i,/claude-searchbot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Anthropic"}}},{test:[/omgilibot/i,/webzio-extended/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Webz.io"}}},{test:[/diffbot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Diffbot"}}},{test:[/perplexitybot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Perplexity AI"}}},{test:[/perplexity-user/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Perplexity AI"}}},{test:[/youbot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"You.com"}}},{test:[/ia_archiver/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Internet Archive"}}},{test:[/meta-webindexer/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/meta-externalads/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/meta-externalagent/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/meta-externalfetcher/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/facebookexternalhit/i,/facebookcatalog/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Meta"}}},{test:[/slackbot/i,/slack-imgProxy/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Slack"}}},{test:[/yahoo/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Yahoo"}}},{test:[/yandexbot/i,/yandexmobilebot/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Yandex"}}},{test:[/pingdom/i],describe:function(){return{type:o.PLATFORMS_MAP.bot,vendor:"Pingdom"}}},{test:[/huawei/i],describe:function(e){var t=i.default.getFirstMatch(/(can-l01)/i,e)&&"Nova",n={type:o.PLATFORMS_MAP.mobile,vendor:"Huawei"};return t&&(n.model=t),n}},{test:[/nexus\s*(?:7|8|9|10).*/i],describe:function(){return{type:o.PLATFORMS_MAP.tablet,vendor:"Nexus"}}},{test:[/ipad/i],describe:function(){return{type:o.PLATFORMS_MAP.tablet,vendor:"Apple",model:"iPad"}}},{test:[/Macintosh(.*?) FxiOS(.*?)\//],describe:function(){return{type:o.PLATFORMS_MAP.tablet,vendor:"Apple",model:"iPad"}}},{test:[/kftt build/i],describe:function(){return{type:o.PLATFORMS_MAP.tablet,vendor:"Amazon",model:"Kindle Fire HD 7"}}},{test:[/silk/i],describe:function(){return{type:o.PLATFORMS_MAP.tablet,vendor:"Amazon"}}},{test:[/tablet(?! pc)/i],describe:function(){return{type:o.PLATFORMS_MAP.tablet}}},{test:function(e){var t=e.test(/ipod|iphone/i),n=e.test(/like (ipod|iphone)/i);return t&&!n},describe:function(e){var t=i.default.getFirstMatch(/(ipod|iphone)/i,e);return{type:o.PLATFORMS_MAP.mobile,vendor:"Apple",model:t}}},{test:[/nexus\s*[0-6].*/i,/galaxy nexus/i],describe:function(){return{type:o.PLATFORMS_MAP.mobile,vendor:"Nexus"}}},{test:[/Nokia/i],describe:function(e){var t=i.default.getFirstMatch(/Nokia\s+([0-9]+(\.[0-9]+)?)/i,e),n={type:o.PLATFORMS_MAP.mobile,vendor:"Nokia"};return t&&(n.model=t),n}},{test:[/[^-]mobi/i],describe:function(){return{type:o.PLATFORMS_MAP.mobile}}},{test:function(e){return"blackberry"===e.getBrowserName(!0)},describe:function(){return{type:o.PLATFORMS_MAP.mobile,vendor:"BlackBerry"}}},{test:function(e){return"bada"===e.getBrowserName(!0)},describe:function(){return{type:o.PLATFORMS_MAP.mobile}}},{test:function(e){return"windows phone"===e.getBrowserName()},describe:function(){return{type:o.PLATFORMS_MAP.mobile,vendor:"Microsoft"}}},{test:function(e){var t=Number(String(e.getOSVersion()).split(".")[0]);return"android"===e.getOSName(!0)&&t>=3},describe:function(){return{type:o.PLATFORMS_MAP.tablet}}},{test:function(e){return"android"===e.getOSName(!0)},describe:function(){return{type:o.PLATFORMS_MAP.mobile}}},{test:[/smart-?tv|smarttv/i],describe:function(){return{type:o.PLATFORMS_MAP.tv}}},{test:[/netcast/i],describe:function(){return{type:o.PLATFORMS_MAP.tv}}},{test:function(e){return"macos"===e.getOSName(!0)},describe:function(){return{type:o.PLATFORMS_MAP.desktop,vendor:"Apple"}}},{test:function(e){return"windows"===e.getOSName(!0)},describe:function(){return{type:o.PLATFORMS_MAP.desktop}}},{test:function(e){return"linux"===e.getOSName(!0)},describe:function(){return{type:o.PLATFORMS_MAP.desktop}}},{test:function(e){return"playstation 4"===e.getOSName(!0)},describe:function(){return{type:o.PLATFORMS_MAP.tv}}},{test:function(e){return"roku"===e.getOSName(!0)},describe:function(){return{type:o.PLATFORMS_MAP.tv}}}];t.default=a,e.exports=t.default},95:function(e,t,n){"use strict";t.__esModule=!0,t.default=void 0;var r,i=(r=n(17))&&r.__esModule?r:{default:r},o=n(18),a=[{test:function(e){return"microsoft edge"===e.getBrowserName(!0)},describe:function(e){if(/\sedg\//i.test(e))return{name:o.ENGINE_MAP.Blink};var t=i.default.getFirstMatch(/edge\/(\d+(\.?_?\d+)+)/i,e);return{name:o.ENGINE_MAP.EdgeHTML,version:t}}},{test:[/trident/i],describe:function(e){var t={name:o.ENGINE_MAP.Trident},n=i.default.getFirstMatch(/trident\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:function(e){return e.test(/presto/i)},describe:function(e){var t={name:o.ENGINE_MAP.Presto},n=i.default.getFirstMatch(/presto\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:function(e){var t=e.test(/gecko/i),n=e.test(/like gecko/i);return t&&!n},describe:function(e){var t={name:o.ENGINE_MAP.Gecko},n=i.default.getFirstMatch(/gecko\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}},{test:[/(apple)?webkit\/537\.36/i],describe:function(){return{name:o.ENGINE_MAP.Blink}}},{test:[/(apple)?webkit/i],describe:function(e){var t={name:o.ENGINE_MAP.WebKit},n=i.default.getFirstMatch(/webkit\/(\d+(\.?_?\d+)+)/i,e);return n&&(t.version=n),t}}];t.default=a,e.exports=t.default}})},7:function(e){"use strict";var t,n="object"==typeof Reflect?Reflect:null,r=n&&"function"==typeof n.apply?n.apply:function(e,t,n){return Function.prototype.apply.call(e,t,n)};t=n&&"function"==typeof n.ownKeys?n.ownKeys:Object.getOwnPropertySymbols?function(e){return Object.getOwnPropertyNames(e).concat(Object.getOwnPropertySymbols(e))}:function(e){return Object.getOwnPropertyNames(e)};var i=Number.isNaN||function(e){return e!=e};function o(){o.init.call(this)}e.exports=o,e.exports.once=function(e,t){return new Promise(function(n,r){function i(n){e.removeListener(t,o),r(n)}function o(){"function"==typeof e.removeListener&&e.removeListener("error",i),n([].slice.call(arguments))}v(e,t,o,{once:!0}),"error"!==t&&function(e,t){"function"==typeof e.on&&v(e,"error",t,{once:!0})}(e,i)})},o.EventEmitter=o,o.prototype._events=void 0,o.prototype._eventsCount=0,o.prototype._maxListeners=void 0;var a=10;function s(e){if("function"!=typeof e)throw new TypeError('The "listener" argument must be of type Function. Received type '+typeof e)}function c(e){return void 0===e._maxListeners?o.defaultMaxListeners:e._maxListeners}function u(e,t,n,r){var i,o,a,u;if(s(n),void 0===(o=e._events)?(o=e._events=Object.create(null),e._eventsCount=0):(void 0!==o.newListener&&(e.emit("newListener",t,n.listener?n.listener:n),o=e._events),a=o[t]),void 0===a)a=o[t]=n,++e._eventsCount;else if("function"==typeof a?a=o[t]=r?[n,a]:[a,n]:r?a.unshift(n):a.push(n),(i=c(e))>0&&a.length>i&&!a.warned){a.warned=!0;var l=new Error("Possible EventEmitter memory leak detected. "+a.length+" "+String(t)+" listeners added. Use emitter.setMaxListeners() to increase limit");l.name="MaxListenersExceededWarning",l.emitter=e,l.type=t,l.count=a.length,u=l,console&&console.warn&&console.warn(u)}return e}function l(){if(!this.fired)return this.target.removeListener(this.type,this.wrapFn),this.fired=!0,0===arguments.length?this.listener.call(this.target):this.listener.apply(this.target,arguments)}function d(e,t,n){var r={fired:!1,wrapFn:void 0,target:e,type:t,listener:n},i=l.bind(r);return i.listener=n,r.wrapFn=i,i}function f(e,t,n){var r=e._events;if(void 0===r)return[];var i=r[t];return void 0===i?[]:"function"==typeof i?n?[i.listener||i]:[i]:n?function(e){for(var t=new Array(e.length),n=0;n<t.length;++n)t[n]=e[n].listener||e[n];return t}(i):h(i,i.length)}function p(e){var t=this._events;if(void 0!==t){var n=t[e];if("function"==typeof n)return 1;if(void 0!==n)return n.length}return 0}function h(e,t){for(var n=new Array(t),r=0;r<t;++r)n[r]=e[r];return n}function v(e,t,n,r){if("function"==typeof e.on)r.once?e.once(t,n):e.on(t,n);else{if("function"!=typeof e.addEventListener)throw new TypeError('The "emitter" argument must be of type EventEmitter. Received type '+typeof e);e.addEventListener(t,function i(o){r.once&&e.removeEventListener(t,i),n(o)})}}Object.defineProperty(o,"defaultMaxListeners",{enumerable:!0,get:function(){return a},set:function(e){if("number"!=typeof e||e<0||i(e))throw new RangeError('The value of "defaultMaxListeners" is out of range. It must be a non-negative number. Received '+e+".");a=e}}),o.init=function(){void 0!==this._events&&this._events!==Object.getPrototypeOf(this)._events||(this._events=Object.create(null),this._eventsCount=0),this._maxListeners=this._maxListeners||void 0},o.prototype.setMaxListeners=function(e){if("number"!=typeof e||e<0||i(e))throw new RangeError('The value of "n" is out of range. It must be a non-negative number. Received '+e+".");return this._maxListeners=e,this},o.prototype.getMaxListeners=function(){return c(this)},o.prototype.emit=function(e){for(var t=[],n=1;n<arguments.length;n++)t.push(arguments[n]);var i="error"===e,o=this._events;if(void 0!==o)i=i&&void 0===o.error;else if(!i)return!1;if(i){var a;if(t.length>0&&(a=t[0]),a instanceof Error)throw a;var s=new Error("Unhandled error."+(a?" ("+a.message+")":""));throw s.context=a,s}var c=o[e];if(void 0===c)return!1;if("function"==typeof c)r(c,this,t);else{var u=c.length,l=h(c,u);for(n=0;n<u;++n)r(l[n],this,t)}return!0},o.prototype.addListener=function(e,t){return u(this,e,t,!1)},o.prototype.on=o.prototype.addListener,o.prototype.prependListener=function(e,t){return u(this,e,t,!0)},o.prototype.once=function(e,t){return s(t),this.on(e,d(this,e,t)),this},o.prototype.prependOnceListener=function(e,t){return s(t),this.prependListener(e,d(this,e,t)),this},o.prototype.removeListener=function(e,t){var n,r,i,o,a;if(s(t),void 0===(r=this._events))return this;if(void 0===(n=r[e]))return this;if(n===t||n.listener===t)0===--this._eventsCount?this._events=Object.create(null):(delete r[e],r.removeListener&&this.emit("removeListener",e,n.listener||t));else if("function"!=typeof n){for(i=-1,o=n.length-1;o>=0;o--)if(n[o]===t||n[o].listener===t){a=n[o].listener,i=o;break}if(i<0)return this;0===i?n.shift():function(e,t){for(;t+1<e.length;t++)e[t]=e[t+1];e.pop()}(n,i),1===n.length&&(r[e]=n[0]),void 0!==r.removeListener&&this.emit("removeListener",e,a||t)}return this},o.prototype.off=o.prototype.removeListener,o.prototype.removeAllListeners=function(e){var t,n,r;if(void 0===(n=this._events))return this;if(void 0===n.removeListener)return 0===arguments.length?(this._events=Object.create(null),this._eventsCount=0):void 0!==n[e]&&(0===--this._eventsCount?this._events=Object.create(null):delete n[e]),this;if(0===arguments.length){var i,o=Object.keys(n);for(r=0;r<o.length;++r)"removeListener"!==(i=o[r])&&this.removeAllListeners(i);return this.removeAllListeners("removeListener"),this._events=Object.create(null),this._eventsCount=0,this}if("function"==typeof(t=n[e]))this.removeListener(e,t);else if(void 0!==t)for(r=t.length-1;r>=0;r--)this.removeListener(e,t[r]);return this},o.prototype.listeners=function(e){return f(this,e,!0)},o.prototype.rawListeners=function(e){return f(this,e,!1)},o.listenerCount=function(e,t){return"function"==typeof e.listenerCount?e.listenerCount(t):p.call(e,t)},o.prototype.listenerCount=p,o.prototype.eventNames=function(){return this._eventsCount>0?t(this._events):[]}}},t={};function n(r){var i=t[r];if(void 0!==i)return i.exports;var o=t[r]={exports:{}};return e[r].call(o.exports,o,o.exports,n),o.exports}return n.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return n.d(t,{a:t}),t},n.d=function(e,t){for(var r in t)n.o(t,r)&&!n.o(e,r)&&Object.defineProperty(e,r,{enumerable:!0,get:t[r]})},n.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},n.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},n(781)}()}),globalThis&&globalThis.Daily&&(globalThis.DailyIframe=globalThis.Daily);
+},{}],
+49:[function(module,exports,require,process){
+"use strict";
+// Public API of the protobuf-ts runtime.
+// Note: we do not use `export * from ...` to help tree shakers,
+// webpack verbose output hints that this should be useful
+Object.defineProperty(exports, "__esModule", { value: true });
+// Convenience JSON typings and corresponding type guards
+var json_typings_1 = require("./json-typings");
+Object.defineProperty(exports, "typeofJsonValue", { enumerable: true, get: function () { return json_typings_1.typeofJsonValue; } });
+Object.defineProperty(exports, "isJsonObject", { enumerable: true, get: function () { return json_typings_1.isJsonObject; } });
+// Base 64 encoding
+var base64_1 = require("./base64");
+Object.defineProperty(exports, "base64decode", { enumerable: true, get: function () { return base64_1.base64decode; } });
+Object.defineProperty(exports, "base64encode", { enumerable: true, get: function () { return base64_1.base64encode; } });
+// UTF8 encoding
+var protobufjs_utf8_1 = require("./protobufjs-utf8");
+Object.defineProperty(exports, "utf8read", { enumerable: true, get: function () { return protobufjs_utf8_1.utf8read; } });
+// Binary format contracts, options for reading and writing, for example
+var binary_format_contract_1 = require("./binary-format-contract");
+Object.defineProperty(exports, "WireType", { enumerable: true, get: function () { return binary_format_contract_1.WireType; } });
+Object.defineProperty(exports, "mergeBinaryOptions", { enumerable: true, get: function () { return binary_format_contract_1.mergeBinaryOptions; } });
+Object.defineProperty(exports, "UnknownFieldHandler", { enumerable: true, get: function () { return binary_format_contract_1.UnknownFieldHandler; } });
+// Standard IBinaryReader implementation
+var binary_reader_1 = require("./binary-reader");
+Object.defineProperty(exports, "BinaryReader", { enumerable: true, get: function () { return binary_reader_1.BinaryReader; } });
+Object.defineProperty(exports, "binaryReadOptions", { enumerable: true, get: function () { return binary_reader_1.binaryReadOptions; } });
+// Standard IBinaryWriter implementation
+var binary_writer_1 = require("./binary-writer");
+Object.defineProperty(exports, "BinaryWriter", { enumerable: true, get: function () { return binary_writer_1.BinaryWriter; } });
+Object.defineProperty(exports, "binaryWriteOptions", { enumerable: true, get: function () { return binary_writer_1.binaryWriteOptions; } });
+// Int64 and UInt64 implementations required for the binary format
+var pb_long_1 = require("./pb-long");
+Object.defineProperty(exports, "PbLong", { enumerable: true, get: function () { return pb_long_1.PbLong; } });
+Object.defineProperty(exports, "PbULong", { enumerable: true, get: function () { return pb_long_1.PbULong; } });
+// JSON format contracts, options for reading and writing, for example
+var json_format_contract_1 = require("./json-format-contract");
+Object.defineProperty(exports, "jsonReadOptions", { enumerable: true, get: function () { return json_format_contract_1.jsonReadOptions; } });
+Object.defineProperty(exports, "jsonWriteOptions", { enumerable: true, get: function () { return json_format_contract_1.jsonWriteOptions; } });
+Object.defineProperty(exports, "mergeJsonOptions", { enumerable: true, get: function () { return json_format_contract_1.mergeJsonOptions; } });
+// Message type contract
+var message_type_contract_1 = require("./message-type-contract");
+Object.defineProperty(exports, "MESSAGE_TYPE", { enumerable: true, get: function () { return message_type_contract_1.MESSAGE_TYPE; } });
+// Message type implementation via reflection
+var message_type_1 = require("./message-type");
+Object.defineProperty(exports, "MessageType", { enumerable: true, get: function () { return message_type_1.MessageType; } });
+// Reflection info, generated by the plugin, exposed to the user, used by reflection ops
+var reflection_info_1 = require("./reflection-info");
+Object.defineProperty(exports, "ScalarType", { enumerable: true, get: function () { return reflection_info_1.ScalarType; } });
+Object.defineProperty(exports, "LongType", { enumerable: true, get: function () { return reflection_info_1.LongType; } });
+Object.defineProperty(exports, "RepeatType", { enumerable: true, get: function () { return reflection_info_1.RepeatType; } });
+Object.defineProperty(exports, "normalizeFieldInfo", { enumerable: true, get: function () { return reflection_info_1.normalizeFieldInfo; } });
+Object.defineProperty(exports, "readFieldOptions", { enumerable: true, get: function () { return reflection_info_1.readFieldOptions; } });
+Object.defineProperty(exports, "readFieldOption", { enumerable: true, get: function () { return reflection_info_1.readFieldOption; } });
+Object.defineProperty(exports, "readMessageOption", { enumerable: true, get: function () { return reflection_info_1.readMessageOption; } });
+// Message operations via reflection
+var reflection_type_check_1 = require("./reflection-type-check");
+Object.defineProperty(exports, "ReflectionTypeCheck", { enumerable: true, get: function () { return reflection_type_check_1.ReflectionTypeCheck; } });
+var reflection_create_1 = require("./reflection-create");
+Object.defineProperty(exports, "reflectionCreate", { enumerable: true, get: function () { return reflection_create_1.reflectionCreate; } });
+var reflection_scalar_default_1 = require("./reflection-scalar-default");
+Object.defineProperty(exports, "reflectionScalarDefault", { enumerable: true, get: function () { return reflection_scalar_default_1.reflectionScalarDefault; } });
+var reflection_merge_partial_1 = require("./reflection-merge-partial");
+Object.defineProperty(exports, "reflectionMergePartial", { enumerable: true, get: function () { return reflection_merge_partial_1.reflectionMergePartial; } });
+var reflection_equals_1 = require("./reflection-equals");
+Object.defineProperty(exports, "reflectionEquals", { enumerable: true, get: function () { return reflection_equals_1.reflectionEquals; } });
+var reflection_binary_reader_1 = require("./reflection-binary-reader");
+Object.defineProperty(exports, "ReflectionBinaryReader", { enumerable: true, get: function () { return reflection_binary_reader_1.ReflectionBinaryReader; } });
+var reflection_binary_writer_1 = require("./reflection-binary-writer");
+Object.defineProperty(exports, "ReflectionBinaryWriter", { enumerable: true, get: function () { return reflection_binary_writer_1.ReflectionBinaryWriter; } });
+var reflection_json_reader_1 = require("./reflection-json-reader");
+Object.defineProperty(exports, "ReflectionJsonReader", { enumerable: true, get: function () { return reflection_json_reader_1.ReflectionJsonReader; } });
+var reflection_json_writer_1 = require("./reflection-json-writer");
+Object.defineProperty(exports, "ReflectionJsonWriter", { enumerable: true, get: function () { return reflection_json_writer_1.ReflectionJsonWriter; } });
+var reflection_contains_message_type_1 = require("./reflection-contains-message-type");
+Object.defineProperty(exports, "containsMessageType", { enumerable: true, get: function () { return reflection_contains_message_type_1.containsMessageType; } });
+// Oneof helpers
+var oneof_1 = require("./oneof");
+Object.defineProperty(exports, "isOneofGroup", { enumerable: true, get: function () { return oneof_1.isOneofGroup; } });
+Object.defineProperty(exports, "setOneofValue", { enumerable: true, get: function () { return oneof_1.setOneofValue; } });
+Object.defineProperty(exports, "getOneofValue", { enumerable: true, get: function () { return oneof_1.getOneofValue; } });
+Object.defineProperty(exports, "clearOneofValue", { enumerable: true, get: function () { return oneof_1.clearOneofValue; } });
+Object.defineProperty(exports, "getSelectedOneofValue", { enumerable: true, get: function () { return oneof_1.getSelectedOneofValue; } });
+// Enum object type guard and reflection util, may be interesting to the user.
+var enum_object_1 = require("./enum-object");
+Object.defineProperty(exports, "listEnumValues", { enumerable: true, get: function () { return enum_object_1.listEnumValues; } });
+Object.defineProperty(exports, "listEnumNames", { enumerable: true, get: function () { return enum_object_1.listEnumNames; } });
+Object.defineProperty(exports, "listEnumNumbers", { enumerable: true, get: function () { return enum_object_1.listEnumNumbers; } });
+Object.defineProperty(exports, "isEnumObject", { enumerable: true, get: function () { return enum_object_1.isEnumObject; } });
+// lowerCamelCase() is exported for plugin, rpc-runtime and other rpc packages
+var lower_camel_case_1 = require("./lower-camel-case");
+Object.defineProperty(exports, "lowerCamelCase", { enumerable: true, get: function () { return lower_camel_case_1.lowerCamelCase; } });
+// assertion functions are exported for plugin, may also be useful to user
+var assert_1 = require("./assert");
+Object.defineProperty(exports, "assert", { enumerable: true, get: function () { return assert_1.assert; } });
+Object.defineProperty(exports, "assertNever", { enumerable: true, get: function () { return assert_1.assertNever; } });
+Object.defineProperty(exports, "assertInt32", { enumerable: true, get: function () { return assert_1.assertInt32; } });
+Object.defineProperty(exports, "assertUInt32", { enumerable: true, get: function () { return assert_1.assertUInt32; } });
+Object.defineProperty(exports, "assertFloat32", { enumerable: true, get: function () { return assert_1.assertFloat32; } });
+
+},{"./json-typings":50,"./base64":51,"./protobufjs-utf8":52,"./binary-format-contract":53,"./binary-reader":54,"./binary-writer":57,"./pb-long":55,"./json-format-contract":59,"./message-type-contract":60,"./message-type":61,"./reflection-info":62,"./reflection-type-check":64,"./reflection-create":72,"./reflection-scalar-default":70,"./reflection-merge-partial":73,"./reflection-equals":74,"./reflection-binary-reader":69,"./reflection-binary-writer":71,"./reflection-json-reader":66,"./reflection-json-writer":68,"./reflection-contains-message-type":75,"./oneof":65,"./enum-object":76,"./lower-camel-case":63,"./assert":58}],
+50:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.isJsonObject = exports.typeofJsonValue = void 0;
+/**
+ * Get the type of a JSON value.
+ * Distinguishes between array, null and object.
+ */
+function typeofJsonValue(value) {
+    let t = typeof value;
+    if (t == "object") {
+        if (Array.isArray(value))
+            return "array";
+        if (value === null)
+            return "null";
+    }
+    return t;
+}
+exports.typeofJsonValue = typeofJsonValue;
+/**
+ * Is this a JSON object (instead of an array or null)?
+ */
+function isJsonObject(value) {
+    return value !== null && typeof value == "object" && !Array.isArray(value);
+}
+exports.isJsonObject = isJsonObject;
+
+},{}],
+51:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.base64encode = exports.base64decode = void 0;
+// lookup table from base64 character to byte
+let encTable = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
+// lookup table from base64 character *code* to byte because lookup by number is fast
+let decTable = [];
+for (let i = 0; i < encTable.length; i++)
+    decTable[encTable[i].charCodeAt(0)] = i;
+// support base64url variants
+decTable["-".charCodeAt(0)] = encTable.indexOf("+");
+decTable["_".charCodeAt(0)] = encTable.indexOf("/");
+/**
+ * Decodes a base64 string to a byte array.
+ *
+ * - ignores white-space, including line breaks and tabs
+ * - allows inner padding (can decode concatenated base64 strings)
+ * - does not require padding
+ * - understands base64url encoding:
+ *   "-" instead of "+",
+ *   "_" instead of "/",
+ *   no padding
+ */
+function base64decode(base64Str) {
+    // estimate byte size, not accounting for inner padding and whitespace
+    let es = base64Str.length * 3 / 4;
+    // if (es % 3 !== 0)
+    // throw new Error('invalid base64 string');
+    if (base64Str[base64Str.length - 2] == '=')
+        es -= 2;
+    else if (base64Str[base64Str.length - 1] == '=')
+        es -= 1;
+    let bytes = new Uint8Array(es), bytePos = 0, // position in byte array
+    groupPos = 0, // position in base64 group
+    b, // current byte
+    p = 0 // previous byte
+    ;
+    for (let i = 0; i < base64Str.length; i++) {
+        b = decTable[base64Str.charCodeAt(i)];
+        if (b === undefined) {
+            // noinspection FallThroughInSwitchStatementJS
+            switch (base64Str[i]) {
+                case '=':
+                    groupPos = 0; // reset state when padding found
+                case '\n':
+                case '\r':
+                case '\t':
+                case ' ':
+                    continue; // skip white-space, and padding
+                default:
+                    throw Error(`invalid base64 string.`);
+            }
+        }
+        switch (groupPos) {
+            case 0:
+                p = b;
+                groupPos = 1;
+                break;
+            case 1:
+                bytes[bytePos++] = p << 2 | (b & 48) >> 4;
+                p = b;
+                groupPos = 2;
+                break;
+            case 2:
+                bytes[bytePos++] = (p & 15) << 4 | (b & 60) >> 2;
+                p = b;
+                groupPos = 3;
+                break;
+            case 3:
+                bytes[bytePos++] = (p & 3) << 6 | b;
+                groupPos = 0;
+                break;
+        }
+    }
+    if (groupPos == 1)
+        throw Error(`invalid base64 string.`);
+    return bytes.subarray(0, bytePos);
+}
+exports.base64decode = base64decode;
+/**
+ * Encodes a byte array to a base64 string.
+ * Adds padding at the end.
+ * Does not insert newlines.
+ */
+function base64encode(bytes) {
+    let base64 = '', groupPos = 0, // position in base64 group
+    b, // current byte
+    p = 0; // carry over from previous byte
+    for (let i = 0; i < bytes.length; i++) {
+        b = bytes[i];
+        switch (groupPos) {
+            case 0:
+                base64 += encTable[b >> 2];
+                p = (b & 3) << 4;
+                groupPos = 1;
+                break;
+            case 1:
+                base64 += encTable[p | b >> 4];
+                p = (b & 15) << 2;
+                groupPos = 2;
+                break;
+            case 2:
+                base64 += encTable[p | b >> 6];
+                base64 += encTable[b & 63];
+                groupPos = 0;
+                break;
+        }
+    }
+    // padding required?
+    if (groupPos) {
+        base64 += encTable[p];
+        base64 += '=';
+        if (groupPos == 1)
+            base64 += '=';
+    }
+    return base64;
+}
+exports.base64encode = base64encode;
+
+},{}],
+52:[function(module,exports,require,process){
+"use strict";
+// Copyright (c) 2016, Daniel Wirtz  All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+// * Redistributions of source code must retain the above copyright
+//   notice, this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright
+//   notice, this list of conditions and the following disclaimer in the
+//   documentation and/or other materials provided with the distribution.
+// * Neither the name of its author, nor the names of its contributors
+//   may be used to endorse or promote products derived from this software
+//   without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.utf8read = void 0;
+const fromCharCodes = (chunk) => String.fromCharCode.apply(String, chunk);
+/**
+ * @deprecated This function will no longer be exported with the next major
+ * release, since protobuf-ts has switch to TextDecoder API. If you need this
+ * function, please migrate to @protobufjs/utf8. For context, see
+ * https://github.com/timostamm/protobuf-ts/issues/184
+ *
+ * Reads UTF8 bytes as a string.
+ *
+ * See [protobufjs / utf8](https://github.com/protobufjs/protobuf.js/blob/9893e35b854621cce64af4bf6be2cff4fb892796/lib/utf8/index.js#L40)
+ *
+ * Copyright (c) 2016, Daniel Wirtz
+ */
+function utf8read(bytes) {
+    if (bytes.length < 1)
+        return "";
+    let pos = 0, // position in bytes
+    parts = [], chunk = [], i = 0, // char offset
+    t; // temporary
+    let len = bytes.length;
+    while (pos < len) {
+        t = bytes[pos++];
+        if (t < 128)
+            chunk[i++] = t;
+        else if (t > 191 && t < 224)
+            chunk[i++] = (t & 31) << 6 | bytes[pos++] & 63;
+        else if (t > 239 && t < 365) {
+            t = ((t & 7) << 18 | (bytes[pos++] & 63) << 12 | (bytes[pos++] & 63) << 6 | bytes[pos++] & 63) - 0x10000;
+            chunk[i++] = 0xD800 + (t >> 10);
+            chunk[i++] = 0xDC00 + (t & 1023);
+        }
+        else
+            chunk[i++] = (t & 15) << 12 | (bytes[pos++] & 63) << 6 | bytes[pos++] & 63;
+        if (i > 8191) {
+            parts.push(fromCharCodes(chunk));
+            i = 0;
+        }
+    }
+    if (parts.length) {
+        if (i)
+            parts.push(fromCharCodes(chunk.slice(0, i)));
+        return parts.join("");
+    }
+    return fromCharCodes(chunk.slice(0, i));
+}
+exports.utf8read = utf8read;
+
+},{}],
+53:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.WireType = exports.mergeBinaryOptions = exports.UnknownFieldHandler = void 0;
+/**
+ * This handler implements the default behaviour for unknown fields.
+ * When reading data, unknown fields are stored on the message, in a
+ * symbol property.
+ * When writing data, the symbol property is queried and unknown fields
+ * are serialized into the output again.
+ */
+var UnknownFieldHandler;
+(function (UnknownFieldHandler) {
+    /**
+     * The symbol used to store unknown fields for a message.
+     * The property must conform to `UnknownFieldContainer`.
+     */
+    UnknownFieldHandler.symbol = Symbol.for("protobuf-ts/unknown");
+    /**
+     * Store an unknown field during binary read directly on the message.
+     * This method is compatible with `BinaryReadOptions.readUnknownField`.
+     */
+    UnknownFieldHandler.onRead = (typeName, message, fieldNo, wireType, data) => {
+        let container = is(message) ? message[UnknownFieldHandler.symbol] : message[UnknownFieldHandler.symbol] = [];
+        container.push({ no: fieldNo, wireType, data });
+    };
+    /**
+     * Write unknown fields stored for the message to the writer.
+     * This method is compatible with `BinaryWriteOptions.writeUnknownFields`.
+     */
+    UnknownFieldHandler.onWrite = (typeName, message, writer) => {
+        for (let { no, wireType, data } of UnknownFieldHandler.list(message))
+            writer.tag(no, wireType).raw(data);
+    };
+    /**
+     * List unknown fields stored for the message.
+     * Note that there may be multiples fields with the same number.
+     */
+    UnknownFieldHandler.list = (message, fieldNo) => {
+        if (is(message)) {
+            let all = message[UnknownFieldHandler.symbol];
+            return fieldNo ? all.filter(uf => uf.no == fieldNo) : all;
+        }
+        return [];
+    };
+    /**
+     * Returns the last unknown field by field number.
+     */
+    UnknownFieldHandler.last = (message, fieldNo) => UnknownFieldHandler.list(message, fieldNo).slice(-1)[0];
+    const is = (message) => message && Array.isArray(message[UnknownFieldHandler.symbol]);
+})(UnknownFieldHandler = exports.UnknownFieldHandler || (exports.UnknownFieldHandler = {}));
+/**
+ * Merges binary write or read options. Later values override earlier values.
+ */
+function mergeBinaryOptions(a, b) {
+    return Object.assign(Object.assign({}, a), b);
+}
+exports.mergeBinaryOptions = mergeBinaryOptions;
+/**
+ * Protobuf binary format wire types.
+ *
+ * A wire type provides just enough information to find the length of the
+ * following value.
+ *
+ * See https://developers.google.com/protocol-buffers/docs/encoding#structure
+ */
+var WireType;
+(function (WireType) {
+    /**
+     * Used for int32, int64, uint32, uint64, sint32, sint64, bool, enum
+     */
+    WireType[WireType["Varint"] = 0] = "Varint";
+    /**
+     * Used for fixed64, sfixed64, double.
+     * Always 8 bytes with little-endian byte order.
+     */
+    WireType[WireType["Bit64"] = 1] = "Bit64";
+    /**
+     * Used for string, bytes, embedded messages, packed repeated fields
+     *
+     * Only repeated numeric types (types which use the varint, 32-bit,
+     * or 64-bit wire types) can be packed. In proto3, such fields are
+     * packed by default.
+     */
+    WireType[WireType["LengthDelimited"] = 2] = "LengthDelimited";
+    /**
+     * Used for groups
+     * @deprecated
+     */
+    WireType[WireType["StartGroup"] = 3] = "StartGroup";
+    /**
+     * Used for groups
+     * @deprecated
+     */
+    WireType[WireType["EndGroup"] = 4] = "EndGroup";
+    /**
+     * Used for fixed32, sfixed32, float.
+     * Always 4 bytes with little-endian byte order.
+     */
+    WireType[WireType["Bit32"] = 5] = "Bit32";
+})(WireType = exports.WireType || (exports.WireType = {}));
+
+},{}],
+54:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BinaryReader = exports.binaryReadOptions = void 0;
+const binary_format_contract_1 = require("./binary-format-contract");
+const pb_long_1 = require("./pb-long");
+const goog_varint_1 = require("./goog-varint");
+const defaultsRead = {
+    readUnknownField: true,
+    readerFactory: bytes => new BinaryReader(bytes),
+};
+/**
+ * Make options for reading binary data form partial options.
+ */
+function binaryReadOptions(options) {
+    return options ? Object.assign(Object.assign({}, defaultsRead), options) : defaultsRead;
+}
+exports.binaryReadOptions = binaryReadOptions;
+class BinaryReader {
+    constructor(buf, textDecoder) {
+        this.varint64 = goog_varint_1.varint64read; // dirty cast for `this`
+        /**
+         * Read a `uint32` field, an unsigned 32 bit varint.
+         */
+        this.uint32 = goog_varint_1.varint32read; // dirty cast for `this` and access to protected `buf`
+        this.buf = buf;
+        this.len = buf.length;
+        this.pos = 0;
+        this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+        this.textDecoder = textDecoder !== null && textDecoder !== void 0 ? textDecoder : new TextDecoder("utf-8", {
+            fatal: true,
+            ignoreBOM: true,
+        });
+    }
+    /**
+     * Reads a tag - field number and wire type.
+     */
+    tag() {
+        let tag = this.uint32(), fieldNo = tag >>> 3, wireType = tag & 7;
+        if (fieldNo <= 0 || wireType < 0 || wireType > 5)
+            throw new Error("illegal tag: field no " + fieldNo + " wire type " + wireType);
+        return [fieldNo, wireType];
+    }
+    /**
+     * Skip one element on the wire and return the skipped data.
+     * Supports WireType.StartGroup since v2.0.0-alpha.23.
+     */
+    skip(wireType) {
+        let start = this.pos;
+        // noinspection FallThroughInSwitchStatementJS
+        switch (wireType) {
+            case binary_format_contract_1.WireType.Varint:
+                while (this.buf[this.pos++] & 0x80) {
+                    // ignore
+                }
+                break;
+            case binary_format_contract_1.WireType.Bit64:
+                this.pos += 4;
+            case binary_format_contract_1.WireType.Bit32:
+                this.pos += 4;
+                break;
+            case binary_format_contract_1.WireType.LengthDelimited:
+                let len = this.uint32();
+                this.pos += len;
+                break;
+            case binary_format_contract_1.WireType.StartGroup:
+                // From descriptor.proto: Group type is deprecated, not supported in proto3.
+                // But we must still be able to parse and treat as unknown.
+                let t;
+                while ((t = this.tag()[1]) !== binary_format_contract_1.WireType.EndGroup) {
+                    this.skip(t);
+                }
+                break;
+            default:
+                throw new Error("cant skip wire type " + wireType);
+        }
+        this.assertBounds();
+        return this.buf.subarray(start, this.pos);
+    }
+    /**
+     * Throws error if position in byte array is out of range.
+     */
+    assertBounds() {
+        if (this.pos > this.len)
+            throw new RangeError("premature EOF");
+    }
+    /**
+     * Read a `int32` field, a signed 32 bit varint.
+     */
+    int32() {
+        return this.uint32() | 0;
+    }
+    /**
+     * Read a `sint32` field, a signed, zigzag-encoded 32-bit varint.
+     */
+    sint32() {
+        let zze = this.uint32();
+        // decode zigzag
+        return (zze >>> 1) ^ -(zze & 1);
+    }
+    /**
+     * Read a `int64` field, a signed 64-bit varint.
+     */
+    int64() {
+        return new pb_long_1.PbLong(...this.varint64());
+    }
+    /**
+     * Read a `uint64` field, an unsigned 64-bit varint.
+     */
+    uint64() {
+        return new pb_long_1.PbULong(...this.varint64());
+    }
+    /**
+     * Read a `sint64` field, a signed, zig-zag-encoded 64-bit varint.
+     */
+    sint64() {
+        let [lo, hi] = this.varint64();
+        // decode zig zag
+        let s = -(lo & 1);
+        lo = ((lo >>> 1 | (hi & 1) << 31) ^ s);
+        hi = (hi >>> 1 ^ s);
+        return new pb_long_1.PbLong(lo, hi);
+    }
+    /**
+     * Read a `bool` field, a variant.
+     */
+    bool() {
+        let [lo, hi] = this.varint64();
+        return lo !== 0 || hi !== 0;
+    }
+    /**
+     * Read a `fixed32` field, an unsigned, fixed-length 32-bit integer.
+     */
+    fixed32() {
+        return this.view.getUint32((this.pos += 4) - 4, true);
+    }
+    /**
+     * Read a `sfixed32` field, a signed, fixed-length 32-bit integer.
+     */
+    sfixed32() {
+        return this.view.getInt32((this.pos += 4) - 4, true);
+    }
+    /**
+     * Read a `fixed64` field, an unsigned, fixed-length 64 bit integer.
+     */
+    fixed64() {
+        return new pb_long_1.PbULong(this.sfixed32(), this.sfixed32());
+    }
+    /**
+     * Read a `fixed64` field, a signed, fixed-length 64-bit integer.
+     */
+    sfixed64() {
+        return new pb_long_1.PbLong(this.sfixed32(), this.sfixed32());
+    }
+    /**
+     * Read a `float` field, 32-bit floating point number.
+     */
+    float() {
+        return this.view.getFloat32((this.pos += 4) - 4, true);
+    }
+    /**
+     * Read a `double` field, a 64-bit floating point number.
+     */
+    double() {
+        return this.view.getFloat64((this.pos += 8) - 8, true);
+    }
+    /**
+     * Read a `bytes` field, length-delimited arbitrary data.
+     */
+    bytes() {
+        let len = this.uint32();
+        let start = this.pos;
+        this.pos += len;
+        this.assertBounds();
+        return this.buf.subarray(start, start + len);
+    }
+    /**
+     * Read a `string` field, length-delimited data converted to UTF-8 text.
+     */
+    string() {
+        return this.textDecoder.decode(this.bytes());
+    }
+}
+exports.BinaryReader = BinaryReader;
+
+},{"./binary-format-contract":53,"./pb-long":55,"./goog-varint":56}],
+55:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PbLong = exports.PbULong = exports.detectBi = void 0;
+const goog_varint_1 = require("./goog-varint");
+let BI;
+function detectBi() {
+    const dv = new DataView(new ArrayBuffer(8));
+    const ok = globalThis.BigInt !== undefined
+        && typeof dv.getBigInt64 === "function"
+        && typeof dv.getBigUint64 === "function"
+        && typeof dv.setBigInt64 === "function"
+        && typeof dv.setBigUint64 === "function";
+    BI = ok ? {
+        MIN: BigInt("-9223372036854775808"),
+        MAX: BigInt("9223372036854775807"),
+        UMIN: BigInt("0"),
+        UMAX: BigInt("18446744073709551615"),
+        C: BigInt,
+        V: dv,
+    } : undefined;
+}
+exports.detectBi = detectBi;
+detectBi();
+function assertBi(bi) {
+    if (!bi)
+        throw new Error("BigInt unavailable, see https://github.com/timostamm/protobuf-ts/blob/v1.0.8/MANUAL.md#bigint-support");
+}
+// used to validate from(string) input (when bigint is unavailable)
+const RE_DECIMAL_STR = /^-?[0-9]+$/;
+// constants for binary math
+const TWO_PWR_32_DBL = 0x100000000;
+const HALF_2_PWR_32 = 0x080000000;
+// base class for PbLong and PbULong provides shared code
+class SharedPbLong {
+    /**
+     * Create a new instance with the given bits.
+     */
+    constructor(lo, hi) {
+        this.lo = lo | 0;
+        this.hi = hi | 0;
+    }
+    /**
+     * Is this instance equal to 0?
+     */
+    isZero() {
+        return this.lo == 0 && this.hi == 0;
+    }
+    /**
+     * Convert to a native number.
+     */
+    toNumber() {
+        let result = this.hi * TWO_PWR_32_DBL + (this.lo >>> 0);
+        if (!Number.isSafeInteger(result))
+            throw new Error("cannot convert to safe number");
+        return result;
+    }
+}
+/**
+ * 64-bit unsigned integer as two 32-bit values.
+ * Converts between `string`, `number` and `bigint` representations.
+ */
+class PbULong extends SharedPbLong {
+    /**
+     * Create instance from a `string`, `number` or `bigint`.
+     */
+    static from(value) {
+        if (BI)
+            // noinspection FallThroughInSwitchStatementJS
+            switch (typeof value) {
+                case "string":
+                    if (value == "0")
+                        return this.ZERO;
+                    if (value == "")
+                        throw new Error('string is no integer');
+                    value = BI.C(value);
+                case "number":
+                    if (value === 0)
+                        return this.ZERO;
+                    value = BI.C(value);
+                case "bigint":
+                    if (!value)
+                        return this.ZERO;
+                    if (value < BI.UMIN)
+                        throw new Error('signed value for ulong');
+                    if (value > BI.UMAX)
+                        throw new Error('ulong too large');
+                    BI.V.setBigUint64(0, value, true);
+                    return new PbULong(BI.V.getInt32(0, true), BI.V.getInt32(4, true));
+            }
+        else
+            switch (typeof value) {
+                case "string":
+                    if (value == "0")
+                        return this.ZERO;
+                    value = value.trim();
+                    if (!RE_DECIMAL_STR.test(value))
+                        throw new Error('string is no integer');
+                    let [minus, lo, hi] = goog_varint_1.int64fromString(value);
+                    if (minus)
+                        throw new Error('signed value for ulong');
+                    return new PbULong(lo, hi);
+                case "number":
+                    if (value == 0)
+                        return this.ZERO;
+                    if (!Number.isSafeInteger(value))
+                        throw new Error('number is no integer');
+                    if (value < 0)
+                        throw new Error('signed value for ulong');
+                    return new PbULong(value, value / TWO_PWR_32_DBL);
+            }
+        throw new Error('unknown value ' + typeof value);
+    }
+    /**
+     * Convert to decimal string.
+     */
+    toString() {
+        return BI ? this.toBigInt().toString() : goog_varint_1.int64toString(this.lo, this.hi);
+    }
+    /**
+     * Convert to native bigint.
+     */
+    toBigInt() {
+        assertBi(BI);
+        BI.V.setInt32(0, this.lo, true);
+        BI.V.setInt32(4, this.hi, true);
+        return BI.V.getBigUint64(0, true);
+    }
+}
+exports.PbULong = PbULong;
+/**
+ * ulong 0 singleton.
+ */
+PbULong.ZERO = new PbULong(0, 0);
+/**
+ * 64-bit signed integer as two 32-bit values.
+ * Converts between `string`, `number` and `bigint` representations.
+ */
+class PbLong extends SharedPbLong {
+    /**
+     * Create instance from a `string`, `number` or `bigint`.
+     */
+    static from(value) {
+        if (BI)
+            // noinspection FallThroughInSwitchStatementJS
+            switch (typeof value) {
+                case "string":
+                    if (value == "0")
+                        return this.ZERO;
+                    if (value == "")
+                        throw new Error('string is no integer');
+                    value = BI.C(value);
+                case "number":
+                    if (value === 0)
+                        return this.ZERO;
+                    value = BI.C(value);
+                case "bigint":
+                    if (!value)
+                        return this.ZERO;
+                    if (value < BI.MIN)
+                        throw new Error('signed long too small');
+                    if (value > BI.MAX)
+                        throw new Error('signed long too large');
+                    BI.V.setBigInt64(0, value, true);
+                    return new PbLong(BI.V.getInt32(0, true), BI.V.getInt32(4, true));
+            }
+        else
+            switch (typeof value) {
+                case "string":
+                    if (value == "0")
+                        return this.ZERO;
+                    value = value.trim();
+                    if (!RE_DECIMAL_STR.test(value))
+                        throw new Error('string is no integer');
+                    let [minus, lo, hi] = goog_varint_1.int64fromString(value);
+                    if (minus) {
+                        if (hi > HALF_2_PWR_32 || (hi == HALF_2_PWR_32 && lo != 0))
+                            throw new Error('signed long too small');
+                    }
+                    else if (hi >= HALF_2_PWR_32)
+                        throw new Error('signed long too large');
+                    let pbl = new PbLong(lo, hi);
+                    return minus ? pbl.negate() : pbl;
+                case "number":
+                    if (value == 0)
+                        return this.ZERO;
+                    if (!Number.isSafeInteger(value))
+                        throw new Error('number is no integer');
+                    return value > 0
+                        ? new PbLong(value, value / TWO_PWR_32_DBL)
+                        : new PbLong(-value, -value / TWO_PWR_32_DBL).negate();
+            }
+        throw new Error('unknown value ' + typeof value);
+    }
+    /**
+     * Do we have a minus sign?
+     */
+    isNegative() {
+        return (this.hi & HALF_2_PWR_32) !== 0;
+    }
+    /**
+     * Negate two's complement.
+     * Invert all the bits and add one to the result.
+     */
+    negate() {
+        let hi = ~this.hi, lo = this.lo;
+        if (lo)
+            lo = ~lo + 1;
+        else
+            hi += 1;
+        return new PbLong(lo, hi);
+    }
+    /**
+     * Convert to decimal string.
+     */
+    toString() {
+        if (BI)
+            return this.toBigInt().toString();
+        if (this.isNegative()) {
+            let n = this.negate();
+            return '-' + goog_varint_1.int64toString(n.lo, n.hi);
+        }
+        return goog_varint_1.int64toString(this.lo, this.hi);
+    }
+    /**
+     * Convert to native bigint.
+     */
+    toBigInt() {
+        assertBi(BI);
+        BI.V.setInt32(0, this.lo, true);
+        BI.V.setInt32(4, this.hi, true);
+        return BI.V.getBigInt64(0, true);
+    }
+}
+exports.PbLong = PbLong;
+/**
+ * long 0 singleton.
+ */
+PbLong.ZERO = new PbLong(0, 0);
+
+},{"./goog-varint":56}],
+56:[function(module,exports,require,process){
+"use strict";
+// Copyright 2008 Google Inc.  All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+// * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+// * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Code generated by the Protocol Buffer compiler is owned by the owner
+// of the input file used when generating it.  This code is not
+// standalone and requires a support library to be linked with it.  This
+// support library is itself covered by the above license.
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.varint32read = exports.varint32write = exports.int64toString = exports.int64fromString = exports.varint64write = exports.varint64read = void 0;
+/**
+ * Read a 64 bit varint as two JS numbers.
+ *
+ * Returns tuple:
+ * [0]: low bits
+ * [0]: high bits
+ *
+ * Copyright 2008 Google Inc.  All rights reserved.
+ *
+ * See https://github.com/protocolbuffers/protobuf/blob/8a71927d74a4ce34efe2d8769fda198f52d20d12/js/experimental/runtime/kernel/buffer_decoder.js#L175
+ */
+function varint64read() {
+    let lowBits = 0;
+    let highBits = 0;
+    for (let shift = 0; shift < 28; shift += 7) {
+        let b = this.buf[this.pos++];
+        lowBits |= (b & 0x7F) << shift;
+        if ((b & 0x80) == 0) {
+            this.assertBounds();
+            return [lowBits, highBits];
+        }
+    }
+    let middleByte = this.buf[this.pos++];
+    // last four bits of the first 32 bit number
+    lowBits |= (middleByte & 0x0F) << 28;
+    // 3 upper bits are part of the next 32 bit number
+    highBits = (middleByte & 0x70) >> 4;
+    if ((middleByte & 0x80) == 0) {
+        this.assertBounds();
+        return [lowBits, highBits];
+    }
+    for (let shift = 3; shift <= 31; shift += 7) {
+        let b = this.buf[this.pos++];
+        highBits |= (b & 0x7F) << shift;
+        if ((b & 0x80) == 0) {
+            this.assertBounds();
+            return [lowBits, highBits];
+        }
+    }
+    throw new Error('invalid varint');
+}
+exports.varint64read = varint64read;
+/**
+ * Write a 64 bit varint, given as two JS numbers, to the given bytes array.
+ *
+ * Copyright 2008 Google Inc.  All rights reserved.
+ *
+ * See https://github.com/protocolbuffers/protobuf/blob/8a71927d74a4ce34efe2d8769fda198f52d20d12/js/experimental/runtime/kernel/writer.js#L344
+ */
+function varint64write(lo, hi, bytes) {
+    for (let i = 0; i < 28; i = i + 7) {
+        const shift = lo >>> i;
+        const hasNext = !((shift >>> 7) == 0 && hi == 0);
+        const byte = (hasNext ? shift | 0x80 : shift) & 0xFF;
+        bytes.push(byte);
+        if (!hasNext) {
+            return;
+        }
+    }
+    const splitBits = ((lo >>> 28) & 0x0F) | ((hi & 0x07) << 4);
+    const hasMoreBits = !((hi >> 3) == 0);
+    bytes.push((hasMoreBits ? splitBits | 0x80 : splitBits) & 0xFF);
+    if (!hasMoreBits) {
+        return;
+    }
+    for (let i = 3; i < 31; i = i + 7) {
+        const shift = hi >>> i;
+        const hasNext = !((shift >>> 7) == 0);
+        const byte = (hasNext ? shift | 0x80 : shift) & 0xFF;
+        bytes.push(byte);
+        if (!hasNext) {
+            return;
+        }
+    }
+    bytes.push((hi >>> 31) & 0x01);
+}
+exports.varint64write = varint64write;
+// constants for binary math
+const TWO_PWR_32_DBL = (1 << 16) * (1 << 16);
+/**
+ * Parse decimal string of 64 bit integer value as two JS numbers.
+ *
+ * Returns tuple:
+ * [0]: minus sign?
+ * [1]: low bits
+ * [2]: high bits
+ *
+ * Copyright 2008 Google Inc.
+ */
+function int64fromString(dec) {
+    // Check for minus sign.
+    let minus = dec[0] == '-';
+    if (minus)
+        dec = dec.slice(1);
+    // Work 6 decimal digits at a time, acting like we're converting base 1e6
+    // digits to binary. This is safe to do with floating point math because
+    // Number.isSafeInteger(ALL_32_BITS * 1e6) == true.
+    const base = 1e6;
+    let lowBits = 0;
+    let highBits = 0;
+    function add1e6digit(begin, end) {
+        // Note: Number('') is 0.
+        const digit1e6 = Number(dec.slice(begin, end));
+        highBits *= base;
+        lowBits = lowBits * base + digit1e6;
+        // Carry bits from lowBits to highBits
+        if (lowBits >= TWO_PWR_32_DBL) {
+            highBits = highBits + ((lowBits / TWO_PWR_32_DBL) | 0);
+            lowBits = lowBits % TWO_PWR_32_DBL;
+        }
+    }
+    add1e6digit(-24, -18);
+    add1e6digit(-18, -12);
+    add1e6digit(-12, -6);
+    add1e6digit(-6);
+    return [minus, lowBits, highBits];
+}
+exports.int64fromString = int64fromString;
+/**
+ * Format 64 bit integer value (as two JS numbers) to decimal string.
+ *
+ * Copyright 2008 Google Inc.
+ */
+function int64toString(bitsLow, bitsHigh) {
+    // Skip the expensive conversion if the number is small enough to use the
+    // built-in conversions.
+    if ((bitsHigh >>> 0) <= 0x1FFFFF) {
+        return '' + (TWO_PWR_32_DBL * bitsHigh + (bitsLow >>> 0));
+    }
+    // What this code is doing is essentially converting the input number from
+    // base-2 to base-1e7, which allows us to represent the 64-bit range with
+    // only 3 (very large) digits. Those digits are then trivial to convert to
+    // a base-10 string.
+    // The magic numbers used here are -
+    // 2^24 = 16777216 = (1,6777216) in base-1e7.
+    // 2^48 = 281474976710656 = (2,8147497,6710656) in base-1e7.
+    // Split 32:32 representation into 16:24:24 representation so our
+    // intermediate digits don't overflow.
+    let low = bitsLow & 0xFFFFFF;
+    let mid = (((bitsLow >>> 24) | (bitsHigh << 8)) >>> 0) & 0xFFFFFF;
+    let high = (bitsHigh >> 16) & 0xFFFF;
+    // Assemble our three base-1e7 digits, ignoring carries. The maximum
+    // value in a digit at this step is representable as a 48-bit integer, which
+    // can be stored in a 64-bit floating point number.
+    let digitA = low + (mid * 6777216) + (high * 6710656);
+    let digitB = mid + (high * 8147497);
+    let digitC = (high * 2);
+    // Apply carries from A to B and from B to C.
+    let base = 10000000;
+    if (digitA >= base) {
+        digitB += Math.floor(digitA / base);
+        digitA %= base;
+    }
+    if (digitB >= base) {
+        digitC += Math.floor(digitB / base);
+        digitB %= base;
+    }
+    // Convert base-1e7 digits to base-10, with optional leading zeroes.
+    function decimalFrom1e7(digit1e7, needLeadingZeros) {
+        let partial = digit1e7 ? String(digit1e7) : '';
+        if (needLeadingZeros) {
+            return '0000000'.slice(partial.length) + partial;
+        }
+        return partial;
+    }
+    return decimalFrom1e7(digitC, /*needLeadingZeros=*/ 0) +
+        decimalFrom1e7(digitB, /*needLeadingZeros=*/ digitC) +
+        // If the final 1e7 digit didn't need leading zeros, we would have
+        // returned via the trivial code path at the top.
+        decimalFrom1e7(digitA, /*needLeadingZeros=*/ 1);
+}
+exports.int64toString = int64toString;
+/**
+ * Write a 32 bit varint, signed or unsigned. Same as `varint64write(0, value, bytes)`
+ *
+ * Copyright 2008 Google Inc.  All rights reserved.
+ *
+ * See https://github.com/protocolbuffers/protobuf/blob/1b18833f4f2a2f681f4e4a25cdf3b0a43115ec26/js/binary/encoder.js#L144
+ */
+function varint32write(value, bytes) {
+    if (value >= 0) {
+        // write value as varint 32
+        while (value > 0x7f) {
+            bytes.push((value & 0x7f) | 0x80);
+            value = value >>> 7;
+        }
+        bytes.push(value);
+    }
+    else {
+        for (let i = 0; i < 9; i++) {
+            bytes.push(value & 127 | 128);
+            value = value >> 7;
+        }
+        bytes.push(1);
+    }
+}
+exports.varint32write = varint32write;
+/**
+ * Read an unsigned 32 bit varint.
+ *
+ * See https://github.com/protocolbuffers/protobuf/blob/8a71927d74a4ce34efe2d8769fda198f52d20d12/js/experimental/runtime/kernel/buffer_decoder.js#L220
+ */
+function varint32read() {
+    let b = this.buf[this.pos++];
+    let result = b & 0x7F;
+    if ((b & 0x80) == 0) {
+        this.assertBounds();
+        return result;
+    }
+    b = this.buf[this.pos++];
+    result |= (b & 0x7F) << 7;
+    if ((b & 0x80) == 0) {
+        this.assertBounds();
+        return result;
+    }
+    b = this.buf[this.pos++];
+    result |= (b & 0x7F) << 14;
+    if ((b & 0x80) == 0) {
+        this.assertBounds();
+        return result;
+    }
+    b = this.buf[this.pos++];
+    result |= (b & 0x7F) << 21;
+    if ((b & 0x80) == 0) {
+        this.assertBounds();
+        return result;
+    }
+    // Extract only last 4 bits
+    b = this.buf[this.pos++];
+    result |= (b & 0x0F) << 28;
+    for (let readBytes = 5; ((b & 0x80) !== 0) && readBytes < 10; readBytes++)
+        b = this.buf[this.pos++];
+    if ((b & 0x80) != 0)
+        throw new Error('invalid varint');
+    this.assertBounds();
+    // Result can have 32 bits, convert it to unsigned
+    return result >>> 0;
+}
+exports.varint32read = varint32read;
+
+},{}],
+57:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BinaryWriter = exports.binaryWriteOptions = void 0;
+const pb_long_1 = require("./pb-long");
+const goog_varint_1 = require("./goog-varint");
+const assert_1 = require("./assert");
+const defaultsWrite = {
+    writeUnknownFields: true,
+    writerFactory: () => new BinaryWriter(),
+};
+/**
+ * Make options for writing binary data form partial options.
+ */
+function binaryWriteOptions(options) {
+    return options ? Object.assign(Object.assign({}, defaultsWrite), options) : defaultsWrite;
+}
+exports.binaryWriteOptions = binaryWriteOptions;
+class BinaryWriter {
+    constructor(textEncoder) {
+        /**
+         * Previous fork states.
+         */
+        this.stack = [];
+        this.textEncoder = textEncoder !== null && textEncoder !== void 0 ? textEncoder : new TextEncoder();
+        this.chunks = [];
+        this.buf = [];
+    }
+    /**
+     * Return all bytes written and reset this writer.
+     */
+    finish() {
+        this.chunks.push(new Uint8Array(this.buf)); // flush the buffer
+        let len = 0;
+        for (let i = 0; i < this.chunks.length; i++)
+            len += this.chunks[i].length;
+        let bytes = new Uint8Array(len);
+        let offset = 0;
+        for (let i = 0; i < this.chunks.length; i++) {
+            bytes.set(this.chunks[i], offset);
+            offset += this.chunks[i].length;
+        }
+        this.chunks = [];
+        return bytes;
+    }
+    /**
+     * Start a new fork for length-delimited data like a message
+     * or a packed repeated field.
+     *
+     * Must be joined later with `join()`.
+     */
+    fork() {
+        this.stack.push({ chunks: this.chunks, buf: this.buf });
+        this.chunks = [];
+        this.buf = [];
+        return this;
+    }
+    /**
+     * Join the last fork. Write its length and bytes, then
+     * return to the previous state.
+     */
+    join() {
+        // get chunk of fork
+        let chunk = this.finish();
+        // restore previous state
+        let prev = this.stack.pop();
+        if (!prev)
+            throw new Error('invalid state, fork stack empty');
+        this.chunks = prev.chunks;
+        this.buf = prev.buf;
+        // write length of chunk as varint
+        this.uint32(chunk.byteLength);
+        return this.raw(chunk);
+    }
+    /**
+     * Writes a tag (field number and wire type).
+     *
+     * Equivalent to `uint32( (fieldNo << 3 | type) >>> 0 )`.
+     *
+     * Generated code should compute the tag ahead of time and call `uint32()`.
+     */
+    tag(fieldNo, type) {
+        return this.uint32((fieldNo << 3 | type) >>> 0);
+    }
+    /**
+     * Write a chunk of raw bytes.
+     */
+    raw(chunk) {
+        if (this.buf.length) {
+            this.chunks.push(new Uint8Array(this.buf));
+            this.buf = [];
+        }
+        this.chunks.push(chunk);
+        return this;
+    }
+    /**
+     * Write a `uint32` value, an unsigned 32 bit varint.
+     */
+    uint32(value) {
+        assert_1.assertUInt32(value);
+        // write value as varint 32, inlined for speed
+        while (value > 0x7f) {
+            this.buf.push((value & 0x7f) | 0x80);
+            value = value >>> 7;
+        }
+        this.buf.push(value);
+        return this;
+    }
+    /**
+     * Write a `int32` value, a signed 32 bit varint.
+     */
+    int32(value) {
+        assert_1.assertInt32(value);
+        goog_varint_1.varint32write(value, this.buf);
+        return this;
+    }
+    /**
+     * Write a `bool` value, a variant.
+     */
+    bool(value) {
+        this.buf.push(value ? 1 : 0);
+        return this;
+    }
+    /**
+     * Write a `bytes` value, length-delimited arbitrary data.
+     */
+    bytes(value) {
+        this.uint32(value.byteLength); // write length of chunk as varint
+        return this.raw(value);
+    }
+    /**
+     * Write a `string` value, length-delimited data converted to UTF-8 text.
+     */
+    string(value) {
+        let chunk = this.textEncoder.encode(value);
+        this.uint32(chunk.byteLength); // write length of chunk as varint
+        return this.raw(chunk);
+    }
+    /**
+     * Write a `float` value, 32-bit floating point number.
+     */
+    float(value) {
+        assert_1.assertFloat32(value);
+        let chunk = new Uint8Array(4);
+        new DataView(chunk.buffer).setFloat32(0, value, true);
+        return this.raw(chunk);
+    }
+    /**
+     * Write a `double` value, a 64-bit floating point number.
+     */
+    double(value) {
+        let chunk = new Uint8Array(8);
+        new DataView(chunk.buffer).setFloat64(0, value, true);
+        return this.raw(chunk);
+    }
+    /**
+     * Write a `fixed32` value, an unsigned, fixed-length 32-bit integer.
+     */
+    fixed32(value) {
+        assert_1.assertUInt32(value);
+        let chunk = new Uint8Array(4);
+        new DataView(chunk.buffer).setUint32(0, value, true);
+        return this.raw(chunk);
+    }
+    /**
+     * Write a `sfixed32` value, a signed, fixed-length 32-bit integer.
+     */
+    sfixed32(value) {
+        assert_1.assertInt32(value);
+        let chunk = new Uint8Array(4);
+        new DataView(chunk.buffer).setInt32(0, value, true);
+        return this.raw(chunk);
+    }
+    /**
+     * Write a `sint32` value, a signed, zigzag-encoded 32-bit varint.
+     */
+    sint32(value) {
+        assert_1.assertInt32(value);
+        // zigzag encode
+        value = ((value << 1) ^ (value >> 31)) >>> 0;
+        goog_varint_1.varint32write(value, this.buf);
+        return this;
+    }
+    /**
+     * Write a `fixed64` value, a signed, fixed-length 64-bit integer.
+     */
+    sfixed64(value) {
+        let chunk = new Uint8Array(8);
+        let view = new DataView(chunk.buffer);
+        let long = pb_long_1.PbLong.from(value);
+        view.setInt32(0, long.lo, true);
+        view.setInt32(4, long.hi, true);
+        return this.raw(chunk);
+    }
+    /**
+     * Write a `fixed64` value, an unsigned, fixed-length 64 bit integer.
+     */
+    fixed64(value) {
+        let chunk = new Uint8Array(8);
+        let view = new DataView(chunk.buffer);
+        let long = pb_long_1.PbULong.from(value);
+        view.setInt32(0, long.lo, true);
+        view.setInt32(4, long.hi, true);
+        return this.raw(chunk);
+    }
+    /**
+     * Write a `int64` value, a signed 64-bit varint.
+     */
+    int64(value) {
+        let long = pb_long_1.PbLong.from(value);
+        goog_varint_1.varint64write(long.lo, long.hi, this.buf);
+        return this;
+    }
+    /**
+     * Write a `sint64` value, a signed, zig-zag-encoded 64-bit varint.
+     */
+    sint64(value) {
+        let long = pb_long_1.PbLong.from(value),
+        // zigzag encode
+        sign = long.hi >> 31, lo = (long.lo << 1) ^ sign, hi = ((long.hi << 1) | (long.lo >>> 31)) ^ sign;
+        goog_varint_1.varint64write(lo, hi, this.buf);
+        return this;
+    }
+    /**
+     * Write a `uint64` value, an unsigned 64-bit varint.
+     */
+    uint64(value) {
+        let long = pb_long_1.PbULong.from(value);
+        goog_varint_1.varint64write(long.lo, long.hi, this.buf);
+        return this;
+    }
+}
+exports.BinaryWriter = BinaryWriter;
+
+},{"./pb-long":55,"./goog-varint":56,"./assert":58}],
+58:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.assertFloat32 = exports.assertUInt32 = exports.assertInt32 = exports.assertNever = exports.assert = void 0;
+/**
+ * assert that condition is true or throw error (with message)
+ */
+function assert(condition, msg) {
+    if (!condition) {
+        throw new Error(msg);
+    }
+}
+exports.assert = assert;
+/**
+ * assert that value cannot exist = type `never`. throw runtime error if it does.
+ */
+function assertNever(value, msg) {
+    throw new Error(msg !== null && msg !== void 0 ? msg : 'Unexpected object: ' + value);
+}
+exports.assertNever = assertNever;
+const FLOAT32_MAX = 3.4028234663852886e+38, FLOAT32_MIN = -3.4028234663852886e+38, UINT32_MAX = 0xFFFFFFFF, INT32_MAX = 0X7FFFFFFF, INT32_MIN = -0X80000000;
+function assertInt32(arg) {
+    if (typeof arg !== "number")
+        throw new Error('invalid int 32: ' + typeof arg);
+    if (!Number.isInteger(arg) || arg > INT32_MAX || arg < INT32_MIN)
+        throw new Error('invalid int 32: ' + arg);
+}
+exports.assertInt32 = assertInt32;
+function assertUInt32(arg) {
+    if (typeof arg !== "number")
+        throw new Error('invalid uint 32: ' + typeof arg);
+    if (!Number.isInteger(arg) || arg > UINT32_MAX || arg < 0)
+        throw new Error('invalid uint 32: ' + arg);
+}
+exports.assertUInt32 = assertUInt32;
+function assertFloat32(arg) {
+    if (typeof arg !== "number")
+        throw new Error('invalid float 32: ' + typeof arg);
+    if (!Number.isFinite(arg))
+        return;
+    if (arg > FLOAT32_MAX || arg < FLOAT32_MIN)
+        throw new Error('invalid float 32: ' + arg);
+}
+exports.assertFloat32 = assertFloat32;
+
+},{}],
+59:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.mergeJsonOptions = exports.jsonWriteOptions = exports.jsonReadOptions = void 0;
+const defaultsWrite = {
+    emitDefaultValues: false,
+    enumAsInteger: false,
+    useProtoFieldName: false,
+    prettySpaces: 0,
+}, defaultsRead = {
+    ignoreUnknownFields: false,
+};
+/**
+ * Make options for reading JSON data from partial options.
+ */
+function jsonReadOptions(options) {
+    return options ? Object.assign(Object.assign({}, defaultsRead), options) : defaultsRead;
+}
+exports.jsonReadOptions = jsonReadOptions;
+/**
+ * Make options for writing JSON data from partial options.
+ */
+function jsonWriteOptions(options) {
+    return options ? Object.assign(Object.assign({}, defaultsWrite), options) : defaultsWrite;
+}
+exports.jsonWriteOptions = jsonWriteOptions;
+/**
+ * Merges JSON write or read options. Later values override earlier values. Type registries are merged.
+ */
+function mergeJsonOptions(a, b) {
+    var _a, _b;
+    let c = Object.assign(Object.assign({}, a), b);
+    c.typeRegistry = [...((_a = a === null || a === void 0 ? void 0 : a.typeRegistry) !== null && _a !== void 0 ? _a : []), ...((_b = b === null || b === void 0 ? void 0 : b.typeRegistry) !== null && _b !== void 0 ? _b : [])];
+    return c;
+}
+exports.mergeJsonOptions = mergeJsonOptions;
+
+},{}],
+60:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MESSAGE_TYPE = void 0;
+/**
+ * The symbol used as a key on message objects to store the message type.
+ *
+ * Note that this is an experimental feature - it is here to stay, but
+ * implementation details may change without notice.
+ */
+exports.MESSAGE_TYPE = Symbol.for("protobuf-ts/message-type");
+
+},{}],
+61:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MessageType = void 0;
+const message_type_contract_1 = require("./message-type-contract");
+const reflection_info_1 = require("./reflection-info");
+const reflection_type_check_1 = require("./reflection-type-check");
+const reflection_json_reader_1 = require("./reflection-json-reader");
+const reflection_json_writer_1 = require("./reflection-json-writer");
+const reflection_binary_reader_1 = require("./reflection-binary-reader");
+const reflection_binary_writer_1 = require("./reflection-binary-writer");
+const reflection_create_1 = require("./reflection-create");
+const reflection_merge_partial_1 = require("./reflection-merge-partial");
+const json_typings_1 = require("./json-typings");
+const json_format_contract_1 = require("./json-format-contract");
+const reflection_equals_1 = require("./reflection-equals");
+const binary_writer_1 = require("./binary-writer");
+const binary_reader_1 = require("./binary-reader");
+const baseDescriptors = Object.getOwnPropertyDescriptors(Object.getPrototypeOf({}));
+const messageTypeDescriptor = baseDescriptors[message_type_contract_1.MESSAGE_TYPE] = {};
+/**
+ * This standard message type provides reflection-based
+ * operations to work with a message.
+ */
+class MessageType {
+    constructor(name, fields, options) {
+        this.defaultCheckDepth = 16;
+        this.typeName = name;
+        this.fields = fields.map(reflection_info_1.normalizeFieldInfo);
+        this.options = options !== null && options !== void 0 ? options : {};
+        messageTypeDescriptor.value = this;
+        this.messagePrototype = Object.create(null, baseDescriptors);
+        this.refTypeCheck = new reflection_type_check_1.ReflectionTypeCheck(this);
+        this.refJsonReader = new reflection_json_reader_1.ReflectionJsonReader(this);
+        this.refJsonWriter = new reflection_json_writer_1.ReflectionJsonWriter(this);
+        this.refBinReader = new reflection_binary_reader_1.ReflectionBinaryReader(this);
+        this.refBinWriter = new reflection_binary_writer_1.ReflectionBinaryWriter(this);
+    }
+    create(value) {
+        let message = reflection_create_1.reflectionCreate(this);
+        if (value !== undefined) {
+            reflection_merge_partial_1.reflectionMergePartial(this, message, value);
+        }
+        return message;
+    }
+    /**
+     * Clone the message.
+     *
+     * Unknown fields are discarded.
+     */
+    clone(message) {
+        let copy = this.create();
+        reflection_merge_partial_1.reflectionMergePartial(this, copy, message);
+        return copy;
+    }
+    /**
+     * Determines whether two message of the same type have the same field values.
+     * Checks for deep equality, traversing repeated fields, oneof groups, maps
+     * and messages recursively.
+     * Will also return true if both messages are `undefined`.
+     */
+    equals(a, b) {
+        return reflection_equals_1.reflectionEquals(this, a, b);
+    }
+    /**
+     * Is the given value assignable to our message type
+     * and contains no [excess properties](https://www.typescriptlang.org/docs/handbook/interfaces.html#excess-property-checks)?
+     */
+    is(arg, depth = this.defaultCheckDepth) {
+        return this.refTypeCheck.is(arg, depth, false);
+    }
+    /**
+     * Is the given value assignable to our message type,
+     * regardless of [excess properties](https://www.typescriptlang.org/docs/handbook/interfaces.html#excess-property-checks)?
+     */
+    isAssignable(arg, depth = this.defaultCheckDepth) {
+        return this.refTypeCheck.is(arg, depth, true);
+    }
+    /**
+     * Copy partial data into the target message.
+     */
+    mergePartial(target, source) {
+        reflection_merge_partial_1.reflectionMergePartial(this, target, source);
+    }
+    /**
+     * Create a new message from binary format.
+     */
+    fromBinary(data, options) {
+        let opt = binary_reader_1.binaryReadOptions(options);
+        return this.internalBinaryRead(opt.readerFactory(data), data.byteLength, opt);
+    }
+    /**
+     * Read a new message from a JSON value.
+     */
+    fromJson(json, options) {
+        return this.internalJsonRead(json, json_format_contract_1.jsonReadOptions(options));
+    }
+    /**
+     * Read a new message from a JSON string.
+     * This is equivalent to `T.fromJson(JSON.parse(json))`.
+     */
+    fromJsonString(json, options) {
+        let value = JSON.parse(json);
+        return this.fromJson(value, options);
+    }
+    /**
+     * Write the message to canonical JSON value.
+     */
+    toJson(message, options) {
+        return this.internalJsonWrite(message, json_format_contract_1.jsonWriteOptions(options));
+    }
+    /**
+     * Convert the message to canonical JSON string.
+     * This is equivalent to `JSON.stringify(T.toJson(t))`
+     */
+    toJsonString(message, options) {
+        var _a;
+        let value = this.toJson(message, options);
+        return JSON.stringify(value, null, (_a = options === null || options === void 0 ? void 0 : options.prettySpaces) !== null && _a !== void 0 ? _a : 0);
+    }
+    /**
+     * Write the message to binary format.
+     */
+    toBinary(message, options) {
+        let opt = binary_writer_1.binaryWriteOptions(options);
+        return this.internalBinaryWrite(message, opt.writerFactory(), opt).finish();
+    }
+    /**
+     * This is an internal method. If you just want to read a message from
+     * JSON, use `fromJson()` or `fromJsonString()`.
+     *
+     * Reads JSON value and merges the fields into the target
+     * according to protobuf rules. If the target is omitted,
+     * a new instance is created first.
+     */
+    internalJsonRead(json, options, target) {
+        if (json !== null && typeof json == "object" && !Array.isArray(json)) {
+            let message = target !== null && target !== void 0 ? target : this.create();
+            this.refJsonReader.read(json, message, options);
+            return message;
+        }
+        throw new Error(`Unable to parse message ${this.typeName} from JSON ${json_typings_1.typeofJsonValue(json)}.`);
+    }
+    /**
+     * This is an internal method. If you just want to write a message
+     * to JSON, use `toJson()` or `toJsonString().
+     *
+     * Writes JSON value and returns it.
+     */
+    internalJsonWrite(message, options) {
+        return this.refJsonWriter.write(message, options);
+    }
+    /**
+     * This is an internal method. If you just want to write a message
+     * in binary format, use `toBinary()`.
+     *
+     * Serializes the message in binary format and appends it to the given
+     * writer. Returns passed writer.
+     */
+    internalBinaryWrite(message, writer, options) {
+        this.refBinWriter.write(message, writer, options);
+        return writer;
+    }
+    /**
+     * This is an internal method. If you just want to read a message from
+     * binary data, use `fromBinary()`.
+     *
+     * Reads data from binary format and merges the fields into
+     * the target according to protobuf rules. If the target is
+     * omitted, a new instance is created first.
+     */
+    internalBinaryRead(reader, length, options, target) {
+        let message = target !== null && target !== void 0 ? target : this.create();
+        this.refBinReader.read(reader, message, options, length);
+        return message;
+    }
+}
+exports.MessageType = MessageType;
+
+},{"./message-type-contract":60,"./reflection-info":62,"./reflection-type-check":64,"./reflection-json-reader":66,"./reflection-json-writer":68,"./reflection-binary-reader":69,"./reflection-binary-writer":71,"./reflection-create":72,"./reflection-merge-partial":73,"./json-typings":50,"./json-format-contract":59,"./reflection-equals":74,"./binary-writer":57,"./binary-reader":54}],
+62:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.readMessageOption = exports.readFieldOption = exports.readFieldOptions = exports.normalizeFieldInfo = exports.RepeatType = exports.LongType = exports.ScalarType = void 0;
+const lower_camel_case_1 = require("./lower-camel-case");
+/**
+ * Scalar value types. This is a subset of field types declared by protobuf
+ * enum google.protobuf.FieldDescriptorProto.Type The types GROUP and MESSAGE
+ * are omitted, but the numerical values are identical.
+ */
+var ScalarType;
+(function (ScalarType) {
+    // 0 is reserved for errors.
+    // Order is weird for historical reasons.
+    ScalarType[ScalarType["DOUBLE"] = 1] = "DOUBLE";
+    ScalarType[ScalarType["FLOAT"] = 2] = "FLOAT";
+    // Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT64 if
+    // negative values are likely.
+    ScalarType[ScalarType["INT64"] = 3] = "INT64";
+    ScalarType[ScalarType["UINT64"] = 4] = "UINT64";
+    // Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT32 if
+    // negative values are likely.
+    ScalarType[ScalarType["INT32"] = 5] = "INT32";
+    ScalarType[ScalarType["FIXED64"] = 6] = "FIXED64";
+    ScalarType[ScalarType["FIXED32"] = 7] = "FIXED32";
+    ScalarType[ScalarType["BOOL"] = 8] = "BOOL";
+    ScalarType[ScalarType["STRING"] = 9] = "STRING";
+    // Tag-delimited aggregate.
+    // Group type is deprecated and not supported in proto3. However, Proto3
+    // implementations should still be able to parse the group wire format and
+    // treat group fields as unknown fields.
+    // TYPE_GROUP = 10,
+    // TYPE_MESSAGE = 11,  // Length-delimited aggregate.
+    // New in version 2.
+    ScalarType[ScalarType["BYTES"] = 12] = "BYTES";
+    ScalarType[ScalarType["UINT32"] = 13] = "UINT32";
+    // TYPE_ENUM = 14,
+    ScalarType[ScalarType["SFIXED32"] = 15] = "SFIXED32";
+    ScalarType[ScalarType["SFIXED64"] = 16] = "SFIXED64";
+    ScalarType[ScalarType["SINT32"] = 17] = "SINT32";
+    ScalarType[ScalarType["SINT64"] = 18] = "SINT64";
+})(ScalarType = exports.ScalarType || (exports.ScalarType = {}));
+/**
+ * JavaScript representation of 64 bit integral types. Equivalent to the
+ * field option "jstype".
+ *
+ * By default, protobuf-ts represents 64 bit types as `bigint`.
+ *
+ * You can change the default behaviour by enabling the plugin parameter
+ * `long_type_string`, which will represent 64 bit types as `string`.
+ *
+ * Alternatively, you can change the behaviour for individual fields
+ * with the field option "jstype":
+ *
+ * ```protobuf
+ * uint64 my_field = 1 [jstype = JS_STRING];
+ * uint64 other_field = 2 [jstype = JS_NUMBER];
+ * ```
+ */
+var LongType;
+(function (LongType) {
+    /**
+     * Use JavaScript `bigint`.
+     *
+     * Field option `[jstype = JS_NORMAL]`.
+     */
+    LongType[LongType["BIGINT"] = 0] = "BIGINT";
+    /**
+     * Use JavaScript `string`.
+     *
+     * Field option `[jstype = JS_STRING]`.
+     */
+    LongType[LongType["STRING"] = 1] = "STRING";
+    /**
+     * Use JavaScript `number`.
+     *
+     * Large values will loose precision.
+     *
+     * Field option `[jstype = JS_NUMBER]`.
+     */
+    LongType[LongType["NUMBER"] = 2] = "NUMBER";
+})(LongType = exports.LongType || (exports.LongType = {}));
+/**
+ * Protobuf 2.1.0 introduced packed repeated fields.
+ * Setting the field option `[packed = true]` enables packing.
+ *
+ * In proto3, all repeated fields are packed by default.
+ * Setting the field option `[packed = false]` disables packing.
+ *
+ * Packed repeated fields are encoded with a single tag,
+ * then a length-delimiter, then the element values.
+ *
+ * Unpacked repeated fields are encoded with a tag and
+ * value for each element.
+ *
+ * `bytes` and `string` cannot be packed.
+ */
+var RepeatType;
+(function (RepeatType) {
+    /**
+     * The field is not repeated.
+     */
+    RepeatType[RepeatType["NO"] = 0] = "NO";
+    /**
+     * The field is repeated and should be packed.
+     * Invalid for `bytes` and `string`, they cannot be packed.
+     */
+    RepeatType[RepeatType["PACKED"] = 1] = "PACKED";
+    /**
+     * The field is repeated but should not be packed.
+     * The only valid repeat type for repeated `bytes` and `string`.
+     */
+    RepeatType[RepeatType["UNPACKED"] = 2] = "UNPACKED";
+})(RepeatType = exports.RepeatType || (exports.RepeatType = {}));
+/**
+ * Turns PartialFieldInfo into FieldInfo.
+ */
+function normalizeFieldInfo(field) {
+    var _a, _b, _c, _d;
+    field.localName = (_a = field.localName) !== null && _a !== void 0 ? _a : lower_camel_case_1.lowerCamelCase(field.name);
+    field.jsonName = (_b = field.jsonName) !== null && _b !== void 0 ? _b : lower_camel_case_1.lowerCamelCase(field.name);
+    field.repeat = (_c = field.repeat) !== null && _c !== void 0 ? _c : RepeatType.NO;
+    field.opt = (_d = field.opt) !== null && _d !== void 0 ? _d : (field.repeat ? false : field.oneof ? false : field.kind == "message");
+    return field;
+}
+exports.normalizeFieldInfo = normalizeFieldInfo;
+/**
+ * Read custom field options from a generated message type.
+ *
+ * @deprecated use readFieldOption()
+ */
+function readFieldOptions(messageType, fieldName, extensionName, extensionType) {
+    var _a;
+    const options = (_a = messageType.fields.find((m, i) => m.localName == fieldName || i == fieldName)) === null || _a === void 0 ? void 0 : _a.options;
+    return options && options[extensionName] ? extensionType.fromJson(options[extensionName]) : undefined;
+}
+exports.readFieldOptions = readFieldOptions;
+function readFieldOption(messageType, fieldName, extensionName, extensionType) {
+    var _a;
+    const options = (_a = messageType.fields.find((m, i) => m.localName == fieldName || i == fieldName)) === null || _a === void 0 ? void 0 : _a.options;
+    if (!options) {
+        return undefined;
+    }
+    const optionVal = options[extensionName];
+    if (optionVal === undefined) {
+        return optionVal;
+    }
+    return extensionType ? extensionType.fromJson(optionVal) : optionVal;
+}
+exports.readFieldOption = readFieldOption;
+function readMessageOption(messageType, extensionName, extensionType) {
+    const options = messageType.options;
+    const optionVal = options[extensionName];
+    if (optionVal === undefined) {
+        return optionVal;
+    }
+    return extensionType ? extensionType.fromJson(optionVal) : optionVal;
+}
+exports.readMessageOption = readMessageOption;
+
+},{"./lower-camel-case":63}],
+63:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.lowerCamelCase = void 0;
+/**
+ * Converts snake_case to lowerCamelCase.
+ *
+ * Should behave like protoc:
+ * https://github.com/protocolbuffers/protobuf/blob/e8ae137c96444ea313485ed1118c5e43b2099cf1/src/google/protobuf/compiler/java/java_helpers.cc#L118
+ */
+function lowerCamelCase(snakeCase) {
+    let capNext = false;
+    const sb = [];
+    for (let i = 0; i < snakeCase.length; i++) {
+        let next = snakeCase.charAt(i);
+        if (next == '_') {
+            capNext = true;
+        }
+        else if (/\d/.test(next)) {
+            sb.push(next);
+            capNext = true;
+        }
+        else if (capNext) {
+            sb.push(next.toUpperCase());
+            capNext = false;
+        }
+        else if (i == 0) {
+            sb.push(next.toLowerCase());
+        }
+        else {
+            sb.push(next);
+        }
+    }
+    return sb.join('');
+}
+exports.lowerCamelCase = lowerCamelCase;
+
+},{}],
+64:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ReflectionTypeCheck = void 0;
+const reflection_info_1 = require("./reflection-info");
+const oneof_1 = require("./oneof");
+// noinspection JSMethodCanBeStatic
+class ReflectionTypeCheck {
+    constructor(info) {
+        var _a;
+        this.fields = (_a = info.fields) !== null && _a !== void 0 ? _a : [];
+    }
+    prepare() {
+        if (this.data)
+            return;
+        const req = [], known = [], oneofs = [];
+        for (let field of this.fields) {
+            if (field.oneof) {
+                if (!oneofs.includes(field.oneof)) {
+                    oneofs.push(field.oneof);
+                    req.push(field.oneof);
+                    known.push(field.oneof);
+                }
+            }
+            else {
+                known.push(field.localName);
+                switch (field.kind) {
+                    case "scalar":
+                    case "enum":
+                        if (!field.opt || field.repeat)
+                            req.push(field.localName);
+                        break;
+                    case "message":
+                        if (field.repeat)
+                            req.push(field.localName);
+                        break;
+                    case "map":
+                        req.push(field.localName);
+                        break;
+                }
+            }
+        }
+        this.data = { req, known, oneofs: Object.values(oneofs) };
+    }
+    /**
+     * Is the argument a valid message as specified by the
+     * reflection information?
+     *
+     * Checks all field types recursively. The `depth`
+     * specifies how deep into the structure the check will be.
+     *
+     * With a depth of 0, only the presence of fields
+     * is checked.
+     *
+     * With a depth of 1 or more, the field types are checked.
+     *
+     * With a depth of 2 or more, the members of map, repeated
+     * and message fields are checked.
+     *
+     * Message fields will be checked recursively with depth - 1.
+     *
+     * The number of map entries / repeated values being checked
+     * is < depth.
+     */
+    is(message, depth, allowExcessProperties = false) {
+        if (depth < 0)
+            return true;
+        if (message === null || message === undefined || typeof message != 'object')
+            return false;
+        this.prepare();
+        let keys = Object.keys(message), data = this.data;
+        // if a required field is missing in arg, this cannot be a T
+        if (keys.length < data.req.length || data.req.some(n => !keys.includes(n)))
+            return false;
+        if (!allowExcessProperties) {
+            // if the arg contains a key we dont know, this is not a literal T
+            if (keys.some(k => !data.known.includes(k)))
+                return false;
+        }
+        // "With a depth of 0, only the presence and absence of fields is checked."
+        // "With a depth of 1 or more, the field types are checked."
+        if (depth < 1) {
+            return true;
+        }
+        // check oneof group
+        for (const name of data.oneofs) {
+            const group = message[name];
+            if (!oneof_1.isOneofGroup(group))
+                return false;
+            if (group.oneofKind === undefined)
+                continue;
+            const field = this.fields.find(f => f.localName === group.oneofKind);
+            if (!field)
+                return false; // we found no field, but have a kind, something is wrong
+            if (!this.field(group[group.oneofKind], field, allowExcessProperties, depth))
+                return false;
+        }
+        // check types
+        for (const field of this.fields) {
+            if (field.oneof !== undefined)
+                continue;
+            if (!this.field(message[field.localName], field, allowExcessProperties, depth))
+                return false;
+        }
+        return true;
+    }
+    field(arg, field, allowExcessProperties, depth) {
+        let repeated = field.repeat;
+        switch (field.kind) {
+            case "scalar":
+                if (arg === undefined)
+                    return field.opt;
+                if (repeated)
+                    return this.scalars(arg, field.T, depth, field.L);
+                return this.scalar(arg, field.T, field.L);
+            case "enum":
+                if (arg === undefined)
+                    return field.opt;
+                if (repeated)
+                    return this.scalars(arg, reflection_info_1.ScalarType.INT32, depth);
+                return this.scalar(arg, reflection_info_1.ScalarType.INT32);
+            case "message":
+                if (arg === undefined)
+                    return true;
+                if (repeated)
+                    return this.messages(arg, field.T(), allowExcessProperties, depth);
+                return this.message(arg, field.T(), allowExcessProperties, depth);
+            case "map":
+                if (typeof arg != 'object' || arg === null)
+                    return false;
+                if (depth < 2)
+                    return true;
+                if (!this.mapKeys(arg, field.K, depth))
+                    return false;
+                switch (field.V.kind) {
+                    case "scalar":
+                        return this.scalars(Object.values(arg), field.V.T, depth, field.V.L);
+                    case "enum":
+                        return this.scalars(Object.values(arg), reflection_info_1.ScalarType.INT32, depth);
+                    case "message":
+                        return this.messages(Object.values(arg), field.V.T(), allowExcessProperties, depth);
+                }
+                break;
+        }
+        return true;
+    }
+    message(arg, type, allowExcessProperties, depth) {
+        if (allowExcessProperties) {
+            return type.isAssignable(arg, depth);
+        }
+        return type.is(arg, depth);
+    }
+    messages(arg, type, allowExcessProperties, depth) {
+        if (!Array.isArray(arg))
+            return false;
+        if (depth < 2)
+            return true;
+        if (allowExcessProperties) {
+            for (let i = 0; i < arg.length && i < depth; i++)
+                if (!type.isAssignable(arg[i], depth - 1))
+                    return false;
+        }
+        else {
+            for (let i = 0; i < arg.length && i < depth; i++)
+                if (!type.is(arg[i], depth - 1))
+                    return false;
+        }
+        return true;
+    }
+    scalar(arg, type, longType) {
+        let argType = typeof arg;
+        switch (type) {
+            case reflection_info_1.ScalarType.UINT64:
+            case reflection_info_1.ScalarType.FIXED64:
+            case reflection_info_1.ScalarType.INT64:
+            case reflection_info_1.ScalarType.SFIXED64:
+            case reflection_info_1.ScalarType.SINT64:
+                switch (longType) {
+                    case reflection_info_1.LongType.BIGINT:
+                        return argType == "bigint";
+                    case reflection_info_1.LongType.NUMBER:
+                        return argType == "number" && !isNaN(arg);
+                    default:
+                        return argType == "string";
+                }
+            case reflection_info_1.ScalarType.BOOL:
+                return argType == 'boolean';
+            case reflection_info_1.ScalarType.STRING:
+                return argType == 'string';
+            case reflection_info_1.ScalarType.BYTES:
+                return arg instanceof Uint8Array;
+            case reflection_info_1.ScalarType.DOUBLE:
+            case reflection_info_1.ScalarType.FLOAT:
+                return argType == 'number' && !isNaN(arg);
+            default:
+                // case ScalarType.UINT32:
+                // case ScalarType.FIXED32:
+                // case ScalarType.INT32:
+                // case ScalarType.SINT32:
+                // case ScalarType.SFIXED32:
+                return argType == 'number' && Number.isInteger(arg);
+        }
+    }
+    scalars(arg, type, depth, longType) {
+        if (!Array.isArray(arg))
+            return false;
+        if (depth < 2)
+            return true;
+        if (Array.isArray(arg))
+            for (let i = 0; i < arg.length && i < depth; i++)
+                if (!this.scalar(arg[i], type, longType))
+                    return false;
+        return true;
+    }
+    mapKeys(map, type, depth) {
+        let keys = Object.keys(map);
+        switch (type) {
+            case reflection_info_1.ScalarType.INT32:
+            case reflection_info_1.ScalarType.FIXED32:
+            case reflection_info_1.ScalarType.SFIXED32:
+            case reflection_info_1.ScalarType.SINT32:
+            case reflection_info_1.ScalarType.UINT32:
+                return this.scalars(keys.slice(0, depth).map(k => parseInt(k)), type, depth);
+            case reflection_info_1.ScalarType.BOOL:
+                return this.scalars(keys.slice(0, depth).map(k => k == 'true' ? true : k == 'false' ? false : k), type, depth);
+            default:
+                return this.scalars(keys, type, depth, reflection_info_1.LongType.STRING);
+        }
+    }
+}
+exports.ReflectionTypeCheck = ReflectionTypeCheck;
+
+},{"./reflection-info":62,"./oneof":65}],
+65:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getSelectedOneofValue = exports.clearOneofValue = exports.setUnknownOneofValue = exports.setOneofValue = exports.getOneofValue = exports.isOneofGroup = void 0;
+/**
+ * Is the given value a valid oneof group?
+ *
+ * We represent protobuf `oneof` as algebraic data types (ADT) in generated
+ * code. But when working with messages of unknown type, the ADT does not
+ * help us.
+ *
+ * This type guard checks if the given object adheres to the ADT rules, which
+ * are as follows:
+ *
+ * 1) Must be an object.
+ *
+ * 2) Must have a "oneofKind" discriminator property.
+ *
+ * 3) If "oneofKind" is `undefined`, no member field is selected. The object
+ * must not have any other properties.
+ *
+ * 4) If "oneofKind" is a `string`, the member field with this name is
+ * selected.
+ *
+ * 5) If a member field is selected, the object must have a second property
+ * with this name. The property must not be `undefined`.
+ *
+ * 6) No extra properties are allowed. The object has either one property
+ * (no selection) or two properties (selection).
+ *
+ */
+function isOneofGroup(any) {
+    if (typeof any != 'object' || any === null || !any.hasOwnProperty('oneofKind')) {
+        return false;
+    }
+    switch (typeof any.oneofKind) {
+        case "string":
+            if (any[any.oneofKind] === undefined)
+                return false;
+            return Object.keys(any).length == 2;
+        case "undefined":
+            return Object.keys(any).length == 1;
+        default:
+            return false;
+    }
+}
+exports.isOneofGroup = isOneofGroup;
+/**
+ * Returns the value of the given field in a oneof group.
+ */
+function getOneofValue(oneof, kind) {
+    return oneof[kind];
+}
+exports.getOneofValue = getOneofValue;
+function setOneofValue(oneof, kind, value) {
+    if (oneof.oneofKind !== undefined) {
+        delete oneof[oneof.oneofKind];
+    }
+    oneof.oneofKind = kind;
+    if (value !== undefined) {
+        oneof[kind] = value;
+    }
+}
+exports.setOneofValue = setOneofValue;
+function setUnknownOneofValue(oneof, kind, value) {
+    if (oneof.oneofKind !== undefined) {
+        delete oneof[oneof.oneofKind];
+    }
+    oneof.oneofKind = kind;
+    if (value !== undefined && kind !== undefined) {
+        oneof[kind] = value;
+    }
+}
+exports.setUnknownOneofValue = setUnknownOneofValue;
+/**
+ * Removes the selected field in a oneof group.
+ *
+ * Note that the recommended way to modify a oneof group is to set
+ * a new object:
+ *
+ * ```ts
+ * message.result = { oneofKind: undefined };
+ * ```
+ */
+function clearOneofValue(oneof) {
+    if (oneof.oneofKind !== undefined) {
+        delete oneof[oneof.oneofKind];
+    }
+    oneof.oneofKind = undefined;
+}
+exports.clearOneofValue = clearOneofValue;
+/**
+ * Returns the selected value of the given oneof group.
+ *
+ * Not that the recommended way to access a oneof group is to check
+ * the "oneofKind" property and let TypeScript narrow down the union
+ * type for you:
+ *
+ * ```ts
+ * if (message.result.oneofKind === "error") {
+ *   message.result.error; // string
+ * }
+ * ```
+ *
+ * In the rare case you just need the value, and do not care about
+ * which protobuf field is selected, you can use this function
+ * for convenience.
+ */
+function getSelectedOneofValue(oneof) {
+    if (oneof.oneofKind === undefined) {
+        return undefined;
+    }
+    return oneof[oneof.oneofKind];
+}
+exports.getSelectedOneofValue = getSelectedOneofValue;
+
+},{}],
+66:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ReflectionJsonReader = void 0;
+const json_typings_1 = require("./json-typings");
+const base64_1 = require("./base64");
+const reflection_info_1 = require("./reflection-info");
+const pb_long_1 = require("./pb-long");
+const assert_1 = require("./assert");
+const reflection_long_convert_1 = require("./reflection-long-convert");
+/**
+ * Reads proto3 messages in canonical JSON format using reflection information.
+ *
+ * https://developers.google.com/protocol-buffers/docs/proto3#json
+ */
+class ReflectionJsonReader {
+    constructor(info) {
+        this.info = info;
+    }
+    prepare() {
+        var _a;
+        if (this.fMap === undefined) {
+            this.fMap = {};
+            const fieldsInput = (_a = this.info.fields) !== null && _a !== void 0 ? _a : [];
+            for (const field of fieldsInput) {
+                this.fMap[field.name] = field;
+                this.fMap[field.jsonName] = field;
+                this.fMap[field.localName] = field;
+            }
+        }
+    }
+    // Cannot parse JSON <type of jsonValue> for <type name>#<fieldName>.
+    assert(condition, fieldName, jsonValue) {
+        if (!condition) {
+            let what = json_typings_1.typeofJsonValue(jsonValue);
+            if (what == "number" || what == "boolean")
+                what = jsonValue.toString();
+            throw new Error(`Cannot parse JSON ${what} for ${this.info.typeName}#${fieldName}`);
+        }
+    }
+    /**
+     * Reads a message from canonical JSON format into the target message.
+     *
+     * Repeated fields are appended. Map entries are added, overwriting
+     * existing keys.
+     *
+     * If a message field is already present, it will be merged with the
+     * new data.
+     */
+    read(input, message, options) {
+        this.prepare();
+        const oneofsHandled = [];
+        for (const [jsonKey, jsonValue] of Object.entries(input)) {
+            const field = this.fMap[jsonKey];
+            if (!field) {
+                if (!options.ignoreUnknownFields)
+                    throw new Error(`Found unknown field while reading ${this.info.typeName} from JSON format. JSON key: ${jsonKey}`);
+                continue;
+            }
+            const localName = field.localName;
+            // handle oneof ADT
+            let target; // this will be the target for the field value, whether it is member of a oneof or not
+            if (field.oneof) {
+                if (jsonValue === null && (field.kind !== 'enum' || field.T()[0] !== 'google.protobuf.NullValue')) {
+                    continue;
+                }
+                // since json objects are unordered by specification, it is not possible to take the last of multiple oneofs
+                if (oneofsHandled.includes(field.oneof))
+                    throw new Error(`Multiple members of the oneof group "${field.oneof}" of ${this.info.typeName} are present in JSON.`);
+                oneofsHandled.push(field.oneof);
+                target = message[field.oneof] = {
+                    oneofKind: localName
+                };
+            }
+            else {
+                target = message;
+            }
+            // we have handled oneof above. we just have read the value into `target`.
+            if (field.kind == 'map') {
+                if (jsonValue === null) {
+                    continue;
+                }
+                // check input
+                this.assert(json_typings_1.isJsonObject(jsonValue), field.name, jsonValue);
+                // our target to put map entries into
+                const fieldObj = target[localName];
+                // read entries
+                for (const [jsonObjKey, jsonObjValue] of Object.entries(jsonValue)) {
+                    this.assert(jsonObjValue !== null, field.name + " map value", null);
+                    // read value
+                    let val;
+                    switch (field.V.kind) {
+                        case "message":
+                            val = field.V.T().internalJsonRead(jsonObjValue, options);
+                            break;
+                        case "enum":
+                            val = this.enum(field.V.T(), jsonObjValue, field.name, options.ignoreUnknownFields);
+                            if (val === false)
+                                continue;
+                            break;
+                        case "scalar":
+                            val = this.scalar(jsonObjValue, field.V.T, field.V.L, field.name);
+                            break;
+                    }
+                    this.assert(val !== undefined, field.name + " map value", jsonObjValue);
+                    // read key
+                    let key = jsonObjKey;
+                    if (field.K == reflection_info_1.ScalarType.BOOL)
+                        key = key == "true" ? true : key == "false" ? false : key;
+                    key = this.scalar(key, field.K, reflection_info_1.LongType.STRING, field.name).toString();
+                    fieldObj[key] = val;
+                }
+            }
+            else if (field.repeat) {
+                if (jsonValue === null)
+                    continue;
+                // check input
+                this.assert(Array.isArray(jsonValue), field.name, jsonValue);
+                // our target to put array entries into
+                const fieldArr = target[localName];
+                // read array entries
+                for (const jsonItem of jsonValue) {
+                    this.assert(jsonItem !== null, field.name, null);
+                    let val;
+                    switch (field.kind) {
+                        case "message":
+                            val = field.T().internalJsonRead(jsonItem, options);
+                            break;
+                        case "enum":
+                            val = this.enum(field.T(), jsonItem, field.name, options.ignoreUnknownFields);
+                            if (val === false)
+                                continue;
+                            break;
+                        case "scalar":
+                            val = this.scalar(jsonItem, field.T, field.L, field.name);
+                            break;
+                    }
+                    this.assert(val !== undefined, field.name, jsonValue);
+                    fieldArr.push(val);
+                }
+            }
+            else {
+                switch (field.kind) {
+                    case "message":
+                        if (jsonValue === null && field.T().typeName != 'google.protobuf.Value') {
+                            this.assert(field.oneof === undefined, field.name + " (oneof member)", null);
+                            continue;
+                        }
+                        target[localName] = field.T().internalJsonRead(jsonValue, options, target[localName]);
+                        break;
+                    case "enum":
+                        if (jsonValue === null)
+                            continue;
+                        let val = this.enum(field.T(), jsonValue, field.name, options.ignoreUnknownFields);
+                        if (val === false)
+                            continue;
+                        target[localName] = val;
+                        break;
+                    case "scalar":
+                        if (jsonValue === null)
+                            continue;
+                        target[localName] = this.scalar(jsonValue, field.T, field.L, field.name);
+                        break;
+                }
+            }
+        }
+    }
+    /**
+     * Returns `false` for unrecognized string representations.
+     *
+     * google.protobuf.NullValue accepts only JSON `null` (or the old `"NULL_VALUE"`).
+     */
+    enum(type, json, fieldName, ignoreUnknownFields) {
+        if (type[0] == 'google.protobuf.NullValue')
+            assert_1.assert(json === null || json === "NULL_VALUE", `Unable to parse field ${this.info.typeName}#${fieldName}, enum ${type[0]} only accepts null.`);
+        if (json === null)
+            // we require 0 to be default value for all enums
+            return 0;
+        switch (typeof json) {
+            case "number":
+                assert_1.assert(Number.isInteger(json), `Unable to parse field ${this.info.typeName}#${fieldName}, enum can only be integral number, got ${json}.`);
+                return json;
+            case "string":
+                let localEnumName = json;
+                if (type[2] && json.substring(0, type[2].length) === type[2])
+                    // lookup without the shared prefix
+                    localEnumName = json.substring(type[2].length);
+                let enumNumber = type[1][localEnumName];
+                if (typeof enumNumber === 'undefined' && ignoreUnknownFields) {
+                    return false;
+                }
+                assert_1.assert(typeof enumNumber == "number", `Unable to parse field ${this.info.typeName}#${fieldName}, enum ${type[0]} has no value for "${json}".`);
+                return enumNumber;
+        }
+        assert_1.assert(false, `Unable to parse field ${this.info.typeName}#${fieldName}, cannot parse enum value from ${typeof json}".`);
+    }
+    scalar(json, type, longType, fieldName) {
+        let e;
+        try {
+            switch (type) {
+                // float, double: JSON value will be a number or one of the special string values "NaN", "Infinity", and "-Infinity".
+                // Either numbers or strings are accepted. Exponent notation is also accepted.
+                case reflection_info_1.ScalarType.DOUBLE:
+                case reflection_info_1.ScalarType.FLOAT:
+                    if (json === null)
+                        return .0;
+                    if (json === "NaN")
+                        return Number.NaN;
+                    if (json === "Infinity")
+                        return Number.POSITIVE_INFINITY;
+                    if (json === "-Infinity")
+                        return Number.NEGATIVE_INFINITY;
+                    if (json === "") {
+                        e = "empty string";
+                        break;
+                    }
+                    if (typeof json == "string" && json.trim().length !== json.length) {
+                        e = "extra whitespace";
+                        break;
+                    }
+                    if (typeof json != "string" && typeof json != "number") {
+                        break;
+                    }
+                    let float = Number(json);
+                    if (Number.isNaN(float)) {
+                        e = "not a number";
+                        break;
+                    }
+                    if (!Number.isFinite(float)) {
+                        // infinity and -infinity are handled by string representation above, so this is an error
+                        e = "too large or small";
+                        break;
+                    }
+                    if (type == reflection_info_1.ScalarType.FLOAT)
+                        assert_1.assertFloat32(float);
+                    return float;
+                // int32, fixed32, uint32: JSON value will be a decimal number. Either numbers or strings are accepted.
+                case reflection_info_1.ScalarType.INT32:
+                case reflection_info_1.ScalarType.FIXED32:
+                case reflection_info_1.ScalarType.SFIXED32:
+                case reflection_info_1.ScalarType.SINT32:
+                case reflection_info_1.ScalarType.UINT32:
+                    if (json === null)
+                        return 0;
+                    let int32;
+                    if (typeof json == "number")
+                        int32 = json;
+                    else if (json === "")
+                        e = "empty string";
+                    else if (typeof json == "string") {
+                        if (json.trim().length !== json.length)
+                            e = "extra whitespace";
+                        else
+                            int32 = Number(json);
+                    }
+                    if (int32 === undefined)
+                        break;
+                    if (type == reflection_info_1.ScalarType.UINT32)
+                        assert_1.assertUInt32(int32);
+                    else
+                        assert_1.assertInt32(int32);
+                    return int32;
+                // int64, fixed64, uint64: JSON value will be a decimal string. Either numbers or strings are accepted.
+                case reflection_info_1.ScalarType.INT64:
+                case reflection_info_1.ScalarType.SFIXED64:
+                case reflection_info_1.ScalarType.SINT64:
+                    if (json === null)
+                        return reflection_long_convert_1.reflectionLongConvert(pb_long_1.PbLong.ZERO, longType);
+                    if (typeof json != "number" && typeof json != "string")
+                        break;
+                    return reflection_long_convert_1.reflectionLongConvert(pb_long_1.PbLong.from(json), longType);
+                case reflection_info_1.ScalarType.FIXED64:
+                case reflection_info_1.ScalarType.UINT64:
+                    if (json === null)
+                        return reflection_long_convert_1.reflectionLongConvert(pb_long_1.PbULong.ZERO, longType);
+                    if (typeof json != "number" && typeof json != "string")
+                        break;
+                    return reflection_long_convert_1.reflectionLongConvert(pb_long_1.PbULong.from(json), longType);
+                // bool:
+                case reflection_info_1.ScalarType.BOOL:
+                    if (json === null)
+                        return false;
+                    if (typeof json !== "boolean")
+                        break;
+                    return json;
+                // string:
+                case reflection_info_1.ScalarType.STRING:
+                    if (json === null)
+                        return "";
+                    if (typeof json !== "string") {
+                        e = "extra whitespace";
+                        break;
+                    }
+                    try {
+                        encodeURIComponent(json);
+                    }
+                    catch (e) {
+                        e = "invalid UTF8";
+                        break;
+                    }
+                    return json;
+                // bytes: JSON value will be the data encoded as a string using standard base64 encoding with paddings.
+                // Either standard or URL-safe base64 encoding with/without paddings are accepted.
+                case reflection_info_1.ScalarType.BYTES:
+                    if (json === null || json === "")
+                        return new Uint8Array(0);
+                    if (typeof json !== 'string')
+                        break;
+                    return base64_1.base64decode(json);
+            }
+        }
+        catch (error) {
+            e = error.message;
+        }
+        this.assert(false, fieldName + (e ? " - " + e : ""), json);
+    }
+}
+exports.ReflectionJsonReader = ReflectionJsonReader;
+
+},{"./json-typings":50,"./base64":51,"./reflection-info":62,"./pb-long":55,"./assert":58,"./reflection-long-convert":67}],
+67:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.reflectionLongConvert = void 0;
+const reflection_info_1 = require("./reflection-info");
+/**
+ * Utility method to convert a PbLong or PbUlong to a JavaScript
+ * representation during runtime.
+ *
+ * Works with generated field information, `undefined` is equivalent
+ * to `STRING`.
+ */
+function reflectionLongConvert(long, type) {
+    switch (type) {
+        case reflection_info_1.LongType.BIGINT:
+            return long.toBigInt();
+        case reflection_info_1.LongType.NUMBER:
+            return long.toNumber();
+        default:
+            // case undefined:
+            // case LongType.STRING:
+            return long.toString();
+    }
+}
+exports.reflectionLongConvert = reflectionLongConvert;
+
+},{"./reflection-info":62}],
+68:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ReflectionJsonWriter = void 0;
+const base64_1 = require("./base64");
+const pb_long_1 = require("./pb-long");
+const reflection_info_1 = require("./reflection-info");
+const assert_1 = require("./assert");
+/**
+ * Writes proto3 messages in canonical JSON format using reflection
+ * information.
+ *
+ * https://developers.google.com/protocol-buffers/docs/proto3#json
+ */
+class ReflectionJsonWriter {
+    constructor(info) {
+        var _a;
+        this.fields = (_a = info.fields) !== null && _a !== void 0 ? _a : [];
+    }
+    /**
+     * Converts the message to a JSON object, based on the field descriptors.
+     */
+    write(message, options) {
+        const json = {}, source = message;
+        for (const field of this.fields) {
+            // field is not part of a oneof, simply write as is
+            if (!field.oneof) {
+                let jsonValue = this.field(field, source[field.localName], options);
+                if (jsonValue !== undefined)
+                    json[options.useProtoFieldName ? field.name : field.jsonName] = jsonValue;
+                continue;
+            }
+            // field is part of a oneof
+            const group = source[field.oneof];
+            if (group.oneofKind !== field.localName)
+                continue; // not selected, skip
+            const opt = field.kind == 'scalar' || field.kind == 'enum'
+                ? Object.assign(Object.assign({}, options), { emitDefaultValues: true }) : options;
+            let jsonValue = this.field(field, group[field.localName], opt);
+            assert_1.assert(jsonValue !== undefined);
+            json[options.useProtoFieldName ? field.name : field.jsonName] = jsonValue;
+        }
+        return json;
+    }
+    field(field, value, options) {
+        let jsonValue = undefined;
+        if (field.kind == 'map') {
+            assert_1.assert(typeof value == "object" && value !== null);
+            const jsonObj = {};
+            switch (field.V.kind) {
+                case "scalar":
+                    for (const [entryKey, entryValue] of Object.entries(value)) {
+                        const val = this.scalar(field.V.T, entryValue, field.name, false, true);
+                        assert_1.assert(val !== undefined);
+                        jsonObj[entryKey.toString()] = val; // JSON standard allows only (double quoted) string as property key
+                    }
+                    break;
+                case "message":
+                    const messageType = field.V.T();
+                    for (const [entryKey, entryValue] of Object.entries(value)) {
+                        const val = this.message(messageType, entryValue, field.name, options);
+                        assert_1.assert(val !== undefined);
+                        jsonObj[entryKey.toString()] = val; // JSON standard allows only (double quoted) string as property key
+                    }
+                    break;
+                case "enum":
+                    const enumInfo = field.V.T();
+                    for (const [entryKey, entryValue] of Object.entries(value)) {
+                        assert_1.assert(entryValue === undefined || typeof entryValue == 'number');
+                        const val = this.enum(enumInfo, entryValue, field.name, false, true, options.enumAsInteger);
+                        assert_1.assert(val !== undefined);
+                        jsonObj[entryKey.toString()] = val; // JSON standard allows only (double quoted) string as property key
+                    }
+                    break;
+            }
+            if (options.emitDefaultValues || Object.keys(jsonObj).length > 0)
+                jsonValue = jsonObj;
+        }
+        else if (field.repeat) {
+            assert_1.assert(Array.isArray(value));
+            const jsonArr = [];
+            switch (field.kind) {
+                case "scalar":
+                    for (let i = 0; i < value.length; i++) {
+                        const val = this.scalar(field.T, value[i], field.name, field.opt, true);
+                        assert_1.assert(val !== undefined);
+                        jsonArr.push(val);
+                    }
+                    break;
+                case "enum":
+                    const enumInfo = field.T();
+                    for (let i = 0; i < value.length; i++) {
+                        assert_1.assert(value[i] === undefined || typeof value[i] == 'number');
+                        const val = this.enum(enumInfo, value[i], field.name, field.opt, true, options.enumAsInteger);
+                        assert_1.assert(val !== undefined);
+                        jsonArr.push(val);
+                    }
+                    break;
+                case "message":
+                    const messageType = field.T();
+                    for (let i = 0; i < value.length; i++) {
+                        const val = this.message(messageType, value[i], field.name, options);
+                        assert_1.assert(val !== undefined);
+                        jsonArr.push(val);
+                    }
+                    break;
+            }
+            // add converted array to json output
+            if (options.emitDefaultValues || jsonArr.length > 0 || options.emitDefaultValues)
+                jsonValue = jsonArr;
+        }
+        else {
+            switch (field.kind) {
+                case "scalar":
+                    jsonValue = this.scalar(field.T, value, field.name, field.opt, options.emitDefaultValues);
+                    break;
+                case "enum":
+                    jsonValue = this.enum(field.T(), value, field.name, field.opt, options.emitDefaultValues, options.enumAsInteger);
+                    break;
+                case "message":
+                    jsonValue = this.message(field.T(), value, field.name, options);
+                    break;
+            }
+        }
+        return jsonValue;
+    }
+    /**
+     * Returns `null` as the default for google.protobuf.NullValue.
+     */
+    enum(type, value, fieldName, optional, emitDefaultValues, enumAsInteger) {
+        if (type[0] == 'google.protobuf.NullValue')
+            return !emitDefaultValues && !optional ? undefined : null;
+        if (value === undefined) {
+            assert_1.assert(optional);
+            return undefined;
+        }
+        if (value === 0 && !emitDefaultValues && !optional)
+            // we require 0 to be default value for all enums
+            return undefined;
+        assert_1.assert(typeof value == 'number');
+        assert_1.assert(Number.isInteger(value));
+        if (enumAsInteger || !type[1].hasOwnProperty(value))
+            // if we don't now the enum value, just return the number
+            return value;
+        if (type[2])
+            // restore the dropped prefix
+            return type[2] + type[1][value];
+        return type[1][value];
+    }
+    message(type, value, fieldName, options) {
+        if (value === undefined)
+            return options.emitDefaultValues ? null : undefined;
+        return type.internalJsonWrite(value, options);
+    }
+    scalar(type, value, fieldName, optional, emitDefaultValues) {
+        if (value === undefined) {
+            assert_1.assert(optional);
+            return undefined;
+        }
+        const ed = emitDefaultValues || optional;
+        // noinspection FallThroughInSwitchStatementJS
+        switch (type) {
+            // int32, fixed32, uint32: JSON value will be a decimal number. Either numbers or strings are accepted.
+            case reflection_info_1.ScalarType.INT32:
+            case reflection_info_1.ScalarType.SFIXED32:
+            case reflection_info_1.ScalarType.SINT32:
+                if (value === 0)
+                    return ed ? 0 : undefined;
+                assert_1.assertInt32(value);
+                return value;
+            case reflection_info_1.ScalarType.FIXED32:
+            case reflection_info_1.ScalarType.UINT32:
+                if (value === 0)
+                    return ed ? 0 : undefined;
+                assert_1.assertUInt32(value);
+                return value;
+            // float, double: JSON value will be a number or one of the special string values "NaN", "Infinity", and "-Infinity".
+            // Either numbers or strings are accepted. Exponent notation is also accepted.
+            case reflection_info_1.ScalarType.FLOAT:
+                assert_1.assertFloat32(value);
+            case reflection_info_1.ScalarType.DOUBLE:
+                if (value === 0)
+                    return ed ? 0 : undefined;
+                assert_1.assert(typeof value == 'number');
+                if (Number.isNaN(value))
+                    return 'NaN';
+                if (value === Number.POSITIVE_INFINITY)
+                    return 'Infinity';
+                if (value === Number.NEGATIVE_INFINITY)
+                    return '-Infinity';
+                return value;
+            // string:
+            case reflection_info_1.ScalarType.STRING:
+                if (value === "")
+                    return ed ? '' : undefined;
+                assert_1.assert(typeof value == 'string');
+                return value;
+            // bool:
+            case reflection_info_1.ScalarType.BOOL:
+                if (value === false)
+                    return ed ? false : undefined;
+                assert_1.assert(typeof value == 'boolean');
+                return value;
+            // JSON value will be a decimal string. Either numbers or strings are accepted.
+            case reflection_info_1.ScalarType.UINT64:
+            case reflection_info_1.ScalarType.FIXED64:
+                assert_1.assert(typeof value == 'number' || typeof value == 'string' || typeof value == 'bigint');
+                let ulong = pb_long_1.PbULong.from(value);
+                if (ulong.isZero() && !ed)
+                    return undefined;
+                return ulong.toString();
+            // JSON value will be a decimal string. Either numbers or strings are accepted.
+            case reflection_info_1.ScalarType.INT64:
+            case reflection_info_1.ScalarType.SFIXED64:
+            case reflection_info_1.ScalarType.SINT64:
+                assert_1.assert(typeof value == 'number' || typeof value == 'string' || typeof value == 'bigint');
+                let long = pb_long_1.PbLong.from(value);
+                if (long.isZero() && !ed)
+                    return undefined;
+                return long.toString();
+            // bytes: JSON value will be the data encoded as a string using standard base64 encoding with paddings.
+            // Either standard or URL-safe base64 encoding with/without paddings are accepted.
+            case reflection_info_1.ScalarType.BYTES:
+                assert_1.assert(value instanceof Uint8Array);
+                if (!value.byteLength)
+                    return ed ? "" : undefined;
+                return base64_1.base64encode(value);
+        }
+    }
+}
+exports.ReflectionJsonWriter = ReflectionJsonWriter;
+
+},{"./base64":51,"./pb-long":55,"./reflection-info":62,"./assert":58}],
+69:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ReflectionBinaryReader = void 0;
+const binary_format_contract_1 = require("./binary-format-contract");
+const reflection_info_1 = require("./reflection-info");
+const reflection_long_convert_1 = require("./reflection-long-convert");
+const reflection_scalar_default_1 = require("./reflection-scalar-default");
+/**
+ * Reads proto3 messages in binary format using reflection information.
+ *
+ * https://developers.google.com/protocol-buffers/docs/encoding
+ */
+class ReflectionBinaryReader {
+    constructor(info) {
+        this.info = info;
+    }
+    prepare() {
+        var _a;
+        if (!this.fieldNoToField) {
+            const fieldsInput = (_a = this.info.fields) !== null && _a !== void 0 ? _a : [];
+            this.fieldNoToField = new Map(fieldsInput.map(field => [field.no, field]));
+        }
+    }
+    /**
+     * Reads a message from binary format into the target message.
+     *
+     * Repeated fields are appended. Map entries are added, overwriting
+     * existing keys.
+     *
+     * If a message field is already present, it will be merged with the
+     * new data.
+     */
+    read(reader, message, options, length) {
+        this.prepare();
+        const end = length === undefined ? reader.len : reader.pos + length;
+        while (reader.pos < end) {
+            // read the tag and find the field
+            const [fieldNo, wireType] = reader.tag(), field = this.fieldNoToField.get(fieldNo);
+            if (!field) {
+                let u = options.readUnknownField;
+                if (u == "throw")
+                    throw new Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.info.typeName}`);
+                let d = reader.skip(wireType);
+                if (u !== false)
+                    (u === true ? binary_format_contract_1.UnknownFieldHandler.onRead : u)(this.info.typeName, message, fieldNo, wireType, d);
+                continue;
+            }
+            // target object for the field we are reading
+            let target = message, repeated = field.repeat, localName = field.localName;
+            // if field is member of oneof ADT, use ADT as target
+            if (field.oneof) {
+                target = target[field.oneof];
+                // if other oneof member selected, set new ADT
+                if (target.oneofKind !== localName)
+                    target = message[field.oneof] = {
+                        oneofKind: localName
+                    };
+            }
+            // we have handled oneof above, we just have read the value into `target[localName]`
+            switch (field.kind) {
+                case "scalar":
+                case "enum":
+                    let T = field.kind == "enum" ? reflection_info_1.ScalarType.INT32 : field.T;
+                    let L = field.kind == "scalar" ? field.L : undefined;
+                    if (repeated) {
+                        let arr = target[localName]; // safe to assume presence of array, oneof cannot contain repeated values
+                        if (wireType == binary_format_contract_1.WireType.LengthDelimited && T != reflection_info_1.ScalarType.STRING && T != reflection_info_1.ScalarType.BYTES) {
+                            let e = reader.uint32() + reader.pos;
+                            while (reader.pos < e)
+                                arr.push(this.scalar(reader, T, L));
+                        }
+                        else
+                            arr.push(this.scalar(reader, T, L));
+                    }
+                    else
+                        target[localName] = this.scalar(reader, T, L);
+                    break;
+                case "message":
+                    if (repeated) {
+                        let arr = target[localName]; // safe to assume presence of array, oneof cannot contain repeated values
+                        let msg = field.T().internalBinaryRead(reader, reader.uint32(), options);
+                        arr.push(msg);
+                    }
+                    else
+                        target[localName] = field.T().internalBinaryRead(reader, reader.uint32(), options, target[localName]);
+                    break;
+                case "map":
+                    let [mapKey, mapVal] = this.mapEntry(field, reader, options);
+                    // safe to assume presence of map object, oneof cannot contain repeated values
+                    target[localName][mapKey] = mapVal;
+                    break;
+            }
+        }
+    }
+    /**
+     * Read a map field, expecting key field = 1, value field = 2
+     */
+    mapEntry(field, reader, options) {
+        let length = reader.uint32();
+        let end = reader.pos + length;
+        let key = undefined; // javascript only allows number or string for object properties
+        let val = undefined;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case 1:
+                    if (field.K == reflection_info_1.ScalarType.BOOL)
+                        key = reader.bool().toString();
+                    else
+                        // long types are read as string, number types are okay as number
+                        key = this.scalar(reader, field.K, reflection_info_1.LongType.STRING);
+                    break;
+                case 2:
+                    switch (field.V.kind) {
+                        case "scalar":
+                            val = this.scalar(reader, field.V.T, field.V.L);
+                            break;
+                        case "enum":
+                            val = reader.int32();
+                            break;
+                        case "message":
+                            val = field.V.T().internalBinaryRead(reader, reader.uint32(), options);
+                            break;
+                    }
+                    break;
+                default:
+                    throw new Error(`Unknown field ${fieldNo} (wire type ${wireType}) in map entry for ${this.info.typeName}#${field.name}`);
+            }
+        }
+        if (key === undefined) {
+            let keyRaw = reflection_scalar_default_1.reflectionScalarDefault(field.K);
+            key = field.K == reflection_info_1.ScalarType.BOOL ? keyRaw.toString() : keyRaw;
+        }
+        if (val === undefined)
+            switch (field.V.kind) {
+                case "scalar":
+                    val = reflection_scalar_default_1.reflectionScalarDefault(field.V.T, field.V.L);
+                    break;
+                case "enum":
+                    val = 0;
+                    break;
+                case "message":
+                    val = field.V.T().create();
+                    break;
+            }
+        return [key, val];
+    }
+    scalar(reader, type, longType) {
+        switch (type) {
+            case reflection_info_1.ScalarType.INT32:
+                return reader.int32();
+            case reflection_info_1.ScalarType.STRING:
+                return reader.string();
+            case reflection_info_1.ScalarType.BOOL:
+                return reader.bool();
+            case reflection_info_1.ScalarType.DOUBLE:
+                return reader.double();
+            case reflection_info_1.ScalarType.FLOAT:
+                return reader.float();
+            case reflection_info_1.ScalarType.INT64:
+                return reflection_long_convert_1.reflectionLongConvert(reader.int64(), longType);
+            case reflection_info_1.ScalarType.UINT64:
+                return reflection_long_convert_1.reflectionLongConvert(reader.uint64(), longType);
+            case reflection_info_1.ScalarType.FIXED64:
+                return reflection_long_convert_1.reflectionLongConvert(reader.fixed64(), longType);
+            case reflection_info_1.ScalarType.FIXED32:
+                return reader.fixed32();
+            case reflection_info_1.ScalarType.BYTES:
+                return reader.bytes();
+            case reflection_info_1.ScalarType.UINT32:
+                return reader.uint32();
+            case reflection_info_1.ScalarType.SFIXED32:
+                return reader.sfixed32();
+            case reflection_info_1.ScalarType.SFIXED64:
+                return reflection_long_convert_1.reflectionLongConvert(reader.sfixed64(), longType);
+            case reflection_info_1.ScalarType.SINT32:
+                return reader.sint32();
+            case reflection_info_1.ScalarType.SINT64:
+                return reflection_long_convert_1.reflectionLongConvert(reader.sint64(), longType);
+        }
+    }
+}
+exports.ReflectionBinaryReader = ReflectionBinaryReader;
+
+},{"./binary-format-contract":53,"./reflection-info":62,"./reflection-long-convert":67,"./reflection-scalar-default":70}],
+70:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.reflectionScalarDefault = void 0;
+const reflection_info_1 = require("./reflection-info");
+const reflection_long_convert_1 = require("./reflection-long-convert");
+const pb_long_1 = require("./pb-long");
+/**
+ * Creates the default value for a scalar type.
+ */
+function reflectionScalarDefault(type, longType = reflection_info_1.LongType.STRING) {
+    switch (type) {
+        case reflection_info_1.ScalarType.BOOL:
+            return false;
+        case reflection_info_1.ScalarType.UINT64:
+        case reflection_info_1.ScalarType.FIXED64:
+            return reflection_long_convert_1.reflectionLongConvert(pb_long_1.PbULong.ZERO, longType);
+        case reflection_info_1.ScalarType.INT64:
+        case reflection_info_1.ScalarType.SFIXED64:
+        case reflection_info_1.ScalarType.SINT64:
+            return reflection_long_convert_1.reflectionLongConvert(pb_long_1.PbLong.ZERO, longType);
+        case reflection_info_1.ScalarType.DOUBLE:
+        case reflection_info_1.ScalarType.FLOAT:
+            return 0.0;
+        case reflection_info_1.ScalarType.BYTES:
+            return new Uint8Array(0);
+        case reflection_info_1.ScalarType.STRING:
+            return "";
+        default:
+            // case ScalarType.INT32:
+            // case ScalarType.UINT32:
+            // case ScalarType.SINT32:
+            // case ScalarType.FIXED32:
+            // case ScalarType.SFIXED32:
+            return 0;
+    }
+}
+exports.reflectionScalarDefault = reflectionScalarDefault;
+
+},{"./reflection-info":62,"./reflection-long-convert":67,"./pb-long":55}],
+71:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ReflectionBinaryWriter = void 0;
+const binary_format_contract_1 = require("./binary-format-contract");
+const reflection_info_1 = require("./reflection-info");
+const assert_1 = require("./assert");
+const pb_long_1 = require("./pb-long");
+/**
+ * Writes proto3 messages in binary format using reflection information.
+ *
+ * https://developers.google.com/protocol-buffers/docs/encoding
+ */
+class ReflectionBinaryWriter {
+    constructor(info) {
+        this.info = info;
+    }
+    prepare() {
+        if (!this.fields) {
+            const fieldsInput = this.info.fields ? this.info.fields.concat() : [];
+            this.fields = fieldsInput.sort((a, b) => a.no - b.no);
+        }
+    }
+    /**
+     * Writes the message to binary format.
+     */
+    write(message, writer, options) {
+        this.prepare();
+        for (const field of this.fields) {
+            let value, // this will be our field value, whether it is member of a oneof or not
+            emitDefault, // whether we emit the default value (only true for oneof members)
+            repeated = field.repeat, localName = field.localName;
+            // handle oneof ADT
+            if (field.oneof) {
+                const group = message[field.oneof];
+                if (group.oneofKind !== localName)
+                    continue; // if field is not selected, skip
+                value = group[localName];
+                emitDefault = true;
+            }
+            else {
+                value = message[localName];
+                emitDefault = false;
+            }
+            // we have handled oneof above. we just have to honor `emitDefault`.
+            switch (field.kind) {
+                case "scalar":
+                case "enum":
+                    let T = field.kind == "enum" ? reflection_info_1.ScalarType.INT32 : field.T;
+                    if (repeated) {
+                        assert_1.assert(Array.isArray(value));
+                        if (repeated == reflection_info_1.RepeatType.PACKED)
+                            this.packed(writer, T, field.no, value);
+                        else
+                            for (const item of value)
+                                this.scalar(writer, T, field.no, item, true);
+                    }
+                    else if (value === undefined)
+                        assert_1.assert(field.opt);
+                    else
+                        this.scalar(writer, T, field.no, value, emitDefault || field.opt);
+                    break;
+                case "message":
+                    if (repeated) {
+                        assert_1.assert(Array.isArray(value));
+                        for (const item of value)
+                            this.message(writer, options, field.T(), field.no, item);
+                    }
+                    else {
+                        this.message(writer, options, field.T(), field.no, value);
+                    }
+                    break;
+                case "map":
+                    assert_1.assert(typeof value == 'object' && value !== null);
+                    for (const [key, val] of Object.entries(value))
+                        this.mapEntry(writer, options, field, key, val);
+                    break;
+            }
+        }
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u === true ? binary_format_contract_1.UnknownFieldHandler.onWrite : u)(this.info.typeName, message, writer);
+    }
+    mapEntry(writer, options, field, key, value) {
+        writer.tag(field.no, binary_format_contract_1.WireType.LengthDelimited);
+        writer.fork();
+        // javascript only allows number or string for object properties
+        // we convert from our representation to the protobuf type
+        let keyValue = key;
+        switch (field.K) {
+            case reflection_info_1.ScalarType.INT32:
+            case reflection_info_1.ScalarType.FIXED32:
+            case reflection_info_1.ScalarType.UINT32:
+            case reflection_info_1.ScalarType.SFIXED32:
+            case reflection_info_1.ScalarType.SINT32:
+                keyValue = Number.parseInt(key);
+                break;
+            case reflection_info_1.ScalarType.BOOL:
+                assert_1.assert(key == 'true' || key == 'false');
+                keyValue = key == 'true';
+                break;
+        }
+        // write key, expecting key field number = 1
+        this.scalar(writer, field.K, 1, keyValue, true);
+        // write value, expecting value field number = 2
+        switch (field.V.kind) {
+            case 'scalar':
+                this.scalar(writer, field.V.T, 2, value, true);
+                break;
+            case 'enum':
+                this.scalar(writer, reflection_info_1.ScalarType.INT32, 2, value, true);
+                break;
+            case 'message':
+                this.message(writer, options, field.V.T(), 2, value);
+                break;
+        }
+        writer.join();
+    }
+    message(writer, options, handler, fieldNo, value) {
+        if (value === undefined)
+            return;
+        handler.internalBinaryWrite(value, writer.tag(fieldNo, binary_format_contract_1.WireType.LengthDelimited).fork(), options);
+        writer.join();
+    }
+    /**
+     * Write a single scalar value.
+     */
+    scalar(writer, type, fieldNo, value, emitDefault) {
+        let [wireType, method, isDefault] = this.scalarInfo(type, value);
+        if (!isDefault || emitDefault) {
+            writer.tag(fieldNo, wireType);
+            writer[method](value);
+        }
+    }
+    /**
+     * Write an array of scalar values in packed format.
+     */
+    packed(writer, type, fieldNo, value) {
+        if (!value.length)
+            return;
+        assert_1.assert(type !== reflection_info_1.ScalarType.BYTES && type !== reflection_info_1.ScalarType.STRING);
+        // write tag
+        writer.tag(fieldNo, binary_format_contract_1.WireType.LengthDelimited);
+        // begin length-delimited
+        writer.fork();
+        // write values without tags
+        let [, method,] = this.scalarInfo(type);
+        for (let i = 0; i < value.length; i++)
+            writer[method](value[i]);
+        // end length delimited
+        writer.join();
+    }
+    /**
+     * Get information for writing a scalar value.
+     *
+     * Returns tuple:
+     * [0]: appropriate WireType
+     * [1]: name of the appropriate method of IBinaryWriter
+     * [2]: whether the given value is a default value
+     *
+     * If argument `value` is omitted, [2] is always false.
+     */
+    scalarInfo(type, value) {
+        let t = binary_format_contract_1.WireType.Varint;
+        let m;
+        let i = value === undefined;
+        let d = value === 0;
+        switch (type) {
+            case reflection_info_1.ScalarType.INT32:
+                m = "int32";
+                break;
+            case reflection_info_1.ScalarType.STRING:
+                d = i || !value.length;
+                t = binary_format_contract_1.WireType.LengthDelimited;
+                m = "string";
+                break;
+            case reflection_info_1.ScalarType.BOOL:
+                d = value === false;
+                m = "bool";
+                break;
+            case reflection_info_1.ScalarType.UINT32:
+                m = "uint32";
+                break;
+            case reflection_info_1.ScalarType.DOUBLE:
+                t = binary_format_contract_1.WireType.Bit64;
+                m = "double";
+                break;
+            case reflection_info_1.ScalarType.FLOAT:
+                t = binary_format_contract_1.WireType.Bit32;
+                m = "float";
+                break;
+            case reflection_info_1.ScalarType.INT64:
+                d = i || pb_long_1.PbLong.from(value).isZero();
+                m = "int64";
+                break;
+            case reflection_info_1.ScalarType.UINT64:
+                d = i || pb_long_1.PbULong.from(value).isZero();
+                m = "uint64";
+                break;
+            case reflection_info_1.ScalarType.FIXED64:
+                d = i || pb_long_1.PbULong.from(value).isZero();
+                t = binary_format_contract_1.WireType.Bit64;
+                m = "fixed64";
+                break;
+            case reflection_info_1.ScalarType.BYTES:
+                d = i || !value.byteLength;
+                t = binary_format_contract_1.WireType.LengthDelimited;
+                m = "bytes";
+                break;
+            case reflection_info_1.ScalarType.FIXED32:
+                t = binary_format_contract_1.WireType.Bit32;
+                m = "fixed32";
+                break;
+            case reflection_info_1.ScalarType.SFIXED32:
+                t = binary_format_contract_1.WireType.Bit32;
+                m = "sfixed32";
+                break;
+            case reflection_info_1.ScalarType.SFIXED64:
+                d = i || pb_long_1.PbLong.from(value).isZero();
+                t = binary_format_contract_1.WireType.Bit64;
+                m = "sfixed64";
+                break;
+            case reflection_info_1.ScalarType.SINT32:
+                m = "sint32";
+                break;
+            case reflection_info_1.ScalarType.SINT64:
+                d = i || pb_long_1.PbLong.from(value).isZero();
+                m = "sint64";
+                break;
+        }
+        return [t, m, i || d];
+    }
+}
+exports.ReflectionBinaryWriter = ReflectionBinaryWriter;
+
+},{"./binary-format-contract":53,"./reflection-info":62,"./assert":58,"./pb-long":55}],
+72:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.reflectionCreate = void 0;
+const reflection_scalar_default_1 = require("./reflection-scalar-default");
+const message_type_contract_1 = require("./message-type-contract");
+/**
+ * Creates an instance of the generic message, using the field
+ * information.
+ */
+function reflectionCreate(type) {
+    /**
+     * This ternary can be removed in the next major version.
+     * The `Object.create()` code path utilizes a new `messagePrototype`
+     * property on the `IMessageType` which has this same `MESSAGE_TYPE`
+     * non-enumerable property on it. Doing it this way means that we only
+     * pay the cost of `Object.defineProperty()` once per `IMessageType`
+     * class of once per "instance". The falsy code path is only provided
+     * for backwards compatibility in cases where the runtime library is
+     * updated without also updating the generated code.
+     */
+    const msg = type.messagePrototype
+        ? Object.create(type.messagePrototype)
+        : Object.defineProperty({}, message_type_contract_1.MESSAGE_TYPE, { value: type });
+    for (let field of type.fields) {
+        let name = field.localName;
+        if (field.opt)
+            continue;
+        if (field.oneof)
+            msg[field.oneof] = { oneofKind: undefined };
+        else if (field.repeat)
+            msg[name] = [];
+        else
+            switch (field.kind) {
+                case "scalar":
+                    msg[name] = reflection_scalar_default_1.reflectionScalarDefault(field.T, field.L);
+                    break;
+                case "enum":
+                    // we require 0 to be default value for all enums
+                    msg[name] = 0;
+                    break;
+                case "map":
+                    msg[name] = {};
+                    break;
+            }
+    }
+    return msg;
+}
+exports.reflectionCreate = reflectionCreate;
+
+},{"./reflection-scalar-default":70,"./message-type-contract":60}],
+73:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.reflectionMergePartial = void 0;
+/**
+ * Copy partial data into the target message.
+ *
+ * If a singular scalar or enum field is present in the source, it
+ * replaces the field in the target.
+ *
+ * If a singular message field is present in the source, it is merged
+ * with the target field by calling mergePartial() of the responsible
+ * message type.
+ *
+ * If a repeated field is present in the source, its values replace
+ * all values in the target array, removing extraneous values.
+ * Repeated message fields are copied, not merged.
+ *
+ * If a map field is present in the source, entries are added to the
+ * target map, replacing entries with the same key. Entries that only
+ * exist in the target remain. Entries with message values are copied,
+ * not merged.
+ *
+ * Note that this function differs from protobuf merge semantics,
+ * which appends repeated fields.
+ */
+function reflectionMergePartial(info, target, source) {
+    let fieldValue, // the field value we are working with
+    input = source, output; // where we want our field value to go
+    for (let field of info.fields) {
+        let name = field.localName;
+        if (field.oneof) {
+            const group = input[field.oneof]; // this is the oneof`s group in the source
+            if ((group === null || group === void 0 ? void 0 : group.oneofKind) == undefined) { // the user is free to omit
+                continue; // we skip this field, and all other members too
+            }
+            fieldValue = group[name]; // our value comes from the the oneof group of the source
+            output = target[field.oneof]; // and our output is the oneof group of the target
+            output.oneofKind = group.oneofKind; // always update discriminator
+            if (fieldValue == undefined) {
+                delete output[name]; // remove any existing value
+                continue; // skip further work on field
+            }
+        }
+        else {
+            fieldValue = input[name]; // we are using the source directly
+            output = target; // we want our field value to go directly into the target
+            if (fieldValue == undefined) {
+                continue; // skip further work on field, existing value is used as is
+            }
+        }
+        if (field.repeat)
+            output[name].length = fieldValue.length; // resize target array to match source array
+        // now we just work with `fieldValue` and `output` to merge the value
+        switch (field.kind) {
+            case "scalar":
+            case "enum":
+                if (field.repeat)
+                    for (let i = 0; i < fieldValue.length; i++)
+                        output[name][i] = fieldValue[i]; // not a reference type
+                else
+                    output[name] = fieldValue; // not a reference type
+                break;
+            case "message":
+                let T = field.T();
+                if (field.repeat)
+                    for (let i = 0; i < fieldValue.length; i++)
+                        output[name][i] = T.create(fieldValue[i]);
+                else if (output[name] === undefined)
+                    output[name] = T.create(fieldValue); // nothing to merge with
+                else
+                    T.mergePartial(output[name], fieldValue);
+                break;
+            case "map":
+                // Map and repeated fields are simply overwritten, not appended or merged
+                switch (field.V.kind) {
+                    case "scalar":
+                    case "enum":
+                        Object.assign(output[name], fieldValue); // elements are not reference types
+                        break;
+                    case "message":
+                        let T = field.V.T();
+                        for (let k of Object.keys(fieldValue))
+                            output[name][k] = T.create(fieldValue[k]);
+                        break;
+                }
+                break;
+        }
+    }
+}
+exports.reflectionMergePartial = reflectionMergePartial;
+
+},{}],
+74:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.reflectionEquals = void 0;
+const reflection_info_1 = require("./reflection-info");
+/**
+ * Determines whether two message of the same type have the same field values.
+ * Checks for deep equality, traversing repeated fields, oneof groups, maps
+ * and messages recursively.
+ * Will also return true if both messages are `undefined`.
+ */
+function reflectionEquals(info, a, b) {
+    if (a === b)
+        return true;
+    if (!a || !b)
+        return false;
+    for (let field of info.fields) {
+        let localName = field.localName;
+        let val_a = field.oneof ? a[field.oneof][localName] : a[localName];
+        let val_b = field.oneof ? b[field.oneof][localName] : b[localName];
+        switch (field.kind) {
+            case "enum":
+            case "scalar":
+                let t = field.kind == "enum" ? reflection_info_1.ScalarType.INT32 : field.T;
+                if (!(field.repeat
+                    ? repeatedPrimitiveEq(t, val_a, val_b)
+                    : primitiveEq(t, val_a, val_b)))
+                    return false;
+                break;
+            case "map":
+                if (!(field.V.kind == "message"
+                    ? repeatedMsgEq(field.V.T(), objectValues(val_a), objectValues(val_b))
+                    : repeatedPrimitiveEq(field.V.kind == "enum" ? reflection_info_1.ScalarType.INT32 : field.V.T, objectValues(val_a), objectValues(val_b))))
+                    return false;
+                break;
+            case "message":
+                let T = field.T();
+                if (!(field.repeat
+                    ? repeatedMsgEq(T, val_a, val_b)
+                    : T.equals(val_a, val_b)))
+                    return false;
+                break;
+        }
+    }
+    return true;
+}
+exports.reflectionEquals = reflectionEquals;
+const objectValues = Object.values;
+function primitiveEq(type, a, b) {
+    if (a === b)
+        return true;
+    if (type !== reflection_info_1.ScalarType.BYTES)
+        return false;
+    let ba = a;
+    let bb = b;
+    if (ba.length !== bb.length)
+        return false;
+    for (let i = 0; i < ba.length; i++)
+        if (ba[i] != bb[i])
+            return false;
+    return true;
+}
+function repeatedPrimitiveEq(type, a, b) {
+    if (a.length !== b.length)
+        return false;
+    for (let i = 0; i < a.length; i++)
+        if (!primitiveEq(type, a[i], b[i]))
+            return false;
+    return true;
+}
+function repeatedMsgEq(type, a, b) {
+    if (a.length !== b.length)
+        return false;
+    for (let i = 0; i < a.length; i++)
+        if (!type.equals(a[i], b[i]))
+            return false;
+    return true;
+}
+
+},{"./reflection-info":62}],
+75:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.containsMessageType = void 0;
+const message_type_contract_1 = require("./message-type-contract");
+/**
+ * Check if the provided object is a proto message.
+ *
+ * Note that this is an experimental feature - it is here to stay, but
+ * implementation details may change without notice.
+ */
+function containsMessageType(msg) {
+    return msg[message_type_contract_1.MESSAGE_TYPE] != null;
+}
+exports.containsMessageType = containsMessageType;
+
+},{"./message-type-contract":60}],
+76:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.listEnumNumbers = exports.listEnumNames = exports.listEnumValues = exports.isEnumObject = void 0;
+/**
+ * Is this a lookup object generated by Typescript, for a Typescript enum
+ * generated by protobuf-ts?
+ *
+ * - No `const enum` (enum must not be inlined, we need reverse mapping).
+ * - No string enum (we need int32 for protobuf).
+ * - Must have a value for 0 (otherwise, we would need to support custom default values).
+ */
+function isEnumObject(arg) {
+    if (typeof arg != 'object' || arg === null) {
+        return false;
+    }
+    if (!arg.hasOwnProperty(0)) {
+        return false;
+    }
+    for (let k of Object.keys(arg)) {
+        let num = parseInt(k);
+        if (!Number.isNaN(num)) {
+            // is there a name for the number?
+            let nam = arg[num];
+            if (nam === undefined)
+                return false;
+            // does the name resolve back to the number?
+            if (arg[nam] !== num)
+                return false;
+        }
+        else {
+            // is there a number for the name?
+            let num = arg[k];
+            if (num === undefined)
+                return false;
+            // is it a string enum?
+            if (typeof num !== 'number')
+                return false;
+            // do we know the number?
+            if (arg[num] === undefined)
+                return false;
+        }
+    }
+    return true;
+}
+exports.isEnumObject = isEnumObject;
+/**
+ * Lists all values of a Typescript enum, as an array of objects with a "name"
+ * property and a "number" property.
+ *
+ * Note that it is possible that a number appears more than once, because it is
+ * possible to have aliases in an enum.
+ *
+ * Throws if the enum does not adhere to the rules of enums generated by
+ * protobuf-ts. See `isEnumObject()`.
+ */
+function listEnumValues(enumObject) {
+    if (!isEnumObject(enumObject))
+        throw new Error("not a typescript enum object");
+    let values = [];
+    for (let [name, number] of Object.entries(enumObject))
+        if (typeof number == "number")
+            values.push({ name, number });
+    return values;
+}
+exports.listEnumValues = listEnumValues;
+/**
+ * Lists the names of a Typescript enum.
+ *
+ * Throws if the enum does not adhere to the rules of enums generated by
+ * protobuf-ts. See `isEnumObject()`.
+ */
+function listEnumNames(enumObject) {
+    return listEnumValues(enumObject).map(val => val.name);
+}
+exports.listEnumNames = listEnumNames;
+/**
+ * Lists the numbers of a Typescript enum.
+ *
+ * Throws if the enum does not adhere to the rules of enums generated by
+ * protobuf-ts. See `isEnumObject()`.
+ */
+function listEnumNumbers(enumObject) {
+    return listEnumValues(enumObject)
+        .map(val => val.number)
+        .filter((num, index, arr) => arr.indexOf(num) == index);
+}
+exports.listEnumNumbers = listEnumNumbers;
+
+},{}],
+77:[function(module,exports,require,process){
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// src/lib/alaw.ts
+var alaw_exports = {};
+__export(alaw_exports, {
+  decode: () => decode,
+  decodeBuffer: () => decodeBuffer,
+  decodeSample: () => decodeSample,
+  encode: () => encode,
+  encodeBuffer: () => encodeBuffer,
+  encodeSample: () => encodeSample
+});
+var LOG_TABLE = [
+  1,
+  1,
+  2,
+  2,
+  3,
+  3,
+  3,
+  3,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7
+];
+function encodeSample(sample) {
+  let compandedValue;
+  sample = sample == -32768 ? -32767 : sample;
+  let sign = ~sample >> 8 & 128;
+  if (!sign) {
+    sample = sample * -1;
+  }
+  if (sample > 32635) {
+    sample = 32635;
+  }
+  if (sample >= 256) {
+    let exponent = LOG_TABLE[sample >> 8 & 127];
+    let mantissa = sample >> exponent + 3 & 15;
+    compandedValue = exponent << 4 | mantissa;
+  } else {
+    compandedValue = sample >> 4;
+  }
+  return compandedValue ^ (sign ^ 85);
+}
+__name(encodeSample, "encodeSample");
+function decodeSample(sample) {
+  let sign = 0;
+  sample ^= 85;
+  if (sample & 128) {
+    sample &= -129;
+    sign = -1;
+  }
+  let position = ((sample & 240) >> 4) + 4;
+  let decoded = 0;
+  if (position != 4) {
+    decoded = 1 << position | (sample & 15) << position - 4 | 1 << position - 5;
+  } else {
+    decoded = sample << 1 | 1;
+  }
+  decoded = sign === 0 ? decoded : -decoded;
+  return decoded * 8 * -1;
+}
+__name(decodeSample, "decodeSample");
+function encode(samples) {
+  let aLawSamples = new Uint8Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    aLawSamples[i] = encodeSample(samples[i]);
+  }
+  return aLawSamples;
+}
+__name(encode, "encode");
+function decode(samples) {
+  let pcmSamples = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    pcmSamples[i] = decodeSample(samples[i]);
+  }
+  return pcmSamples;
+}
+__name(decode, "decode");
+function encodeBuffer(buffer) {
+  const numSamples = Math.floor(buffer.length / 2);
+  const samples = new Int16Array(numSamples);
+  for (let i = 0; i < numSamples; i++) {
+    samples[i] = buffer.readInt16LE(i * 2);
+  }
+  return Buffer.from(encode(samples).buffer);
+}
+__name(encodeBuffer, "encodeBuffer");
+function decodeBuffer(buffer) {
+  const samples = decode(new Uint8Array(buffer));
+  return Buffer.from(samples.buffer);
+}
+__name(decodeBuffer, "decodeBuffer");
+
+// src/lib/mulaw.ts
+var mulaw_exports = {};
+__export(mulaw_exports, {
+  decode: () => decode2,
+  decodeBuffer: () => decodeBuffer2,
+  decodeSample: () => decodeSample2,
+  encode: () => encode2,
+  encodeBuffer: () => encodeBuffer2,
+  encodeSample: () => encodeSample2
+});
+var BIAS = 132;
+var CLIP = 32635;
+var encodeTable = [
+  0,
+  0,
+  1,
+  1,
+  2,
+  2,
+  2,
+  2,
+  3,
+  3,
+  3,
+  3,
+  3,
+  3,
+  3,
+  3,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7,
+  7
+];
+var decodeTable = [0, 132, 396, 924, 1980, 4092, 8316, 16764];
+function encodeSample2(sample) {
+  const sign = sample < 0 ? 128 : 0;
+  sample = Math.abs(sample);
+  sample += BIAS;
+  if (sample > CLIP) sample = CLIP;
+  const exponent = encodeTable[sample >> 7 & 255];
+  const mantissa = sample >> exponent + 3 & 15;
+  return ~(sign | exponent << 4 | mantissa) & 255;
+}
+__name(encodeSample2, "encodeSample");
+function decodeSample2(sample) {
+  sample = ~sample & 255;
+  const sign = sample & 128 ? -1 : 1;
+  const exponent = sample >> 4 & 7;
+  const mantissa = sample & 15;
+  const decodedSample = decodeTable[exponent] + (mantissa << exponent + 3);
+  return sign * decodedSample;
+}
+__name(decodeSample2, "decodeSample");
+function encode2(samples) {
+  const muLawSamples = new Uint8Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    muLawSamples[i] = encodeSample2(samples[i]);
+  }
+  return muLawSamples;
+}
+__name(encode2, "encode");
+function decode2(samples) {
+  const pcmSamples = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    pcmSamples[i] = decodeSample2(samples[i]);
+  }
+  return pcmSamples;
+}
+__name(decode2, "decode");
+function encodeBuffer2(buffer) {
+  const numSamples = Math.floor(buffer.length / 2);
+  const samples = new Int16Array(numSamples);
+  for (let i = 0; i < numSamples; i++) {
+    samples[i] = buffer.readInt16LE(i * 2);
+  }
+  return Buffer.from(encode2(samples).buffer);
+}
+__name(encodeBuffer2, "encodeBuffer");
+function decodeBuffer2(buffer) {
+  const samples = decode2(new Uint8Array(buffer));
+  return Buffer.from(samples.buffer);
+}
+__name(decodeBuffer2, "decodeBuffer");
+
+// src/lib/utils.ts
+var utils_exports = {};
+__export(utils_exports, {
+  calculateLoudness: () => calculateLoudness,
+  createWavHeader: () => createWavHeader,
+  resample: () => resample
+});
+var BIT_DEPTHS = [8, 16, 24, 32, 48];
+function calculateLoudness(buffer, bitDepth) {
+  if (!(buffer instanceof Buffer) || buffer.length === 0) {
+    throw new Error("Invalid buffer, must be a non-empty Buffer.");
+  }
+  if (!BIT_DEPTHS.includes(bitDepth)) {
+    throw new Error("Invalid bit depth, supported values are 8, 16, 24, 32, and 48.");
+  }
+  if (bitDepth === 48) {
+    throw new Error("48-bit audio is not yet implemented.");
+  }
+  const bytesPerSample = Math.ceil(bitDepth / 8);
+  if (buffer.length % bytesPerSample !== 0) {
+    throw new Error(
+      `Invalid buffer length ${buffer.length}. Must be a multiple of ${bytesPerSample} bytes for ${bitDepth}-bit audio.`
+    );
+  }
+  const maxValue = Math.pow(2, bitDepth - 1) - 1;
+  const numSamples = buffer.length / bytesPerSample;
+  let sumOfSquares = 0;
+  for (let i = 0; i < numSamples; i++) {
+    const offset = i * bytesPerSample;
+    let sample;
+    switch (bitDepth) {
+      case 8:
+        sample = buffer[offset];
+        if (sample & 128) sample = sample - 256;
+        break;
+      case 16:
+        sample = buffer[offset] | buffer[offset + 1] << 8;
+        if (sample & 32768) sample = sample - 65536;
+        break;
+      case 24:
+        sample = buffer[offset] | buffer[offset + 1] << 8 | buffer[offset + 2] << 16;
+        if (sample & 8388608) sample = sample | -16777216;
+        break;
+      case 32:
+        sample = buffer[offset] | buffer[offset + 1] << 8 | buffer[offset + 2] << 16 | buffer[offset + 3] << 24;
+        break;
+      default:
+        throw new Error(`Unsupported bit depth: ${bitDepth}`);
+    }
+    const normalized = sample / maxValue;
+    sumOfSquares += normalized * normalized;
+  }
+  const rms = Math.sqrt(sumOfSquares / numSamples);
+  return rms <= 1e-10 ? -100 : 20 * Math.log10(rms);
+}
+__name(calculateLoudness, "calculateLoudness");
+function createWavHeader(dataSize, sampleRate, channels, bitDepth) {
+  const headerData = [
+    { value: "RIFF", type: "string" },
+    { value: 36 + dataSize, type: "uint32" },
+    { value: "WAVE", type: "string" },
+    { value: "fmt ", type: "string" },
+    { value: 16, type: "uint32" },
+    { value: 1, type: "uint16" },
+    { value: channels, type: "uint16" },
+    { value: sampleRate, type: "uint32" },
+    { value: sampleRate * channels * bitDepth / 8, type: "uint32" },
+    { value: channels * bitDepth / 8, type: "uint16" },
+    { value: bitDepth, type: "uint16" },
+    { value: "data", type: "string" },
+    { value: dataSize, type: "uint32" }
+  ];
+  const header = Buffer.alloc(44);
+  let offset = 0;
+  headerData.forEach(({ value, type }) => {
+    if (type === "string") {
+      header.write(value, offset);
+      offset += 4;
+    } else if (type === "uint32") {
+      header.writeUInt32LE(value, offset);
+      offset += 4;
+    } else if (type === "uint16") {
+      header.writeUInt16LE(value, offset);
+      offset += 2;
+    }
+  });
+  return header;
+}
+__name(createWavHeader, "createWavHeader");
+var resample = /* @__PURE__ */ __name((samples, inputSampleRate, targetSampleRate, bitDepth) => {
+  if (inputSampleRate <= 0 || targetSampleRate <= 0) {
+    throw new Error("Sample rates must be positive.");
+  }
+  if (!BIT_DEPTHS.includes(bitDepth)) {
+    throw new Error(`Invalid bit depth. Allowed values are: ${BIT_DEPTHS.join(", ")}`);
+  }
+  const ratio = targetSampleRate / inputSampleRate;
+  const outLength = Math.round(samples.length * ratio);
+  const resampled = new Array(outLength);
+  const maxSample = (1 << bitDepth - 1) - 1;
+  const minSample = -1 << bitDepth - 1;
+  for (let i = 0; i < outLength; i++) {
+    const sourcePos = i / ratio;
+    const index1 = Math.floor(sourcePos);
+    const index2 = Math.min(index1 + 1, samples.length - 1);
+    const alpha = sourcePos - index1;
+    const interpolated = samples[index1] * (1 - alpha) + samples[index2] * alpha;
+    const intSample = Math.round(interpolated);
+    resampled[i] = Math.max(minSample, Math.min(maxSample, intSample));
+  }
+  return resampled;
+}, "resample");
+
+export { alaw_exports as alaw, mulaw_exports as mulaw, utils_exports as utils };
+
+},{}],
+78:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.initialVoiceSessionState = void 0;
 exports.voiceSessionReducer = voiceSessionReducer;
 exports.useVoiceSession = useVoiceSession;
@@ -38235,7 +49599,7 @@ function useVoiceSession() {
 }
 
 },{"react":3}],
-23:[function(module,exports,require,process){
+79:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useTurnLifecycle = useTurnLifecycle;
@@ -38264,7 +49628,7 @@ function useTurnLifecycle() {
 }
 
 },{"react":3}],
-24:[function(module,exports,require,process){
+80:[function(module,exports,require,process){
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -38407,7 +49771,7 @@ function useSpeechPlayback() {
 }
 
 },{"react":3,"../api":15}],
-25:[function(module,exports,require,process){
+81:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -38427,7 +49791,7 @@ const Header = ({ currentLanguage, languages, propertyName, now, onLanguageChang
 exports.Header = Header;
 
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-26:[function(module,exports,require,process){
+82:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -38449,7 +49813,7 @@ const SidebarNav = ({ items, language, activeId, onSelectItem, }) => {
 exports.SidebarNav = SidebarNav;
 
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-27:[function(module,exports,require,process){
+83:[function(module,exports,require,process){
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -38503,8 +49867,8 @@ const ChatSection = ({ propertyName, language, messages, value, onChange, onSend
 };
 exports.ChatSection = ChatSection;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"./MarkdownText":28}],
-28:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"./MarkdownText":84}],
+84:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -38540,7 +49904,7 @@ function MarkdownText({ text, className }) {
 }
 
 },{"react/jsx-runtime":1,"react":3}],
-29:[function(module,exports,require,process){
+85:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -38558,7 +49922,7 @@ const VoiceAssistant = ({ enabled, available, state, message, language, volume, 
 exports.VoiceAssistant = VoiceAssistant;
 
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-30:[function(module,exports,require,process){
+86:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -38572,7 +49936,7 @@ const MyRequests = ({ tickets, selectedId, language, onSelectTicket }) => (0, js
 exports.MyRequests = MyRequests;
 
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-31:[function(module,exports,require,process){
+87:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -38596,8 +49960,8 @@ const EditRequestModal = ({ isOpen, kind, requestTypes, room, quantity, time, pa
 };
 exports.EditRequestModal = EditRequestModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":32}],
-32:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":88}],
+88:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useModalFocus = useModalFocus;
@@ -38668,7 +50032,7 @@ function useModalFocus(isOpen, onClose) {
 }
 
 },{"react":3}],
-33:[function(module,exports,require,process){
+89:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -38695,8 +50059,8 @@ const TicketModal = ({ isOpen, progress, error, language, busy, onClose, onCance
 };
 exports.TicketModal = TicketModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":32}],
-34:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":88}],
+90:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -38722,7 +50086,7 @@ const VerificationModal = ({ isOpen, language, room, onClose, onSubmit }) => {
 };
 exports.VerificationModal = VerificationModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":32}]};const cache={};const process={env:{NODE_ENV:'production'}};
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":88}]};const cache={};const process={env:{NODE_ENV:'production'}};
 function load(id){if(cache[id])return cache[id].exports;const row=modules[id];if(!row)throw Error('Unknown frontend module '+id);
 const module={exports:{}};cache[id]=module;
 row[0](module,module.exports,function(spec){const dep=row[1][spec];if(dep===null)return {};if(dep===undefined)throw Error('Unbundled '+spec);return load(dep);},process);return module.exports;}

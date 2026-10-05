@@ -66,3 +66,8 @@ def dataset_root(root: str | Path | None = None) -> Path:
 def dataset_path(relative: str | Path, root: str | Path | None = None) -> Path:
     """Resolve one layout-relative dataset path below ``dataset_root``."""
     return dataset_root(root) / Path(relative)
+
+
+def canonical_text_bytes(path: Path) -> bytes:
+    """Read a dataset text artifact using platform-independent LF bytes."""
+    return path.read_bytes().replace(b"\r\n", b"\n")

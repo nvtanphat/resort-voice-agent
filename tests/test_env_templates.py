@@ -36,7 +36,10 @@ def test_env_template_sha256_pins_match_repository_artifacts(template: str):
             continue
         relative = values.get(path_key) or DEFAULT_PATHS.get(path_key)
         assert relative, f"{template}: {prefix}_SHA256 is pinned without a path"
-        actual = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+        raw = (ROOT / relative).read_bytes()
+        if Path(relative).suffix == ".json":
+            raw = raw.replace(b"\r\n", b"\n")
+        actual = hashlib.sha256(raw).hexdigest()
         assert digest == actual, f"{template}: stale {prefix}_SHA256 for {relative}"
         checked += 1
     assert checked >= 3

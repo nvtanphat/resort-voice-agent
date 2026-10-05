@@ -154,6 +154,13 @@ export async function endSession():Promise<void> {
   try { if(csrfToken) await request('/api/session/end','POST'); }
   finally { csrfToken=''; }
 }
+export function voiceAgentConnection(language:LanguageCode):{wsUrl:string;token:string}{
+  if(!csrfToken)throw new ApiError(401,'Voice session is not initialized');
+  const url=new URL('/api/voice/agent',window.location.href);
+  url.protocol=url.protocol==='https:'?'wss:':'ws:';
+  url.searchParams.set('language',language);
+  return {wsUrl:url.toString(),token:csrfToken};
+}
 /** Privacy-minimal, best-effort client latency. Never sends text, audio, citations,
  * session IDs or turn IDs. The authoritative business path does not await this. */
 export function reportVoiceLatency(stage:'client.stt'|'client.ask'|'client.tts_first_audio'|

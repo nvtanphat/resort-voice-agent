@@ -7,10 +7,14 @@ import wave
 from collections.abc import Callable
 
 try:  # Optional dependency; see ``stt.py``.
-    from pipecat.frames.frames import AudioRawFrame, Frame, InterruptionFrame, TextFrame
+    from pipecat.frames.frames import (
+        Frame, InterruptionFrame, TextFrame, TTSAudioRawFrame,
+        TTSStartedFrame, TTSStoppedFrame,
+    )
     from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 except ModuleNotFoundError:  # pragma: no cover
-    AudioRawFrame = Frame = InterruptionFrame = TextFrame = FrameDirection = None
+    TTSAudioRawFrame = Frame = InterruptionFrame = TextFrame = FrameDirection = None
+    TTSStartedFrame = TTSStoppedFrame = None
     FrameProcessor = object
 
 
@@ -20,10 +24,10 @@ def _wav_payload(data: bytes) -> tuple[bytes, int, int]:
 
 
 def pipecat_tts_available() -> bool:
-    return AudioRawFrame is not None
+    return TTSAudioRawFrame is not None
 
 
-if AudioRawFrame is None:
+if TTSAudioRawFrame is None:
 
     class ConciergeTTS:  # pragma: no cover
         def __init__(self, *_args, **_kwargs):
@@ -65,15 +69,21 @@ else:
             try:
                 wav = await asyncio.to_thread(self.synthesize_fn, self.cfg, frame.text, language)
                 pcm, sample_rate, channels = _wav_payload(wav)
+                await self.push_frame(TTSStartedFrame(context_id=chunk_id), direction)
                 frame_size = max(2 * channels, int(sample_rate * channels * 2 * 0.02))
                 frame_size -= frame_size % max(2, 2 * channels)
                 for offset in range(0, len(pcm), frame_size):
-                    await self.push_frame(AudioRawFrame(
+                    await self.push_frame(TTSAudioRawFrame(
                         audio=pcm[offset:offset + frame_size],
                         sample_rate=sample_rate,
                         num_channels=channels,
+                        context_id=chunk_id,
                     ), direction)
-                self.gate.played(session, turn_id, chunk_id)
+                # Transport output drains all preceding audio before handling
+                # TTSStoppedFrame. Only then is the chunk considered played.
+                await self.push_frame(TTSStoppedFrame(context_id=chunk_id), direction)
+                if not self.gate.played(session, turn_id, chunk_id):
+                    raise RuntimeError("speech playback acknowledgement failed")
             except (OSError, RuntimeError, ValueError, wave.Error):
                 self.gate.playback_failed(session, turn_id, chunk_id)
                 raise

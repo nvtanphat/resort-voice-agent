@@ -54,7 +54,7 @@ def test_model_commands_is_closed_and_validated(monkeypatch):
         language="en",
         base_url="http://127.0.0.1:11434",
         model="local-model",
-        enabled_request_kinds=frozenset({"amenity_delivery"}),
+        enabled_request_kinds=frozenset({"facilities"}),
     )
 
     assert result and result[0].type == "StartGoal"

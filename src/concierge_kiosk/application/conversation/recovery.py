@@ -12,6 +12,7 @@ from concierge_kiosk.core.dataset_layout import (
     DEPARTMENTS,
     KNOWLEDGE_MANIFEST,
     SERVICE_CATALOG,
+    canonical_text_bytes,
     dataset_path,
 )
 from concierge_kiosk.rag.common import fold_accents, tokens
@@ -35,7 +36,7 @@ def _verified_json(root: Path, manifest: dict[str, Any], relative: str,
     if (not isinstance(artifact, dict) or not isinstance(artifact.get('sha256'), str)
             or path.is_symlink() or not path.is_file()):
         raise ValueError(f'Unpinned structured artifact: {name}')
-    raw = path.read_bytes()
+    raw = canonical_text_bytes(path)
     if len(raw) > 512_000 or hashlib.sha256(raw).hexdigest() != artifact['sha256']:
         raise ValueError(f'Structured artifact integrity mismatch: {name}')
     return json.loads(raw.decode('utf-8'))

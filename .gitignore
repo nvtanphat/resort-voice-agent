@@ -28,3 +28,7 @@ frontend/dist/
 /config/*.sig
 /config/*.pem
 /config/*.pub
+
+# Local property data: never commit; keeps files on disk across branch switches.
+/datasets/
+/knowledge/compiled/

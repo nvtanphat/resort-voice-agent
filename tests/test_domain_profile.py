@@ -17,7 +17,7 @@ from concierge_kiosk.agent.memory.preferences import SessionPreferences
 
 def test_default_domain_profile_is_checksum_pinned_and_schema_valid():
     path, expected = default_domain_profile_binding()
-    raw = Path(path).read_bytes()
+    raw = Path(path).read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == expected
     profile = load_domain_profile(path, expected)
     assert profile.schema_version == 5

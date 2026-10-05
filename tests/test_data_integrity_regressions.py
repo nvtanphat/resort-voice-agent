@@ -54,6 +54,16 @@ class DataIntegrityRegressionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Dataset manifest integrity validation failed"):
                 verify_dataset_manifest(target)
 
+    def test_manifest_verifier_accepts_platform_line_endings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "datasets"
+            import shutil
+            shutil.copytree(dataset_path(""), target)
+            profile = dataset_path(PROPERTY, target)
+            content = profile.read_bytes().replace(b"\r\n", b"\n")
+            profile.write_bytes(content.replace(b"\n", b"\r\n"))
+            self.assertEqual(verify_dataset_manifest(target)["manifest_errors"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

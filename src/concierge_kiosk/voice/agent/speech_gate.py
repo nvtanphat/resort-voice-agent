@@ -91,6 +91,7 @@ class SpeechGate:
         ok = self.voice_turns.mark_chunk_spoken(session, chunk_id)
         if ok:
             self.emit(session, turn_id, "tts.chunk.played")
+            self.emit(session, turn_id, "response.played")
         return ok
 
     def playback_failed(self, session: str, turn_id: str, chunk_id: str) -> bool:

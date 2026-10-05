@@ -116,9 +116,18 @@ def test_production_room_boundary_fails_closed_without_inventory(monkeypatch):
         directory.cleanup()
 
 
-def test_quantity_limit_dedupe_price_disclosure_and_room_boundary():
+def test_quantity_limit_dedupe_price_disclosure_and_room_boundary(monkeypatch):
     directory, workflows, session = _workflow(room_validator=lambda room: room == '305')
     try:
+        configured_flags = workflows._service_flags
+
+        def flags_with_quantity_limit(service_code, **kwargs):
+            flags = configured_flags(service_code, **kwargs)
+            if service_code == 'amenity_delivery':
+                flags['quantity_limit'] = 4
+            return flags
+
+        monkeypatch.setattr(workflows, '_service_flags', flags_with_quantity_limit)
         oversized = workflows.prepare(
             session, 'facilities', 'en', 'Fresh bath towels for room 305',
             'quantity-12345678', {'room_number': '305', 'quantity': 5, 'note': 'towels'})
