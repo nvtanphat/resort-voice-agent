@@ -319,6 +319,15 @@ def test_real_pipecat_interruption_nacks_chunk_without_cancelling_committed_turn
             journal = harness["turn_events"].read("guest-3", turn_id)
             assert journal and journal["terminal"] is False
             assert harness["turns"].current("guest-3", turn_id)
+            plan = harness["turns"].speech_plan("guest-3", turn_id)
+            assert plan
+            retry = harness["turns"].reserve_chunk("guest-3", plan["chunks"][0]["id"])
+            assert retry is not None
+            _, retry_lease, _, _ = retry
+            assert harness["turns"].complete_chunk(
+                "guest-3", plan["chunks"][0]["id"], retry_lease)
+            assert harness["turns"].mark_chunk_playback_failed(
+                "guest-3", plan["chunks"][0]["id"])
         finally:
             release.set()
             await _stop_harness(runner, runner_task)

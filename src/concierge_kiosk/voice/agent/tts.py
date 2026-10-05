@@ -44,6 +44,7 @@ else:
             self.gate = gate
             self.synthesize_fn = synthesize_fn
             self._active: tuple[str, str, str] | None = None
+            self._interrupted_chunks: set[str] = set()
 
         async def process_frame(self, frame: Frame, direction: FrameDirection):
             if isinstance(frame, InterruptionFrame):
@@ -53,6 +54,7 @@ else:
                 # the governed state records the failed delivery.
                 if self._active is not None:
                     session, turn_id, chunk_id = self._active
+                    self._interrupted_chunks.add(chunk_id)
                     self.gate.interrupt(session, turn_id, chunk_id)
                     self._active = None
                 await super().process_frame(frame, direction)
@@ -73,6 +75,8 @@ else:
             self._active = (session, turn_id, chunk_id)
             try:
                 wav = await asyncio.to_thread(self.synthesize_fn, self.cfg, frame.text, language)
+                if chunk_id in self._interrupted_chunks:
+                    return
                 pcm, sample_rate, channels = _wav_payload(wav)
                 await self.push_frame(TTSStartedFrame(context_id=chunk_id), direction)
                 frame_size = max(2 * channels, int(sample_rate * channels * 2 * 0.02))
@@ -94,6 +98,7 @@ else:
                 raise
             finally:
                 self._active = None
+                self._interrupted_chunks.discard(chunk_id)
 
 
 __all__ = ["ConciergeTTS", "pipecat_tts_available"]
