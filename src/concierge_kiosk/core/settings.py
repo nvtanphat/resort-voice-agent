@@ -119,6 +119,8 @@ class Settings(BaseSettings):
     stt_short_audio_seconds: float = 1.5
     stt_short_audio_temperature: float = 0.0
     voice_ws_idle_timeout_seconds: float = 5.0
+    voice_vad_stop_secs: float = 0.65
+    voice_user_turn_stop_timeout_seconds: float = 2.0
     slm_circuit_cooldown_seconds: float = 15.0
     # ``legacy`` keeps the existing HTTP chunk transport. ``pipecat`` selects
     # the guarded full-duplex websocket adapter when the optional extra is
@@ -399,6 +401,10 @@ class Settings(BaseSettings):
             raise ValueError("Invalid short-audio STT decode policy")
         if not 1 <= self.voice_ws_idle_timeout_seconds <= 120:
             raise ValueError("Invalid voice WebSocket idle timeout")
+        if not 0.1 <= self.voice_vad_stop_secs <= 5:
+            raise ValueError("Invalid voice VAD stop duration")
+        if not 0.5 <= self.voice_user_turn_stop_timeout_seconds <= 30:
+            raise ValueError("Invalid voice user-turn stop timeout")
         if not 1 <= self.slm_circuit_cooldown_seconds <= 300:
             raise ValueError("Invalid SLM circuit cooldown")
         if self.voice_transport not in {"legacy", "pipecat"}:
@@ -651,6 +657,9 @@ def load_settings() -> Settings:
         "stt_short_audio_seconds": float(voice_budget_defaults["stt_short_audio_seconds"]),
         "stt_short_audio_temperature": float(voice_budget_defaults["stt_short_audio_temperature"]),
         "voice_ws_idle_timeout_seconds": float(voice_budget_defaults["ws_idle_timeout_seconds"]),
+        "voice_vad_stop_secs": float(voice_budget_defaults["voice_vad_stop_secs"]),
+        "voice_user_turn_stop_timeout_seconds": float(
+            voice_budget_defaults["voice_user_turn_stop_timeout_seconds"]),
         "slm_circuit_cooldown_seconds": float(slm_budget_defaults["circuit_cooldown_seconds"]),
         "voice_transport": str(features.get("voice_transport", "legacy")),
         "understanding_mode": str(features.get("understanding_mode", "legacy")),

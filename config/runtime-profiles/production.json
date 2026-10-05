@@ -121,7 +121,9 @@
       ],
       "stt_short_audio_seconds": 1.5,
       "stt_short_audio_temperature": 0.0,
-      "ws_idle_timeout_seconds": 5
+      "ws_idle_timeout_seconds": 5,
+      "voice_vad_stop_secs": 0.65,
+      "voice_user_turn_stop_timeout_seconds": 2.0
     },
     "slm": {
       "circuit_cooldown_seconds": 15

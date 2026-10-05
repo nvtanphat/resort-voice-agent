@@ -26,6 +26,31 @@ def _wav() -> bytes:
     return output.getvalue()
 
 
+def test_pipecat_turning_budgets_are_present_in_all_pinned_profiles():
+    root = Path(__file__).resolve().parents[1]
+    source = json.loads(
+        (root / "config" / "runtime-profiles" / "src" / "base.json").read_text(
+            encoding="utf-8"))
+    expected = source["budgets"]["voice"]
+    assert expected["voice_vad_stop_secs"] == 0.65
+    assert expected["voice_user_turn_stop_timeout_seconds"] == 2.0
+    for name in ("test", "development", "edge", "production"):
+        profile = json.loads(
+            (root / "config" / "runtime-profiles" / f"{name}.json").read_text(
+                encoding="utf-8"))
+        voice = profile["budgets"]["voice"]
+        assert voice["voice_vad_stop_secs"] == expected["voice_vad_stop_secs"]
+        assert (voice["voice_user_turn_stop_timeout_seconds"] ==
+                expected["voice_user_turn_stop_timeout_seconds"])
+
+    cfg = Settings(
+        voice_vad_stop_secs=expected["voice_vad_stop_secs"],
+        voice_user_turn_stop_timeout_seconds=expected[
+            "voice_user_turn_stop_timeout_seconds"])
+    assert cfg.voice_vad_stop_secs == 0.65
+    assert cfg.voice_user_turn_stop_timeout_seconds == 2.0
+
+
 def test_stt_prompt_uses_profiled_sources_and_budget(monkeypatch, tmp_path: Path):
     map_path = tmp_path / "map.json"
     map_path.write_text(json.dumps({"places": [{"labels": {"vi": "Hồ bơi"}}]}), encoding="utf-8")

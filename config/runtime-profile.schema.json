@@ -428,7 +428,9 @@
             "stt_prompt_languages",
             "stt_short_audio_seconds",
             "stt_short_audio_temperature",
-            "ws_idle_timeout_seconds"
+            "ws_idle_timeout_seconds",
+            "voice_vad_stop_secs",
+            "voice_user_turn_stop_timeout_seconds"
           ],
           "properties": {
             "max_previews": {
@@ -537,6 +539,16 @@
               "type": "number",
               "minimum": 1,
               "maximum": 120
+            },
+            "voice_vad_stop_secs": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 5
+            },
+            "voice_user_turn_stop_timeout_seconds": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 30
             }
           }
         },

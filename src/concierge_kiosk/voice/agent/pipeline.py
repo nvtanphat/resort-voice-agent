@@ -47,7 +47,7 @@ def build_pipeline(*, websocket, cfg, session: str, language: str,
             current_session, turn_id, event),
     )
     vad = SileroVADAnalyzer(params=VADParams(
-        stop_secs=min(1.2, max(0.2, float(getattr(cfg, "voice_ws_idle_timeout_seconds", 5.0)) / 5)),
+        stop_secs=float(cfg.voice_vad_stop_secs),
     ))
     vad_processor = VADProcessor(vad_analyzer=vad)
     turn_processor = UserTurnProcessor(
@@ -55,8 +55,7 @@ def build_pipeline(*, websocket, cfg, session: str, language: str,
             TurnAnalyzerUserTurnStopStrategy(
                 turn_analyzer=LocalSmartTurnAnalyzerV3()),
         ]),
-        user_turn_stop_timeout=max(
-            1.0, float(getattr(cfg, "voice_ws_idle_timeout_seconds", 5.0))),
+        user_turn_stop_timeout=float(cfg.voice_user_turn_stop_timeout_seconds),
     )
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
