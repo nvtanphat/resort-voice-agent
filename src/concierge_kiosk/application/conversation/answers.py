@@ -23,14 +23,14 @@ from concierge_kiosk.domain.service_registry import resolve_service_code, servic
 from concierge_kiosk.agent.core.tool_contracts import no_evidence_handoff_details
 from concierge_kiosk.core.domain_profile import ui_policy
 from concierge_kiosk.core.context_labels import context_terms
-from concierge_kiosk.rag.citations import bind_citations, retain_live_semantic_claims
-from concierge_kiosk.rag.claims import extract_claims
+from concierge_kiosk.rag.grounding.citations import bind_citations, retain_live_semantic_claims
+from concierge_kiosk.rag.grounding.claims import extract_claims
 from concierge_kiosk.rag.retrieval import (
     Retrieval, abstention_answer, retrieve, retrieve_context, retrieve_localized_anchor,
 )
 
 _PRESENTATION_LIMITS = ui_policy().presentation_limits
-from concierge_kiosk.rag.relevance import answerable, has_explicit_topic, requested_facets
+from concierge_kiosk.rag.grounding.relevance import answerable, has_explicit_topic, requested_facets
 from .recovery import load_support_directory, recovery_metadata
 from concierge_kiosk.i18n import text as i18n_text
 

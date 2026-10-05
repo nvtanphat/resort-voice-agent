@@ -3,8 +3,11 @@ from __future__ import annotations
 import re
 import unicodedata
 from concierge_kiosk.persistence.sqlite_store import Store
-from concierge_kiosk.rag.common import (LANGUAGES, evidence_passage, tokens, unsafe_knowledge_text)
-from concierge_kiosk.rag.relevance import evidence_relevant, query_terms as meaningful_query_terms
+from concierge_kiosk.rag.documents import LANGUAGES
+from concierge_kiosk.rag.retrieval.evidence import evidence_passage
+from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
+from concierge_kiosk.rag.text.tokenization import tokens
+from concierge_kiosk.rag.grounding.relevance import evidence_relevant, query_terms as meaningful_query_terms
 from concierge_kiosk.agent.understanding.domain_nlu import DISCOURSE_TERMS
 from concierge_kiosk.core.domain_profile import rag_policy
 from .policy import RAGPolicy, Retrieval, abstention_answer

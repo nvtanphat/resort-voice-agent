@@ -107,7 +107,7 @@ def prepare_runtime(settings: Settings | None, embedder, reranker):
             pass
 
     import logging
-    from .rag.index_health import dense_index_status
+    from .rag.index.health import dense_index_status
     health = dense_index_status(store, cfg.property_id, embedder)
     if health['state'] != 'ok':
         logging.getLogger(__name__).warning(

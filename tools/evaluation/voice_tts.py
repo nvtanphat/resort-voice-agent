@@ -13,7 +13,8 @@ import time
 from pathlib import Path
 
 from concierge_kiosk.core.settings import load_settings
-from concierge_kiosk.voice.runtime.adapters import synthesize, _wav_properties, MAX_TTS_SECONDS
+from concierge_kiosk.voice.runtime.audio import MAX_TTS_SECONDS, wav_properties
+from concierge_kiosk.voice.runtime.tts import synthesize
 
 PROMPTS = {
     'vi': 'Xin chào, tôi có thể giúp gì cho quý khách?',
@@ -35,7 +36,7 @@ def evaluate(cfg, *, repeats=3, max_p95_ms=None, max_rtf=None):
             start = time.perf_counter()
             wav = synthesize(cfg, sentence, lang)
             elapsed = (time.perf_counter() - start) * 1000
-            rate, frames = _wav_properties(wav, max_seconds=MAX_TTS_SECONDS)
+            rate, frames = wav_properties(wav, max_seconds=MAX_TTS_SECONDS)
             duration_ms = 1000 * frames / rate
             readings.append(elapsed)
             factors.append(elapsed / duration_ms)

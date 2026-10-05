@@ -15,8 +15,9 @@ from concierge_kiosk.core.dataset_layout import (
     canonical_text_bytes,
     dataset_path,
 )
-from concierge_kiosk.rag.common import fold_accents, tokens
-from concierge_kiosk.rag.relevance import fts_query
+from concierge_kiosk.rag.text.normalize import fold_accents
+from concierge_kiosk.rag.text.tokenization import tokens
+from concierge_kiosk.rag.grounding.relevance import fts_query
 
 
 @dataclass(frozen=True)

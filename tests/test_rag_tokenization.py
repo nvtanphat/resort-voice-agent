@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from concierge_kiosk.rag.common import search_index_text, tokens
-from concierge_kiosk.rag.tokenization import segment_terms
+from concierge_kiosk.rag.text.tokenization import search_index_text, segment_terms, tokens
 
 
 def test_profile_selects_whitespace_terms_for_latin_locales():

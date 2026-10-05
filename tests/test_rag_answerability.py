@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from concierge_kiosk.rag.relevance import answerable
+from concierge_kiosk.rag.grounding.relevance import answerable
 
 
 def test_price_question_rejects_minibar_amenity_fact():

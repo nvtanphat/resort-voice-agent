@@ -7,9 +7,14 @@ import time
 import re
 import unicodedata
 from concierge_kiosk.persistence.sqlite_store import Store
-from concierge_kiosk.rag.common import (LANGUAGES, Embedder, LocalReranker, cosine, decoded_embedding,
-                                        evidence_passage, retrieve_parent_context, tokens, unsafe_knowledge_text)
-from concierge_kiosk.rag.relevance import (candidate_relevant, concrete_facets_supported, evidence_relevant, fts_query,
+from concierge_kiosk.rag.documents import LANGUAGES
+from concierge_kiosk.rag.embedding.base import Embedder, cosine
+from concierge_kiosk.rag.embedding.cache import decoded_embedding
+from concierge_kiosk.rag.rerank.local import LocalReranker
+from concierge_kiosk.rag.retrieval.evidence import evidence_passage, retrieve_parent_context
+from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
+from concierge_kiosk.rag.text.tokenization import tokens
+from concierge_kiosk.rag.grounding.relevance import (candidate_relevant, concrete_facets_supported, evidence_relevant, fts_query,
                                             is_opening_hours_query, query_terms as meaningful_query_terms)
 from concierge_kiosk.core.domain_profile import rag_policy as domain_rag_policy
 from .policy import (RAGPolicy, Retrieval, abstention_answer, _bounded_query_embedding,

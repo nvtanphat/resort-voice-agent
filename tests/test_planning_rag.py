@@ -12,7 +12,7 @@ from concierge_kiosk.core.domain_profile import default_domain_profile_binding, 
 from concierge_kiosk.core.structured_loader import load_structured_dataset
 from concierge_kiosk.core.dataset_layout import dataset_path
 from concierge_kiosk.domain.entity_resolver import property_entity_matches
-from concierge_kiosk.rag import relevance
+from concierge_kiosk.rag.grounding import relevance
 
 
 def _payload() -> dict:
@@ -77,8 +77,8 @@ def test_new_planning_category_and_rag_rewrite_are_config_only_extensions(tmp_pa
     code = r'''
 from concierge_kiosk.agent.tools.planning import itinerary_topics, planning_search
 from concierge_kiosk.agent.tools.scheduling import guest_preferred_window
-from concierge_kiosk.rag.relevance import normalized_query
-from concierge_kiosk.rag.common import document_domain
+from concierge_kiosk.rag.grounding.relevance import normalized_query
+from concierge_kiosk.rag.documents import document_domain
 assert itinerary_topics('plan my stay with restaurant and an art gallery', 'en') == ('dining', 'culture')
 assert planning_search('culture', 'en') == 'art gallery cultural information'
 assert normalized_query('brunch options', 'en') == 'late breakfast options'

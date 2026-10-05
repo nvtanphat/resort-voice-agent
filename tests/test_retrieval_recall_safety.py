@@ -7,9 +7,9 @@ import unittest
 from pathlib import Path
 
 from concierge_kiosk.persistence.sqlite_store import Store
-from concierge_kiosk.rag.common import evidence_passage
+from concierge_kiosk.rag.retrieval.evidence import evidence_passage
 from concierge_kiosk.rag.ingestion import ingest_text
-from concierge_kiosk.rag.citations import bind_citations
+from concierge_kiosk.rag.grounding.citations import bind_citations
 from concierge_kiosk.rag.retrieval.engine import retrieve
 from concierge_kiosk.rag.retrieval.policy import _policy_conflict
 from concierge_kiosk.rag.retrieval.policy import RAGPolicy

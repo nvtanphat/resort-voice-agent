@@ -11,7 +11,8 @@ from fastapi import HTTPException
 
 from concierge_kiosk.agent.core.capabilities import CapabilityRequest
 from concierge_kiosk.agent.core.concierge import BoundedToolRegistry, AgentToolRequest, ACTION_TOOL
-from concierge_kiosk.agent.core.tool_contracts import (authorized_tool_result, no_evidence_handoff_details,
+from concierge_kiosk.agent.core.tool_contracts import (authorized_tool_result, contract_failure_result,
+                                                       no_evidence_handoff_details, tool_error_observation,
                                                        validate_tool_result)
 from concierge_kiosk.agent.tools.read_execution import ReadTaskExecution
 from concierge_kiosk.agent.tools.service_slots import looks_like_slot_reply, is_cancel_pending
@@ -1023,32 +1024,43 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             # Tools ran on execution_query (the guest text plus a verified
             # anchor title for "where is it?"), so the suggestion contract must
             # be checked against that same request, not the bare pronoun.
-            result = authorized_tool_result(decision, execution_query, body.language, result)
             try:
+                result = authorized_tool_result(decision, execution_query, body.language, result)
                 validate_tool_result(decision, result, execution_query, body.language)
             except RuntimeError as exc:
                 if decision.branch != 'emergency':
-                    raise
-                # Safety route must never turn a contract mismatch into HTTP 500.
-                # Fall back to the deterministic emergency text and preserve only
-                # the already-queued alert plus internal turn cleanup metadata.
-                logger.error('emergency_contract_validation_failed type=%s', type(exc).__name__)
-                safe = fast_response(decision, query, body.language)
-                alert = result.get('emergency_alert')
-                safe['emergency_alert'] = (alert if isinstance(alert, dict)
-                                           else {'queued': False})
-                existing_ui = result.get('emergency_ui')
-                safe_ui = dict(existing_ui) if isinstance(existing_ui, dict) else {}
-                safe_ui.update({
-                    'show_staff_location': True,
-                    'normal_request_disabled': True,
-                    'show_sos': True,
-                })
-                safe['emergency_ui'] = safe_ui
-                for internal_key in ('_agent_checkpoint', '_agent_memory'):
-                    if internal_key in result:
-                        safe[internal_key] = result[internal_key]
-                result = safe
+                    # A contract mismatch is a tool/model fault, never a reason for
+                    # HTTP 500 and never authority for the offending payload. Drop it,
+                    # answer with the fixed abstention and keep only turn bookkeeping.
+                    observation = tool_error_observation(exc)
+                    logger.error('tool_contract_failed branch=%s error=%s hint=%s',
+                                 decision.branch, observation['error'], observation['hint'])
+                    safe = contract_failure_result(body.language)
+                    for internal_key in ('_agent_checkpoint', '_agent_memory'):
+                        if internal_key in result:
+                            safe[internal_key] = result[internal_key]
+                    result = safe
+                else:
+                    # Safety route must never turn a contract mismatch into HTTP 500.
+                    # Fall back to the deterministic emergency text and preserve only
+                    # the already-queued alert plus internal turn cleanup metadata.
+                    logger.error('emergency_contract_validation_failed type=%s', type(exc).__name__)
+                    safe = fast_response(decision, query, body.language)
+                    alert = result.get('emergency_alert')
+                    safe['emergency_alert'] = (alert if isinstance(alert, dict)
+                                               else {'queued': False})
+                    existing_ui = result.get('emergency_ui')
+                    safe_ui = dict(existing_ui) if isinstance(existing_ui, dict) else {}
+                    safe_ui.update({
+                        'show_staff_location': True,
+                        'normal_request_disabled': True,
+                        'show_sos': True,
+                    })
+                    safe['emergency_ui'] = safe_ui
+                    for internal_key in ('_agent_checkpoint', '_agent_memory'):
+                        if internal_key in result:
+                            safe[internal_key] = result[internal_key]
+                    result = safe
 
         # Signed property profile is an authority boundary, not a UI hint. The
         # domain write path checks it again; this response filter avoids offering

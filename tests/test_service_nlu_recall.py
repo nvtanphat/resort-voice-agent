@@ -115,7 +115,7 @@ def test_spoken_room_numbers_are_accepted_as_slot_replies(query, language, room)
     "nhà hàng mở cửa đến khi nào",
 ])
 def test_vietnamese_until_what_time_questions_are_opening_hours_queries(query):
-    from concierge_kiosk.rag.relevance import is_opening_hours_query, normalized_query
+    from concierge_kiosk.rag.grounding.relevance import is_opening_hours_query, normalized_query
     assert is_opening_hours_query(query, "vi")
     assert normalized_query(query, "vi").endswith("operating hours")
 

@@ -11,7 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from concierge_kiosk.persistence.sqlite_store import Store
-from concierge_kiosk.rag.common import LocalEmbedder, query_embedding
+from concierge_kiosk.rag.embedding.cache import query_embedding
+from concierge_kiosk.rag.embedding.local import LocalEmbedder
 from concierge_kiosk.rag.ingestion import ingest_text
 
 

@@ -16,6 +16,43 @@ from concierge_kiosk.domain.service_registry import (
 from concierge_kiosk.i18n import text as i18n_text
 
 
+def tool_error_observation(error: object, hint: object = 'retry_or_staff_handoff') -> dict[str, object]:
+    """Return a bounded, non-throwing tool error observation.
+
+    Exception messages and tool payloads are not guest-facing authority.  Keep
+    only a stable error label plus a short, fixed recovery hint so the governed
+    loop can retry or hand off without turning a tool fault into HTTP 500.
+    """
+    if isinstance(error, BaseException):
+        label = type(error).__name__
+    else:
+        label = str(error or 'tool_error')
+    label = ''.join(char if char.isalnum() or char in {'_', '-'} else '_' for char in label)
+    hint_text = str(hint or 'retry_or_staff_handoff').strip()[:160]
+    return {
+        'ok': False,
+        'error': label[:64] or 'tool_error',
+        'hint': hint_text or 'retry_or_staff_handoff',
+    }
+
+
+def contract_failure_result(language: str) -> dict:
+    """Fail-closed replacement for a non-emergency result that broke its contract.
+
+    The offending payload is discarded entirely: it may carry an unauthorized
+    suggestion or an unverified claim. The guest receives the fixed localized
+    abstention with no sources, citations or business action, so a tool or model
+    fault degrades to "ask staff" instead of an HTTP 500.
+    """
+    return {
+        'answer': abstention_answer(language),
+        'sources': [], 'citations': [], 'suggested_action': None,
+        'retrieval_mode': 'contract_failure', 'generation_mode': 'extractive',
+        'request_completed': False, 'grounding': 'no_evidence',
+        'requires_staff_review': False, 'evidence_status': 'UNAVAILABLE',
+    }
+
+
 def _navigation_suggestion(query: str, language: str) -> dict | None:
     expected = suggest_service_request(query, language)
     if expected is not None and route_branch_for_request_kind(expected.kind) == 'navigation':

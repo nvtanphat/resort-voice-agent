@@ -14,9 +14,9 @@ import tempfile
 from pathlib import Path
 
 from concierge_kiosk.core.settings import Settings
-from concierge_kiosk.voice.runtime.adapters import (
-    MAX_TTS_BYTES, MAX_TTS_SECONDS, _tts_manifest_path, _tts_model_paths, _wav_properties, speech_rendering,
-)
+from concierge_kiosk.voice.runtime.audio import MAX_TTS_BYTES, MAX_TTS_SECONDS, wav_properties
+from concierge_kiosk.voice.runtime.rendering import speech_rendering
+from concierge_kiosk.voice.runtime.tts import tts_manifest_path, tts_model_paths
 from concierge_kiosk.core.domain_profile import voice_policy
 
 MAX_CACHE_BYTES = 256 * 1024 * 1024
@@ -28,7 +28,7 @@ def _cache_dir(cfg: Settings) -> Path:
 
 
 def _voice_fingerprint(cfg: Settings, language: str) -> str | None:
-    paths = _tts_model_paths(cfg, language)
+    paths = tts_model_paths(cfg, language)
     if paths is None:
         return None
     model, meta = paths
@@ -37,7 +37,7 @@ def _voice_fingerprint(cfg: Settings, language: str) -> str | None:
         executable = shutil.which(cfg.piper_executable) or cfg.piper_executable
         policy = json.dumps(voice_policy(), ensure_ascii=False, sort_keys=True, separators=(',', ':'))
         policy_digest = hashlib.sha256(policy.encode('utf-8')).hexdigest()
-        manifest = _tts_manifest_path(cfg, language)
+        manifest = tts_manifest_path(cfg, language)
         manifest_digest = ''
         if manifest:
             manifest_path = Path(manifest)
@@ -69,7 +69,7 @@ def load_cached_wav(cfg: Settings, text: str, language: str) -> bytes | None:
         if not path.is_file() or path.is_symlink() or path.stat().st_size > MAX_TTS_BYTES:
             return None
         data = path.read_bytes()
-        _wav_properties(data, max_seconds=MAX_TTS_SECONDS)
+        wav_properties(data, max_seconds=MAX_TTS_SECONDS)
         try:
             os.utime(path, None)
         except OSError:
@@ -104,7 +104,7 @@ def store_cached_wav(cfg: Settings, text: str, language: str, data: bytes) -> bo
     if key is None or not data or len(data) > MAX_TTS_BYTES:
         return False
     try:
-        _wav_properties(data, max_seconds=MAX_TTS_SECONDS)
+        wav_properties(data, max_seconds=MAX_TTS_SECONDS)
     except ValueError:
         return False
     folder = _cache_dir(cfg)

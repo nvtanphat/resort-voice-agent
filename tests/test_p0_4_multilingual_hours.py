@@ -75,6 +75,6 @@ def test_p0_4_pool_close_hours_are_recalled_in_guest_language(
 def test_p0_4_time_question_variants_normalize_to_hours_facet(
     language: str, query: str, expected_fragment: str
 ):
-    from concierge_kiosk.rag.relevance import normalized_query
+    from concierge_kiosk.rag.grounding.relevance import normalized_query
 
     assert expected_fragment in normalized_query(query, language)

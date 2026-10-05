@@ -188,7 +188,7 @@ def schedule_read(store, *, query: str, language: str, property_id: str,
     """
     # Lazy import keeps profile-only/NLU tools usable for a config extension
     # language before that property's locale bundle has been provisioned.
-    from concierge_kiosk.rag.citations import bind_citations
+    from concierge_kiosk.rag.grounding.citations import bind_citations
 
     schedule = approved_schedule(
         store, path=path, expected_sha256=expected_sha256,

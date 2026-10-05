@@ -230,7 +230,7 @@ class Settings(BaseSettings):
             raise ValueError('Reranker manifest requires a configured reranker model')
         if self.embedding_manifest_path:
             if self.embedding_model_path.startswith('ollama://'):
-                from ..rag.common import validate_ollama_manifest
+                from ..rag.embedding.ollama import validate_ollama_manifest
                 validate_ollama_manifest(self.embedding_manifest_path,
                                          self.embedding_model_path.removeprefix('ollama://').strip('/'))
             else:

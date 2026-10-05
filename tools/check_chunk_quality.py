@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0, str(ROOT / "src"))
 
-from concierge_kiosk.rag.ingestion import (CHUNK_POLICY, _ENTITY_METADATA, _FACT_METADATA,
-                                            _frontmatter, chunk_sections)
+from concierge_kiosk.rag.ingestion import CHUNK_POLICY, chunk_sections
+from concierge_kiosk.rag.ingestion.metadata import ENTITY_METADATA, FACT_METADATA, frontmatter
 from build_furama_localized_knowledge import LABELS as FACT_LABELS
 
 LANGUAGES = ("en", "vi", "ko", "zh")
@@ -82,7 +82,7 @@ def check_compiled() -> dict:
         card_entities: set[str] = set()
         for path in paths:
             raw = path.read_text(encoding="utf-8")
-            meta, body = _frontmatter(raw)
+            meta, body = frontmatter(raw)
             entity_id = str(meta.get("entity_id") or "")
             seen_entities.add(entity_id)
             pieces = chunk_sections(body, separate_policy_paragraphs=True)
@@ -90,10 +90,10 @@ def check_compiled() -> dict:
             # The compiler marker is removed at ingestion; report the runtime
             # payload length rather than counting provenance JSON as guest text.
             all_lengths[language].extend(
-                len(_ENTITY_METADATA.sub("", _FACT_METADATA.sub("", piece[3]).strip()))
+                len(ENTITY_METADATA.sub("", FACT_METADATA.sub("", piece[3]).strip()))
                 for piece in pieces
             )
-            for marker in _FACT_METADATA.finditer(body):
+            for marker in FACT_METADATA.finditer(body):
                 try:
                     fact = json.loads(marker.group(1))
                 except json.JSONDecodeError:
@@ -121,7 +121,7 @@ def check_compiled() -> dict:
                     errors.append(f"context label not rendered for {fact_id}/{language}")
                 if not str(fact.get("context_text") or "").strip():
                     errors.append(f"empty context_text for {fact_id}/{language}")
-            for marker in _ENTITY_METADATA.finditer(body):
+            for marker in ENTITY_METADATA.finditer(body):
                 try:
                     card = json.loads(marker.group(1))
                 except json.JSONDecodeError:
@@ -146,7 +146,7 @@ def check_compiled() -> dict:
             )
         for path in paths:
             raw = path.read_text(encoding="utf-8")
-            meta, _body = _frontmatter(raw)
+            meta, _body = frontmatter(raw)
             for key in ("entity_type", "entity_type_label", "entity_domain_label"):
                 if not str(meta.get(key) or "").strip():
                     errors.append(f"{language} missing entity metadata {key}: {path.name}")

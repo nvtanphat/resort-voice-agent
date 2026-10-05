@@ -11,7 +11,7 @@ from .models import (CONTEXT_TTL_SECONDS, MAX_TOPICS, MAX_SESSIONS, MAX_TURNS,
 from .heuristics import (_FACET_SEARCH, _anchor_subject, _focuses, _subjects,
                          is_followup, question_facet)
 from concierge_kiosk.domain.service_registry import ACTION_REQUEST_KINDS
-from concierge_kiosk.rag.relevance import has_explicit_topic
+from concierge_kiosk.rag.grounding.relevance import has_explicit_topic
 
 class ConversationMemory:
     """Short-lived, per-session public source references only; no guest text."""

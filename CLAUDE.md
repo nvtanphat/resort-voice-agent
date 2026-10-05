@@ -10,7 +10,7 @@ Single-property hotel concierge kiosk (currently the Furama resort): FastAPI bac
 python -m pip install -e ".[test,ops]"     # backend dev install (Python >= 3.11); add ",voice" for Whisper/Piper
 set -a; . ./.env.example; set +a           # dev env: pinned hashes, Ollama SLM + bge-m3, dataset dir, voice model paths
 python -m concierge_kiosk                  # API on CONCIERGE_BIND_HOST:CONCIERGE_BIND_PORT (default 0.0.0.0:8000)
-python -m pytest -q                        # all tests (pytest config adds src/ and . to sys.path)
+python -m pytest -q                        # all tests (pytest config adds src/ and . to sys.path); run it WITHOUT .env.example sourced, its env vars override the test settings
 python -m pytest -q tests/test_agent_runtime.py -k <name>   # one test
 ```
 
@@ -35,6 +35,8 @@ After data changes, also run `python datasets/schemas/validate_contracts.py` (fa
 
 ```bash
 python tools/build_domain_vocab.py                  # data-derived NLU vocabulary
+python tools/repin_configs.py                       # pin the new releases/domain-vocab.json now, or the steps below refuse to load it
+set -a; . ./.env.example; set +a                    # re-source: the pinned *_SHA256 values in the env changed
 python tools/build_furama_localized_knowledge.py    # -> knowledge/compiled/furama/<lang>/*.md (no CLI flags; runs immediately)
 python tools/rebuild_furama_runtime_knowledge.py --model "ollama://bge-m3" \
   --manifest models/embeddings/bge-m3.ollama.manifest.json --require-learned   # re-ingests data/concierge.sqlite3 (~4 min)
@@ -43,6 +45,7 @@ python tools/repin_configs.py
 ```
 
 - Stop the server before re-ingesting.
+- After editing a data file, refresh the pinned hashes of its manifest with `tools/refresh_dataset_manifest.py`, `tools/refresh_synthetic_manifest.py` or `tools/refresh_furama_manifest.py` (each has `--check`); a stale manifest fails `tools/validate_property_dataset.py`.
 - If you omit `--require-learned` and the bge-m3 model is unavailable, the rebuild can silently fall back to the hash embedder. Dense retrieval then reports a model mismatch in `/readyz`.
 - Pass model URIs as plain strings: on Windows, `Path("ollama://…")` becomes `ollama:\…`.
 
@@ -103,6 +106,7 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
   - Map-only answers anchor the place via `answers.place_anchor_sources`.
   - Pending service tasks and voice proposals live in `task_memory.py`; session preferences in `preferences.py`.
 - **RAG** (`rag/`):
+  - **Layout:** `documents`, `text/` (normalize, tokenization, safety), `embedding/` (base, hashed, onnx_e5, ollama, local, cache), `rerank/`, `ingestion/` (chunking, metadata, document, bundle, policy), `retrieval/` (engine, policy, context, evidence), `grounding/` (relevance, claims, citations), `index/`. `rag/common.py` and `rag/claims.py` are temporary re-export shims for the voice agent and semantic router; delete them once those import the focused modules.
   - **Chunks.** Each chunk is one self-contained canonical fact. The `knowledge` table carries `entity_id`, `fact_type`, `fact_context`, `canonical_fact_id`, `context_text` (entity · category · label: value (qualifier)) and `metadata_json` (including `domain_review`). Entity-card documents cover entities that have no facts.
   - **Retrieval order** (`rag/retrieval/engine.py::retrieve`):
     1. Structured lookup when `entity_ids` and `fact_types` (and optionally `fact_context`) are known.
@@ -114,7 +118,7 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
     - Scores `context_text` for the top `rerank_top_k` candidates, truncated to `max_length`.
     - Its score is fused with the RRF score via `rerank_fusion_alpha`, plus a bonus for structured matches.
     - On timeout, busy or error, the RRF order is kept (`rerank_on_failure`).
-  - **After retrieval:** citation binding (`rag/citations.py`) and the `domain_review.runtime_gate` (pending facts need staff confirmation) are applied.
+  - **After retrieval:** citation binding (`rag/grounding/citations.py`) and the `domain_review.runtime_gate` (pending facts need staff confirmation) are applied.
   - No-evidence answers come from a fixed template (`_allowed_no_evidence_answer`), so model prose cannot leak into them.
 - **Voice**:
   - `features.voice_transport` selects `legacy|pipecat`. Development uses the authenticated same-origin `/api/voice/agent` Pipecat WebSocket; legacy `/api/audio/stream` and chunk playback remain as a rollback path until voice eval reaches parity.
@@ -131,7 +135,7 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
   - Never edit `config/runtime-profiles/*.json` directly; `--check` detects drift.
   - A new key also needs `config/runtime-profile.schema.json` and wiring in `core/settings.py`. RAG keys additionally need `RAGPolicy` in `rag/retrieval/policy.py` and `bootstrap.py`.
 - **Multilingual language rules live in `config/agent-domain.json`**: NLU frames and regexes, greeting/courtesy/cancel terms, numeral and clock grammar, normalization, emergency patterns and contacts, voice rendering, tool descriptions, semantic-router mode and thresholds. Read them through the accessors in `agent/understanding/domain_nlu.py` and `core/domain_profile.py`.
-  - A new key needs `config/agent-domain.schema.json` and validation in `core/domain_profile.py`. Per-language keys also need the `_clone_language` helper in `tests/test_nlu_memory.py`.
+  - A new key needs `config/agent-domain.schema.json` and validation in `core/domain_profile/validate/`. Per-language keys also need the `_clone_language` helper in `tests/test_nlu_memory.py`.
   - **Do not put hotel entity or service names in it.** Those come from `datasets/` (aliases, `names_by_locale`, `build_domain_vocab.py`).
   - **Do not copy phrases from `datasets/evaluation/` into it.** When a natural phrasing is missed, add it to the router training examples, not to a phrase list.
 - Guest-facing text lives in `locales/*.json`, read by `i18n/catalog.py` on the backend and through `frontend/src/i18n.ts` on the frontend. All four locales must be translated; an English placeholder left in vi/ko/zh is a bug.

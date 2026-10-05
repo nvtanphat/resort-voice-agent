@@ -16,7 +16,7 @@ for path in (ROOT, ROOT / "src"):
         sys.path.insert(0, str(path))
 
 from concierge_kiosk.agent.understanding.semantic_router import SemanticRouter, read_route_examples
-from concierge_kiosk.rag.common import LocalEmbedder
+from concierge_kiosk.rag.embedding.local import LocalEmbedder
 
 
 def calibrate(train, validation, embedder, *, max_examples_per_route: int) -> dict:

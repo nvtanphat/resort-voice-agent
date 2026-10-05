@@ -15,7 +15,7 @@ from concierge_kiosk.core.domain_profile import rag_policy
 from concierge_kiosk.runtime.local_http import slm_turn_expired
 from urllib.request import Request
 from concierge_kiosk.runtime.local_http import local_chat_open as urlopen
-from concierge_kiosk.rag.claims import claims_supported, repair_supported_claims, exact_span, extract_claims
+from concierge_kiosk.rag.grounding.claims import claims_supported, repair_supported_claims, exact_span, extract_claims
 from concierge_kiosk.agent.understanding.domain_nlu import QUALIFIER_PATTERNS
 
 # Character bounds are approximations, not model-token measurements. There is

@@ -22,7 +22,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from concierge_kiosk.core.dataset_layout import dataset_path  # noqa: E402
 from concierge_kiosk.core.settings import load_settings  # noqa: E402
 from concierge_kiosk.persistence.sqlite_store import Store  # noqa: E402
-from concierge_kiosk.rag.common import LocalEmbedder, LocalReranker  # noqa: E402
+from concierge_kiosk.rag.embedding.local import LocalEmbedder  # noqa: E402
+from concierge_kiosk.rag.rerank.local import LocalReranker  # noqa: E402
 from concierge_kiosk.rag.retrieval import RAGPolicy, retrieve  # noqa: E402
 
 SUITES = {

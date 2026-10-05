@@ -87,7 +87,7 @@ def test_consumers_derive_domain_allowlists():
     from concierge_kiosk.agent.memory import conversation, task_checkpoint
     from concierge_kiosk.agent.tools import read_execution, service_slots
     from concierge_kiosk.api.shared import workflow_progress
-    from concierge_kiosk.persistence import sqlite_store
+    from concierge_kiosk.persistence import schema as sqlite_schema
 
     profile = get_domain_profile()
     review_kinds = frozenset(
@@ -102,7 +102,7 @@ def test_consumers_derive_domain_allowlists():
     assert read_execution._REVIEWS == action_kinds
     assert task_checkpoint._REVIEWS == action_kinds
     assert workflow_progress._REVIEWS == action_kinds
-    assert set(item.strip("'") for item in sqlite_store._REVIEW_REQUIRED_KINDS_SQL.split(',')) == review_kinds
+    assert set(item.strip("'") for item in sqlite_schema._REVIEW_REQUIRED_KINDS_SQL.split(',')) == review_kinds
 
 
 def test_loader_accepts_new_service_without_python_registry_edits(tmp_path: Path):

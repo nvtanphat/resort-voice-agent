@@ -17,7 +17,7 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 from concierge_kiosk.persistence.sqlite_store import Store
-from concierge_kiosk.rag.common import LocalEmbedder
+from concierge_kiosk.rag.embedding.local import LocalEmbedder
 from concierge_kiosk.rag.ingestion import chunk_policy_hash, ingest_bundle
 
 COMPILED = ROOT / "knowledge/compiled/furama"

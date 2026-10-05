@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from tools.packaging.knowledge import package, read_signed_package
 from tools.prepare_furama_knowledge_release import prepare_release
 from concierge_kiosk.persistence.sqlite_store import Store
-from concierge_kiosk.rag.common import LocalEmbedder
+from concierge_kiosk.rag.embedding.local import LocalEmbedder
 from concierge_kiosk.rag.ingestion import ingest_bundle
 
 ROOT = Path(__file__).resolve().parents[1]

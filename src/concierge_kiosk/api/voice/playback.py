@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from fastapi import Depends, HTTPException, Query, Request, Response
 from concierge_kiosk.api.shared.contracts import SpeechText, SpeechChunkRequest, SpeechProofResponse, SpeechAckResponse
-from concierge_kiosk.rag.common import unsafe_knowledge_text
+from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
 from concierge_kiosk.voice.runtime.tts_cache import load_cached_wav, store_cached_wav
 
 def register_playback_routes(app, *, cfg, store, voice_turns, turn_events, audio_admission,

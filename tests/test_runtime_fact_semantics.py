@@ -5,7 +5,7 @@ import sqlite3
 import unittest
 from pathlib import Path
 
-from concierge_kiosk.rag.relevance import candidate_relevant, evidence_relevant
+from concierge_kiosk.rag.grounding.relevance import candidate_relevant, evidence_relevant
 
 ROOT = Path(__file__).resolve().parents[1]
 
