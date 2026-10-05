@@ -1,0 +1,312 @@
+"""Fail-closed contracts for deterministic concierge tool routing.
+
+The model never receives a database handle. The concierge agent may request a
+policy-authorized low-risk write, but Workflows remains the authenticated and
+idempotent business authority. Consequential actions still require confirmation.
+"""
+from __future__ import annotations
+
+from concierge_kiosk.agent.understanding.routing import RouteDecision, fast_response, is_location_question
+from concierge_kiosk.agent.understanding.intent import Suggestion, suggest_service_request
+from concierge_kiosk.agent.core.capabilities import ProposalKind
+from concierge_kiosk.rag.retrieval import abstention_answer
+from concierge_kiosk.domain.service_registry import (
+    ACTION_REQUEST_KINDS, route_branch_for_request_kind, service_definition,
+)
+from concierge_kiosk.i18n import text as i18n_text
+
+
+def _navigation_suggestion(query: str, language: str) -> dict | None:
+    expected = suggest_service_request(query, language)
+    if expected is not None and route_branch_for_request_kind(expected.kind) == 'navigation':
+        return {'kind': 'directions', 'details': expected.details}
+    if is_location_question(query, language):
+        return {'kind': 'directions', 'details': query.strip()}
+    return None
+
+
+def _service_suggestion(decision: RouteDecision, query: str, language: str):
+    expected = suggest_service_request(query, language)
+    if expected is not None or not decision.semantic_service_code:
+        return expected
+    definition = service_definition(decision.semantic_service_code)
+    if (definition is not None
+            and route_branch_for_request_kind(definition.request_kind) == decision.branch):
+        return Suggestion(definition.request_kind, query[:500])
+    return None
+
+
+def _allowed_no_evidence_answer(result: dict, language: str) -> str | None:
+    """Reconstruct the only guest text allowed for structured no-evidence recovery.
+
+    Related-topic labels and contact extensions are already constrained to
+    manifest-pinned/current data by the recovery layer.  Reconstructing the
+    exact localized sentence here keeps this contract fail-closed: arbitrary
+    model prose or extra hotel facts still fail validation.
+    """
+    answer = result.get('answer')
+    if not isinstance(answer, str):
+        return None
+    bases = (abstention_answer(language), i18n_text('knowledge.revoked', language))
+    topics = result.get('related_topics')
+    contact = result.get('support_contact')
+    map_guidance = result.get('map_guidance')
+    if isinstance(map_guidance, dict) and map_guidance.get('status') == 'verified':
+        destination = map_guidance.get('destination')
+        if isinstance(destination, str) and 1 <= len(destination) <= 120:
+            map_answer = i18n_text('navigation.map_verified', language, destination=destination)
+            if answer == map_answer:
+                return answer
+
+    suffixes: list[str] = []
+    if topics is not None:
+        if not isinstance(topics, list) or len(topics) > 3:
+            return None
+        labels: list[str] = []
+        for item in topics:
+            if not isinstance(item, dict):
+                return None
+            label = item.get('label')
+            if not isinstance(label, str) or not label.strip() or len(label) > 160:
+                return None
+            labels.append(label.strip())
+        if labels:
+            suffixes.append(i18n_text('recovery.related_prompt', language, topics=', '.join(labels)))
+
+    if contact is not None:
+        if not isinstance(contact, dict):
+            return None
+        department = contact.get('department')
+        extensions = contact.get('extensions')
+        if (not isinstance(department, str) or not department.strip() or len(department) > 96
+                or not isinstance(extensions, list) or not extensions):
+            return None
+        extension = extensions[0]
+        if not isinstance(extension, (str, int)):
+            return None
+        extension = str(extension).strip()
+        # Internal extension values are short numeric/PBX identifiers.  Do not
+        # let arbitrary text hitch a ride through structured recovery metadata.
+        if not extension or len(extension) > 16 or not all(ch.isalnum() or ch in '-#*' for ch in extension):
+            return None
+        suffixes.append(i18n_text('recovery.contact_extension', language,
+                                  department=department.strip(), extension=extension))
+
+    candidates = {base + ''.join('\n' + suffix for suffix in suffixes) for base in bases}
+    return answer if answer in candidates else None
+
+def no_evidence_handoff_details(query: str, language: str) -> str:
+    """Return only the current guest utterance, with a safe minimum form length."""
+    text = query.strip()
+    return text if len(text) >= 8 else i18n_text('recovery.guest_question_prefix', language) + text
+
+
+def authorized_tool_result(decision: RouteDecision, query: str, language: str,
+                           result: dict) -> dict:
+    """Keep legacy and LangGraph routes on the same consent-only tool contract."""
+    if decision.fast:
+        return result
+    clean = dict(result)
+    if decision.branch in {'knowledge', 'planning', 'check_schedule'}:
+        action = clean.get('suggested_action')
+        handoff = (clean.get('grounding') == 'no_evidence' and
+                   isinstance(action, dict) and action.get('kind') == 'human')
+        clean['suggested_action'] = action if handoff else None
+        clean['requires_staff_review'] = handoff
+    elif decision.branch == 'request_status':
+        clean['suggested_action'] = None
+        clean['requires_staff_review'] = False
+    elif decision.branch == 'navigation':
+        # An ambiguous map result is a safe read-only clarification.  It has
+        # no business action to authorize yet; the guest must choose a
+        # destination before we can issue directions.
+        if clean.get('grounding') == 'map_ambiguous':
+            clean['suggested_action'] = None
+            clean['requires_staff_review'] = False
+            return clean
+        expected = _navigation_suggestion(query, language)
+        if expected is None:
+            raise RuntimeError('Invalid navigation intent')
+        expected_kind = 'human' if clean.get('grounding') == 'no_evidence' else 'directions'
+        action = clean.get('suggested_action')
+        if not isinstance(action, dict) or action.get('kind') != expected_kind:
+            raise RuntimeError('Navigation result differs from authorized intent')
+        clean['requires_staff_review'] = True
+    return clean
+
+
+def validate_tool_result(decision: RouteDecision, result: dict, query: str, language: str) -> None:
+    """Prevent a route/result mismatch from becoming a guest-facing action."""
+    if not isinstance(result, dict) or not isinstance(result.get('answer'), str):
+        raise RuntimeError('Invalid dialogue result')
+    if result.get('request_completed') is not False:
+        raise RuntimeError('Agent cannot claim a completed business operation')
+    if decision.fast:
+        if result.get('sources') or result.get('citations') or result.get('grounding') not in {
+                'not_required', 'safety_route'}:
+            raise RuntimeError('Fast path cannot fabricate knowledge evidence')
+        if decision.branch in {'service', 'handoff'}:
+            expected = _service_suggestion(decision, query, language)
+            action = result.get('suggested_action')
+            agent_action = result.get('agent_action')
+            status = agent_action.get('status') if isinstance(agent_action, dict) else None
+            if status == 'needs_user_input':
+                if (action is not None or result.get('requires_staff_review') is not False or
+                        agent_action.get('business_writes') != 0 or
+                        not isinstance(agent_action.get('missing_slots'), list) or
+                        not agent_action.get('missing_slots')):
+                    raise RuntimeError('Invalid service clarification state')
+            elif status == 'auto_execute_ready':
+                authority = agent_action.get('authority')
+                pending = result.get('_autonomous_action')
+                if (action is not None or result.get('requires_staff_review') is not False or
+                        agent_action.get('business_writes') != 0 or
+                        not isinstance(authority, dict) or authority.get('outcome') != 'auto_execute' or
+                        authority.get('level') != 'safe_write' or
+                        not isinstance(pending, dict) or not isinstance(pending.get('action_nonce'), str)):
+                    raise RuntimeError('Invalid autonomous safe-write state')
+            elif status == 'denied':
+                authority = agent_action.get('authority')
+                if (action is not None or result.get('requires_staff_review') is not False or
+                        agent_action.get('business_writes') != 0 or
+                        not isinstance(authority, dict) or authority.get('outcome') != 'deny'):
+                    raise RuntimeError('Invalid restricted-action state')
+            elif status == 'confirmation_required':
+                authority = agent_action.get('authority')
+                if (agent_action.get('business_writes') != 0 or not isinstance(action, dict) or
+                        action.get('kind') not in ACTION_REQUEST_KINDS or
+                        not isinstance(action.get('details'), str) or len(action['details']) < 2 or
+                        result.get('requires_staff_review') is not True or
+                        not isinstance(authority, dict) or authority.get('outcome') not in {'confirm', 'auto_execute'}):
+                    raise RuntimeError('Invalid confirmation-required service state')
+            else:
+                # Compatibility: deterministic service response outside the # agent must still preserve the exact original suggestion.
+                if (expected is None or not isinstance(action, dict) or
+                        action != {'kind': expected.kind, 'details': expected.details}):
+                    raise RuntimeError('Invalid suggested business tool')
+                if result.get('requires_staff_review') is not True:
+                    raise RuntimeError('Business suggestion requires staff review')
+        elif decision.branch in {'greeting', 'language', 'confirmation', 'clarification'} and result.get('suggested_action') is not None:
+            raise RuntimeError('Non-business fast route suggested a business operation')
+        elif decision.branch == 'emergency':
+            if (result.get('suggested_action') is not None
+                    or result.get('requires_staff_review') is not False
+                    or result.get('emergency_ui', {}).get('normal_request_disabled') is not True):
+                raise RuntimeError('Emergency route must bypass the normal service-request queue')
+        elif decision.branch == 'clarification':
+            if result.get('model_intent_fallback') is True:
+                options = result.get('action_options')
+                if (not isinstance(options, list) or not 1 <= len(options) <= 3
+                        or any(not isinstance(item, dict)
+                               or not isinstance(item.get('kind'), str)
+                               or not isinstance(item.get('label'), str)
+                               for item in options)
+                        or len({item['kind'] for item in options}) != len(options)
+                        or result.get('suggested_action') is not None
+                        or result.get('requires_staff_review') is not False):
+                    raise RuntimeError('Invalid model-assisted clarification state')
+                return
+            # The graph may add read-only map status, but must not synthesize
+            # extra choices or promote a review form into a submitted action.
+            expected = fast_response(decision, query, language)
+            if result.get('task_graph') != expected['task_graph']:
+                raise RuntimeError('Combined intent dependency graph was modified')
+            if result.get('action_options') != expected['action_options']:
+                raise RuntimeError('Combined intent choices are not authorized')
+            tasks = result.get('task_plan')
+            expected_tasks = expected['task_plan']
+            if not isinstance(tasks, list) or len(tasks) != len(expected_tasks):
+                raise RuntimeError('Invalid combined intent execution plan')
+            for actual, planned in zip(tasks, expected_tasks):
+                if not isinstance(actual, dict) or set(actual) != set(planned):
+                    raise RuntimeError('Invalid combined intent task contract')
+                if any(actual[key] != planned[key] for key in planned if key != 'status'):
+                    raise RuntimeError('Combined intent task was modified')
+                if planned['kind'] != 'directions':
+                    if actual['status'] != 'awaiting_guest_choice':
+                        raise RuntimeError('Service task cannot bypass guest choice')
+                elif actual['status'] not in {'pending_read', 'verified', 'unavailable'}:
+                    raise RuntimeError('Navigation task has invalid status')
+                elif actual['status'] in {'verified', 'unavailable'}:
+                    map_status = result.get('map_guidance', {}).get('status')
+                    if (actual['status'] == 'verified') != (map_status == 'verified'):
+                        raise RuntimeError('Navigation status disagrees with approved map')
+        return
+    if decision.branch == 'request_status':
+        if (result.get('business_state_verified') is not True or
+                result.get('grounding') != 'business_state' or result.get('sources') or
+                result.get('citations') or result.get('suggested_action') is not None or
+                result.get('requires_staff_review') is not False):
+            raise RuntimeError('Invalid authoritative request-status result')
+        statuses = result.get('request_statuses')
+        if not isinstance(statuses, list):
+            raise RuntimeError('Request-status tool must return a scoped list')
+        return
+    if decision.branch not in {'knowledge', 'navigation', 'planning', 'check_schedule', 'find_place'}:
+        raise RuntimeError('Unsupported dialogue route')
+    suggestion = result.get('suggested_action')
+    if suggestion is not None:
+        if not isinstance(suggestion, dict) or not isinstance(suggestion.get('details'), str):
+            raise RuntimeError('Malformed tool suggestion')
+        expected_kind = ('human' if result.get('grounding') == 'no_evidence'
+                         else 'directions' if decision.branch == 'navigation' else None)
+        if suggestion.get('kind') != expected_kind or result.get('requires_staff_review') is not True:
+            raise RuntimeError('Model output cannot authorize a business tool')
+        if expected_kind == 'human':
+            expected_details = no_evidence_handoff_details(query, language)
+        else:
+            expected = _navigation_suggestion(query, language)
+            if expected is None:
+                raise RuntimeError('Navigation intent no longer matches request')
+            expected_details = expected['details']
+        if suggestion != {'kind': expected_kind, 'details': expected_details}:
+            raise RuntimeError('Tool suggestion must preserve the exact guest request')
+    elif decision.branch == 'navigation' and result.get('grounding') != 'map_ambiguous':
+        raise RuntimeError('Navigation needs an explicit consent-only action')
+    if decision.branch in {'knowledge', 'planning'} and suggestion is None and result.get('requires_staff_review') is True:
+        raise RuntimeError('Knowledge route has inconsistent action status')
+    if decision.branch == 'planning' and (result.get('plan_is_draft') is not True or
+                                         result.get('request_completed') is not False):
+        raise RuntimeError('Planning must be advisory and never commit a booking')
+    grounding = result.get('grounding')
+    sources = result.get('sources') or []
+    citations = result.get('citations') or []
+    if grounding in {'extractive', 'model_assisted_semantic'}:
+        if not sources or not citations:
+            raise RuntimeError('Grounded hotel facts require citations')
+        source_keys = {(item.get('chunk_id'), item.get('source_id'), item.get('revision'))
+                       for item in sources if isinstance(item, dict)}
+        citation_keys = {(item.get('chunk_id'), item.get('source_id'), item.get('revision'))
+                         for item in citations if isinstance(item, dict)}
+        if (not source_keys or not citation_keys or not citation_keys.issubset(source_keys)
+                or any(not item.get('quote') for item in citations if isinstance(item, dict))):
+            raise RuntimeError('Sources and citations are inconsistent')
+    elif grounding == 'map_verified':
+        guidance = result.get('map_guidance')
+        if (result.get('sources') or result.get('citations') or
+                not isinstance(guidance, dict) or guidance.get('status') != 'verified' or
+                _allowed_no_evidence_answer(result, language) is None):
+            raise RuntimeError('Verified map answer has invalid evidence contract')
+    elif grounding == 'map_ambiguous':
+        guidance = result.get('map_guidance')
+        options = guidance.get('options') if isinstance(guidance, dict) else None
+        if (sources or citations or not isinstance(guidance, dict) or
+                guidance.get('status') != 'ambiguous' or
+                not isinstance(options, list) or not 1 <= len(options) <= 3 or
+                any(not isinstance(item, dict) or
+                    not isinstance(item.get('id'), str) or
+                    not isinstance(item.get('label'), str) or
+                    not item['label'].strip() for item in options) or
+                result.get('evidence_status') != 'UNSUPPORTED' or
+                result.get('suggested_action') is not None or
+                result.get('requires_staff_review') is not False or
+                not isinstance(result.get('answer'), str) or
+                not result['answer'].strip()):
+            raise RuntimeError('Ambiguous map answer has invalid evidence contract')
+    elif grounding == 'no_evidence':
+        if sources or citations:
+            raise RuntimeError('No-evidence response cannot carry hotel citations')
+        if _allowed_no_evidence_answer(result, language) is None:
+            raise RuntimeError('No-evidence response cannot contain unsupported hotel facts')
+    else:
+        raise RuntimeError('Unsupported knowledge grounding contract')

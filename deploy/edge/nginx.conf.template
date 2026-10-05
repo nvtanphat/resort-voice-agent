@@ -1,0 +1,72 @@
+# Illustrative reverse-proxy virtual hosts. Provision valid TLS certificates and
+# generate __STAFF_GATEWAY_INCLUDE__ from protected secret
+# outside the public document root (NEVER commit or expose it via HTTP).
+# Backend binds ONLY to loopback; deny direct kiosk access to port 8000.
+server {
+    listen 443 ssl;
+    server_name __GUEST_HOST__;
+    ssl_certificate __TLS_CERT__;
+    ssl_certificate_key __TLS_KEY__;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    client_max_body_size 7m;
+    location = /ops { return 404; }
+    location = /static/ops.html { return 404; }
+    location = /static/ops.js { return 404; }
+    location ^~ /staff/ { return 404; }
+    location ^~ /internal/ { return 404; }
+    location = /openapi.json { return 404; }
+    location = /docs { return 404; }
+    location = /redoc { return 404; }
+    # MediaRecorder streams require an explicit HTTP/1.1 WebSocket upgrade.
+    # Keep this route before the generic HTTP proxy location. No buffering of
+    # raw guest audio, no inherited client-provided staff-gateway credentials.
+    location = /api/audio/stream {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Concierge-Staff-Gateway "";
+        proxy_set_header X-Forwarded-For "";
+        proxy_read_timeout 70s;
+        proxy_send_timeout 70s;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Concierge-Staff-Gateway "";
+        proxy_set_header X-Forwarded-For "";
+        proxy_read_timeout 70s;
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+server {
+    listen 443 ssl;
+    server_name __STAFF_HOST__;
+    ssl_certificate __TLS_CERT__;
+    ssl_certificate_key __TLS_KEY__;
+    # Additional staff-only VLAN / VPN ACL required; replace with actual subnet.
+__STAFF_ALLOW_RULES__
+    deny all;
+    client_max_body_size 1m;
+    location = /ops {
+        include __STAFF_GATEWAY_INCLUDE__;
+        proxy_set_header Host $host;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location ^~ /staff/ {
+        include __STAFF_GATEWAY_INCLUDE__;
+        proxy_set_header Host $host;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location = /static/ops.js {
+        include __STAFF_GATEWAY_INCLUDE__;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location = /static/ops.html {
+        include __STAFF_GATEWAY_INCLUDE__;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location = /static/style.css { proxy_pass http://127.0.0.1:8000; }
+    location / { return 404; }
+}

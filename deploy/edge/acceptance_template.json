@@ -1,0 +1,84 @@
+{
+  "product": "Concierge Kiosk",
+  "appliance_id": "REPLACE_DEVICE_ID",
+  "reviewer": "REPLACE_REVIEWER",
+  "reviewed_at_utc": "",
+  "checks": {
+    "approved_hotel_policies_four_languages": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "signed_knowledge_update_and_rollback": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "separate_https_staff_ingress_and_guest_denial": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "staff_rbac_and_independent_verification": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "real_langgraph_restart_and_interrupt_resume": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "real_chromium_guest_and_staff_workflow": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "offline_unplugged_end_to_end": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "audio_vi_recorded_wer_cer_latency": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "audio_en_recorded_wer_cer_latency": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "audio_zh_recorded_wer_cer_latency": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "audio_ko_recorded_wer_cer_latency": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "tts_four_languages_loudspeaker": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "thermal_memory_cpu_sustained_load": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "power_loss_reboot_and_queue_recovery": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "encrypted_off_device_backup_and_restore": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "privacy_retention_and_staff_incident_drill": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "physical_kiosk_tamper_and_network_segmentation": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "secure_clock_and_effective_date_offline": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    },
+    "joint_voice_rag_heldout_on_device": {
+      "status": "NOT_RUN",
+      "evidence": ""
+    }
+  }
+}

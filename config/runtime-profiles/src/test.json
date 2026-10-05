@@ -1,0 +1,7 @@
+{
+  "profile_id": "test",
+  "features": {
+    "intent_parser": false,
+    "agent_planner": false
+  }
+}

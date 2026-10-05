@@ -1,0 +1,10 @@
+# Only Unicode mechanics and security-sensitive recognizers remain here.
+src/concierge_kiosk/agent/memory/conversation.py:208:localized deictic follow-up documentation
+src/concierge_kiosk/agent/memory/heuristics.py:31:Unicode script detection ranges
+src/concierge_kiosk/agent/understanding/model_intent.py:25:localized completion detection
+src/concierge_kiosk/agent/understanding/semantic.py:39:protected numeric literal grammar
+src/concierge_kiosk/domain/service_registry.py:64:Unicode script boundaries
+src/concierge_kiosk/rag/common.py:74:localized documentation
+src/concierge_kiosk/rag/common.py:80:diacritic translation table
+src/concierge_kiosk/rag/common.py:82:Unicode script mechanics
+src/concierge_kiosk/rag/safety_patterns.py:8:centralized prompt-injection pattern

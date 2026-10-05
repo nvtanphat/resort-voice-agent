@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Concierge Kiosk — Staff Queue</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/ops.js" defer></script>
+</head>
+<body>
+<header class="top"><div class="mark">✦</div><div><span class="mini">STAFF WORKSPACE</span><strong>Concierge Kiosk · Operations</strong></div></header>
+<main class="ops">
+  <h1>Service request queue</h1>
+  <p>Actions require separately provisioned staff credentials over HTTPS. Confirm guest identity and availability outside the kiosk before performing real-world actions.</p>
+  <form id="login" class="staff-form"><label for="token">Staff token</label><input id="token" type="password" autocomplete="off" required><button class="send">Load queue</button></form>
+  <div class="staff-form" role="group" aria-label="Queue filters">
+    <label for="filter-status">Status</label>
+    <select id="filter-status"><option value="">All statuses</option><option value="pending_staff">Pending staff</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="completed">Completed</option></select>
+    <label for="filter-kind">Service</label>
+    <select id="filter-kind"><option value="">All services</option><option value="housekeeping">Housekeeping</option><option value="dining">Dining</option><option value="tour">Tour</option><option value="directions">Directions</option><option value="facilities">Facilities</option><option value="human">Human handoff</option></select>
+    <label for="filter-reference">Ticket reference</label>
+    <input id="filter-reference" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="Full 32-character ticket ID" aria-label="Find ticket by full reference">
+  </div>
+  <p id="error" role="alert"></p>
+  <section aria-label="Emergency alerts">
+    <h2>Emergency alerts</h2>
+    <p>Priority 100 alerts created by emergency dialogue or the kiosk SOS button.</p>
+    <div id="emergency-queue" class="queue" aria-live="assertive"></div>
+  </section>
+  <div id="queue-summary" class="queue-summary" role="status" aria-live="polite" hidden></div>
+  <button class="small" id="queue-updates" type="button" hidden>Queue changed — refresh</button>
+  <div id="queue" class="queue" aria-live="polite"></div>
+  <button class="small" id="refresh" type="button">Refresh</button>
+  <button class="small" id="load-more" type="button" hidden>Load more requests</button>
+  <section class="reconcile-panel" aria-label="Workflow checkpoint recovery">
+    <h2>Workflow recovery</h2>
+    <p>Reconcile LangGraph status from committed SQLite tickets. Does not approve, reject, complete or recreate a guest request.</p>
+    <button class="small" id="reconcile-button" type="button" disabled>Reconcile deferred orchestration</button>
+    <output id="reconcile-result" role="status" aria-live="polite"></output>
+  </section>
+  <button class="small" id="metrics-button" type="button">View aggregate metrics</button>
+  <p class="hint">Percentiles are approximate histogram upper bounds. Browser E2E timings are not actual Jetson/model benchmarks; no utterances or session identifiers are stored.</p>
+  <div id="latency-summary" class="latency-summary" aria-live="polite"></div>
+  <details><summary>Raw aggregate counters</summary><pre id="metrics" aria-live="polite"></pre></details>
+</main>
+</body></html>

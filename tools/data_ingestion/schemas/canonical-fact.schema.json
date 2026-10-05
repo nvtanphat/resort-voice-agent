@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Furama Canonical Fact ",
+  "type": "object",
+  "required": [
+    "canonical_fact_id",
+    "property_id",
+    "entity_id",
+    "fact_type",
+    "context",
+    "raw_value",
+    "normalized_value",
+    "confidence",
+    "provenance_sources",
+    "locale_support",
+    "publication_status",
+    "verification_status",
+    "source_tier"
+  ],
+  "properties": {
+    "canonical_fact_id": {
+      "type": "string",
+      "pattern": "^cfact_[0-9a-f]{24}$"
+    },
+    "property_id": {
+      "const": "FURAMA_DANANG"
+    },
+    "entity_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]{3,120}$"
+    },
+    "fact_type": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{2,80}$"
+    },
+    "context": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{2,120}$"
+    },
+    "raw_value": {},
+    "normalized_value": {},
+    "unit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "provenance_sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/provenance"
+      }
+    },
+    "locale_support": {
+      "type": "object",
+      "required": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ],
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vi": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ko": {
+          "type": "string",
+          "minLength": 1
+        },
+        "zh": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "publication_status": {
+      "enum": [
+        "approved",
+        "legacy_unverified",
+        "needs_reclassification",
+        "needs_reverification",
+        "rejected_extraction"
+      ]
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "curation_method": {
+      "type": "string"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "valid_until": {
+      "type": "string",
+      "format": "date"
+    },
+    "effective_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "effective_to": {
+      "type": "string",
+      "format": "date"
+    },
+    "price_basis": {
+      "enum": [
+        "per_guest"
+      ]
+    },
+    "tax_basis": {
+      "enum": [
+        "++",
+        "net",
+        "inclusive"
+      ]
+    },
+    "price_temporality": {
+      "type": "string"
+    },
+    "conflict_status": {
+      "type": "string"
+    },
+    "conservative_guidance": {
+      "type": "string"
+    },
+    "curation_reason": {
+      "type": "string"
+    },
+    "curated_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "archived_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "verification_status": {
+      "enum": [
+        "official_verified"
+      ]
+    },
+    "source_tier": {
+      "enum": [
+        "official_primary"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "fact_type": {
+            "const": "price_vnd"
+          }
+        },
+        "required": [
+          "fact_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "price_basis",
+          "tax_basis"
+        ]
+      }
+    }
+  ],
+  "additionalProperties": true,
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "required": [
+        "document_id",
+        "source_url",
+        "evidence",
+        "evidence_sha256"
+      ],
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 4
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "is_dedicated_page": {
+          "type": "boolean"
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

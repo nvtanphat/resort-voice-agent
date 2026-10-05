@@ -1,0 +1,20 @@
+{
+  "features": {
+    "voice_transport": "pipecat",
+    "understanding_mode": "command"
+  },
+  "models": {
+    "embedding": {
+      "candidates": [
+        {
+          "model_path": "ollama://bge-m3",
+          "manifest_path": "./models/embeddings/bge-m3.ollama.manifest.json"
+        },
+        {
+          "model_path": "./models/embeddings/hash-multilingual",
+          "manifest_path": "./models/embeddings/hash-multilingual.manifest.json"
+        }
+      ]
+    }
+  }
+}

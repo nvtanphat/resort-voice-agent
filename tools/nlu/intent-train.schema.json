@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["example_id", "language", "text", "intent", "split", "source", "source_record_id"],
+  "properties": {
+    "example_id": {"type": "string", "minLength": 1},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "intent": {"type": "string", "pattern": "^(?:service:[^:]+|info:[^:]+|request_update|request_cancel|request_status|navigation|planning|preference|smalltalk|out_of_scope|emergency)$"},
+    "split": {"enum": ["train", "validation"]},
+    "source": {"enum": ["reviewed_gold", "catalog_knowledge", "catalog_template", "profile_template", "intent_template", "perturbation"]},
+    "source_record_id": {"type": "string", "minLength": 1},
+    "source_family": {"type": ["string", "null"]},
+    "source_id": {"type": ["string", "null"]},
+    "concept_key": {"type": ["string", "null"]},
+    "transform": {"type": "string", "minLength": 1, "maxLength": 64}
+  }
+}

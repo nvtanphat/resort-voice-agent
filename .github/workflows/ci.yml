@@ -1,0 +1,68 @@
+name: Concierge Kiosk CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install project test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[test,ops]'
+      - name: Compile Python source
+        run: python -m compileall -q src tools
+      - name: Verify pinned configuration hashes
+        run: python tools/repin_configs.py --check
+      - name: Validate Furama canonical data
+        run: python tools/audit_furama_data.py
+      - name: Verify required LangGraph dependencies
+        run: |
+          python -c "import langgraph; import langgraph.checkpoint.sqlite"
+      - name: Run backend regression tests
+        run: python -m pytest -q -W error::ResourceWarning
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Check generated JavaScript syntax
+        run: |
+          node --check web/guest.js
+          node --check web/ops.js
+          node --check web/pcm-worklet.js
+          node --check web/sos.js
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install project and scanners
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[ops]'
+          python -m pip install pip-audit bandit
+      - name: Dependency audit
+        run: python -m pip_audit --strict
+      - name: Source scan
+        run: bandit -q -r src/concierge_kiosk tools -ll

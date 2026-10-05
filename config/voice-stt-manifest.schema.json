@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concierge-kiosk.local/schemas/voice-stt-manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "format", "model", "revision", "decode", "acceptance", "calibration"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "format": {"const": "concierge-whisper"},
+    "model": {"type": "string", "minLength": 1, "maxLength": 256},
+    "revision": {"type": "string", "minLength": 1, "maxLength": 256},
+    "decode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["beam_size", "vad_filter", "condition_on_previous_text", "no_speech_threshold", "log_prob_threshold", "compression_ratio_threshold", "temperature"],
+      "properties": {
+        "beam_size": {"type": "integer", "minimum": 1, "maximum": 5},
+        "vad_filter": {"type": "boolean"},
+        "condition_on_previous_text": {"type": "boolean"},
+        "no_speech_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "log_prob_threshold": {"type": "number", "minimum": -10, "maximum": 0},
+        "compression_ratio_threshold": {"type": "number", "minimum": 1, "maximum": 10},
+        "temperature": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "number", "minimum": 0, "maximum": 1}}
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["no_speech_threshold", "log_prob_threshold", "compression_ratio_threshold", "min_confidence"],
+      "properties": {
+        "no_speech_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "log_prob_threshold": {"type": "number", "minimum": -10, "maximum": 0},
+        "compression_ratio_threshold": {"type": "number", "minimum": 1, "maximum": 10},
+        "min_confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "dataset"],
+      "properties": {
+        "status": {"type": "string", "enum": ["uncalibrated", "calibrated"]},
+        "dataset": {"type": "string", "maxLength": 512},
+        "metrics": {"type": "object", "additionalProperties": true}
+      }
+    }
+  }
+}

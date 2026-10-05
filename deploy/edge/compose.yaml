@@ -1,0 +1,104 @@
+name: concierge-kiosk
+services:
+  # The Ollama process and the Kiosk share ONE private network namespace.
+  # Ollama binds to namespace loopback; only the kiosk HTTP port is published
+  # on host loopback for the separately provisioned HTTPS reverse proxy.
+  ollama:
+    image: ${CONCIERGE_OLLAMA_IMAGE:?pin a locally available Ollama image by sha256 digest}
+    restart: unless-stopped
+    init: true
+    pids_limit: 128
+    mem_limit: ${CONCIERGE_OLLAMA_MEMORY_LIMIT:?set a measured separate Ollama RAM budget}
+    cpus: ${CONCIERGE_OLLAMA_CPU_LIMIT:?set a measured separate Ollama CPU budget}
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_MAX_QUEUE: "2"
+      OLLAMA_HOST: 127.0.0.1:11434
+      OLLAMA_MODELS: /models/ollama
+      OLLAMA_NO_CLOUD: "true"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ${CONCIERGE_MODEL_ROOT:?provision a private licensed model tree}:/models:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=512m
+      - /root/.ollama:rw,nosuid,size=16m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 8s
+      retries: 10
+      start_period: 30s
+
+  kiosk:
+    build:
+      context: ../..
+      additional_contexts:
+        python_deps: ${CONCIERGE_PYTHON_DEPS_CONTEXT:?supply a reviewed real wheelhouse with requirements.lock}
+      args:
+        PYTHON_BASE_IMAGE: ${CONCIERGE_PYTHON_BASE_IMAGE:?pin a reviewed Python image by sha256 digest}
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    pids_limit: 192
+    mem_limit: ${CONCIERGE_MEMORY_LIMIT:?supply the measured device memory budget}
+    cpus: ${CONCIERGE_CPU_LIMIT:?supply the measured CPU budget}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    network_mode: service:ollama
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    env_file: ../../.env
+    environment:
+      CONCIERGE_ENV: production
+      CONCIERGE_RUNTIME_PROFILE_PATH: /app/config/runtime-profiles/production.json
+      CONCIERGE_RUNTIME_PROFILE_SHA256: 8ce1a7629b33a07cf2b50027944f894408937edecbe90c888e9981fa425406fb
+      CONCIERGE_ORCHESTRATOR: langgraph
+      LANGGRAPH_STRICT_MSGPACK: "true"
+      CONCIERGE_LLM_BASE_URL: http://127.0.0.1:11434
+      CONCIERGE_DB_PATH: /data/concierge.sqlite3
+      CONCIERGE_PROPERTY_PROFILE_PATH: /releases/property-profile.json
+      CONCIERGE_PROPERTY_PROFILE_SHA256: ${CONCIERGE_PROPERTY_PROFILE_SHA256:?pin signed property profile SHA-256}
+      CONCIERGE_PROPERTY_PROFILE_SIGNATURE_PATH: /releases/property-profile.sig
+      CONCIERGE_PROPERTY_PROFILE_PUBLIC_KEY_PATH: /releases/property-profile-public.pem
+      CONCIERGE_PUBLIC_ORIGIN: ${CONCIERGE_PUBLIC_ORIGIN:?set the actual HTTPS guest origin}
+      CONCIERGE_STAFF_ORIGIN: ${CONCIERGE_STAFF_ORIGIN:?set the actual separate staff HTTPS origin}
+      CONCIERGE_ALLOWED_CLIENT_CIDRS: ${CONCIERGE_ALLOWED_CLIENT_CIDRS:?set actual reverse-proxy peer CIDRs}
+      CONCIERGE_AGENT_TOKEN_FILE: /run/secrets/agent_token
+      CONCIERGE_STAFF_GATEWAY_TOKEN_FILE: /run/secrets/staff_gateway_token
+      CONCIERGE_STAFF_CREDENTIALS_JSON_FILE: /run/secrets/staff_credentials
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      DO_NOT_TRACK: "1"
+    volumes:
+      - concierge-data:/data
+      - ${CONCIERGE_MODEL_ROOT:?provision real licensed local models}:/models:ro
+      - ${CONCIERGE_RELEASE_ROOT:?provision approved signed operational releases}:/releases:ro
+    secrets: [agent_token, staff_gateway_token, staff_credentials]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=128m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/readyz',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+secrets:
+  agent_token: {file: ../../secrets/agent_token}
+  staff_gateway_token: {file: ../../secrets/staff_gateway_token}
+  staff_credentials: {file: ../../secrets/staff_credentials.json}
+volumes:
+  concierge-data:

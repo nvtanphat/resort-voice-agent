@@ -1,0 +1,6 @@
+{"input":"room three oh five","language":"en","expected":"room 305","span":"three oh five"}
+{"input":"phòng ba không năm","language":"vi","expected":"phòng 305","span":"ba không năm"}
+{"input":"phòng ba trăm lẻ năm","language":"vi","expected":"phòng 305","span":"ba trăm lẻ năm"}
+{"input":"14 giờ 30 phút","language":"vi","expected_time":"14:30"}
+{"input":"14시 30분","language":"ko","expected_time":"14:30"}
+{"input":"14点30分","language":"zh","expected_time":"14:30"}

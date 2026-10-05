@@ -1,0 +1,48 @@
+name: concierge-kiosk-local
+services:
+  kiosk:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      CONCIERGE_ENV: development
+      CONCIERGE_RUNTIME_PROFILE: ${CONCIERGE_RUNTIME_PROFILE:-development}
+      CONCIERGE_DB_PATH: /data/concierge.sqlite3
+      CONCIERGE_PROPERTY_ID: ${CONCIERGE_PROPERTY_ID:-FURAMA_DANANG}
+      CONCIERGE_PROPERTY_NAME: ${CONCIERGE_PROPERTY_NAME:-Furama Resort Danang}
+      CONCIERGE_PROPERTY_TIMEZONE: ${CONCIERGE_PROPERTY_TIMEZONE:-Asia/Ho_Chi_Minh}
+      CONCIERGE_PUBLIC_ORIGIN: http://localhost:8000
+      CONCIERGE_ORCHESTRATOR: langgraph
+      LANGGRAPH_STRICT_MSGPACK: "true"
+      CONCIERGE_PROPERTY_PROFILE_PATH: ${CONCIERGE_PROPERTY_PROFILE_PATH:-}
+      CONCIERGE_PROPERTY_PROFILE_SHA256: ${CONCIERGE_PROPERTY_PROFILE_SHA256:-}
+      CONCIERGE_STAFF_TOKEN: ${CONCIERGE_STAFF_TOKEN:-}
+      CONCIERGE_AGENT_TOKEN: ${CONCIERGE_AGENT_TOKEN:-}
+      CONCIERGE_EMBEDDING_MODEL_PATH: ${CONCIERGE_EMBEDDING_MODEL_PATH:-}
+      CONCIERGE_EMBEDDING_MANIFEST_PATH: ${CONCIERGE_EMBEDDING_MANIFEST_PATH:-}
+      CONCIERGE_RERANK_MODEL_PATH: ${CONCIERGE_RERANK_MODEL_PATH:-}
+      CONCIERGE_RERANK_MANIFEST_PATH: ${CONCIERGE_RERANK_MANIFEST_PATH:-}
+      CONCIERGE_MAP_RELEASE_PATH: ${CONCIERGE_MAP_RELEASE_PATH:-}
+      CONCIERGE_MAP_RELEASE_SHA256: ${CONCIERGE_MAP_RELEASE_SHA256:-}
+      CONCIERGE_PLANNING_RELEASE_PATH: ${CONCIERGE_PLANNING_RELEASE_PATH:-}
+      CONCIERGE_PLANNING_RELEASE_SHA256: ${CONCIERGE_PLANNING_RELEASE_SHA256:-}
+    volumes:
+      - ./data:/data
+      - ./config:/app/config:ro
+      - ./knowledge:/app/knowledge:ro
+      - ./releases:/app/releases:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

@@ -1,0 +1,100 @@
+"""Optional Pipecat pipeline assembly for the kiosk websocket transport."""
+from __future__ import annotations
+
+from .agent_processor import ConciergeAgentProcessor
+from .speech_gate import SpeechGate
+from .stt import ConciergeSTT
+from .tts import ConciergeTTS
+
+
+def pipecat_available() -> bool:
+    try:
+        import pipecat  # noqa: F401
+    except ModuleNotFoundError:
+        return False
+    return True
+
+
+def build_pipeline(*, websocket, cfg, session: str, language: str,
+                   voice_turns, turn_events, store, answer, finalize_answer,
+                   commit_autonomous_action, transcribe_fn, synthesize_fn):
+    """Build a fully local Pipecat pipeline without an LLM-generated prose path."""
+    if not pipecat_available():
+        raise RuntimeError("Pipecat voice extra is not installed")
+    from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+    from pipecat.audio.vad.silero import SileroVADAnalyzer
+    from pipecat.audio.vad.vad_analyzer import VADParams
+    from pipecat.pipeline.pipeline import Pipeline
+    from pipecat.transports.base_transport import TransportParams
+    from pipecat.transports.websocket.fastapi import (
+        FastAPIWebsocketParams, FastAPIWebsocketTransport,
+    )
+
+    from .transport import RawPcmSerializer
+
+    gate = SpeechGate(
+        voice_turns=voice_turns,
+        current_evidence=lambda current_session, turn_id: __import__(
+            "concierge_kiosk.voice.agent.speech_gate",
+            fromlist=["evidence_is_current"],
+        ).evidence_is_current(
+            store=store, cfg=cfg, voice_turns=voice_turns,
+            session=current_session, turn_id=turn_id,
+        ),
+        emit=lambda current_session, turn_id, event: turn_events.emit_diagnostic(
+            current_session, turn_id, event),
+    )
+    vad = SileroVADAnalyzer(params=VADParams(
+        stop_secs=min(1.2, max(0.2, float(getattr(cfg, "voice_ws_idle_timeout_seconds", 5.0)) / 5)),
+    ))
+    transport = FastAPIWebsocketTransport(
+        websocket=websocket,
+        params=FastAPIWebsocketParams(
+            audio_in_enabled=True,
+            audio_out_enabled=True,
+            add_wav_header=False,
+            serializer=RawPcmSerializer(sample_rate=16000),
+            vad_analyzer=vad,
+            turn_analyzer=LocalSmartTurnAnalyzerV3(),
+        ),
+    )
+    stt = ConciergeSTT(cfg=cfg, language=language, transcribe_fn=transcribe_fn)
+    agent = ConciergeAgentProcessor(
+        cfg=cfg, session=session, language=language, voice_turns=voice_turns,
+        turn_events=turn_events, answer=answer, finalize_answer=finalize_answer,
+        commit_autonomous_action=commit_autonomous_action, gate=gate,
+    )
+    tts = ConciergeTTS(cfg=cfg, gate=gate, synthesize_fn=synthesize_fn)
+    return Pipeline([transport.input(), stt, agent, tts, transport.output()]), transport
+
+
+async def run_pipeline(pipeline, *, transport, idle_timeout: float):
+    """Run on Pipecat 1.x worker API, with a compatibility fallback for 0.x."""
+    try:
+        from pipecat.pipeline.task import PipelineParams, PipelineTask
+        from pipecat.pipeline.runner import PipelineRunner
+    except ImportError:  # Pipecat 1.3+ worker API
+        from pipecat.pipeline.worker import PipelineParams, PipelineWorker
+        from pipecat.workers.runner import WorkerRunner
+
+        worker = PipelineWorker(
+            pipeline,
+            params=PipelineParams(enable_metrics=True, enable_usage_metrics=False),
+            idle_timeout_secs=idle_timeout,
+        )
+        runner = WorkerRunner(handle_sigint=False)
+        await runner.add_workers(worker)
+        await runner.run()
+        return
+    task = PipelineTask(
+        pipeline,
+        params=PipelineParams(
+            allow_interruptions=True,
+            enable_metrics=True,
+            enable_usage_metrics=False,
+        ),
+    )
+    await PipelineRunner().run(task)
+
+
+__all__ = ["build_pipeline", "pipecat_available", "run_pipeline"]

@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+html, body, #root { min-height:100%; height:100%; margin:0; padding:0; }
+body { background:#F3EFE6; color:#1A202C; font-family:Arial, sans-serif; -webkit-font-smoothing:antialiased; }
+button, select, a, summary {cursor:pointer;}
+button:disabled{cursor:not-allowed;}
+input, textarea{user-select:text;}
+.palm-watermark{background-image:radial-gradient(circle at 100% 0%,rgba(180,160,130,.15),transparent 60%);}
+.custom-scrollbar::-webkit-scrollbar{width:4px;}
+.custom-scrollbar::-webkit-scrollbar-thumb{background:#D8D0C2;border-radius:4px;}
+.custom-scrollbar::-webkit-scrollbar-track{background:transparent;}
+/* Material-symbol names remain readable offline, without loading third-party fonts. */
+.material-symbols-outlined{font-family:Arial,sans-serif;font-size:0!important;display:inline-flex;align-items:center;}
+.material-symbols-outlined::before{content:'◆';font-size:15px;}
+@media(max-width:1023px){main[data-purpose="concierge-dashboard-grid"]{display:flex;flex-direction:column;overflow:auto;}main[data-purpose="concierge-dashboard-grid"]>aside{overflow:visible;}main[data-purpose="concierge-dashboard-grid"]>section{min-height:520px;}}

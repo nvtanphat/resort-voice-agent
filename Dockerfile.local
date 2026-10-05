@@ -1,0 +1,20 @@
+# Local integration-only image: source-backed frontend and API; no bundled property data,
+# AI model weights or production credentials. Production uses Dockerfile + edge Compose.
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 CONCIERGE_WEB_DIR=/app/web \
+    CONCIERGE_ENV=development CONCIERGE_DB_PATH=/data/concierge.sqlite3
+WORKDIR /app
+RUN useradd -u 10001 --create-home concierge
+COPY pyproject.toml ./
+COPY src ./src
+COPY tools ./tools
+COPY config ./config
+COPY web ./web
+COPY frontend ./frontend
+COPY datasets/map ./datasets/map
+COPY datasets/planning ./datasets/planning
+RUN python -m pip install --no-cache-dir '.[ops]' && \
+    python -m pip check && mkdir -p /data && chown concierge:concierge /data
+USER concierge
+EXPOSE 8000
+CMD ["uvicorn", "concierge_kiosk.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-proxy-headers"]

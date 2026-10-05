@@ -1,0 +1,622 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concierge.local/schemas/runtime-profile.json",
+  "title": "Concierge Runtime Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "models",
+    "features",
+    "budgets",
+    "timeouts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "profile_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slm",
+        "embedding",
+        "reranker",
+        "nli",
+        "voice"
+      ],
+      "properties": {
+        "slm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base_url",
+            "primary_model",
+            "fallback_model",
+            "digest",
+            "strict_mode"
+          ],
+          "properties": {
+            "base_url": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "primary_model": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "fallback_model": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "digest": {
+              "type": "string",
+              "maxLength": 71
+            },
+            "strict_mode": {
+              "type": "boolean"
+            }
+          }
+        },
+        "embedding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "selection",
+            "candidates"
+          ],
+          "properties": {
+            "selection": {
+              "enum": [
+                "first_available",
+                "disabled"
+              ]
+            },
+            "candidates": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "model_path",
+                  "manifest_path"
+                ],
+                "properties": {
+                  "model_path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  },
+                  "manifest_path": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 512
+                  }
+                }
+              }
+            }
+          }
+        },
+        "reranker": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model_path",
+            "manifest_path"
+          ],
+          "properties": {
+            "model_path": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "manifest_path": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        },
+        "nli": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model_path",
+            "manifest_path",
+            "require_manifest",
+            "min_confidence",
+            "semantic_verifier_model"
+          ],
+          "properties": {
+            "model_path": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "manifest_path": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "require_manifest": {
+              "type": "boolean"
+            },
+            "min_confidence": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 1.0
+            },
+            "semantic_verifier_model": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "voice": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "whisper_model_path",
+            "stt_models",
+            "stt_hallucination_phrases",
+            "piper_models_dir",
+            "piper_executable",
+            "tts",
+            "incremental_model_path",
+            "incremental_language",
+            "incremental_manifest_path",
+            "incremental_require_manifest",
+            "final_manifest_path",
+            "final_require_manifest"
+          ],
+          "properties": {
+            "whisper_model_path": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "stt_models": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["model_path", "manifest_path"],
+                "properties": {
+                  "model_path": {"type": "string", "maxLength": 512},
+                  "manifest_path": {"type": "string", "maxLength": 512}
+                }
+              }
+            },
+            "stt_hallucination_phrases": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              }
+            },
+            "piper_models_dir": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "piper_executable": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "tts": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["engine", "model", "manifest_path"],
+                "properties": {
+                  "engine": {"type": "string", "minLength": 1, "maxLength": 64},
+                  "model": {"type": "string", "maxLength": 512},
+                  "manifest_path": {"type": "string", "maxLength": 512}
+                }
+              }
+            },
+            "incremental_model_path": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "incremental_language": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 16
+            },
+            "incremental_manifest_path": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "incremental_require_manifest": {
+              "type": "boolean"
+            },
+            "final_manifest_path": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "final_require_manifest": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic_generation",
+        "semantic_require_independent_nli",
+        "intent_parser",
+        "agent_planner",
+        "voice_windowed_preview",
+        "voice_preview_stability",
+        "voice_incremental"
+        ,"voice_transport"
+        ,"understanding_mode"
+      ],
+      "properties": {
+        "semantic_generation": {
+          "type": "boolean"
+        },
+        "semantic_require_independent_nli": {
+          "type": "boolean"
+        },
+        "intent_parser": {
+          "type": "boolean"
+        },
+        "agent_planner": {
+          "type": "boolean"
+        },
+        "voice_windowed_preview": {
+          "type": "boolean"
+        },
+        "voice_preview_stability": {
+          "type": "boolean"
+        },
+        "voice_incremental": {
+          "type": "boolean"
+        },
+        "voice_transport": {
+          "enum": ["legacy", "pipecat"]
+        },
+        "understanding_mode": {
+          "enum": ["legacy", "shadow", "command"]
+        }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent",
+        "rag",
+        "voice",
+        "slm"
+      ],
+      "properties": {
+        "agent": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_steps",
+            "max_wall_time_ms",
+            "max_planner_calls",
+            "max_read_calls"
+          ],
+          "properties": {
+            "max_steps": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 12
+            },
+            "max_wall_time_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 60000
+            },
+            "max_planner_calls": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 12
+            },
+            "max_read_calls": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        },
+        "rag": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min_dense_similarity",
+            "lexical_coverage",
+            "rrf_k",
+            "dense_max_rows",
+            "dense_budget_ms",
+            "rerank_budget_ms",
+            "rerank_top_k",
+            "rerank_max_length",
+            "rerank_input",
+            "rerank_fusion_alpha",
+            "rerank_metadata_bonus",
+            "rerank_on_failure"
+          ],
+          "properties": {
+            "min_dense_similarity": {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            "lexical_coverage": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "rrf_k": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "dense_max_rows": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 100000
+            },
+            "dense_budget_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30000
+            },
+            "rerank_budget_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30000
+            },
+            "rerank_top_k": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 10
+            },
+            "rerank_max_length": {
+              "type": "integer",
+              "minimum": 32,
+              "maximum": 512
+            },
+            "rerank_input": {
+              "enum": ["context_text", "body"]
+            },
+            "rerank_fusion_alpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "rerank_metadata_bonus": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "rerank_on_failure": {
+              "enum": ["keep_rrf", "abstain"]
+            }
+          }
+        },
+        "voice": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_previews",
+            "max_audio_seconds",
+            "max_audio_bytes",
+            "tts_first_audio_ms",
+            "speech_plan",
+            "language_switch_min_probability",
+            "slm_caps",
+            "stt_threads_max",
+            "stt_prompt_labels",
+            "stt_prompt_languages",
+            "stt_short_audio_seconds",
+            "stt_short_audio_temperature",
+            "ws_idle_timeout_seconds"
+          ],
+          "properties": {
+            "max_previews": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "max_audio_seconds": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 60
+            },
+            "max_audio_bytes": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 20000000
+            },
+            "tts_first_audio_ms": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 30000
+            },
+            "speech_plan": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["max_chars", "first_chunk_max_chars", "clause_split_min_chars"],
+              "properties": {
+                "max_chars": {"type": "integer", "minimum": 1, "maximum": 2000},
+                "first_chunk_max_chars": {"type": "integer", "minimum": 1, "maximum": 500},
+                "clause_split_min_chars": {"type": "integer", "minimum": 1, "maximum": 1000}
+              }
+            },
+            "language_switch_min_probability": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "slm_caps": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reference",
+                "planner",
+                "goal",
+                "intent",
+                "generation"
+              ],
+              "properties": {
+                "reference": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 10
+                },
+                "planner": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 10
+                },
+                "goal": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 10
+                },
+                "intent": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 10
+                },
+                "generation": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 10
+                }
+              }
+            },
+            "stt_threads_max": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "stt_prompt_labels": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 32
+            },
+            "stt_prompt_languages": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 16
+              }
+            },
+            "stt_short_audio_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 10
+            },
+            "stt_short_audio_temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "ws_idle_timeout_seconds": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 120
+            }
+          }
+        },
+        "slm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "circuit_cooldown_seconds"
+          ],
+          "properties": {
+            "circuit_cooldown_seconds": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            }
+          }
+        }
+      }
+    },
+    "timeouts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent_planner_seconds",
+        "goal_interpreter_seconds",
+        "reference_resolver_seconds",
+        "intent_parser_seconds",
+        "text_generation_seconds",
+        "slm_generation_seconds",
+        "slm_probe_seconds",
+        "stt_seconds",
+        "tts_seconds"
+      ],
+      "properties": {
+        "agent_planner_seconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10
+        },
+        "stt_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "tts_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "goal_interpreter_seconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10
+        },
+        "reference_resolver_seconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10
+        },
+        "intent_parser_seconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 30
+        },
+        "text_generation_seconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 30
+        },
+        "slm_generation_seconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 30
+        },
+        "slm_probe_seconds": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+[project]
+name = "concierge-kiosk"
+version = "6.6.0"
+description = "Governed multilingual AI concierge agent with LangGraph orchestration, grounded retrieval and service workflows"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.30,<1",
+  "pydantic>=2.8,<3",
+  "pydantic-settings>=2.8,<3",
+  "python-multipart>=0.0.9",
+  "PyYAML>=6,<7",
+  "packaging>=24,<27",
+  "langgraph>=1,<2",
+  "langgraph-checkpoint-sqlite>=3,<4",
+  "jsonschema>=4.23,<5",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<9"]
+voice = ["faster-whisper>=1.1", "piper-tts>=1.2,<2"]
+voice-agent = ["pipecat-ai[runner,silero,websocket]>=1.3,<2"]
+embeddings = ["sentence-transformers>=3.0,<4"]
+reranker = ["openvino>=2024.0,<2027", "transformers>=4.44,<5"]
+embeddings-onnx = ["onnxruntime>=1.20,<2", "tokenizers>=0.20,<1", "numpy>=1.26,<3"]
+nli = ["transformers>=4.44,<5", "torch>=2.3"]
+incremental-stt = ["vosk>=0.3.45,<1"]
+ops = ["cryptography>=42,<47"]
+crawler = [
+  "httpx>=0.27,<1",
+  "beautifulsoup4>=4.12,<5",
+  "lxml>=5,<7",
+  "trafilatura>=2,<3",
+  "playwright>=1.55,<2",
+  "pypdf>=6,<7",
+]
+
+[project.scripts]
+concierge-ingest = "concierge_kiosk.cli.ingest:main"
+
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src", "tools" = "tools"}
+
+[tool.setuptools.packages.find]
+where = ["src", "."]
+include = ["concierge_kiosk*", "tools*"]
+
+[tool.setuptools.data-files]
+"share/concierge-kiosk/config" = ["config/agent-domain.json", "config/agent-domain.schema.json", "config/agent-domain.sha256", "config/property-profile.schema.json", "config/runtime-profile.schema.json", "config/voice-stt-manifest.schema.json", "config/voice-tts-manifest.schema.json", "config/local-runtime.env.example"]
+"share/concierge-kiosk/config/runtime-profiles" = ["config/runtime-profiles/*.json", "config/runtime-profiles/*.sha256"]
+"share/concierge-kiosk/web" = ["web/index.html", "web/guest.js", "web/guest.css", "web/favicon.ico", "web/header-bg.webp", "web/header-bg-original.jpg", "web/voice-crop.png", "web/pcm-worklet.js", "web/sos.js", "web/ops.html", "web/ops.js", "web/style.css"]
+"share/concierge-kiosk/web/media" = ["web/media/*.svg"]
+"share/concierge-kiosk/datasets/map" = ["datasets/schemas/knowledge/map.schema.json"]
+"share/concierge-kiosk/datasets/planning" = ["datasets/schemas/knowledge/planning.schema.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+

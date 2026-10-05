@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concierge-kiosk.local/schemas/voice-tts-manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "format", "engine", "revision", "synthesis"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "format": {"const": "concierge-piper"},
+    "engine": {"const": "piper"},
+    "revision": {"type": "string", "minLength": 1, "maxLength": 256},
+    "synthesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "speaker_id": {"type": ["integer", "null"], "minimum": 0},
+        "length_scale": {"type": "number", "exclusiveMinimum": 0, "maximum": 4},
+        "noise_scale": {"type": "number", "minimum": 0, "maximum": 2},
+        "noise_w_scale": {"type": "number", "minimum": 0, "maximum": 2},
+        "normalize_audio": {"type": "boolean"},
+        "volume": {"type": "number", "exclusiveMinimum": 0, "maximum": 4}
+      }
+    }
+  }
+}
