@@ -46,14 +46,19 @@ else:
             self._active: tuple[str, str, str] | None = None
 
         async def process_frame(self, frame: Frame, direction: FrameDirection):
-            await super().process_frame(frame, direction)
             if isinstance(frame, InterruptionFrame):
+                # Pipecat's base interruption handler cancels the current
+                # non-system processing task. NACK the owned chunk first so
+                # cancellation cannot clear the playback capability before
+                # the governed state records the failed delivery.
                 if self._active is not None:
                     session, turn_id, chunk_id = self._active
                     self.gate.interrupt(session, turn_id, chunk_id)
                     self._active = None
+                await super().process_frame(frame, direction)
                 await self.push_frame(frame, direction)
                 return
+            await super().process_frame(frame, direction)
             if not isinstance(frame, TextFrame) or getattr(frame, "skip_tts", False):
                 await self.push_frame(frame, direction)
                 return
