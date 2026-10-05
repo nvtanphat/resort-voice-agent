@@ -223,7 +223,10 @@ class ServiceActionService:
 
     def handoff_staff_tool(self, request: AgentToolRequest) -> dict:
         """Prepare a consent-only handoff projection; never queue it."""
-        if request.decision is None or request.decision.branch not in {'service', 'handoff', 'multi_task'}:
+        context = request.task_context if isinstance(request.task_context, dict) else None
+        if (request.decision is None
+                or (request.decision.branch not in {'service', 'handoff', 'multi_task'}
+                    and not (context and context.get('runtime_handoff') is True))):
             raise RuntimeError('Staff handoff requires an authorized request route')
         details = ' '.join(str(request.query).split())[:500]
         return {
@@ -438,9 +441,11 @@ class ServiceActionService:
         return base
 
     def action_tool(self, request: AgentToolRequest) -> dict:
-        if request.decision is None or request.decision.branch not in {'service', 'handoff', 'multi_task'}:
-            raise RuntimeError('Service action requires an authorized service route')
         context = request.task_context if isinstance(request.task_context, dict) else None
+        if (request.decision is None
+                or (request.decision.branch not in {'service', 'handoff', 'multi_task'}
+                    and not (context and context.get('runtime_candidate') is True))):
+            raise RuntimeError('Service action requires an authorized service route')
         if context is not None:
             kind = context.get('kind')
             details = context.get('details')

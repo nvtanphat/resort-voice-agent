@@ -98,9 +98,7 @@ class AutonomousConciergeRuntime:
     def _execute(self, request: AgentToolRequest, state: AgentState,
                  action: NextAction, step_id: str) -> tuple[dict, dict]:
         capability = action.capability
-        if capability in {MANAGE_REQUEST_TOOL, HANDOFF_TOOL}:
-            capability = ACTION_TOOL
-        if capability not in READ_TOOLS | {'service_action'}:
+        if capability not in READ_TOOLS | {ACTION_TOOL, MANAGE_REQUEST_TOOL, HANDOFF_TOOL}:
             raise RuntimeError('Planner selected a capability outside the sandbox')
         child = request
         tool = capability
@@ -125,7 +123,10 @@ class AutonomousConciergeRuntime:
             for target, aliases in slot_aliases.items():
                 value = next((slots.get(name) for name in aliases if slots.get(name) is not None), None)
                 if value is not None:
-                    typed_payload[target] = str(value) if target != 'quantity' else value
+                    if target == 'quantity' and isinstance(value, str) and value.isdecimal():
+                        typed_payload[target] = int(value)
+                    else:
+                        typed_payload[target] = str(value) if target != 'quantity' else value
             typed_params = self._tool_contracts.validate_params(
                 'service_request_create', typed_payload).model_dump(exclude_none=True)
             policy_state = request.task_context.get('policy_state') if isinstance(request.task_context, Mapping) else None
@@ -149,8 +150,20 @@ class AutonomousConciergeRuntime:
                     'persist_pending': state.route_hint != 'multi_task',
                     'task_id': step_id,
                     'slot_source_query': slot_source,
+                    # This marker is server-created after candidate and policy
+                    # validation; it is not model input or a RouteDecision.
+                    'runtime_candidate': True,
                 })
             tool = ACTION_TOOL
+        elif capability == MANAGE_REQUEST_TOOL:
+            typed_params = self._tool_contracts.validate_params(
+                'service_request_cancel', {'request_id': 'current'}).model_dump()
+        elif capability == HANDOFF_TOOL:
+            reason = str(action.query or request.query).strip()[:160] or 'guest_assistance'
+            typed_params = self._tool_contracts.validate_params(
+                'staff_handoff', {'reason': reason, 'summary': request.query[:500]}).model_dump()
+            child = replace(request, query=reason,
+                            task_context={'runtime_handoff': True})
         elif isinstance(action.query, str) and action.query.strip():
             child = replace(request, query=action.query.strip()[:300])
 

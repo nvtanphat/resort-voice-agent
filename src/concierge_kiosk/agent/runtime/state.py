@@ -147,6 +147,9 @@ class AgentState:
     original_query: str
     objectives: list[GoalObjective]
     service_candidates: list[ServiceCandidate]
+    # Validated understanding commands are consumed by loop_semantics; they
+    # are not an execution plan and never grant write authority.
+    commands: tuple[Command, ...] = ()
     goal_contract: GoalContract | None = None
     constraints: list[str] = field(default_factory=list)  # compatibility trace projection
     preferences: dict[str, str | int] = field(default_factory=dict)
@@ -171,6 +174,8 @@ class AgentState:
     termination_reason: str = ''
     resumed: bool = False
     budget_exhausted: str = ''
+    command_index: int = 0
+    command_satisfied_requirements: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         if self.goal_contract is None:
@@ -240,6 +245,8 @@ class AgentState:
             'iteration': self.iteration,
             'replans': self.replans,
             'resumed': self.resumed,
+            'command_types': [item.type for item in self.commands],
+            'command_index': self.command_index,
         }
 
 
@@ -323,10 +330,35 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
             candidate_id=candidate.id, depends_on=dep)
         previous_service_req = reqs[-1].id
 
+    if commands is not None:
+        # Each command remains an auditable semantic requirement.  StartGoal,
+        # slot corrections and confirmation bind to the server-owned candidate
+        # above; the other verbs receive their own closed capability boundary.
+        for command in commands:
+            if command.type in {'StartGoal', 'SetSlot', 'CorrectSlot', 'Confirm'}:
+                if candidates:
+                    continue
+                add(f'command:{command.type}', ('command_noop',))
+            elif command.type == 'AskInfo':
+                add('command:AskInfo', ('knowledge',), topic=command.query or query[:80])
+            elif command.type == 'Navigate':
+                add('command:Navigate', ('navigation', 'knowledge'),
+                    topic=command.query or query[:80])
+            elif command.type == 'Cancel':
+                add('command:Cancel', ('manage_request',))
+            elif command.type == 'Handoff':
+                add('command:Handoff', ('handoff_staff',), topic=command.reason or '')
+            elif command.type == 'ChitChat':
+                add('command:ChitChat', ('command_noop',))
+
     mentions = matched_service_kinds(query, language)
     wants_navigation = (any(route_branch_for_request_kind(kind) == 'navigation' for kind in mentions)
                         or _wants_navigation_goal(query, language))
-    if decision.branch == 'request_status':
+    if commands is not None:
+        # Command mode must not derive a second goal from the deterministic
+        # route.  The route remains attached to the request for safety checks.
+        pass
+    elif decision.branch == 'request_status':
         add('authoritative_request_status', ('request_status',), topic='current request status')
     elif decision.branch == 'navigation':
         add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
@@ -367,8 +399,9 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
     # For planning/compound read goals the agent should attempt to obtain route or
     # location evidence before declaring the whole goal satisfied.
     constraints = _constraint_models(query, language)
-    if any(c.kind == 'minimal_travel' and c.hard for c in constraints) and decision.branch in {
-            'planning', 'knowledge', 'multi_task'}:
+    if (commands is None and any(c.kind == 'minimal_travel' and c.hard for c in constraints)
+            and decision.branch in {
+            'planning', 'knowledge', 'multi_task'}):
         add('minimal_travel_checked', ('navigation', 'knowledge'), topic='distance or location')
 
     if not reqs:
@@ -408,7 +441,7 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
     candidates: list[ServiceCandidate] = []
     service_deps: list[tuple[str, ...]] = []
 
-    if commands is not None and decision.branch in {'service', 'handoff', 'multi_task'}:
+    if commands is not None:
         for command in commands:
             if command.type != 'StartGoal':
                 continue
@@ -426,6 +459,23 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                 request_kind=kind, guest_text=query[:500], slot_source_query=query,
                 risk_tier=service_risk_tier(code), existing_slots=slots))
             service_deps.append(())
+        if not candidates and isinstance(continuation_context, dict):
+            code = continuation_context.get('mode')
+            kind = continuation_context.get('kind')
+            details = continuation_context.get('details')
+            definition = service_definition(code) if isinstance(code, str) else None
+            if (definition is not None and definition.request_kind == kind
+                    and isinstance(details, str)):
+                slots = continuation_context.get('slots')
+                candidates.append(ServiceCandidate(
+                    id='S1', service_code=code, request_kind=kind, guest_text=details,
+                    slot_source_query=query, risk_tier=service_risk_tier(code),
+                    existing_slots=(dict(slots) if isinstance(slots, dict) else {})))
+                service_deps = [()]
+        if candidates:
+            for command in commands:
+                if command.type in {'SetSlot', 'CorrectSlot'} and command.field and command.value:
+                    candidates[0].existing_slots[command.field] = command.value
     elif turn_plan is not None and decision.branch in {'service', 'handoff', 'multi_task'}:
         for intent in turn_plan.writes:
             definition = service_definition(intent.service_mode or '')
@@ -508,6 +558,7 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
         goal=query.strip()[:500], language=language, route_hint=decision.branch,
         original_query=query.strip()[:500], goal_contract=contract,
         objectives=_compat_objectives(requirements), service_candidates=candidates,
+        commands=tuple(commands or ()),
         constraints=[c.value for c in constraints], preferences=clean_preferences,
     )
 

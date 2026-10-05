@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 from .planner import ActionBatch, ActionPlan, NextAction, PlannedStep, deterministic_next_action
 from .verifier import Verification, verify
 from .world import AgentFailure, AgentUnknown, facts_from_observation
+from concierge_kiosk.agent.understanding.commands import Command
 
 if TYPE_CHECKING:  # pragma: no cover
     from concierge_kiosk.agent.core.concierge import AgentToolRequest
@@ -23,6 +24,97 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 LOGGER = logging.getLogger(__name__)
+_WRITE_CAPABILITIES = frozenset({'service_action', 'manage_request', 'handoff_staff'})
+
+
+def _command_candidate(state, index: int, command: Command):
+    """Resolve a command to a server-created candidate, never a model id."""
+    if not state.service_candidates:
+        return None
+    if command.type == 'StartGoal':
+        start_count = sum(1 for item in state.commands[:index] if item.type == 'StartGoal')
+        return (state.service_candidates[start_count]
+                if start_count < len(state.service_candidates) else None)
+    if command.type in {'SetSlot', 'CorrectSlot', 'Confirm'}:
+        return state.service_candidates[0]
+    return None
+
+
+def _command_requirement(state, command: Command, candidate) -> str | None:
+    if candidate is not None:
+        for requirement in state.goal_contract.requirements:
+            if (requirement.service_candidate_id == candidate.id
+                    and requirement.outcome.startswith('service:')):
+                return requirement.id
+    for requirement in state.goal_contract.requirements:
+        if (requirement.outcome == f'command:{command.type}'
+                and requirement.id not in state.command_satisfied_requirements):
+            return requirement.id
+    return None
+
+
+def _command_action(state, index: int, command: Command) -> tuple[NextAction | None, str | None]:
+    """Map one validated Command to one governed loop action.
+
+    The mapping is deliberately closed.  It produces only capabilities already
+    accepted by the runtime sandbox; writes still enter the workflow service and
+    its policy boundary in ``AutonomousConciergeRuntime._execute``.
+    """
+    candidate = _command_candidate(state, index, command)
+    requirement_id = _command_requirement(state, command, candidate)
+    objective_id = next((objective.id for objective in state.objectives
+                         if objective.service_candidate_id == (candidate.id if candidate else None)
+                         and (requirement_id is None or objective.id.endswith(requirement_id[1:]))), None)
+    if objective_id is None and requirement_id is not None:
+        objective_id = next((objective.id for objective in state.objectives
+                             if objective.id == f'O{requirement_id[1:]}'), None)
+
+    if command.type in {'StartGoal', 'SetSlot', 'CorrectSlot', 'Confirm'}:
+        if candidate is None or requirement_id is None:
+            return None, requirement_id
+        return NextAction(
+            'tool', capability='service_action', objective_id=objective_id,
+            requirement_id=requirement_id, service_candidate_id=candidate.id,
+            planner='command_semantics'), requirement_id
+    if command.type == 'AskInfo':
+        return NextAction(
+            'tool', capability='knowledge', objective_id=objective_id,
+            requirement_id=requirement_id, query=command.query or state.original_query,
+            planner='command_semantics'), requirement_id
+    if command.type == 'Navigate':
+        return NextAction(
+            'tool', capability='navigation', objective_id=objective_id,
+            requirement_id=requirement_id, query=command.query or state.original_query,
+            planner='command_semantics'), requirement_id
+    if command.type == 'Cancel':
+        return NextAction(
+            'tool', capability='manage_request', objective_id=objective_id,
+            requirement_id=requirement_id, query=state.original_query,
+            planner='command_semantics'), requirement_id
+    if command.type == 'Handoff':
+        return NextAction(
+            'tool', capability='handoff_staff', objective_id=objective_id,
+            requirement_id=requirement_id, query=command.reason or state.original_query,
+            planner='command_semantics'), requirement_id
+    # ChitChat and a non-bound Confirm/slot correction are explicit no-op
+    # semantics. They cannot accidentally turn into a knowledge read or write.
+    return None, requirement_id
+
+
+def _consume_command(run: "AgentRun") -> tuple[NextAction | None, str | None, bool]:
+    state = run.state
+    progressed = False
+    while state.command_index < len(state.commands):
+        index = state.command_index
+        command = state.commands[index]
+        state.command_index += 1
+        progressed = True
+        action, requirement_id = _command_action(state, index, command)
+        if action is not None:
+            return action, requirement_id, progressed
+        if requirement_id is not None:
+            state.command_satisfied_requirements.add(requirement_id)
+    return None, None, progressed
 
 
 class GovernedLoopSemantics:
@@ -83,6 +175,38 @@ class GovernedLoopSemantics:
         ``execute``, ``verify`` or ``done``.
         """
         state = run.state
+        if state.commands and state.command_index < len(state.commands):
+            command_action, requirement_id, progressed = _consume_command(run)
+            if command_action is not None:
+                # Commands are already validated against the guest turn and
+                # registry, but execution still uses the normal runtime and
+                # policy boundary.
+                if requirement_id is not None:
+                    command_action = NextAction(
+                        command_action.type,
+                        capability=command_action.capability,
+                        objective_id=command_action.objective_id,
+                        requirement_id=requirement_id,
+                        service_candidate_id=command_action.service_candidate_id,
+                        query=command_action.query, field=command_action.field,
+                        reason_code=command_action.reason_code,
+                        question_goal=command_action.question_goal,
+                        planner=command_action.planner,
+                    )
+                run.decisions.append({
+                    'command_type': state.commands[state.command_index - 1].type,
+                    **command_action.public(),
+                })
+                if (command_action.capability not in _WRITE_CAPABILITIES
+                        and run.read_calls >= self.runtime._budget.max_read_calls):
+                    state.status = 'bounded'
+                    state.budget_exhausted = 'read_calls'
+                    state.termination_reason = 'agent_read_budget_reached'
+                    return None, verification, 'done'
+                state.attempted_signatures.add(command_action.signature())
+                return command_action, verification, 'execute'
+            if progressed:
+                return None, verify(state), 'verify'
         exploratory = sum(1 for item in state.observations if item.get("requirement_id") is None)
         has_unfinished = bool(verification.unresolved)
         planner_budget_ok = run.planner_calls < self.runtime._budget.max_planner_calls
@@ -202,7 +326,7 @@ class GovernedLoopSemantics:
                 state.replans += 1
                 action = self._fallback(state, verification)
 
-        if action.capability != "service_action" and run.read_calls >= self.runtime._budget.max_read_calls:
+        if action.capability not in _WRITE_CAPABILITIES and run.read_calls >= self.runtime._budget.max_read_calls:
             state.status = "bounded"
             state.budget_exhausted = "read_calls"
             state.termination_reason = "agent_read_budget_reached"
@@ -249,7 +373,7 @@ class GovernedLoopSemantics:
         state = run.state
         step_id = str(meta.get('step_id') or f'A{state.iteration + 1}')
         state.iteration += 1
-        if action.capability != "service_action":
+        if action.capability not in _WRITE_CAPABILITIES:
             run.read_calls += 1
         run.observations.append(meta)
         run.raw_results.append(raw)

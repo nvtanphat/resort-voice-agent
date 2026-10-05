@@ -744,31 +744,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                 legacy_intent = turn_support.legacy_model_intent_for_session(
                     execution_query, body.language, session,
                     enabled_request_kinds=frozenset(enabled_request_kinds), voice_turn=voice_input)
-            if understanding_commands is not None:
-                writes = tuple(item for item in understanding_commands if item.type == 'StartGoal')
-                reads = tuple(item for item in understanding_commands if item.type == 'AskInfo')
-                turn_plan_smalltalk = all(item.type == 'ChitChat' for item in understanding_commands)
-                if turn_plan_smalltalk:
-                    decision = RouteDecision('greeting', True)
-                elif len(understanding_commands) == 1:
-                    command = understanding_commands[0]
-                    if command.type == 'Confirm':
-                        decision = RouteDecision('confirmation', True)
-                    elif command.type == 'AskInfo':
-                        decision = RouteDecision('knowledge', False)
-                    elif command.type == 'Navigate':
-                        decision = RouteDecision('navigation', True)
-                    elif command.type == 'Handoff':
-                        decision = RouteDecision('handoff', True)
-                if writes:
-                    if len(writes) == 1 and not reads:
-                        definition = service_definition(writes[0].goal or '')
-                        if definition is not None:
-                            decision = RouteDecision(
-                                route_branch_for_request_kind(definition.request_kind) or 'service', True)
-                    else:
-                        decision = RouteDecision('multi_task', False)
-            elif turn_plan is not None:
+            if turn_plan is not None:
                 understanding_commands = commands_from_turn_plan(
                     turn_plan, query=execution_query,
                     enabled_request_kinds=frozenset(enabled_request_kinds))
@@ -832,6 +808,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                         'generation_mode': 'local_slm_conversational',
                     }
 
+        command_loop = understanding_mode == 'command' and understanding_commands is not None
+
         # Read graphs are response-compatibility projections only.
         # They are never fed into the runtime and never determine tool execution.
         read_graph = (read_only_task_graph(execution_query, body.language)
@@ -863,10 +841,12 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             # latency by running independent reads together. A structured
             # understanding plan still supplies the server-owned candidates;
             # it must not suppress execution planning for that compound turn.
-            skip=voice_simple_route or (turn_plan is not None and decision.branch != 'multi_task'),
+            skip=(voice_simple_route or command_loop
+                  or (turn_plan is not None and decision.branch != 'multi_task')),
             recovery_only=(simple_route and decision.branch != 'multi_task'))
         _goal_interpreter_for_turn = turn_support.goal_interpreter_for_session(
-            session, voice_turn=voice_input, skip=simple_route or turn_plan is not None)
+            session, voice_turn=voice_input,
+            skip=simple_route or command_loop or turn_plan is not None)
 
         agent_run = None
         if voice_reply_result is not None:
@@ -907,7 +887,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                 {'kind': kind, 'label': kind.replace('_', ' ')} for kind in kinds
             ]
             result['model_intent_fallback'] = True
-        elif decision.fast and decision.branch not in {'service', 'handoff'}:
+        elif decision.fast and decision.branch not in {'service', 'handoff'} and not command_loop:
             result = fast_response(decision, query, body.language)
         else:
             request = AgentToolRequest(
@@ -935,7 +915,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                     resume_projection=resume_projection, memory_facts=memory_facts,
                     preferences=effective_preferences, turn_plan=turn_plan,
                     commands=(tuple(understanding_commands)
-                              if understanding_commands is not None else None))
+                              if command_loop and understanding_commands is not None else None))
             finally:
                 voice_input_context.reset(voice_token)
 
@@ -956,7 +936,13 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                     service_actions.remember_multi_pending(
                         session, body.language, task=item, observation=raw_observation)
             else:
-                result = compose_agent_result(agent_run, body.language, decision.branch)
+                if command_loop and not agent_run.observations and decision.fast:
+                    # A no-op command (for example ChitChat or an unbound
+                    # confirmation) still traverses loop_semantics, while the
+                    # public answer remains the deterministic route response.
+                    result = fast_response(decision, query, body.language)
+                else:
+                    result = compose_agent_result(agent_run, body.language, decision.branch)
 
                 _project_read_workflow(
                     result=result, agent_run=agent_run, query=query, language=body.language,

@@ -119,16 +119,18 @@ def _memory_supports_requirement(state: AgentState, req: GoalRequirement) -> boo
     return False
 
 def _requirement_status(state: AgentState, req: GoalRequirement) -> tuple[bool, str]:
+    if req.outcome.startswith('command:') and req.id in state.command_satisfied_requirements:
+        return True, 'command_semantics_completed'
     if _memory_supports_requirement(state, req):
         return True, 'fresh_source_bound_memory'
     matches = _matching_observations(state, req)
     if not matches:
         return False, 'not_observed'
 
-    if req.outcome.startswith('service:'):
+    if req.outcome.startswith('service:') or req.outcome in {'command:Cancel', 'command:Handoff'}:
         terminal = {
             'confirmation_required', 'auto_execute_ready', 'needs_user_input', 'denied',
-            'action_ready', 'completed', 'unavailable',
+            'action_ready', 'completed', 'safe_fallback', 'unavailable',
         }
         return (any(item.get('status') in terminal for _, item in matches),
                 'service_boundary_observed')
