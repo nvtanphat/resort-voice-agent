@@ -6,6 +6,7 @@ delegates all state/evidence checks to the existing :class:`VoiceTurns` store.
 """
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass
 from typing import Callable
 
@@ -54,6 +55,22 @@ class SpeechGate:
         self.voice_turns = voice_turns
         self.current_evidence = current_evidence
         self.emit = emit or (lambda _session, _turn, _event: None)
+        self._fixed_leases: dict[tuple[str, str], SpeechLease] = {}
+
+    def authorize_fixed(self, session: str, turn_id: str, text: str,
+                        language: str) -> SpeechLease | None:
+        """Authorize server-owned fixed copy without changing the active turn.
+
+        A lookup filler is not the answer and must not finalize, replace, or
+        advance the guest turn. Callers obtain this text from the locale
+        catalog, never from a model.
+        """
+        if not text.strip() or not language:
+            return None
+        chunk_id = f"fixed-{secrets.token_hex(16)}"
+        lease = SpeechLease(session, turn_id, chunk_id, "", text, language)
+        self._fixed_leases[(session, chunk_id)] = lease
+        return lease
 
     def authorize(self, session: str, turn_id: str, text: str, language: str, *,
                   evidence=(), effective_date: str = "", cacheable: bool = False) -> bool:
@@ -84,6 +101,10 @@ class SpeechGate:
             lease.session, lease.chunk_id, lease.lease))
 
     def played(self, session: str, turn_id: str, chunk_id: str) -> bool:
+        fixed = self._fixed_leases.pop((session, chunk_id), None)
+        if fixed is not None:
+            self.emit(session, turn_id, "tts.chunk.played")
+            return True
         if not self.current_evidence(session, turn_id):
             self.voice_turns.cancel(session, turn_id)
             self.emit(session, turn_id, "turn.cancelled")
@@ -95,6 +116,10 @@ class SpeechGate:
         return ok
 
     def playback_failed(self, session: str, turn_id: str, chunk_id: str) -> bool:
+        fixed = self._fixed_leases.pop((session, chunk_id), None)
+        if fixed is not None:
+            self.emit(session, turn_id, "tts.chunk.playback_failed")
+            return True
         ok = self.voice_turns.mark_chunk_playback_failed(session, chunk_id)
         if ok:
             self.emit(session, turn_id, "tts.chunk.playback_failed")

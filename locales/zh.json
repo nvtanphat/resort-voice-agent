@@ -180,6 +180,7 @@
   "backend.navigation.zone_only": "已核实的路线可到达{zone}。{destination}在该区域内的确切位置尚未公布，请按现场指示牌前往或询问度假村员工。",
   "backend.navigation.zone_limit": "尚未公布到达该场所的区域内详细路线。",
   "backend.voice.probe_ready": "Ready.",
+  "backend.voice.lookup_pending": "我正在核实信息，请稍等。",
   "backend.knowledge.fact.opening_hours": "{entity}营业时间：{value}。",
   "backend.knowledge.fact.service_window": "{entity}服务时段：{value}。",
   "backend.knowledge.fact.activity_schedule": "{entity}活动时间：{value}。",

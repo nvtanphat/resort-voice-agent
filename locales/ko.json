@@ -181,6 +181,7 @@
   "backend.navigation.zone_only": "확인된 경로는 {zone}까지입니다. 해당 구역 안에서 {destination}의 정확한 위치는 공개되지 않았으니 현장 안내판을 따르거나 리조트 직원에게 문의해 주세요.",
   "backend.navigation.zone_limit": "요청하신 장소까지의 구역 내 세부 경로는 공개되지 않았습니다.",
   "backend.voice.probe_ready": "Ready.",
+  "backend.voice.lookup_pending": "정보를 확인하고 있습니다. 잠시만 기다려 주세요.",
   "backend.knowledge.fact.opening_hours": "{entity} 운영 시간: {value}.",
   "backend.knowledge.fact.service_window": "{entity} 서비스 시간: {value}.",
   "backend.knowledge.fact.activity_schedule": "{entity} 일정: {value}.",

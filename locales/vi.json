@@ -180,6 +180,7 @@
   "backend.navigation.zone_only": "Đường đi đã xác minh dẫn đến {zone}. Vị trí chính xác của {destination} trong khu vực này chưa được công bố; vui lòng theo biển chỉ dẫn tại chỗ hoặc hỏi nhân viên resort.",
   "backend.navigation.zone_limit": "Chưa có chỉ dẫn chi tiết bên trong khu vực đến địa điểm này.",
   "backend.voice.probe_ready": "Ready.",
+  "backend.voice.lookup_pending": "Mình đang kiểm tra thông tin, bạn vui lòng chờ một chút.",
   "backend.knowledge.fact.opening_hours": "Giờ mở cửa của {entity}: {value}.",
   "backend.knowledge.fact.service_window": "Khung giờ dịch vụ của {entity}: {value}.",
   "backend.knowledge.fact.activity_schedule": "Lịch hoạt động của {entity}: {value}.",

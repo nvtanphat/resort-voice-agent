@@ -3,12 +3,14 @@ from __future__ import annotations
 import asyncio
 import io
 import threading
+import time
 import wave
 from collections.abc import Callable
 
 from concierge_kiosk.agent.understanding.intent import emergency_response
 from concierge_kiosk.api.shared.contracts import Ask
 from concierge_kiosk.core.settings import Settings
+from concierge_kiosk.i18n import SUPPORTED_LANGUAGES, text as i18n_text
 from concierge_kiosk.runtime.turn_events import TurnEvents
 from concierge_kiosk.voice.agent.agent_processor import ConciergeAgentProcessor
 from concierge_kiosk.voice.agent.speech_gate import SpeechGate
@@ -188,6 +190,48 @@ def test_real_pipecat_pipeline_transcript_calls_engine_once_with_voice_input():
             assert calls[0][3] is True
             assert any(isinstance(frame, harness["pc"]["TTSAudioRawFrame"])
                        for frame in harness["transport_output"].frames)
+        finally:
+            await _stop_harness(runner, runner_task)
+
+    asyncio.run(scenario())
+
+
+def test_pending_lookup_speaks_fixed_localized_filler_before_answer():
+    async def scenario():
+        synthesized: list[str] = []
+        progress: list[str] = []
+
+        def answer(_body: Ask, _session: str, _turn_id: str, *, voice_input: bool):
+            time.sleep(0.85)
+            return {"answer": "Final approved response.", "citations": []}
+
+        def synthesize(_cfg, text, _language):
+            synthesized.append(text)
+            return _wav()
+
+        harness = _build_pipeline_harness(transcript="Please look this up", synthesize_fn=synthesize)
+        agent = ConciergeAgentProcessor(
+            cfg=harness["settings"], session="guest-filler", language="en",
+            voice_turns=harness["turns"], turn_events=harness["turn_events"],
+            answer=answer, finalize_answer=lambda result, *_: result,
+            commit_autonomous_action=lambda result, *_: result, gate=harness["gate"],
+            on_progress=lambda kind, _turn: progress.append(kind),
+        )
+        worker, runner, runner_task = await _run_harness(
+            harness, [harness["stt"], agent, harness["tts"]])
+        try:
+            await worker.queue_frame(harness["pc"]["InputAudioRawFrame"](
+                audio=b"\x00\x00" * 160, sample_rate=16000, num_channels=1))
+            for _ in range(250):
+                if len(synthesized) >= 2:
+                    break
+                await asyncio.sleep(0.01)
+            assert "agent.lookup.pending" in progress
+            assert synthesized[:2] == [
+                i18n_text("voice.lookup_pending", "en"), "Final approved response."]
+            assert set(SUPPORTED_LANGUAGES) == {"vi", "en", "zh", "ko"}
+            assert all(i18n_text("voice.lookup_pending", language)
+                       for language in SUPPORTED_LANGUAGES)
         finally:
             await _stop_harness(runner, runner_task)
 

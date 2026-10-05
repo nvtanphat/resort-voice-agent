@@ -5,6 +5,7 @@ import asyncio
 from collections.abc import Callable
 
 from concierge_kiosk.api.shared.contracts import Ask
+from concierge_kiosk.i18n import text as i18n_text
 from .speech_gate import SpeechGate
 
 try:
@@ -92,6 +93,20 @@ else:
                 "type": "agent.progress", "event": kind, "turn_id": turn_id,
             })
 
+        async def _push_text_lease(self, lease, direction: FrameDirection) -> None:
+            text_frame = TextFrame(text=lease.text)
+            metadata = getattr(text_frame, "metadata", None)
+            if not isinstance(metadata, dict):
+                metadata = {}
+                setattr(text_frame, "metadata", metadata)
+            metadata.update({
+                "voice_session": lease.session,
+                "voice_turn_id": lease.turn_id,
+                "voice_chunk_id": lease.chunk_id,
+                "voice_language": lease.language,
+            })
+            await self.push_frame(text_frame, direction)
+
         @staticmethod
         def _answer_card(result: dict, turn_id: str) -> dict:
             allowed = (
@@ -123,6 +138,11 @@ else:
                         asyncio.shield(answer_task), timeout=0.7)
                 except asyncio.TimeoutError:
                     await self._progress(direction, "agent.lookup.pending", turn_id)
+                    filler = self.gate.authorize_fixed(
+                        self.session, turn_id,
+                        i18n_text("voice.lookup_pending", self.language), self.language)
+                    if filler is not None:
+                        await self._push_text_lease(filler, direction)
                     result = await answer_task
                 if generation != self._generation:
                     self.voice_turns.cancel(self.session, turn_id)
@@ -154,18 +174,7 @@ else:
                     lease = self.gate.reserve(self.session, chunk_id)
                     if lease is None or not self.gate.complete(lease):
                         raise RuntimeError("speech chunk authorization failed")
-                    text_frame = TextFrame(text=lease.text)
-                    metadata = getattr(text_frame, "metadata", None)
-                    if not isinstance(metadata, dict):
-                        metadata = {}
-                        setattr(text_frame, "metadata", metadata)
-                    metadata.update({
-                        "voice_session": self.session,
-                        "voice_turn_id": turn_id,
-                        "voice_chunk_id": chunk_id,
-                        "voice_language": lease.language,
-                    })
-                    await self.push_frame(text_frame, direction)
+                    await self._push_text_lease(lease, direction)
                     await self._progress(direction, "agent.step.completed", turn_id)
             except asyncio.CancelledError:
                 self.voice_turns.cancel(self.session, turn_id)

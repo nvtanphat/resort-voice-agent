@@ -180,6 +180,7 @@
   "backend.navigation.zone_only": "This verified route reaches {zone}. The exact position of {destination} inside that area is not published; follow on-site venue signs or ask resort staff for the final in-zone direction.",
   "backend.navigation.zone_limit": "Exact in-zone micro-route to the requested venue is not published.",
   "backend.voice.probe_ready": "Ready.",
+  "backend.voice.lookup_pending": "I’m checking the information; please wait a moment.",
   "backend.knowledge.fact.opening_hours": "{entity} opening hours: {value}.",
   "backend.knowledge.fact.service_window": "{entity} service window: {value}.",
   "backend.knowledge.fact.activity_schedule": "{entity} schedule: {value}.",
