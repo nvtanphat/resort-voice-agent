@@ -12,6 +12,7 @@ import json
 import os
 import sqlite3
 import sys
+import time
 import uuid
 from pathlib import Path
 
@@ -24,8 +25,8 @@ if str(SRC) not in sys.path:
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from concierge_kiosk.agent.tools.registry import tool_registry
-from tools.evaluation.run_voice_eval import HttpClient
+from concierge_kiosk.agent.tools.registry import tool_registry  # noqa: E402
+from tools.evaluation.run_voice_eval import HttpClient  # noqa: E402
 
 
 def _catalog_request_kind(service_id: str | None) -> str | None:
@@ -68,7 +69,9 @@ def _expected_tool(row: dict, route: str) -> str | None:
         return ("staff_handoff" if _catalog_request_kind(str(service_id or "")) == "human"
                 else "service_request_create")
     if route == "request_change":
-        return ("service_request_cancel" if row.get("interaction_type") in {"cancel", "cancellation"}
+        return ("service_request_cancel" if (
+                    row.get("interaction_type") in {"cancel", "cancellation"}
+                    or row.get("interaction_subtype") in {"cancel", "cancellation"})
                 else "service_request_update")
     if route == "knowledge":
         # The release owns the interaction subtype. Older rows only carry a
@@ -163,7 +166,23 @@ def _scenario_to_task(row: dict) -> dict:
     }
     expected_calls = [] if expected_tool is None else [
         {"tool": expected_tool, "params": param_by_tool[expected_tool]}]
-    acceptable_tools: list[list[str]] = [] if expected_tool is None else [[expected_tool]]
+    row_tools = row.get("acceptable_tools")
+    oracle_warnings: list[str] = []
+    acceptable_tools: list[list[str]] = (
+        [list(dict.fromkeys(str(item) for item in row_tools if isinstance(item, str)))]
+        if isinstance(row_tools, list) and row_tools else
+        [] if expected_tool is None else [[expected_tool]])
+    # The v3 catalog rows for generic-human services still declare the generic
+    # service-create tool, while the reviewed route derives the dedicated staff
+    # handoff contract. Keep both explicit alternatives and surface the source
+    # oracle conflict instead of failing a safe, route-correct handoff.
+    if (expected_tool is not None and acceptable_tools
+            and expected_tool not in acceptable_tools[0]
+            and route == "service"
+            and _catalog_request_kind(str(row.get("expected_service_id") or "")) == "human"):
+        acceptable_tools.append([expected_tool])
+        oracle_warnings.append(
+            f"declared acceptable_tools omit derived {expected_tool} for human service")
     # A grounded question that explicitly asks both how a service works and
     # when it is available has two valid tool plans: retrieval, schedule, or
     # both.  The scenario data owns the hours fact; no language-specific marker
@@ -178,7 +197,10 @@ def _scenario_to_task(row: dict) -> dict:
             ["hotel_info_search", "hotel_hours_get"],
             ["hotel_hours_get", "hotel_info_search"],
         ]
-    action = "modify" if row.get("interaction_type") not in {"cancel", "cancellation"} else "cancel"
+    action = "modify" if not (
+        row.get("interaction_type") in {"cancel", "cancellation"}
+        or row.get("interaction_subtype") in {"cancel", "cancellation"}
+    ) else "cancel"
     catalog_kind = _catalog_request_kind(str(row.get("expected_service_id") or ""))
     expected_db = {}
     if route == "request_change":
@@ -198,10 +220,12 @@ def _scenario_to_task(row: dict) -> dict:
         "expected_db": expected_db,
         "acceptable_tools": [acceptable_tools],
         "seed_request": route == "request_change",
+        "preconditions": row.get("preconditions") if isinstance(row.get("preconditions"), list) else [],
         "scenario_oracle": {
             "expected_route": route,
             "expected_service_id": row.get("expected_service_id"),
             "expected_staff_review": row.get("expected_staff_review"),
+            "oracle_warnings": oracle_warnings,
         },
     }
 
@@ -300,12 +324,63 @@ def _seed_request_via_api(client: HttpClient, headers: dict, task: dict) -> None
     })
 
 
-def _task_result(base_url: str, task: dict, db_path: Path) -> dict:
-    client = HttpClient(base_url)
+def _seed_preconditions_via_api(client: HttpClient, headers: dict, task: dict) -> None:
+    """Materialize declared scenario preconditions through guest APIs only."""
+    preconditions = task.get("preconditions")
+    if not isinstance(preconditions, list):
+        return
+    for index, precondition in enumerate(preconditions[:4]):
+        if not isinstance(precondition, dict):
+            raise ValueError("precondition must be an object")
+        service_id = precondition.get("service_id")
+        kind = _catalog_request_kind(str(service_id or "")) or str(
+            precondition.get("service_code") or "human")
+        if not kind:
+            raise ValueError("precondition has no request kind")
+        slots = precondition.get("slots") if isinstance(precondition.get("slots"), dict) else {}
+        payload = {key: value for key, value in slots.items()
+                   if key in {"room_number", "quantity", "preferred_time", "party_size", "note"}}
+        catalog = _catalog_entry(str(service_id or ""))
+        labels = catalog.get("names", {}).get(task["lang"], ()) if isinstance(catalog, dict) else ()
+        aliases = catalog.get("aliases", {}).get(task["lang"], ()) if isinstance(catalog, dict) else ()
+        selector = next((value for value in (*labels, *aliases) if isinstance(value, str) and value.strip()), "")
+        details = f"Evaluation precondition for {selector or precondition.get('service_code') or kind}"
+        # The production dedupe policy is property-wide for the same kind and
+        # room.  A benchmark that reuses the fixture room would therefore
+        # attach a later seed to an earlier session.  Keep the room in the
+        # auditable details, but omit it from the isolated seed payload so the
+        # public API creates a session-owned request for every case.
+        room = payload.pop("room_number", None)
+        if room is not None:
+            details += f" (fixture room {room})"
+            payload["note"] = f"evaluation-room={room}"
+        prepared = client.json("POST", "/api/requests/prepare", headers=headers, body={
+            "kind": kind, "language": task["lang"],
+            "details": details,
+            "nonce": "precondition-" + uuid.uuid4().hex[:32],
+            "payload": payload or {"room_number": "305"},
+        })
+        client.json("POST", "/api/requests/confirm", headers=headers, body={
+            "proposal_id": prepared["proposal_id"], "confirmed": True,
+            "price_acknowledged": True,
+        })
+
+
+def _task_result(base_url: str, task: dict, db_path: Path, *, http_timeout: float = 75.0) -> dict:
+    # The public API intentionally limits new sessions per source IP.  An
+    # isolated benchmark is allowed to use many fresh sessions, so clear the
+    # benchmark database's diagnostic throttle bucket before opening the next
+    # case.  This must happen before ``/api/session``: session creation is
+    # outside the request try/finally below and a single 429 would otherwise
+    # cascade into errors for every remaining task in the same window.
+    _clear_eval_rate_limits(db_path)
+    client = HttpClient(base_url, timeout=http_timeout)
     session = client.json("POST", "/api/session")
     headers = {"X-CSRF-Token": str(session["csrf_token"])}
     session_id = str(session.get("session_id") or "")
-    if task.get("seed_request"):
+    if task.get("preconditions"):
+        _seed_preconditions_via_api(client, headers, task)
+    elif task.get("seed_request"):
         _seed_request_via_api(client, headers, task)
     before = _snapshot_db(db_path, session_id) if session_id else None
     turns: list[dict] = []
@@ -359,31 +434,31 @@ def _task_result(base_url: str, task: dict, db_path: Path) -> dict:
         "typed_parameters": ("matched" if all(item["typed_parameter_status"] == "matched" for item in turns)
                               else "parameters_unavailable"),
         "db_match": _db_matches(task["expected_db"], after),
+        "oracle_warnings": list((task.get("scenario_oracle") or {}).get("oracle_warnings") or []),
         "before_db": before,
         "after_db": after,
         "turns": turns,
     }
 
 
-def run(*, base_url: str, tasks_path: Path, output: Path, db_path: Path,
-        language: str | None = None) -> dict:
-    db_path = db_path.resolve()
-    tasks = _load_tasks(tasks_path)
-    if language is not None:
-        tasks = [task for task in tasks if task.get("lang") == language]
-        if not tasks:
-            raise SystemExit(f"No tool-eval tasks for language: {language}")
-    results = []
-    for task in tasks:
-        try:
-            results.append(_task_result(base_url, task, db_path))
-        except Exception as exc:
-            results.append({"id": task["id"], "lang": task["lang"],
-                            "error": type(exc).__name__, "detail": str(exc)})
+def _report(*, base_url: str, results: list[dict], repeats: int,
+            requested_tasks: int, status: str) -> dict:
     completed = [item for item in results if "error" not in item]
-    report = {
+    pass_groups = {}
+    for item in results:
+        base_id = item.get("base_id", item.get("id"))
+        passed = ("error" not in item and item.get("selection_ok") is True
+                  and not any(turn.get("forbidden_called") or turn.get("unexpected_emergency")
+                              for turn in item.get("turns", []))
+                  and item.get("db_match") is not False)
+        pass_groups.setdefault(base_id, []).append(passed)
+    pass_power_k = (sum(all(values) for values in pass_groups.values()) / len(pass_groups)
+                    if pass_groups else None)
+    return {
         "schema_version": 1,
+        "status": status,
         "base_url": base_url,
+        "requested_tasks": requested_tasks,
         "tasks": len(results),
         "completed": len(completed),
         "errors": len(results) - len(completed),
@@ -400,11 +475,59 @@ def run(*, base_url: str, tasks_path: Path, output: Path, db_path: Path,
             "unexpected_emergency": sum(
                 sum(1 for turn in item.get("turns", []) if turn.get("unexpected_emergency"))
                 for item in completed),
+            "oracle_warnings": sum(len(item.get("oracle_warnings", ())) for item in completed),
+            "pass_power_k": pass_power_k,
+            "pass_power_k_repeats": repeats,
         },
         "results": results,
     }
+
+
+def _write_report(output: Path, report: dict) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def run(*, base_url: str, tasks_path: Path, output: Path, db_path: Path,
+        language: str | None = None, repeats: int = 1,
+        http_timeout: float = 75.0, max_seconds: float | None = None) -> dict:
+    db_path = db_path.resolve()
+    tasks = _load_tasks(tasks_path)
+    if language is not None:
+        tasks = [task for task in tasks if task.get("lang") == language]
+        if not tasks:
+            raise SystemExit(f"No tool-eval tasks for language: {language}")
+    results: list[dict] = []
+    repeats = max(1, min(int(repeats), 20))
+    deadline = (time.monotonic() + float(max_seconds)
+                if max_seconds is not None and max_seconds > 0 else None)
+    interrupted = False
+    for task in tasks:
+        for repeat in range(repeats):
+            if deadline is not None and time.monotonic() >= deadline:
+                interrupted = True
+                break
+            try:
+                item = _task_result(base_url, task, db_path, http_timeout=http_timeout)
+                item["base_id"] = task["id"]
+                item["repeat"] = repeat + 1
+                results.append(item)
+            except Exception as exc:
+                results.append({"id": task["id"], "base_id": task["id"],
+                                "repeat": repeat + 1, "lang": task["lang"],
+                                "error": type(exc).__name__, "detail": str(exc)})
+            # Preserve a resumable audit artifact even when a long-running
+            # benchmark is interrupted by a CI/job timeout.
+            _write_report(output, _report(
+                base_url=base_url, results=results, repeats=repeats,
+                requested_tasks=len(tasks) * repeats, status="running"))
+        if interrupted:
+            break
+    report = _report(
+        base_url=base_url, results=results, repeats=repeats,
+        requested_tasks=len(tasks) * repeats,
+        status="partial_timeout" if interrupted else "complete")
+    _write_report(output, report)
     return report
 
 
@@ -418,6 +541,12 @@ def main() -> int:
     parser.add_argument("--db", type=Path, default=Path(os.environ.get("CONCIERGE_DB_PATH", "data/concierge.sqlite3")))
     parser.add_argument("--language", choices=("vi", "en", "ko", "zh"),
                         help="run only one language slice; useful for isolated parallel runs")
+    parser.add_argument("--repeats", type=int, default=1,
+                        help="repeat every task for a pass^k stability estimate (1-20)")
+    parser.add_argument("--http-timeout-seconds", type=float, default=75.0,
+                        help="per-request HTTP timeout for the benchmark client")
+    parser.add_argument("--max-seconds", type=float,
+                        help="stop cleanly and keep a partial report after this duration")
     args = parser.parse_args()
     tasks = _load_tasks(args.tasks)
     if not args.execute:
@@ -425,11 +554,13 @@ def main() -> int:
                          ensure_ascii=False, sort_keys=True))
         return 0
     report = run(base_url=args.base_url, tasks_path=args.tasks, output=args.output,
-                 db_path=args.db, language=args.language)
+                 db_path=args.db, language=args.language, repeats=args.repeats,
+                 http_timeout=args.http_timeout_seconds, max_seconds=args.max_seconds)
     print(json.dumps({"tasks": report["tasks"], "completed": report["completed"],
                       "errors": report["errors"], "metrics": report["metrics"]},
                      ensure_ascii=False, sort_keys=True))
-    return 0 if report["errors"] == 0 and report["metrics"]["unexpected_emergency"] == 0 else 2
+    return 0 if (report["status"] == "complete" and report["errors"] == 0
+                 and report["metrics"]["unexpected_emergency"] == 0) else 2
 
 
 if __name__ == "__main__":

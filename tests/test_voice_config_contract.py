@@ -26,6 +26,28 @@ def _wav() -> bytes:
     return output.getvalue()
 
 
+def test_pipecat_registration_passes_cfg_as_keyword(monkeypatch):
+    from concierge_kiosk.services.speech import SpeechService
+    import concierge_kiosk.voice.agent.transport as transport
+
+    observed = {}
+
+    def register_legacy(*_args, **_kwargs):
+        return None
+
+    def register_pipecat(app, **kwargs):
+        observed["app"] = app
+        observed.update(kwargs)
+
+    monkeypatch.setattr(transport, "register_pipecat_route", register_pipecat)
+    app = object()
+    cfg = SimpleNamespace(voice_transport="pipecat")
+    service = SpeechService(register=register_legacy)
+    service.register(app, cfg, pipecat_dependencies={"voice_turns": "turns"})
+
+    assert observed == {"app": app, "cfg": cfg, "voice_turns": "turns"}
+
+
 def test_pipecat_turning_budgets_are_present_in_all_pinned_profiles():
     root = Path(__file__).resolve().parents[1]
     source = json.loads(

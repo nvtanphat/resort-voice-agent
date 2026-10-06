@@ -8,7 +8,9 @@ audio and full transcripts are never copied into the report.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import http.cookiejar
+import io
 import json
 import math
 import os
@@ -17,9 +19,10 @@ import sqlite3
 import sys
 import time
 import uuid
+import wave
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
 from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 from jsonschema import Draft202012Validator
@@ -67,8 +70,9 @@ def _json_error(status: int, raw: bytes) -> str:
 
 
 class HttpClient:
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, *, timeout: float = 75.0):
         self.base_url = base_url.rstrip("/") + "/"
+        self.timeout = max(1.0, float(timeout))
         self.jar = http.cookiejar.CookieJar()
         self.opener = build_opener(HTTPCookieProcessor(self.jar))
 
@@ -82,7 +86,7 @@ class HttpClient:
         for key, value in (headers or {}).items():
             request.add_header(key, value)
         try:
-            with self.opener.open(request, timeout=75) as response:
+            with self.opener.open(request, timeout=self.timeout) as response:
                 return response.status, response.read(), dict(response.headers.items())
         except HTTPError as exc:
             return exc.code, exc.read(), dict(exc.headers.items())
@@ -106,10 +110,10 @@ class HttpClient:
         return "; ".join(f"{item.name}={item.value}" for item in self.jar)
 
 
-def _websocket_url(base_url: str) -> tuple[str, str]:
+def _websocket_url(base_url: str, path: str = "/api/audio/stream") -> tuple[str, str]:
     parsed = urlsplit(base_url)
     scheme = "wss" if parsed.scheme == "https" else "ws"
-    ws_url = urlunsplit((scheme, parsed.netloc, "/api/audio/stream", "", ""))
+    ws_url = urlunsplit((scheme, parsed.netloc, path, "", ""))
     return ws_url, base_url.rstrip("/")
 
 
@@ -142,6 +146,79 @@ def transcribe_websocket(client: HttpClient, audio: bytes, language: str,
                 return str(message.get("text") or ""), message, (end_sent - start) * 1000, (time.perf_counter() - end_sent) * 1000
             if message.get("type") == "error":
                 raise RuntimeError(f"Voice WebSocket error: {message.get('code', 'unknown')}")
+
+
+def _wav_pcm16(audio: bytes) -> bytes:
+    with wave.open(io.BytesIO(audio), "rb") as source:
+        if source.getsampwidth() != 2 or source.getnchannels() != 1 or source.getframerate() != 16_000:
+            raise RuntimeError("Pipecat evaluator requires a mono 16 kHz PCM WAV")
+        return source.readframes(source.getnframes())
+
+
+async def _transcribe_pipecat_async(client: HttpClient, audio: bytes, language: str,
+                                    csrf: str, *, base_url: str) -> tuple[str, dict, float, float, float | None]:
+    try:
+        from websockets.asyncio.client import connect
+        from pipecat.frames.frames import (
+            InputAudioRawFrame, InputTransportMessageFrame, OutputAudioRawFrame,
+            TranscriptionFrame,
+        )
+        from pipecat.serializers.protobuf import ProtobufFrameSerializer
+    except ImportError as exc:
+        raise RuntimeError("Pipecat and websockets are required for --transport pipecat") from exc
+    ws_url, origin = _websocket_url(base_url, "/api/voice/agent")
+    query = urlencode({"language": language, "token": csrf})
+    started = time.perf_counter()
+    transcript = ""
+    answer_card: dict = {}
+    first_audio_ms: float | None = None
+    final_stt_at: float | None = None
+    serializer = ProtobufFrameSerializer()
+    pcm = _wav_pcm16(audio)
+    async with connect(
+        f"{ws_url}?{query}", origin=origin, proxy=None,
+        additional_headers={"Cookie": client.cookies()},
+        open_timeout=15, close_timeout=5, max_size=2_000_000,
+    ) as socket:
+        frame_size = 16000 * 2 // 20  # 20 ms mono PCM frames
+        for offset in range(0, len(pcm), frame_size):
+            payload = await serializer.serialize(InputAudioRawFrame(
+                audio=pcm[offset:offset + frame_size], sample_rate=16_000, num_channels=1))
+            if payload is not None:
+                await socket.send(payload)
+        # A bounded silence tail lets offline VAD/smart-turn close the turn.
+        silence = b"\x00" * (16_000 * 2 // 2)
+        payload = await serializer.serialize(InputAudioRawFrame(
+            audio=silence, sample_rate=16_000, num_channels=1))
+        if payload is not None:
+            await socket.send(payload)
+        end_sent = time.perf_counter()
+        deadline = end_sent + 75
+        while time.perf_counter() < deadline:
+            remaining = max(0.1, deadline - time.perf_counter())
+            raw = await asyncio.wait_for(socket.recv(), timeout=remaining)
+            frame = await serializer.deserialize(raw)
+            if isinstance(frame, TranscriptionFrame) and bool(getattr(frame, "finalized", False)):
+                transcript = str(frame.text or "").strip()
+                final_stt_at = time.perf_counter()
+            elif isinstance(frame, OutputAudioRawFrame) and first_audio_ms is None:
+                first_audio_ms = (time.perf_counter() - started) * 1000
+            elif isinstance(frame, InputTransportMessageFrame):
+                message = frame.message if isinstance(frame.message, dict) else {}
+                if message.get("type") == "answer.card":
+                    answer_card = dict(message.get("answer") or {})
+                    if first_audio_ms is not None:
+                        break
+        if not transcript and not answer_card:
+            raise RuntimeError("Pipecat voice transport produced no final transcript or answer card")
+    return transcript, answer_card, (end_sent - started) * 1000, \
+        ((final_stt_at - end_sent) * 1000 if final_stt_at else 0.0), first_audio_ms
+
+
+def transcribe_pipecat(client: HttpClient, audio: bytes, language: str,
+                       csrf: str, *, base_url: str) -> tuple[str, dict, float, float, float | None]:
+    return asyncio.run(_transcribe_pipecat_async(
+        client, audio, language, csrf, base_url=base_url))
 
 
 def _snapshot_db(path: Path) -> dict[str, int] | None:
@@ -215,7 +292,8 @@ def _load_cases(path: Path) -> list[dict]:
     return cases
 
 
-def _case_result(client: HttpClient, case: dict, *, base_url: str, db_path: Path) -> dict:
+def _case_result(client: HttpClient, case: dict, *, base_url: str, db_path: Path,
+                 transport: str) -> dict:
     language = str(case["lang"])
     before = _snapshot_db(db_path)
     session = client.json("POST", "/api/session")
@@ -229,12 +307,18 @@ def _case_result(client: HttpClient, case: dict, *, base_url: str, db_path: Path
         raise RuntimeError("Voice turn did not return an ID")
     audio = Path(case["_audio_path"]).read_bytes()
     started = time.perf_counter()
-    transcript, stt_message, _capture_ms, eot_to_stt_ms = transcribe_websocket(
-        client, audio, language, turn_id, csrf, base_url=base_url)
+    first_audio_ms: float | None = None
+    if transport == "pipecat":
+        transcript, stt_message, _capture_ms, eot_to_stt_ms, first_audio_ms = transcribe_pipecat(
+            client, audio, language, csrf, base_url=base_url)
+    else:
+        transcript, stt_message, _capture_ms, eot_to_stt_ms = transcribe_websocket(
+            client, audio, language, turn_id, csrf, base_url=base_url)
     stt_reject_reason = stt_message.get("reject_reason")
     body: dict | None = None
-    first_audio_ms: float | None = None
-    if transcript.strip() and not stt_reject_reason:
+    if transport == "pipecat":
+        body = stt_message or None
+    elif transcript.strip() and not stt_reject_reason:
         ask_headers = {**headers, "X-Voice-Turn-ID": turn_id}
         body = client.json("POST", "/api/ask", headers=ask_headers, body={
             "query": transcript, "language": language, "previous_query": "",
@@ -276,13 +360,17 @@ def _case_result(client: HttpClient, case: dict, *, base_url: str, db_path: Path
     }
 
 
-def run(*, base_url: str, manifest: Path, output: Path, db_path: Path) -> dict:
+def run(*, base_url: str, manifest: Path, output: Path, db_path: Path,
+        transport: str = "legacy") -> dict:
+    if transport not in {"legacy", "pipecat"}:
+        raise ValueError("Unsupported voice transport")
     cases = _load_cases(manifest)
     results: list[dict] = []
     for case in cases:
         client = HttpClient(base_url)
         try:
-            results.append(_case_result(client, case, base_url=base_url, db_path=db_path))
+            results.append(_case_result(client, case, base_url=base_url, db_path=db_path,
+                                        transport=transport))
         except Exception as exc:
             results.append({"id": case["id"], "lang": case["lang"], "error": type(exc).__name__, "detail": str(exc)})
     valid = [item for item in results if "error" not in item]
@@ -290,6 +378,7 @@ def run(*, base_url: str, manifest: Path, output: Path, db_path: Path) -> dict:
     report = {
         "schema_version": 1,
         "base_url": base_url,
+        "transport": transport,
         "manifest": str(manifest),
         "cases": len(results),
         "completed": len(valid),
@@ -317,8 +406,10 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("reports/voice-eval/latest.json"))
     parser.add_argument("--db", type=Path, default=Path(os.environ.get("CONCIERGE_DB_PATH", "data/concierge.sqlite3")))
+    parser.add_argument("--transport", choices=("legacy", "pipecat"), default="legacy")
     args = parser.parse_args()
-    report = run(base_url=args.base_url, manifest=args.manifest, output=args.output, db_path=args.db)
+    report = run(base_url=args.base_url, manifest=args.manifest, output=args.output,
+                 db_path=args.db, transport=args.transport)
     print(json.dumps({"cases": report["cases"], "completed": report["completed"],
                       "errors": report["errors"], "metrics": report["metrics"]},
                      ensure_ascii=False, sort_keys=True))
