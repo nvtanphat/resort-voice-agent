@@ -12,6 +12,7 @@ or any failed assertion produce status=FAIL and a non-zero exit code.
 from __future__ import annotations
 
 import json
+import gc
 import tempfile
 from pathlib import Path
 
@@ -66,7 +67,7 @@ def run_probe() -> dict:
             graph.check_readiness()
             assert "staff_review" in _snapshot(graph, session_id, proposal["id"]).next
             workflows.staff_transition(
-                queued["id"], "approve", actor="probe-staff",
+                queued["id"], "approve", actor="probe-staff", verified=True,
                 note="Approved by isolated LangGraph probe.",
                 idempotency_key="probe-approve-0001",
             )
@@ -76,6 +77,7 @@ def run_probe() -> dict:
             checks.append("staff_review_resumed_after_restart")
 
             graph = ConciergeGraph(workflows, checkpoint)
+            checks.append("fulfillment_restart_opened")
             workflows.staff_transition(
                 queued["id"], "complete", actor="probe-staff",
                 note="Completed by isolated LangGraph probe.",
@@ -109,6 +111,10 @@ def run_probe() -> dict:
             assert count == 1
             graph.close()
             checks.append("commit_before_resume_reconciled_idempotently")
+            # LangGraph may retain a cyclic graph/checkpointer object.  Collect
+            # it before TemporaryDirectory removes the WAL-backed SQLite file;
+            # Windows refuses to remove a file while any handle is live.
+            gc.collect()
 
         return {"status": "PASS", "checks": checks, "check_count": len(checks)}
     except Exception as exc:

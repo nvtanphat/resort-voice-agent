@@ -9,12 +9,13 @@ import argparse
 import base64
 import hashlib
 import json
-import os
+import time
 import zipfile
 from pathlib import Path
 
 
-def package(directory: Path, archive: Path, private_key: Path, property_id: str, version: int):
+def package(directory: Path, archive: Path, private_key: Path, property_id: str, version: int,
+            *, issued_at: int | None = None, expires_at: int | None = None):
     from cryptography.hazmat.primitives.serialization import load_pem_private_key
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     if version < 1 or not property_id or not archive.name.endswith('.zip'):
@@ -27,6 +28,10 @@ def package(directory: Path, archive: Path, private_key: Path, property_id: str,
     key=load_pem_private_key(private_key.read_bytes(),password=None)
     if not isinstance(key,Ed25519PrivateKey):
         raise ValueError('Only Ed25519 keys are supported')
+    issued_at = int(time.time()) if issued_at is None else int(issued_at)
+    expires_at = issued_at + 30 * 24 * 3600 if expires_at is None else int(expires_at)
+    if issued_at < 1 or expires_at <= issued_at:
+        raise ValueError('Knowledge release expiry must be after issuance')
     try:
         with zipfile.ZipFile(archive,'x',compression=zipfile.ZIP_DEFLATED) as zf:
             for path in docs:
@@ -45,6 +50,7 @@ def package(directory: Path, archive: Path, private_key: Path, property_id: str,
         manifest={'product':'concierge-knowledge','property_id':property_id,
                   'release_version':version,'filename':archive.name,
                   'sha256':digest,'size_bytes':archive.stat().st_size,
+                  'issued_at': issued_at, 'expires_at': expires_at,
                   'chunk_policy':CHUNK_POLICY,'chunk_policy_hash':chunk_policy_hash()}
         raw=json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()
         manifest_path=archive.with_suffix('.manifest.json')
@@ -66,11 +72,15 @@ def main():
     parser.add_argument('--private-key',type=Path,required=True)
     parser.add_argument('--property-id',required=True)
     parser.add_argument('--version',type=int,required=True)
+    parser.add_argument('--issued-at',type=int)
+    parser.add_argument('--expires-at',type=int)
     args=parser.parse_args()
-    files=package(args.directory,args.archive,args.private_key,args.property_id,args.version)
+    files=package(args.directory,args.archive,args.private_key,args.property_id,args.version,
+                  issued_at=args.issued_at, expires_at=args.expires_at)
     print('Signed release:',args.archive,*files)
 
-if __name__=='__main__': main()
+if __name__ == '__main__':
+    main()
 
 
 def read_signed_package(archive: Path, manifest_path: Path, signature_path: Path,
@@ -103,6 +113,10 @@ def read_signed_package(archive: Path, manifest_path: Path, signature_path: Path
         or manifest['size_bytes'] != archive.stat().st_size
         or manifest['size_bytes'] > 15_000_000):
         raise ValueError('Manifest property, release or archive size/metadata invalid')
+    if ('issued_at' in manifest or 'expires_at' in manifest):
+        if (type(manifest.get('issued_at')) is not int or type(manifest.get('expires_at')) is not int
+                or manifest['issued_at'] < 1 or manifest['expires_at'] <= manifest['issued_at']):
+            raise ValueError('Invalid knowledge release freshness metadata')
 
     from concierge_kiosk.rag.ingestion import CHUNK_POLICY, chunk_policy_hash
     if (manifest.get('chunk_policy') != CHUNK_POLICY or

@@ -1,0 +1,16 @@
+name: concierge-kiosk-jetson-sim
+
+# Compatibility/resource acceptance overlay. Use with:
+#   docker compose -f compose.yaml -f compose.jetson-sim.yaml config
+# This deliberately does not emulate CUDA/GPU throughput. It only bounds the
+# host-side CPU/RAM envelope before a real arm64 appliance is tested.
+services:
+  ollama:
+    cpus: "4.0"
+    mem_limit: 6g
+    platform: ${CONCIERGE_SIM_PLATFORM:-linux/amd64}
+
+  kiosk:
+    cpus: "2.0"
+    mem_limit: 2g
+    platform: ${CONCIERGE_SIM_PLATFORM:-linux/amd64}
