@@ -12,7 +12,6 @@ bounded structured facts and requirement status only.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import re
 
 from concierge_kiosk.agent.tools.service_slots import service_mode, extract_slots
 from concierge_kiosk.agent.understanding.intent import (
@@ -176,6 +175,7 @@ class AgentState:
     budget_exhausted: str = ''
     command_index: int = 0
     command_satisfied_requirements: set[str] = field(default_factory=set)
+    tool_attempts: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.goal_contract is None:
@@ -238,7 +238,7 @@ class AgentState:
                     'step_id', 'objective_id', 'requirement_id', 'capability', 'status',
                     'verified', 'service_candidate_id', 'summary', 'missing_slots',
                     'authority_outcome', 'missing_topics', 'facts', 'failure_class',
-                    'query_hint'
+                    'query_hint', 'ok', 'error', 'hint', 'attempt'
                 }}
                 for item in self.observations[-8:]
             ],

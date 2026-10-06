@@ -81,6 +81,8 @@
       "max_read_calls": 6
     },
     "rag": {
+      "dense_backend": "legacy",
+      "vector_path": "data/vectors",
       "min_dense_similarity": 0.65,
       "lexical_coverage": 0.6,
       "rrf_k": 60,

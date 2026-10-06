@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from concierge_kiosk.domain.requests.workflows import Workflows
-from concierge_kiosk.integrations.hotel_ops import DispatchResult, SignedRoomQrVerifier
+from concierge_kiosk.integrations.hotel_ops import DispatchResult, HttpServiceDispatcher, SignedRoomQrVerifier
 from concierge_kiosk.persistence.sqlite_store import Store
 
 PROPERTY = 'FURAMA_DANANG'
@@ -32,6 +32,15 @@ class FakeDispatcher:
         assert kwargs['request_id']
         assert kwargs['payload']['room_number'] == '305'
         return DispatchResult('accepted', 'fake_hotsos', external_reference='EXT-42', eta_minutes=12)
+
+
+def test_external_network_failure_is_explicitly_pending_sync():
+    dispatcher = HttpServiceDispatcher('http://127.0.0.1:9/dispatch', '0123456789abcdef',
+                                       timeout_seconds=0.05)
+    result = dispatcher.dispatch(request_id='a' * 32, property_id=PROPERTY,
+                                 kind='dining', details='synthetic offline request', payload={})
+    assert result.state == 'pending_sync'
+    assert result.external_reference == ''
 
 
 def _workflow(tmp: Path, *, dispatcher=None):

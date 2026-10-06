@@ -133,6 +133,17 @@ class Store:
             request_fields = {row[1] for row in con.execute('PRAGMA table_info(service_requests)')}
             if 'payload_json' not in request_fields:
                 con.execute("ALTER TABLE service_requests ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'")
+            if 'confirmation_code' not in request_fields:
+                con.execute("ALTER TABLE service_requests ADD COLUMN confirmation_code TEXT NOT NULL DEFAULT ''")
+            # Backfill a guest-safe reference for rows created before the
+            # public status projection existed.  It is derived solely from
+            # the already-random request id and contains no PII.
+            from concierge_kiosk.domain.public_reference import public_reference
+            for legacy in con.execute("SELECT id FROM service_requests WHERE confirmation_code='' ").fetchall():
+                con.execute("UPDATE service_requests SET confirmation_code=? WHERE id=?",
+                            (public_reference(legacy['id']), legacy['id']))
+            con.execute("CREATE UNIQUE INDEX IF NOT EXISTS service_requests_public_reference "
+                        "ON service_requests(property_id,confirmation_code) WHERE confirmation_code!=''")
             request_fields = {row[1] for row in con.execute('PRAGMA table_info(service_requests)')}
             additive_request_fields = {
                 'service_code': "ALTER TABLE service_requests ADD COLUMN service_code TEXT NOT NULL DEFAULT ''",
@@ -436,6 +447,7 @@ class Store:
             con.execute('DELETE FROM rate_limits WHERE (period+1)*window_seconds < ?', (cutoff,))
             from datetime import datetime, timezone
             con.execute('DELETE FROM telemetry_receipts WHERE expires_at < ?', (now,))
+            con.execute('DELETE FROM guest_consents WHERE expires_at < ?', (now,))
             con.execute('DELETE FROM read_task_projections WHERE expires_at <= ?', (now,))
             con.execute('DELETE FROM metric_counts WHERE day < ?',
                         (datetime.fromtimestamp(max(0, cutoff), timezone.utc).date().isoformat(),))

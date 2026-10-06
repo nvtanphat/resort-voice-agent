@@ -18,8 +18,8 @@ from typing import TypedDict
 from concierge_kiosk.domain.service_requests import InvalidTransition, Workflows
 from concierge_kiosk.persistence.constants import SQLITE_BUSY_TIMEOUT_MS
 
-from concierge_kiosk.agent.memory.checkpoints import (EXPECTED_DB_GRAPH, validate_checkpoint,
-    validate_business_projection, resume_idempotency_key)
+from concierge_kiosk.agent.memory.checkpoints import (
+    validate_checkpoint, validate_business_projection, resume_idempotency_key)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -92,7 +92,15 @@ class ConciergeGraph:
     def close(self) -> None:
         with self._lock:
             if not self._closed:
-                self._connection.close()
+                # Drop the graph/checkpointer references before closing the
+                # SQLite handle.  This matters on Windows, where a lingering
+                # saver reference can keep the WAL-backed database locked
+                # until the object is collected.
+                connection = self._connection
+                self._checkpointer = None
+                self.requests = None
+                self._connection = None
+                connection.close()
                 self._closed = True
 
     def check_readiness(self) -> None:

@@ -14,4 +14,4 @@ class SpeechService:
         self._register(app, cfg, **dependencies)
         if getattr(cfg, 'voice_transport', 'legacy') == 'pipecat':
             from ..voice.agent.transport import register_pipecat_route
-            register_pipecat_route(app, cfg, **(pipecat_dependencies or {}))
+            register_pipecat_route(app, cfg=cfg, **(pipecat_dependencies or {}))

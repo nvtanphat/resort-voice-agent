@@ -65,7 +65,32 @@ def register_staff_routes(app: FastAPI, *, workflows, store, cfg, get_graph,
 
     @app.get("/staff/metrics")
     def staff_metrics(account: dict = Depends(staff_read)):
-        return {"counters": store.metrics(), "latency": store.latency_histograms(), "slm_throughput": store.slm_throughput(),
+        store.flush_metrics()
+        counters = store.metrics()
+        totals: dict[str, int] = {}
+        by_language: dict[str, dict[str, int]] = {}
+        for row in counters:
+            metric = str(row.get('metric') or '')
+            count = int(row.get('count') or 0)
+            language = str(row.get('language') or 'system')
+            totals[metric] = totals.get(metric, 0) + count
+            by_language.setdefault(language, {})[metric] = by_language.setdefault(language, {}).get(metric, 0) + count
+        asked = totals.get('ask.total', 0)
+        with_evidence = totals.get('retrieval.with_evidence', 0)
+        completed = totals.get('request.complete', 0)
+        confirmed = totals.get('request.confirmed', 0)
+        kpi = {
+            'ask_total': asked,
+            'grounded_answer_count': with_evidence,
+            'no_evidence_abstention_count': totals.get('retrieval.no_evidence', 0),
+            'grounded_answer_rate': round(with_evidence / asked, 4) if asked else None,
+            'request_confirmed_count': confirmed,
+            'request_completed_count': completed,
+            'request_completion_rate': round(completed / confirmed, 4) if confirmed else None,
+            'emergency_alert_count': totals.get('emergency.acknowledge', 0) + totals.get('emergency.resolve', 0),
+            'by_language': by_language,
+        }
+        return {"counters": counters, "kpi": kpi, "latency": store.latency_histograms(), "slm_throughput": store.slm_throughput(),
                 "note": "Percentiles are approximate bucket upper bounds. Browser timings are client-observed, not hardware/model benchmarks. Retrieval evidence is not answer faithfulness."}
 
     @app.post("/staff/requests/{request_id}/guest-change")

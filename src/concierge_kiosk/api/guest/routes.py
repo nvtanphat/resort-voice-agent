@@ -5,23 +5,114 @@ service_requests and do not accept natural-language confirmation as consent.
 """
 from __future__ import annotations
 import sqlite3
+import json
 import time
 from typing import Annotated
 from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse, Response as FastAPIResponse, StreamingResponse
 from concierge_kiosk.api.shared.contracts import (
-    Ask, Prepare, Confirm, CancelProposal, SessionResponse, StatusResponse, AskResponse,
+    Ask, Prepare, Confirm, CancelProposal, Consent, SessionResponse, StatusResponse, AskResponse,
     TurnLifecycleResponse, PrepareResponse, ConfirmResponse, CancelResponse,
     GuestRequestsResponse, GuestRequestResponse, GuestProgressResponse, GuestRequestChange, RequestFeedback,
 )
 from concierge_kiosk.domain.service_requests import VERIFICATION_KINDS
 from concierge_kiosk.i18n import text as i18n_text
 from concierge_kiosk.core.domain_profile import supported_languages
+from concierge_kiosk.api.shared.status_tokens import InvalidStatusToken
+from concierge_kiosk.domain.public_reference import PUBLIC_REFERENCE_RE, public_reference
 
 
 def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, turn_events, audio_admission,
                           conversations, agent_tasks, rate, guest_session, answer, finalize_answer,
                           commit_autonomous_action, get_graph, prepare_authorized_proposal,
-                          confirm_authorized_proposal, record_metric, logger) -> None:
+                          confirm_authorized_proposal, record_metric, logger, status_tokens,
+                          web_dir) -> None:
+    @app.get('/status/{token}')
+    def public_status_page(token: str):
+        # status.js consumes the bearer from the URL; it is not rendered into
+        # HTML and the page remains a cache-free static shell.
+        if len(token) > 4096:
+            raise HTTPException(status_code=404, detail='Status page not found')
+        return FileResponse(web_dir / 'status.html', headers={'Cache-Control': 'no-store'})
+
+    def _public_status(token: str, request: Request) -> dict:
+        rate(request, f'public-status:{request.client.host if request.client else "unknown"}', 30)
+        try:
+            claims = status_tokens.verify(token, property_id=cfg.property_id)
+            status = workflows.public_request_status(claims['request_id'])
+        except (InvalidStatusToken, PermissionError, ValueError) as exc:
+            raise HTTPException(status_code=404, detail='Status not found or expired') from exc
+        return {**status, 'status_token_expires_at': claims['expires_at']}
+
+    @app.get('/api/status/{token}')
+    def public_status(token: str, request: Request):
+        return _public_status(token, request)
+
+    @app.get('/api/status/{token}/events')
+    def public_status_events(token: str, request: Request):
+        """Bounded SSE snapshot; reconnects always re-authorize the bearer.
+
+        The stream intentionally emits one committed snapshot and closes.  A
+        kiosk reconnects after its normal backoff, which keeps a shared edge
+        process bounded and makes an interrupted connection unable to hold a
+        worker indefinitely.
+        """
+        status = _public_status(token, request)
+        event_id = str(status['updated_at'])
+        payload = json.dumps(status, ensure_ascii=False, separators=(',', ':'))
+        last_event_id = request.headers.get('Last-Event-ID', '').strip()
+        if last_event_id and (len(last_event_id) > 32 or not last_event_id.isdigit()):
+            raise HTTPException(status_code=400, detail='Invalid status event cursor')
+
+        def events():
+            # The stream is deliberately a bounded snapshot.  A reconnect with
+            # the same cursor must not replay a business mutation; it receives a
+            # no-op cursor event instead.  A later `updated_at` emits the new
+            # public projection.  No SSE event ever carries an action command.
+            if last_event_id == event_id:
+                yield f'retry: 2000\nid: {event_id}\nevent: heartbeat\ndata: {{}}\n\n'
+            else:
+                yield f'retry: 2000\nid: {event_id}\nevent: status\ndata: {payload}\n\n'
+
+        response = StreamingResponse(events(), media_type='text/event-stream')
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Accel-Buffering'] = 'no'
+        return response
+
+    @app.get('/api/status/{token}/qr.svg')
+    def public_status_qr(token: str, request: Request):
+        status = _public_status(token, request)
+        try:
+            import qrcode
+            from qrcode.image.svg import SvgPathImage
+            qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M,
+                               box_size=6, border=4)
+            qr.add_data(f"{cfg.public_origin.rstrip('/')}/status/{token}")
+            qr.make(fit=True)
+            image = qr.make_image(image_factory=SvgPathImage)
+            content = image.to_string().decode('utf-8')
+        except ImportError as exc:
+            raise HTTPException(status_code=503, detail='QR renderer unavailable') from exc
+        response = FastAPIResponse(content=content, media_type='image/svg+xml')
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.headers['X-Status-Reference'] = status['confirmation_code']
+        return response
+
+    @app.get('/api/status/lookup/{confirmation_code}')
+    def public_status_lookup(confirmation_code: str, request: Request):
+        rate(request, f'public-status-lookup:{request.client.host if request.client else "unknown"}', 12)
+        code = str(confirmation_code or '').strip().upper()
+        if not PUBLIC_REFERENCE_RE.fullmatch(code):
+            raise HTTPException(status_code=404, detail='Status not found')
+        try:
+            status = workflows.public_request_by_confirmation_code(code)
+            request_id = workflows.public_request_id_by_confirmation_code(code)
+            token, expires_at = status_tokens.issue(property_id=cfg.property_id, request_id=request_id)
+        except (PermissionError, ValueError) as exc:
+            raise HTTPException(status_code=404, detail='Status not found') from exc
+        return {**status, 'status_url': f'{cfg.public_origin.rstrip("/")}/status/{token}',
+                'status_token': token, 'status_token_expires_at': expires_at}
+
     @app.post("/api/session", response_model=SessionResponse)
     def start_session(request: Request, response: Response,
                       previous_token: Annotated[str | None, Cookie(alias='ck_session')] = None):
@@ -180,6 +271,11 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
     @app.post("/api/requests/prepare", response_model=PrepareResponse)
     def prepare(body: Prepare, request: Request, session: str = Depends(guest_session)):
         rate(request, f"prepare:{session}", 10)
+        if body.data_consent:
+            workflows.record_guest_consent(session, 'service_request', 'privacy-v1', True)
+        if cfg.data_consent_required and not workflows.guest_consent_granted(
+                session, 'service_request', policy_version='privacy-v1'):
+            raise HTTPException(status_code=428, detail='Data consent is required before collecting request details')
         proposal, orchestration_sync = prepare_authorized_proposal(session, body)
         with conversations.serialize(session):
             conversations.sync_workflow(session, body.language, proposal_id=proposal["id"],
@@ -197,8 +293,15 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
                 "next_open_at": proposal.get('next_open_at'),
                 "orchestration_sync": orchestration_sync}
 
+    @app.post('/api/consent')
+    def guest_consent(body: Consent, request: Request, session: str = Depends(guest_session)):
+        rate(request, f'consent:{session}', 20)
+        return workflows.record_guest_consent(
+            session, body.purpose, body.policy_version, body.granted)
+
     @app.post("/api/requests/confirm", response_model=ConfirmResponse)
-    def confirm(body: Confirm, request: Request, session: str = Depends(guest_session)):
+    def confirm(body: Confirm, request: Request, response: Response,
+                session: str = Depends(guest_session)):
         rate(request, f"confirm:{session}", 20)
         row = confirm_authorized_proposal(session, body)
         # On an idempotent replay staff may already have approved, rejected or
@@ -220,11 +323,21 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
             record_metric('request.confirmed', row['language'])
         if row.get("orchestration_sync") == "deferred":
             record_metric('orchestration.sync_deferred', row['language'])
+        status_token, status_token_expires_at = status_tokens.issue(
+            property_id=cfg.property_id, request_id=row['id'])
+        if status in {'pending_staff', 'approved', 'in_progress', 'paused'}:
+            # A confirmed guest write is durable, but a queued/HITL request is
+            # not completed.  Make that distinction machine-readable at the
+            # HTTP boundary instead of returning a misleading 200 Completed.
+            response.status_code = 202
         return {"request_id": row["id"], "status": status,
                 "orchestration_sync": row.get("orchestration_sync", "ok" if cfg.orchestrator == "langgraph" else "direct"),
                 "guest_verification_state": row.get("guest_verification_state", "staff_required"),
                 "eta_minutes": row.get("eta_minutes"),
                 "external_dispatch_state": row.get("external_dispatch_state", "not_requested"),
+                "confirmation_code": row.get("confirmation_code") or public_reference(row["id"]),
+                "status_url": f'{cfg.public_origin.rstrip("/")}/status/{status_token}',
+                "status_token_expires_at": status_token_expires_at,
                 "message": status_messages[status]}
 
     @app.post("/api/requests/cancel", response_model=CancelResponse)

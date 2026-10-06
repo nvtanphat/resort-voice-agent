@@ -5,7 +5,7 @@ import sqlite3
 import time
 import re
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Callable
 
 from concierge_kiosk.agent.understanding.intent import (
     emergency_response, matches_action_pattern, normalize_intent_text, suggest_service_request,
@@ -18,7 +18,7 @@ from concierge_kiosk.agent.tools.scheduling import approved_schedule, ScheduleUn
 from concierge_kiosk.domain.entity_resolver import record_alias_matches
 from concierge_kiosk.domain.entity_resolver import property_entity_matches
 from concierge_kiosk.core.structured_loader import load_structured_dataset
-from concierge_kiosk.agent.understanding.domain_nlu import FACET_ALIASES, FACET_FACT_TYPES
+from concierge_kiosk.agent.understanding.domain_nlu import FACET_FACT_TYPES
 from concierge_kiosk.domain.service_registry import resolve_service_code, service_escalates_without_evidence
 from concierge_kiosk.agent.core.tool_contracts import no_evidence_handoff_details
 from concierge_kiosk.core.domain_profile import ui_policy
@@ -29,10 +29,11 @@ from concierge_kiosk.rag.retrieval import (
     Retrieval, abstention_answer, retrieve, retrieve_context, retrieve_localized_anchor,
 )
 
-_PRESENTATION_LIMITS = ui_policy().presentation_limits
 from concierge_kiosk.rag.grounding.relevance import answerable, has_explicit_topic, requested_facets
 from .recovery import load_support_directory, recovery_metadata
 from concierge_kiosk.i18n import text as i18n_text
+
+_PRESENTATION_LIMITS = ui_policy().presentation_limits
 
 
 def _mentioned_contexts(query: str, language: str) -> tuple[str, ...]:
@@ -197,6 +198,7 @@ class AnswerServices:
     place_anchor_sources: Callable[..., list]
 
 def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, embedder, reranker,
+                          vector_store=None,
                           record_metric, speech_metric, slm_permitted, audio_admission,
                           observe_slm) -> AnswerServices:
     support_directory = load_support_directory(cfg.structured_dataset_dir, cfg.property_id)
@@ -302,7 +304,8 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         if len(compound_queries) > 1 and anchor is None:
             pieces = [retrieve(
                 store, property_id=cfg.property_id, language=language, query=part,
-                embedder=embedder, reranker=reranker, effective_date=effective_date,
+                embedder=embedder, reranker=reranker, vector_store=vector_store,
+                effective_date=effective_date,
                 policy=rag_policy, expand_parent=True)
                 for part in compound_queries]
             sources = []
@@ -344,6 +347,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                 if has_explicit_topic(q):
                     result = retrieve(store, property_id=cfg.property_id, language=language,
                                       query=search_query, embedder=embedder, reranker=reranker,
+                                      vector_store=vector_store,
                                       effective_date=effective_date, policy=rag_policy, expand_parent=True)
                 else:
                     result.answer = abstention_answer(language)
@@ -351,6 +355,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
             revoked_anchor = None
             result = retrieve(store, property_id=cfg.property_id, language=language,
                               query=search_query, embedder=embedder, reranker=reranker,
+                              vector_store=vector_store,
                               effective_date=effective_date, policy=rag_policy, expand_parent=True,
                               entity_ids=structured_entities, fact_types=structured_fact_types)
         answerability_failure = None
@@ -637,7 +642,8 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                 search_query = ' '.join((search_query, *additions))
             retrieved = retrieve(store, property_id=cfg.property_id, language=language,
                                  query=search_query,
-                                 embedder=embedder, reranker=reranker, effective_date=effective_date,
+                                 embedder=embedder, reranker=reranker, vector_store=vector_store,
+                                 effective_date=effective_date,
                                  policy=rag_policy, expand_parent=True)
             evidence = bind_citations(store, property_id=cfg.property_id, language=language,
                                       answer=retrieved.answer, sources=retrieved.sources,

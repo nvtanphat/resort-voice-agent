@@ -30,6 +30,7 @@ from .api.internal.routes import register_internal_agent_routes
 from .api.shared.auth import build_auth_dependencies
 from .api.shared.contracts import ClientTelemetry
 from .api.shared.security import install_http_security
+from .api.shared.status_tokens import StatusTokenService
 from .api.staff.routes import register_staff_routes
 from .application import TurnFinalizer, WorkflowApplicationService
 from .bootstrap import prepare_runtime
@@ -63,7 +64,8 @@ def _web_directory() -> Path:
         Path(sys.prefix) / "share" / "concierge-kiosk" / "web",
     )
     for directory in candidates:
-        if (directory / "index.html").is_file() and (directory / "ops.html").is_file():
+        if ((directory / "index.html").is_file() and (directory / "staff.html").is_file()
+                and (directory / "status.html").is_file() and (directory / "status.js").is_file()):
             return directory
     # Retain an explicit missing-asset failure at FastAPI startup rather than
     # silently serving an empty or unrelated directory.
@@ -349,6 +351,17 @@ def _build_request_observers(store):
 
 def create_app(settings: Settings | None = None, *, embedder=None, reranker=None) -> FastAPI:
     cfg, store, rag_policy, workflows, embedder, reranker = prepare_runtime(settings, embedder, reranker)
+    vector_store = None
+    vector_store_error = None
+    if cfg.rag_dense_backend != 'legacy':
+        try:
+            from .rag.vectorstore import open_vector_store
+            vector_store = open_vector_store(
+                backend=cfg.rag_dense_backend, path=cfg.rag_vector_path,
+                collection=f'{cfg.property_id}-knowledge')
+        except (OSError, RuntimeError, ValueError) as exc:
+            vector_store_error = type(exc).__name__
+            LOGGER.error('dense_vector_index_unavailable type=%s', vector_store_error)
     domain_profile, property_profile, enabled_request_kinds = _load_bound_profiles(cfg, workflows)
     semantic_router = _build_semantic_router(domain_profile, embedder)
     workflows.emergency_escalation_seconds = property_profile.emergency.escalation_after_seconds
@@ -360,6 +373,9 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
     app.state.config = cfg
     app.state.property_profile = property_profile
     app.state.domain_profile = domain_profile
+    app.state.vector_store = vector_store
+    app.state.vector_store_error = vector_store_error
+    app.state.status_tokens = StatusTokenService(cfg.status_token_secret)
     # Suggestions are consent-gated at the route and remain read-only. The
     # engine is enabled so an explicitly opted-in kiosk can use it; without
     # consent it returns no suggestions.
@@ -407,12 +423,14 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
         slm_permitted=slm_permitted, get_graph=get_graph, property_profile=property_profile,
         embedder=embedder, guest_session=guest_session, rate=rate,
         strict_ai_ready_at_boot=strict_ai_ready_at_boot, logger=LOGGER,
+        vector_store=vector_store,
     )
 
     from .application.conversation import build_answer_services, build_conversation_engine
     answer_services = build_answer_services(
         store=store, workflows=workflows, cfg=cfg, conversations=conversations, rag_policy=rag_policy,
-        embedder=embedder, reranker=reranker, record_metric=record_metric,
+        embedder=embedder, reranker=reranker, vector_store=vector_store,
+        record_metric=record_metric,
         speech_metric=speech_metric, slm_permitted=slm_permitted,
         audio_admission=audio_admission, observe_slm=observe_slm,
     )
@@ -426,8 +444,6 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
         answers=answer_services, logger=LOGGER, semantic_router=semantic_router,
     )
     answer = conversation_engine.answer
-    specialist_answer = conversation_engine.specialist_answer
-    emergency_answer = answer_services.emergency_answer
     ensure_active_context_session = answer_services.ensure_active_context_session
     service_actions = conversation_engine.service_actions
 
@@ -457,6 +473,7 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
         prepare_authorized_proposal=prepare_authorized_proposal,
         confirm_authorized_proposal=confirm_authorized_proposal,
         record_metric=record_metric, logger=LOGGER,
+        status_tokens=app.state.status_tokens, web_dir=WEB_DIR,
     )
 
     register_staff_routes(

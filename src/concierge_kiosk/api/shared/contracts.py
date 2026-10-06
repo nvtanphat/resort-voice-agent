@@ -82,6 +82,13 @@ class Prepare(StrictRequest):
     details: str = Field(min_length=8, max_length=500)
     nonce: str = Field(min_length=8, max_length=80)
     payload: ServicePayload | None = None
+    data_consent: StrictBool = False
+
+
+class Consent(StrictRequest):
+    purpose: Literal['service_request', 'proactive_suggestions']
+    policy_version: str = Field(default='privacy-v1', min_length=1, max_length=32)
+    granted: StrictBool
 
 
 class Confirm(StrictRequest):
@@ -271,6 +278,9 @@ class ConfirmResponse(PublicResponse):
     eta_minutes: int | None = None
     external_dispatch_state: str = "not_requested"
     message: str
+    confirmation_code: str = ''
+    status_url: str = ''
+    status_token_expires_at: int | None = None
 
 
 class CancelResponse(PublicResponse):
@@ -280,6 +290,7 @@ class CancelResponse(PublicResponse):
 
 class GuestRequestResponse(PublicResponse):
     id: str
+    confirmation_code: str = ''
     kind: str
     language: str
     status: str
@@ -373,6 +384,7 @@ class PublicConfigResponse(PublicResponse):
     retrieval_mode: str
     orchestrator: str
     generation_mode: str
+    data_consent_required: bool = False
 
 
 class ServiceCatalogResponse(PublicResponse):

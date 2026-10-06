@@ -13,15 +13,16 @@ from concierge_kiosk.agent.core.concierge import (
     AgentToolRequest, BoundedToolRegistry, READ_TOOLS, ACTION_TOOL,
     MANAGE_REQUEST_TOOL, HANDOFF_TOOL, ConciergeAgent,
 )
-from concierge_kiosk.domain.service_registry import autonomous_required_slots, service_definition
-from .planner import ActionPlan, NextAction, deterministic_next_action
+from concierge_kiosk.domain.service_registry import service_definition
+from .planner import ActionPlan, NextAction
 from .state import AgentState, build_initial_state
-from .verifier import verify, Verification
+from .verifier import Verification
 from .planning.goal_interpreter import GoalInterpretation, apply_goal_interpretation
 from concierge_kiosk.agent.understanding.turn_plan import TurnPlan
 from concierge_kiosk.agent.understanding.commands import Command
 from concierge_kiosk.agent.tools.policies import PolicyContext, evaluate_policies
 from concierge_kiosk.agent.tools.registry import ToolRegistry
+from concierge_kiosk.agent.core.tool_contracts import observation_contract, tool_error_observation
 from concierge_kiosk.core.domain_profile import security_policy
 
 from .execution.models import AgentBudget, AgentRun
@@ -97,6 +98,47 @@ class AutonomousConciergeRuntime:
 
     def _execute(self, request: AgentToolRequest, state: AgentState,
                  action: NextAction, step_id: str) -> tuple[dict, dict]:
+        """Execute a tool without allowing contract/setup errors to escape."""
+        try:
+            return self._execute_inner(request, state, action, step_id)
+        except Exception as exc:
+            # Parameter-contract failures happen before a handler can run. They
+            # are still observations for the same bounded recovery loop.
+            return self._tool_error_observation(request, action, step_id, exc)
+
+    @staticmethod
+    def _tool_error_observation(request: AgentToolRequest, action: NextAction,
+                                step_id: str, exc: BaseException) -> tuple[dict, dict]:
+        error = tool_error_observation(exc, hint='retry_or_staff_handoff')
+        raw = {
+            'status': 'unavailable', **error,
+            'answer': i18n_text('runtime.unavailable', request.language),
+            'sources': [], 'citations': [], 'suggested_action': None,
+            'request_completed': False, 'requires_staff_review': False,
+            'grounding': 'safe_fallback', 'evidence_status': 'UNAVAILABLE',
+        }
+        if action.capability in {'navigation', 'find_place'}:
+            raw['map_guidance'] = {'status': 'unavailable'}
+        if action.capability in {'planning', 'check_schedule'}:
+            raw.update({'plan_is_draft': True, 'plan_topics': [], 'missing_topics': []})
+        if action.capability in {'service_action', 'manage_request', 'handoff_staff'}:
+            raw['agent_action'] = {'status': 'unavailable', 'business_writes': 0}
+        meta = {
+            'step_id': step_id,
+            'objective_id': action.objective_id,
+            'requirement_id': action.requirement_id,
+            'capability': action.capability,
+            'status': 'unavailable', 'verified': False,
+            'planner': action.planner,
+            'query_hint': (str(action.query)[:140] if action.query else ''),
+            **error,
+            'failure_class': AutonomousConciergeRuntime._failure_class(
+                exc, action.capability or '', 'unavailable') or 'internal_tool_error',
+        }
+        return meta, raw
+
+    def _execute_inner(self, request: AgentToolRequest, state: AgentState,
+                       action: NextAction, step_id: str) -> tuple[dict, dict]:
         capability = action.capability
         if capability not in READ_TOOLS | {ACTION_TOOL, MANAGE_REQUEST_TOOL, HANDOFF_TOOL}:
             raise RuntimeError('Planner selected a capability outside the sandbox')
@@ -200,9 +242,10 @@ class AutonomousConciergeRuntime:
                 'agent_tool_failed capability=%s error_type=%s',
                 capability, type(exc).__name__,
             )
+            error = tool_error_observation(exc, hint='retry_or_staff_handoff')
             unavailable = i18n_text('runtime.unavailable', request.language)
             raw = {
-                'status': 'unavailable', 'error_class': type(exc).__name__,
+                'status': 'unavailable', **error,
                 'answer': unavailable, 'sources': [], 'citations': [],
                 'suggested_action': None, 'request_completed': False,
                 'requires_staff_review': False, 'grounding': 'safe_fallback',
@@ -212,10 +255,14 @@ class AutonomousConciergeRuntime:
                 raw['map_guidance'] = {'status': 'unavailable'}
             if capability in {'planning', 'check_schedule'}:
                 raw.update({'plan_is_draft': True, 'plan_topics': [], 'missing_topics': []})
-            if capability == 'service_action':
+            if capability in {ACTION_TOOL, MANAGE_REQUEST_TOOL, HANDOFF_TOOL}:
                 raw['agent_action'] = {'status': 'unavailable', 'business_writes': 0}
             verified = False
             status = 'unavailable'
+
+        if status == 'unavailable' and raw.get('ok') is not False:
+            raw.update(tool_error_observation('tool_unavailable',
+                                              hint='retry_or_staff_handoff'))
 
         requirement = state.requirement(action.requirement_id) if action.requirement_id else None
         meta = {
@@ -233,6 +280,8 @@ class AutonomousConciergeRuntime:
         }
         if typed_params is not None:
             meta['typed_params'] = typed_params
+        if raw.get('ok') is False:
+            meta.update({key: raw.get(key) for key in ('ok', 'error', 'hint')})
         if policy_decision is not None:
             meta['policy_status'] = policy_decision.status
             meta['policy_reason'] = policy_decision.reason_key
@@ -293,6 +342,9 @@ class AutonomousConciergeRuntime:
                 'answer_excerpt': str(raw.get('answer', ''))[:360],
                 'resolved_topics': [str(action.query)[:100]] if action.query else [],
             }
+        # Preserve the legacy trace fields while attaching one versioned,
+        # closed observation envelope for text, voice and evaluator clients.
+        meta['observation'] = observation_contract(capability, raw).model_dump(mode='json')
         return meta, raw
 
     @staticmethod

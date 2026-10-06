@@ -146,6 +146,9 @@ READ_INFO_MORE_TERMS = _terms(READ_INTENT["info_more_terms"])
 READ_DENY_PATTERN = re.compile(READ_INTENT["deny_pattern"], re.I)
 COMPOSITE_INFORMATION_TERMS = _terms(READ_INTENT["composite_information_terms"])
 AVAILABILITY_TERMS = _terms(READ_INTENT.get("availability_terms", {}))
+SCHEDULE_CUE_TERMS = _terms(READ_INTENT.get("schedule_cue_terms", {}))
+AVAILABILITY_SERVICE_TERMS = _nested_terms(
+    READ_INTENT.get("availability_service_terms", {}))
 QUALIFIER_PATTERNS = _patterns(_POLICY.qualifier_patterns)
 
 

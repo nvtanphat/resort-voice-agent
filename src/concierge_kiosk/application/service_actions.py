@@ -22,12 +22,13 @@ from ..agent.understanding.intent import normalize_intent_text, suggest_service_
 from ..agent.understanding.routing import RouteDecision, fast_response, request_change_intent
 from ..agent.understanding.domain_nlu import AFFIRM_TERMS, DENY_TERMS, ROUTING_STATIC_TEXT, SLOT_LABELS
 from ..agent.tools.service_slots import (assess_service, clarification_text, ready_text,
-                                          review_details, extract_slots, service_mode)
+                                          extract_slots, service_mode)
 
-_MAX_REQUEST_STATUS_ITEMS = int(ui_policy().presentation_limits["max_request_status_items"])
 from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, autonomous_required_slots,
                                                      route_branch_for_request_kind, service_definition)
 from concierge_kiosk.core.operational_policy import dispatch_policy_for_service, service_catalog_entry
+
+_MAX_REQUEST_STATUS_ITEMS = int(ui_policy().presentation_limits["max_request_status_items"])
 
 
 def _voice_numeric_review(details: str, slots: dict, language: str) -> str:
@@ -134,7 +135,8 @@ class ServiceActionService:
     def __init__(self, *, workflows, task_memory, conversations, orchestrator: str,
                  get_graph: Callable[[], object], record_metric: Callable[[str, str], None],
                  logger: logging.Logger, enabled_request_kinds: set[str] | frozenset[str] | None = None,
-                 low_risk_requires_verified_room: bool = False, cfg=None):
+                 low_risk_requires_verified_room: bool = False,
+                 hitl_mode: str = 'legacy_policy', cfg=None):
         self._workflows = workflows
         self._task_memory = task_memory
         self._conversations = conversations
@@ -145,6 +147,7 @@ class ServiceActionService:
         self._enabled_request_kinds = (frozenset(enabled_request_kinds)
                                        if enabled_request_kinds is not None else None)
         self._low_risk_requires_verified_room = bool(low_risk_requires_verified_room)
+        self._hitl_mode = hitl_mode if hitl_mode in {'legacy_policy', 'guest_confirm_all'} else 'guest_confirm_all'
         self._cfg = cfg
 
     @staticmethod
@@ -333,7 +336,8 @@ class ServiceActionService:
             authority = evaluate_service_authority(
                 query=pending.details, language=request.language, mode=pending.mode,
                 slots=pending.slots, stable_nonce=bool(request.action_nonce))
-            if needs_screen or authority.outcome != 'auto_execute' or not request.action_nonce:
+            if (self._hitl_mode == 'guest_confirm_all' or needs_screen
+                    or authority.outcome != 'auto_execute' or not request.action_nonce):
                 base['answer'] = i18n_text('service.voice_screen_confirmation', request.language)
                 base['suggested_action'] = {
                     'kind': pending.kind,
@@ -548,7 +552,8 @@ class ServiceActionService:
             result['requires_staff_review'] = False
             result['answer'] = i18n_text('service.denied', request.language)
             action_state['status'] = 'denied'
-        elif (not voice_numeric_confirmation and authority.outcome == 'auto_execute' and
+        elif (self._hitl_mode != 'guest_confirm_all' and
+                not voice_numeric_confirmation and authority.outcome == 'auto_execute' and
                 service_definition(assessment.mode) is not None
                 and service_definition(assessment.mode).approval == 'none'
                 and dispatch_policy is not None

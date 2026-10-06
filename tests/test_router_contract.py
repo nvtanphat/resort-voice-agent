@@ -97,3 +97,8 @@ def test_language_switch_is_exact_command_not_substring():
     assert classify_dialogue("please switch to Korean", "en").branch == "language"
     assert classify_dialogue("do not switch to Korean", "en").branch == "knowledge"
     assert classify_dialogue("switch to Korean and book a table", "en").branch != "language"
+
+
+def test_availability_is_read_only_but_explicit_booking_stays_in_service_flow():
+    assert classify_dialogue("Is there a table at Cafe Indochine?", "en").branch == "check_schedule"
+    assert classify_dialogue("Can I book a table?", "en").branch == "service"

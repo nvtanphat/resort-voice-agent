@@ -12,14 +12,21 @@ from concierge_kiosk.voice.runtime.adapters import voice_assets
 
 def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permitted,
                            get_graph, property_profile, embedder, guest_session, rate,
-                           strict_ai_ready_at_boot, logger) -> None:
+                           strict_ai_ready_at_boot, logger, vector_store=None) -> None:
     @app.get("/")
     def home():
         return FileResponse(web_dir / "index.html", headers={"Cache-Control": "no-store"})
 
+    @app.get("/staff")
+    def staff_console():
+        return FileResponse(web_dir / "staff.html", headers={"Cache-Control": "no-store"})
+
     @app.get("/ops")
-    def ops():
-        return FileResponse(web_dir / "ops.html", headers={"Cache-Control": "no-store"})
+    def ops_legacy_redirect():
+        # Keep old bookmarks recoverable while making the React console the only
+        # supported staff surface.
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse("/staff", status_code=307)
 
     @app.get("/healthz")
     def health():
@@ -102,8 +109,20 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
         dense = dense_index_status(store, cfg.property_id, embedder)
         if cfg.real_runtime_required and dense['state'] != 'ok':
             raise HTTPException(status_code=503, detail='Dense retrieval index does not match the embedder')
+        vector_state = 'legacy'
+        if cfg.rag_dense_backend != 'legacy':
+            if vector_store is None:
+                raise HTTPException(status_code=503, detail='Configured dense vector backend unavailable')
+            try:
+                vector_state = 'ok' if int(vector_store.stats().get('count', 0)) > 0 else 'empty'
+            except Exception as exc:
+                logger.error('vector_index_readiness_failed type=%s', type(exc).__name__)
+                raise HTTPException(status_code=503, detail='Dense vector index unavailable') from exc
+            if vector_state != 'ok':
+                raise HTTPException(status_code=503, detail='Dense vector index is empty')
         return {"status": "ready", "knowledge_languages": sorted(languages),
-                "dense_retrieval": dense['state']}
+                "dense_retrieval": dense['state'], "vector_backend": cfg.rag_dense_backend,
+                "vector_index": vector_state}
 
     @app.get("/api/config", response_model=PublicConfigResponse)
     def public_config():
@@ -133,6 +152,7 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
                 "max_audio_seconds": cfg.max_audio_seconds,
                 "retrieval_mode": "hybrid" if embedder else "lexical",
                 "orchestrator": cfg.orchestrator,
+                "data_consent_required": cfg.data_consent_required,
                 "generation_mode": ("local_semantic_ready" if current_ai_ready else "extractive")
                 if cfg.local_ai_strict_mode else
                 ("local_slm_configured" if cfg.llm_base_url and cfg.llm_model else "extractive")}

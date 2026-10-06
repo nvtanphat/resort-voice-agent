@@ -18,10 +18,10 @@ def install_http_security(app: FastAPI, cfg: Settings) -> None:
         # Public kiosk and staff/API share a process, NOT a trust boundary.
         # A dedicated staff reverse-proxy route strips incoming gateway headers
         # and injects the secret. Even a valid staff bearer is not enough on the
-        # public kiosk ingress. /ops must not be served to kiosk guests.
+        # public kiosk ingress. Staff HTML must not be served to kiosk guests.
         if cfg.environment == "production" and (
-            request.url.path == "/ops" or request.url.path.startswith("/staff/")
-            or request.url.path in {"/static/ops.html", "/static/ops.js"}
+            request.url.path in {"/ops", "/staff"} or request.url.path.startswith("/staff/")
+            or request.url.path in {"/static/ops.html", "/static/ops.js", "/static/staff.html", "/static/staff.js", "/static/staff.css"}
         ):
             gateway = request.headers.get("X-Concierge-Staff-Gateway", "")
             if not gateway or not secrets.compare_digest(gateway, cfg.staff_gateway_token):
@@ -46,7 +46,7 @@ def install_http_security(app: FastAPI, cfg: Settings) -> None:
             if origin and origin != expected_origin:
                 return JSONResponse({"detail": "Origin not allowed"}, status_code=403)
         response = await call_next(request)
-        if request.url.path.startswith(("/api/", "/internal/", "/staff/")) or request.url.path == "/ops":
+        if request.url.path.startswith(("/api/", "/internal/", "/staff/")) or request.url.path in {"/ops", "/staff"}:
             response.headers["Cache-Control"] = "no-store"
         if cfg.public_origin.startswith("https://"):
             response.headers["Strict-Transport-Security"] = "max-age=31536000"

@@ -1,14 +1,51 @@
 """Guest-visible request status and progress reads."""
 from __future__ import annotations
 import json
+import secrets
 import time
 from .base import SENSITIVE, InvalidTransition
 from concierge_kiosk.core.operational_policy import (
     escalation_target, escalation_thresholds, dispatch_policy_for_service,
 )
 from concierge_kiosk.domain.service_registry import resolve_service_code
+from concierge_kiosk.domain.public_reference import public_reference
 
 class GuestRequestQueryMixin:
+    def record_guest_consent(self, session_id: str, purpose: str, policy_version: str,
+                             granted: bool, *, ttl_seconds: int = 86400) -> dict:
+        if purpose not in {'service_request', 'proactive_suggestions'}:
+            raise ValueError('Invalid consent purpose')
+        policy_version = str(policy_version or '').strip()
+        if not 1 <= len(policy_version) <= 32 or any(ch.isspace() for ch in policy_version):
+            raise ValueError('Invalid consent policy version')
+        if not 300 <= int(ttl_seconds) <= 7 * 24 * 60 * 60:
+            raise ValueError('Invalid consent TTL')
+        now = int(time.time())
+        with self.store.connection(write=True) as con:
+            valid = con.execute(
+                'SELECT 1 FROM sessions WHERE id=? AND property_id=? AND expires_at>?',
+                (session_id, self.property_id, now)).fetchone()
+            if valid is None:
+                raise PermissionError('Session expired')
+            row = {'id': secrets.token_hex(16), 'session_id': session_id,
+                   'property_id': self.property_id, 'purpose': purpose,
+                   'policy_version': policy_version, 'granted': int(bool(granted)),
+                   'created_at': now, 'expires_at': now + int(ttl_seconds)}
+            con.execute(
+                'INSERT INTO guest_consents(id,session_id,property_id,purpose,policy_version,granted,created_at,expires_at) '
+                'VALUES(:id,:session_id,:property_id,:purpose,:policy_version,:granted,:created_at,:expires_at)', row)
+        return {'purpose': purpose, 'policy_version': policy_version,
+                'granted': bool(granted), 'expires_at': row['expires_at']}
+
+    def guest_consent_granted(self, session_id: str, purpose: str, *, policy_version: str = 'privacy-v1') -> bool:
+        now = int(time.time())
+        with self.store.connection() as con:
+            row = con.execute(
+                'SELECT granted FROM guest_consents WHERE session_id=? AND property_id=? AND purpose=? '
+                'AND policy_version=? AND expires_at>? ORDER BY created_at DESC LIMIT 1',
+                (session_id, self.property_id, purpose, policy_version, now)).fetchone()
+        return bool(row and row['granted'])
+
     def guest_request_status(self, session_id: str, request_id: str) -> dict:
         """Return only non-sensitive status fields, restricted to the active guest session.
 
@@ -16,14 +53,62 @@ class GuestRequestQueryMixin:
         """
         with self.store.connection() as con:
             row = con.execute(
-                "SELECT r.id,r.kind,r.language,r.status,r.updated_at,r.guest_change_state,r.guest_change_updated_at,r.guest_verification_state,r.eta_minutes,r.eta_updated_at,r.external_dispatch_state,r.priority,r.ack_overdue,r.overdue "
+                "SELECT r.id,r.confirmation_code,r.kind,r.language,r.status,r.updated_at,r.guest_change_state,r.guest_change_updated_at,r.guest_verification_state,r.eta_minutes,r.eta_updated_at,r.external_dispatch_state,r.priority,r.ack_overdue,r.overdue "
                 "FROM service_requests r JOIN proposals p ON p.id=r.proposal_id "
                 "WHERE r.id=? AND r.property_id=? AND p.session_id=? AND p.property_id=?",
                 (request_id, self.property_id, session_id, self.property_id),
             ).fetchone()
         if row is None:
             raise PermissionError("Request not found for this session")
-        return dict(row)
+        result = dict(row)
+        result['confirmation_code'] = result.get('confirmation_code') or public_reference(result['id'])
+        return result
+
+    def public_request_status(self, request_id: str) -> dict:
+        """Return the deliberately minimal projection used by a status bearer."""
+        with self.store.connection() as con:
+            row = con.execute(
+                'SELECT id,confirmation_code,kind,language,status,updated_at,eta_minutes,eta_updated_at,'
+                'external_dispatch_state,guest_verification_state FROM service_requests '
+                'WHERE id=? AND property_id=?', (request_id, self.property_id)).fetchone()
+            if row is None:
+                raise PermissionError('Request not found')
+            history = [dict(item) for item in con.execute(
+                "SELECT action,MIN(at) AS at FROM audit_events WHERE request_id=? AND property_id=? "
+                "AND action IN ('request.queued','request.approved','request.auto_dispatched','request.in_progress',"
+                "'request.paused','request.rejected','request.completed') GROUP BY action",
+                (request_id, self.property_id))]
+        reference = row['confirmation_code'] or public_reference(row['id'])
+        return {
+            'confirmation_code': reference,
+            'kind': row['kind'],
+            'language': row['language'],
+            'status': row['status'],
+            'updated_at': row['updated_at'],
+            'eta_minutes': row['eta_minutes'],
+            'eta_updated_at': row['eta_updated_at'] or None,
+            'external_dispatch_state': row['external_dispatch_state'],
+            'guest_verification_state': row['guest_verification_state'],
+            'status_history': history,
+        }
+
+    def public_request_by_confirmation_code(self, code: str) -> dict:
+        with self.store.connection() as con:
+            row = con.execute(
+                'SELECT id FROM service_requests WHERE property_id=? AND confirmation_code=?',
+                (self.property_id, str(code).strip().upper())).fetchone()
+        if row is None:
+            raise PermissionError('Request not found')
+        return self.public_request_status(row['id'])
+
+    def public_request_id_by_confirmation_code(self, code: str) -> str:
+        with self.store.connection() as con:
+            row = con.execute(
+                'SELECT id FROM service_requests WHERE property_id=? AND confirmation_code=?',
+                (self.property_id, str(code).strip().upper())).fetchone()
+        if row is None:
+            raise PermissionError('Request not found')
+        return str(row['id'])
 
     def guest_request_progress(self, session_id: str, request_id: str) -> dict:
         """Authorized, minimal status timeline: no actor, notes or guest details.
@@ -86,7 +171,8 @@ class GuestRequestQueryMixin:
                 (row['id'], self.property_id, session_id)).fetchone()
         effective_payload = ({**payload, **change_payload}
                              if change_state == 'modified' and isinstance(change_payload, dict) else payload)
-        return {'id': row['id'], 'kind': row['kind'], 'language': row['language'],
+        return {'id': row['id'], 'confirmation_code': public_reference(row['id']),
+                'kind': row['kind'], 'language': row['language'],
                 'status': row['status'], 'status_history': status_history,
                 'change_state': change_state, 'change_updated_at': row['guest_change_updated_at'] or None,
                 'details': row['details'], 'payload': payload if isinstance(payload, dict) else {},
@@ -291,9 +377,12 @@ class GuestRequestQueryMixin:
         if not 1 <= limit <= 50:
             raise ValueError('Invalid guest page size')
         with self.store.connection() as con:
-            return [dict(row) for row in con.execute(
-                'SELECT r.id,r.kind,r.language,r.status,r.created_at,r.updated_at,r.guest_change_state,r.guest_change_updated_at,r.guest_verification_state,r.eta_minutes,r.eta_updated_at,r.external_dispatch_state,r.department_id,r.priority,r.ack_due_at,r.ack_overdue,r.ack_escalation_sent_at,r.sla_due_at,r.overdue,r.escalation_sent_at,r.escalation_level,r.unverified_room '
+            rows = [dict(row) for row in con.execute(
+                'SELECT r.id,r.confirmation_code,r.kind,r.language,r.status,r.created_at,r.updated_at,r.guest_change_state,r.guest_change_updated_at,r.guest_verification_state,r.eta_minutes,r.eta_updated_at,r.external_dispatch_state,r.department_id,r.priority,r.ack_due_at,r.ack_overdue,r.ack_escalation_sent_at,r.sla_due_at,r.overdue,r.escalation_sent_at,r.escalation_level,r.unverified_room '
                 'FROM service_requests r JOIN proposals p ON p.id=r.proposal_id '
                 'WHERE p.session_id=? AND r.property_id=? AND p.property_id=? '
                 'ORDER BY r.updated_at DESC,r.id DESC LIMIT ?',
                 (session_id, self.property_id, self.property_id, limit))]
+        for row in rows:
+            row['confirmation_code'] = row.get('confirmation_code') or public_reference(row['id'])
+        return rows

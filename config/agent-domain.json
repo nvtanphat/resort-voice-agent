@@ -1121,6 +1121,7 @@
           "dining": [
             "reserve a table",
             "book a table",
+            "can i book",
             "order food",
             "order food to my room",
             "bring food to my room"
@@ -1284,7 +1285,9 @@
           "can you tell me",
           "tell me whether",
           "tell me if",
-          "is it possible"
+          "is it possible",
+          "give me an overview",
+          "overview of"
         ],
         "zh": [
           "多少钱",
@@ -1344,6 +1347,7 @@
             "^(?:please\\s+)?(?:(?:some|more|extra|one|two|three|four|five|six|seven|eight|nine|ten|\\d{1,2})\\s+)?(?:(?:extra|more|bath|clean|fresh|spare)\\s+)*(?:towels?|pillows?|blankets?|bottles?\\s+of\\s+water|water\\s+bottles?|toiletries|slippers|bathrobes?|hangers?)\\s+to\\s+(?:the\\s+)?room\\s+\\d{1,5}(?:\\s+please)?$"
           ],
           "dining": [
+            "^(?:can|could|may)\\s+i\\s+book(?:\\s+(?:a\\s+)?table)?(?:\\s+.*)?$",
             "^(?:please\\s+)?(?:could you|can you|would you|please)\\s+(?:please\\s+)?(?:make|arrange) (?:a |the )?table reservation",
             "^(?:my family and i|we|i)\\b.{0,80}\\b(?:want|would like|need|plan)\\b.{0,80}\\b(?:dinner|eat|a meal|a table|restaurant)\\b",
             "^(?:please\\s+)?(?:bring|send|deliver)\\s+(?:me\\s+)?(?:a\\s+)?(?:bowl\\s+of\\s+)?(?:pho|food)\\b.*\\broom\\s+\\d{1,5}\\b"
@@ -1658,8 +1662,8 @@
         "ko": "^(?:알려|설명|무엇|뭐|어디|언제|왜|어떻게|가능)"
       },
       "information_request_patterns": {
-        "en": "\\b(?:tell me|explain|show me how|how (?:do|can|should) i use|instructions? for)\\b",
-        "vi": "cho tôi biết|giải thích|hướng dẫn(?: tôi)? cách|cách (?:dùng|sử dụng|bật|tắt)|làm thế nào|thế nào|cần làm gì|liên hệ thế nào",
+        "en": "\\b(?:tell me|explain|show me how|how (?:do|can|should) i use|instructions? for|give me (?:an? )?(?:overview|information|details?)|provide (?:an? )?(?:overview|information|details?))\\b",
+        "vi": "cho tôi biết|cho mình hỏi(?: thêm)? về|giải thích|hướng dẫn(?: tôi)? cách|cách (?:dùng|sử dụng|bật|tắt)|làm thế nào|thế nào|cần làm gì|liên hệ thế nào",
         "zh": "告诉我|介绍|解释|怎么用|如何使用|怎么开|怎么调",
         "ko": "알려\\s?주|설명해|사용법|사용 방법|이용 방법|이용 가능한 시간"
       },
@@ -2083,7 +2087,10 @@
             "cancel my request",
             "cancel that request",
             "cancel the request",
-            "stop that request"
+            "stop that request",
+            "cancel it",
+            "cancel this",
+            "cancel that"
           ],
           "modify": [
             "modify my request",
@@ -2100,7 +2107,9 @@
             "hủy yêu cầu của tôi",
             "hủy yêu cầu đó",
             "hủy yêu cầu này",
-            "bỏ yêu cầu đó"
+            "bỏ yêu cầu đó",
+            "hủy giúp mình",
+            "hủy"
           ],
           "modify": [
             "sửa yêu cầu của tôi",
@@ -2118,12 +2127,16 @@
           "cancel": [
             "取消我的请求",
             "取消那个请求",
-            "取消这个请求"
+            "取消这个请求",
+            "取消一下",
+            "帮我取消"
           ],
           "modify": [
             "修改我的请求",
             "修改那个请求",
             "更改那个请求",
+            "改一下",
+            "修改一下",
             "修改",
             "更改",
             "更新"
@@ -2133,12 +2146,16 @@
           "cancel": [
             "내 요청 취소",
             "그 요청 취소",
-            "이 요청 취소"
+            "이 요청 취소",
+            "취소해 주세요",
+            "취소해줘"
           ],
           "modify": [
             "내 요청 수정",
             "그 요청 수정",
             "요청 변경",
+            "바꾸고 싶어요",
+            "바꾸고 싶어",
             "수정",
             "변경",
             "업데이트"
@@ -3132,24 +3149,73 @@
           "is there a slot",
           "are there any openings",
           "availability",
-          "can i book"
+          "any tables available",
+          "is there a table",
+          "opening hours",
+          "operating hours",
+          "hours"
         ],
         "vi": [
           "còn chỗ",
           "còn suất",
           "còn lịch",
-          "có thể đặt"
+          "có thể đặt",
+          "còn bàn",
+          "có bàn không",
+          "mấy giờ",
+          "giờ mở",
+          "giờ hoạt động"
         ],
         "zh": [
           "有空位",
           "可以预订",
-          "有预约"
+          "有预约",
+          "有桌位",
+          "营业时间",
+          "开放时间",
+          "几点到几点"
         ],
         "ko": [
           "이용 가능",
           "예약 가능",
-          "자리 있어"
+          "자리 있어",
+          "자리 있나요",
+          "운영 시간",
+          "이용 시간",
+          "몇 시"
         ]
+      },
+      "schedule_cue_terms": {
+        "en": ["what time", "when can i use", "operating window", "what times", "when is", "when it operates", "when it is available", "service hours", "opening hours", "operating hours", "hours"],
+        "vi": ["giờ hoạt động", "khung giờ", "mấy giờ", "giờ nào", "khi nào", "lúc nào", "giờ mở cửa", "phục vụ"],
+        "zh": ["营业时间", "服务时间", "什么时间", "几点", "什么时候", "哪些时间段", "开放时间", "营业时段"],
+        "ko": ["운영 시간", "이용 시간", "몇 시", "언제", "시간대", "몇 시에", "서비스 시간"]
+      },
+      "availability_service_terms": {
+          "en": {
+            "dining_reservation": ["table", "restaurant", "cafe", "dining"],
+            "spa_reservation": ["spa", "massage"],
+            "tour_reservation": ["tour", "excursion"],
+            "transport_request": ["taxi", "shuttle", "airport transfer"]
+          },
+          "vi": {
+            "dining_reservation": ["bàn", "nhà hàng", "cafe", "ăn tối"],
+            "spa_reservation": ["spa", "massage", "mát-xa"],
+            "tour_reservation": ["tour", "chuyến tham quan"],
+            "transport_request": ["taxi", "xe đưa đón", "sân bay"]
+          },
+          "zh": {
+            "dining_reservation": ["桌位", "餐厅", "餐廳", "用餐"],
+            "spa_reservation": ["水疗", "按摩"],
+            "tour_reservation": ["旅游", "行程"],
+            "transport_request": ["出租车", "接送", "机场"]
+          },
+          "ko": {
+            "dining_reservation": ["테이블", "식당", "레스토랑", "식사"],
+            "spa_reservation": ["스파", "마사지"],
+            "tour_reservation": ["투어", "여행"],
+            "transport_request": ["택시", "셔틀", "공항"]
+          }
       }
     },
     "time_expressions": {

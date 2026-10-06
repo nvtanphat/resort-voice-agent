@@ -11,7 +11,7 @@ from concierge_kiosk.agent.understanding.intent import (
     Suggestion, emergency_response, suggest_service_request, normalize_intent_text,
     has_multiple_service_intents, _uses_word_boundaries,
 )
-from concierge_kiosk.agent.understanding.intent import matched_service_kinds, is_non_action_utterance, ordered_service_kinds
+from concierge_kiosk.agent.understanding.intent import is_non_action_utterance, ordered_service_kinds
 from concierge_kiosk.agent.tools.planning import itinerary_topics
 from concierge_kiosk.agent.understanding.domain_nlu import (
     BARE_TOPIC_TERMS,
@@ -27,9 +27,12 @@ from concierge_kiosk.agent.understanding.domain_nlu import (
     SEQUENCE_PATTERN as _SEQUENCE_PATTERN,
     SWITCH_COMMAND_PATTERNS as _SWITCH_COMMANDS,
     AVAILABILITY_TERMS,
+    SCHEDULE_CUE_TERMS,
+    AVAILABILITY_SERVICE_TERMS,
     FACET_ALIASES,
 )
 from concierge_kiosk.domain.service_registry import route_branch_for_request_kind, service_definition
+from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
 
 _QUESTION_TYPE_PATTERNS = {
     language: re.compile(pattern, re.I)
@@ -104,9 +107,58 @@ def request_change_intent(query: str, language: str) -> str | None:
 def wants_schedule_check(query: str, language: str) -> bool:
     """Recognize a data-owned availability question for the schedule tool."""
     text = normalize_intent_text(query, language)
-    return language in AVAILABILITY_TERMS and any(
-        normalize_intent_text(term, language) in text for term in AVAILABILITY_TERMS[language]
-    )
+    # Generic time phrases such as ``mấy giờ``/``what time`` are not enough to
+    # select the schedule tool.  They are common in ordinary knowledge
+    # questions and in follow-ups whose subject is supplied by conversation
+    # memory.  The memory-aware knowledge path must see those turns first so
+    # it can preserve a map/knowledge anchor.  A schedule read is selected
+    # here only when this turn names a reviewed service.
+    # Short generic labels ("spa", "taxi", "餐厅", "스파") are also common
+    # entity names in ordinary knowledge/map questions.  Require a reviewed
+    # service phrase with enough specificity before selecting the synthetic
+    # operational adapter; the full catalog aliases remain data-owned.
+    minimum_length = 3 if language in {"zh", "ko"} else 4
+    has_service_reference = any(
+        len(normalize_intent_text(term, language).replace(" ", "")) >= minimum_length
+        and normalize_intent_text(term, language) in text
+        for term in service_terms(language))
+    # A direct availability question may use an entity rather than the longer
+    # service catalog label ("Is the pool/spa available?").  Keep that path
+    # separate from opening-hours language so ordinary knowledge questions such
+    # as "what time does the spa open?" remain knowledge-grounded.
+    has_entity_reference = any(
+        len(normalize_intent_text(term, language).replace(" ", ""))
+        >= (2 if language in {"zh", "ko"} else 3)
+        and normalize_intent_text(term, language) in text
+        for term in entity_terms(language))
+    schedule_cues = tuple(
+        normalize_intent_text(cue, language)
+        for cue in SCHEDULE_CUE_TERMS.get(language, ()))
+    availability_cues = {
+        value for value in (
+            normalize_intent_text(term, language)
+            for term in AVAILABILITY_TERMS.get(language, ()))
+        if value and not any(
+            cue == value or cue.startswith(value + " ")
+            for cue in schedule_cues)}
+    if (has_service_reference or has_entity_reference) and any(
+            cue in text for cue in availability_cues):
+        return True
+    if not has_service_reference:
+        return False
+    has_schedule_cue = any(normalize_intent_text(term, language) in text
+                           for term in SCHEDULE_CUE_TERMS.get(language, ()))
+    return has_schedule_cue
+
+
+def availability_service_code(query: str, language: str) -> str | None:
+    """Resolve a read-only availability question to a governed service code."""
+    text = normalize_intent_text(query, language)
+    matches = {
+        code for code, terms in AVAILABILITY_SERVICE_TERMS.get(language, {}).items()
+        if any(normalize_intent_text(term, language) in text for term in terms)
+    }
+    return next(iter(matches)) if len(matches) == 1 else None
 
 
 def _exact_or_short_match(text: str, phrases: tuple[str, ...]) -> bool:
@@ -195,7 +247,10 @@ def classify_dialogue(query: str, language: str) -> RouteDecision:
         return RouteDecision("confirmation", True)
     if request_change_intent(query, language) is not None:
         return RouteDecision('request_change', True)
-    if wants_schedule_check(query, language) and suggest_service_request(query, language) is None:
+    # Availability is a read-only question until the guest explicitly confirms
+    # a booking.  Do this before service-intent suggestion so phrases such as
+    # "is there a table" cannot be mistaken for consent to place an order.
+    if wants_schedule_check(query, language):
         return RouteDecision('check_schedule', False)
     if any(term in text for term in REQUEST_STATUS_TERMS.get(language, ())):
         return RouteDecision('request_status', False)

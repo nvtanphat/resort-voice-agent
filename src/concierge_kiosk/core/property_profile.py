@@ -68,6 +68,7 @@ class PropertyProfile:
     voice: VoiceProfile
     service_catalog: tuple[dict[str, Any], ...]
     low_risk_requires_verified_room: bool = False
+    hitl_mode: str = 'legacy_policy'
     emergency: EmergencyProfile = EmergencyProfile()
 
     def public_config(self) -> dict[str, Any]:
@@ -82,6 +83,7 @@ class PropertyProfile:
                 'warning_seconds': self.session.warning_seconds,
             },
             'low_risk_requires_verified_room': self.low_risk_requires_verified_room,
+            'hitl_mode': self.hitl_mode,
             'emergency_policy': {
                 'escalation_after_seconds': self.emergency.escalation_after_seconds,
                 'default_kiosk_location': self.emergency.default_kiosk_location,
@@ -159,7 +161,7 @@ def parse_property_profile(payload: dict[str, Any], *, max_session_ttl: int) -> 
         raise ValueError('Property profile must be an object')
     required = {'property_id', 'property_name', 'property_timezone', 'default_language',
                 'enabled_languages', 'session_policy', 'voice_policy', 'service_catalog'}
-    optional = {'low_risk_requires_verified_room', 'emergency_policy'}
+    optional = {'low_risk_requires_verified_room', 'hitl_mode', 'emergency_policy'}
     if not required.issubset(payload) or set(payload) - required - optional:
         raise ValueError('Unexpected property profile fields')
     property_id = payload['property_id']
@@ -184,6 +186,9 @@ def parse_property_profile(payload: dict[str, Any], *, max_session_ttl: int) -> 
     default = payload['default_language']
     if default not in enabled:
         raise ValueError('Default language must be enabled')
+    hitl_mode = payload.get('hitl_mode', 'legacy_policy')
+    if hitl_mode not in {'legacy_policy', 'guest_confirm_all'}:
+        raise ValueError('Invalid property profile hitl_mode')
     session = payload['session_policy']
     if not isinstance(session, dict) or set(session) != {'idle_timeout_seconds', 'warning_seconds'}:
         raise ValueError('Invalid property profile session_policy')
@@ -263,6 +268,7 @@ def parse_property_profile(payload: dict[str, Any], *, max_session_ttl: int) -> 
         session=SessionProfile(idle, warning), voice=voice_profile,
         service_catalog=_catalog(payload['service_catalog']),
         low_risk_requires_verified_room=bool(payload.get('low_risk_requires_verified_room', False)),
+        hitl_mode=hitl_mode,
         emergency=EmergencyProfile(
             escalation_after_seconds=_integer(
                 emergency_payload['escalation_after_seconds'], 'emergency escalation_after_seconds', 10, 86400),

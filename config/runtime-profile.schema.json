@@ -340,6 +340,8 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "dense_backend",
+            "vector_path",
             "min_dense_similarity",
             "lexical_coverage",
             "rrf_k",
@@ -354,6 +356,14 @@
             "rerank_on_failure"
           ],
           "properties": {
+            "dense_backend": {
+              "enum": ["legacy", "chroma", "faiss"]
+            },
+            "vector_path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 260
+            },
             "min_dense_similarity": {
               "type": "number",
               "minimum": -1,

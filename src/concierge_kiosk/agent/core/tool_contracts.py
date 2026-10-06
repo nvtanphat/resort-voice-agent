@@ -6,14 +6,144 @@ idempotent business authority. Consequential actions still require confirmation.
 """
 from __future__ import annotations
 
+from typing import Any, Literal, Mapping
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from concierge_kiosk.agent.understanding.routing import RouteDecision, fast_response, is_location_question
 from concierge_kiosk.agent.understanding.intent import Suggestion, suggest_service_request
-from concierge_kiosk.agent.core.capabilities import ProposalKind
 from concierge_kiosk.rag.retrieval import abstention_answer
 from concierge_kiosk.domain.service_registry import (
     ACTION_REQUEST_KINDS, route_branch_for_request_kind, service_definition,
 )
 from concierge_kiosk.i18n import text as i18n_text
+
+
+CONTRACT_VERSION = 1
+
+
+class _StrictToolContract(BaseModel):
+    model_config = ConfigDict(extra='forbid', frozen=True)
+
+
+class ToolObservation(_StrictToolContract):
+    """Stable, guest-safe observation envelope emitted by a tool adapter."""
+
+    contract_version: Literal[1] = CONTRACT_VERSION
+    tool_name: str = Field(min_length=1, max_length=96)
+    status: Literal['ok', 'unavailable', 'ambiguous', 'error']
+    request_id: str | None = Field(default=None, max_length=96)
+    evidence_ids: tuple[str, ...] = ()
+    missing_slots: tuple[str, ...] = ()
+    alternatives: tuple[dict[str, Any], ...] = ()
+    retryable: bool = False
+    safe_to_speak: bool = False
+    redaction_level: Literal['guest_safe', 'staff_only'] = 'guest_safe'
+
+
+class ActionRequest(_StrictToolContract):
+    """Non-authoritative action proposal handed to policy/workflow code."""
+
+    contract_version: Literal[1] = CONTRACT_VERSION
+    action_id: str = Field(min_length=1, max_length=96)
+    request_id: str | None = Field(default=None, max_length=96)
+    session_id: str | None = Field(default=None, max_length=96)
+    guest_confirmation_id: str | None = Field(default=None, max_length=96)
+    verification_id: str | None = Field(default=None, max_length=96)
+    policy_snapshot: dict[str, Any] = Field(default_factory=dict)
+    created_at: str | None = Field(default=None, max_length=64)
+    expires_at: str | None = Field(default=None, max_length=64)
+    service_mode: str = Field(min_length=1, max_length=96)
+    details: str = Field(min_length=1, max_length=500)
+    slots: dict[str, str | int] = Field(default_factory=dict)
+    status: Literal[
+        'proposed', 'awaiting_confirmation', 'awaiting_staff_review',
+        'approved', 'rejected',
+    ] = 'proposed'
+    state: str = Field(default='proposed', min_length=1, max_length=48)
+    requires_confirmation: bool = True
+    requires_staff_review: bool = True
+    idempotency_key: str | None = Field(default=None, max_length=96)
+    business_writes: int = Field(default=0, ge=0, le=1)
+
+
+class AnswerCard(_StrictToolContract):
+    """Bounded answer metadata used at the final guest-facing boundary."""
+
+    contract_version: Literal[1] = CONTRACT_VERSION
+    kind: Literal['answer', 'clarification', 'request_status', 'handoff', 'emergency'] = 'answer'
+    answer: str = Field(min_length=1, max_length=2000)
+    spoken_text: str | None = Field(default=None, max_length=2000)
+    display_blocks: tuple[dict[str, Any], ...] = ()
+    grounding: Literal[
+        'not_required', 'safety_route', 'extractive', 'model_assisted_semantic',
+        'synthetic_operational', 'map_verified', 'map_ambiguous', 'no_evidence',
+    ]
+    evidence_status: str = Field(min_length=1, max_length=48)
+    source_ids: tuple[str, ...] = ()
+    evidence_ids: tuple[str, ...] = ()
+    citation_ids: tuple[str, ...] = ()
+    next_action: dict[str, Any] | None = None
+    sensitivity: Literal['public', 'guest_scoped', 'staff_only'] = 'guest_scoped'
+    synthetic_label_required: bool = False
+    safe_to_speak: bool = True
+
+
+def observation_contract(tool_name: str, result: Mapping[str, Any], *,
+                         request_id: str | None = None) -> ToolObservation:
+    """Project a legacy tool result into the closed observation envelope."""
+    grounding = result.get('grounding')
+    evidence_status = str(result.get('evidence_status') or '').upper()
+    if grounding == 'no_evidence' or evidence_status in {'UNAVAILABLE', 'UNSUPPORTED'}:
+        status = 'unavailable'
+    elif grounding == 'map_ambiguous' or evidence_status == 'AMBIGUOUS':
+        status = 'ambiguous'
+    elif isinstance(result.get('tool_error'), dict) or result.get('ok') is False:
+        status = 'error'
+    else:
+        status = 'ok'
+    sources = result.get('sources') if isinstance(result.get('sources'), list) else []
+    evidence_ids = tuple(
+        str(item.get('chunk_id') or item.get('source_id'))
+        for item in sources if isinstance(item, dict)
+        and (item.get('chunk_id') or item.get('source_id')))
+    alternatives = result.get('alternatives')
+    if not isinstance(alternatives, list):
+        alternatives = []
+    return ToolObservation(
+        tool_name=tool_name,
+        status=status,
+        request_id=request_id,
+        evidence_ids=evidence_ids[:16],
+        alternatives=tuple(item for item in alternatives[:8] if isinstance(item, dict)),
+        retryable=status == 'error',
+        safe_to_speak=isinstance(result.get('answer'), str) and bool(result['answer'].strip()),
+        redaction_level='guest_safe',
+    )
+
+
+def answer_card(result: Mapping[str, Any]) -> AnswerCard:
+    """Validate the final answer metadata without accepting arbitrary fields."""
+    sources = result.get('sources') if isinstance(result.get('sources'), list) else []
+    citations = result.get('citations') if isinstance(result.get('citations'), list) else []
+    source_ids = tuple(str(item.get('chunk_id') or item.get('source_id'))
+                       for item in sources if isinstance(item, dict)
+                       and (item.get('chunk_id') or item.get('source_id')))
+    citation_ids = tuple(str(item.get('chunk_id') or item.get('source_id'))
+                         for item in citations if isinstance(item, dict)
+                         and (item.get('chunk_id') or item.get('source_id')))
+    grounding = result.get('grounding')
+    if grounding not in {
+            'not_required', 'safety_route', 'extractive', 'model_assisted_semantic',
+            'synthetic_operational', 'map_verified', 'map_ambiguous', 'no_evidence'}:
+        raise ValueError('Unsupported answer grounding')
+    return AnswerCard(
+        answer=str(result.get('answer') or ''), grounding=grounding,
+        evidence_status=str(result.get('evidence_status') or 'UNSUPPORTED'),
+        source_ids=source_ids[:16], citation_ids=citation_ids[:16],
+        synthetic_label_required=grounding == 'synthetic_operational',
+        safe_to_speak=bool(str(result.get('answer') or '').strip()),
+    )
 
 
 def tool_error_observation(error: object, hint: object = 'retry_or_staff_handoff') -> dict[str, object]:
@@ -308,7 +438,18 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
     grounding = result.get('grounding')
     sources = result.get('sources') or []
     citations = result.get('citations') or []
-    if grounding in {'extractive', 'model_assisted_semantic'}:
+    if grounding == 'synthetic_operational':
+        source = result.get('synthetic_source')
+        schedule = result.get('schedule_result')
+        if (sources or citations or not isinstance(source, dict)
+                or source.get('synthetic') is not True
+                or not isinstance(source.get('source_id'), str)
+                or result.get('evidence_status') != 'SUPPORTED_SYNTHETIC'
+                or not isinstance(schedule, dict)
+                or schedule.get('synthetic') is not True
+                or schedule.get('status') not in {'available', 'unavailable'}):
+            raise RuntimeError('Synthetic operational result is not explicitly labelled')
+    elif grounding in {'extractive', 'model_assisted_semantic'}:
         if not sources or not citations:
             raise RuntimeError('Grounded hotel facts require citations')
         source_keys = {(item.get('chunk_id'), item.get('source_id'), item.get('revision'))

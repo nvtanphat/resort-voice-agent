@@ -1788,6 +1788,47 @@
                   "maxLength": 512
                 }
               }
+            },
+            "schedule_cue_terms": {
+              "type": "object",
+              "maxProperties": 16,
+              "propertyNames": {
+                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
+              },
+              "additionalProperties": {
+                "type": "array",
+                "maxItems": 128,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                }
+              }
+            },
+            "availability_service_terms": {
+              "type": "object",
+              "maxProperties": 16,
+              "propertyNames": {
+                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "maxProperties": 32,
+                "propertyNames": {
+                  "pattern": "^[a-z][a-z0-9_]{1,63}$"
+                },
+                "additionalProperties": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                }
+              }
             }
           }
         },

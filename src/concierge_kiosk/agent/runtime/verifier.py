@@ -173,7 +173,8 @@ def _requirement_status(state: AgentState, req: GoalRequirement) -> tuple[bool, 
             evidence = _norm(facts.get('evidence_status'))
             if (item.get('capability') in {'knowledge', 'check_schedule'}
                     and item.get('status') in {'completed', 'safe_fallback'}
-                    and (citations > 0 or evidence in {'supported', 'verified'})):
+                    and (citations > 0 or evidence in {
+                        'supported', 'verified', 'supported_synthetic'})):
                 if req.topic in {'', 'guest question', 'hotel facts'} or _topic_match(req.topic, item):
                     return True, 'source_bound_answer'
         return False, 'evidence_not_sufficient'
@@ -190,11 +191,24 @@ def _attempted_capabilities(state: AgentState, req: GoalRequirement) -> set[str]
     # legitimately use service_action, and two independent factual outcomes may
     # each require their own knowledge read. Global suppression would turn a
     # multi-goal agent back into a one-shot workflow.
-    return {str(item.get('capability')) for _, item in _matching_observations(state, req)
-            if item.get('capability')}
+    attempted: set[str] = set()
+    for _, item in _matching_observations(state, req):
+        capability = item.get('capability')
+        if not capability:
+            continue
+        # A structured tool error remains retryable until the initial attempt
+        # plus two retries have been observed. After that the loop hands off.
+        if item.get('ok') is False and int(item.get('attempt') or 0) < 3:
+            continue
+        attempted.add(str(capability))
+    return attempted
 
 
 def _next_capability(state: AgentState, req: GoalRequirement) -> str | None:
+    matching = _matching_observations(state, req)
+    if any(item.get('ok') is False and int(item.get('attempt') or 0) >= 3
+           for _, item in matching):
+        return None
     attempted = _attempted_capabilities(state, req)
     # Prefer an untried capability for THIS requirement. A failed map/planning
     # tool can fall back to source-bound knowledge, but knowledge never

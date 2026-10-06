@@ -65,6 +65,25 @@ def test_information_questions_do_not_become_service_drafts():
     assert suggest_service_request('what time is checkout?', 'en') is None
 
 
+def test_catalog_info_cancel_and_hours_phrasings_keep_their_read_or_change_route():
+    assert classify_dialogue(
+        'I do not need the In-Room Dining (Room Service) I asked for earlier anymore. '
+        'Could you cancel it?', 'en').branch == 'request_change'
+    assert suggest_service_request(
+        'I do not need the In-Room Dining (Room Service) I asked for earlier anymore. '
+        'Could you cancel it?', 'en') is None
+    overview = 'Could you give me an overview of In-Room Dining (Room Service), including the hours?'
+    assert classify_dialogue(overview, 'en').branch == 'check_schedule'
+    assert suggest_service_request(overview, 'en') is None
+
+
+def test_catalog_action_cue_does_not_override_reviewed_human_service_kind():
+    suggestion = suggest_service_request('Could you arrange Wake-Up Call for me, please?', 'en')
+    assert suggestion is not None
+    assert suggestion.kind == 'human'
+    assert classify_dialogue('Could you arrange Wake-Up Call for me, please?', 'en').branch == 'handoff'
+
+
 def test_natural_maintenance_reports_route_to_facilities_service():
     cases = [
         ('Điều hòa phòng tôi bị hỏng', 'vi'),

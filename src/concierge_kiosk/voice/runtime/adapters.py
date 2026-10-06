@@ -26,7 +26,7 @@ from pathlib import Path
 from threading import BoundedSemaphore
 
 from concierge_kiosk.core.dataset_layout import ALIASES, SERVICE_CATALOG, dataset_path
-from concierge_kiosk.core.domain_profile import supported_languages, voice_policy
+from concierge_kiosk.core.domain_profile import voice_policy
 from concierge_kiosk.core.settings import Settings
 
 from .audio import MAX_TTS_BYTES, MAX_TTS_SECONDS, MIME_FORMATS, audio_format, validate_audio
@@ -79,7 +79,6 @@ def voice_assets(cfg: Settings) -> dict:
         stt = stt and find_spec("faster_whisper") is not None
     except (ValueError, ImportError):
         stt = False
-    directory = Path(cfg.piper_models_dir) if cfg.piper_models_dir else None
     binary = bool(shutil.which(cfg.piper_executable)) or inprocess_piper_available()
     languages = [lang for lang in LANGUAGE_WHISPER if binary and
                  tts_model_paths(cfg, lang) is not None]
@@ -327,7 +326,13 @@ def _transcribe(cfg: Settings, audio: bytes, language: str | None,
                 transcribe_options['temperature'] = (float(cfg.stt_short_audio_temperature),)
             transcribe_options["vad_parameters"] = {
                 "max_speech_duration_s": cfg.max_audio_seconds}
-            if not _STT_DECODE_SLOT.acquire(blocking=False):
+            # A timed-out faster-whisper future may still be unwinding its
+            # lazy generator in the single worker.  Wait briefly for that
+            # worker to release the slot instead of turning a harmless
+            # scheduling race into a false permanent STT outage.  The wait is
+            # still bounded by the new turn's decode deadline.
+            slot_wait = min(0.25, max(0.001, decode_deadline - time.monotonic()))
+            if not _STT_DECODE_SLOT.acquire(timeout=slot_wait):
                 raise TimeoutError('STT decoder occupied by an earlier timed-out request')
 
             def decode_segments():

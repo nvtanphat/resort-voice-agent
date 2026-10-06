@@ -224,6 +224,7 @@ def is_non_action_utterance(query: str, language: str) -> bool:
     if _NEGATION[language].search(text) and not matched_action_patterns:
         return True
     explicit_concept_request = len(_concept_service_kinds(text, language)) == 1
+    explicit_action_pattern = len(matched_action_patterns) == 1
     # "Please tell me how to use the AC" asks for information about a service
     # concept. Only an anchored action regex may override an explicit
     # information-request verb; a bare concept term + politeness frame cannot.
@@ -237,7 +238,6 @@ def is_non_action_utterance(query: str, language: str) -> bool:
     # actionable intent. Natural permission-style requests may contain lexical
     # information markers (e.g. Chinese 可以) or end in a question mark without
     # becoming information-only queries.
-    explicit_action_pattern = len(matched_action_patterns) == 1
     if (any(_phrase_present(text, phrase) for phrase in INFO_ONLY[language])
             and not (explicit_concept_request or explicit_action_pattern)):
         return True
@@ -266,48 +266,65 @@ def _concept_service_kinds(text: str, language: str) -> set[str]:
     # intentionally handled by the generic staff/human workflow (medical
     # centre, lost & found, courier, and similar). Keep those terms data-driven
     # instead of duplicating a growing list in the routing profile.
-    if (not kinds and not _matched_action_pattern_kinds(text, language)
-            and any(_phrase_present(text, normalize_intent_text(term, language))
-                    for term in service_terms(language))):
-        kinds.add('human')
     # Catalog names are the source of truth for service identity.  The
     # generic concept vocabulary above intentionally stays small; this second
     # pass projects a catalog selector onto its configured request kind so a
     # newly added service works without another Python branch.
-    catalog_kinds: set[str] = set()
-    if not _matched_action_pattern_kinds(text, language):
-        from concierge_kiosk.core.domain_profile import get_domain_profile
-        catalog_text = _remove_profile_terms(
-            text, tuple(NUMBER_WORDS.get(language, {}).keys()))
-        for item in get_domain_profile().domain_vocab.get('services', ()):
-            request_kind = item.get('request_kind') if isinstance(item, dict) else None
-            if isinstance(request_kind, str) and any(
-                    _phrase_present(catalog_text, normalize_intent_text(term, language))
-                    for term in service_terms(language)
-                    if term in tuple(item.get('names', {}).get(language, ())) +
-                    tuple(item.get('aliases', {}).get(language, ()))):
-                catalog_kinds.add(request_kind)
-        kinds.update(catalog_kinds)
-        # The generic fallback above is only for catalog nouns without a
-        # request-kind annotation.  Once a reviewed catalog entry resolves to
-        # a non-human kind, do not leave the fallback ``human`` candidate in
-        # place and manufacture ambiguity.
-        if catalog_kinds and catalog_kinds != {'human'}:
-            kinds.discard('human')
-        if not catalog_kinds:
-            from concierge_kiosk.domain.service_registry import SERVICE_DEFINITIONS
-            for definition in SERVICE_DEFINITIONS.values():
-                if any(_phrase_present(text, term) for term in definition.match_terms.get(language, ())):
-                    kinds.add(definition.request_kind)
+    catalog_matches: list[tuple[str, int]] = []
+    from concierge_kiosk.core.domain_profile import get_domain_profile
+    catalog_text = _remove_profile_terms(
+        text, tuple(NUMBER_WORDS.get(language, {}).keys()))
+    for item in get_domain_profile().domain_vocab.get('services', ()):
+        request_kind = item.get('request_kind') if isinstance(item, dict) else None
+        if isinstance(request_kind, str):
+            matched_lengths = [len(normalize_intent_text(term, language))
+                               for term in service_terms(language)
+                               if term in tuple(item.get('names', {}).get(language, ())) +
+                               tuple(item.get('aliases', {}).get(language, ()))
+                               and _phrase_present(catalog_text, normalize_intent_text(term, language))]
+            if matched_lengths:
+                catalog_matches.append((request_kind, max(matched_lengths)))
+    top_match_length = max((length for _, length in catalog_matches), default=0)
+    catalog_kinds = {kind for kind, length in catalog_matches if length == top_match_length}
+    kinds.update(catalog_kinds)
+    # Catalog identity wins over a broad safety/action regex.  For example,
+    # “arrange a wake-up call” contains a human-handoff cue, but the reviewed
+    # catalog maps wake-up calls to the facilities service workflow.
+    if catalog_kinds and catalog_kinds != {'human'}:
+        kinds.discard('human')
+    if not catalog_kinds:
+        from concierge_kiosk.domain.service_registry import SERVICE_DEFINITIONS
+        for definition in SERVICE_DEFINITIONS.values():
+            if any(_phrase_present(text, term) for term in definition.match_terms.get(language, ())):
+                kinds.add(definition.request_kind)
+    # Catalog services without a dedicated registry entry remain a bounded
+    # staff/human request instead of falling through to knowledge.
+    if (not kinds and any(_phrase_present(text, normalize_intent_text(term, language))
+                          for term in service_terms(language))):
+        kinds.add('human')
     return kinds
 
 
 def matched_service_kinds(query: str, language: str) -> set[str]:
     """Find *mentions* for ambiguity checks; never commit a tool here."""
     text = normalize_intent_text(query, language)
+    concept_kinds = _concept_service_kinds(text, language)
+    pattern_kinds = _matched_action_pattern_kinds(text, language)
+    # A catalog may deliberately project a broad service label to ``human``
+    # while the reviewed action registry has a more specific, locale-aware
+    # command pattern.  Keep that explicit pattern (for example Vietnamese
+    # "báo thức lúc 5 giờ") instead of turning a concrete request into a
+    # generic handoff.  An explicit human pattern still wins, so the English
+    # catalog handoff contract remains unchanged.
+    if concept_kinds == {'human'} and (pattern_kinds - {'human'}):
+        concept_kinds = set()
+    elif concept_kinds:
+        # A catalog-backed service is more specific than a generic action cue;
+        # do not manufacture a false multi-intent result from both labels.
+        pattern_kinds.intersection_update(concept_kinds)
     return ({kind for kind, phrases in ACTION_PHRASES.get(language, {}).items()
              if any(_phrase_present(text, normalize_intent_text(phrase, language)) for phrase in phrases)} |
-            _matched_action_pattern_kinds(text, language) | _concept_service_kinds(text, language))
+            pattern_kinds | concept_kinds)
 
 
 def ordered_service_kinds(query: str, language: str) -> tuple[str, ...]:

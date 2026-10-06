@@ -12,6 +12,7 @@ from concierge_kiosk.domain.service_registry import (
 from concierge_kiosk.core.operational_policy import (
     dispatch_policy_for_service, service_catalog_entry, catalog_entry_for_details, service_window_state,
 )
+from concierge_kiosk.domain.public_reference import public_reference
 
 class SubmissionWorkflowMixin:
     @staticmethod
@@ -309,6 +310,7 @@ class SubmissionWorkflowMixin:
             result = {
                 'id': request_id, 'proposal_id': proposal_id, 'property_id': self.property_id,
                 'kind': kind, 'language': language, 'details': details, 'payload_json': payload_json,
+                'confirmation_code': public_reference(request_id),
                 'status': 'pending_staff', 'created_at': now, 'updated_at': now,
                 'guest_verification_state': verification_state,
                 'guest_verification_provider': verification_provider,
@@ -322,10 +324,10 @@ class SubmissionWorkflowMixin:
                 'unverified_room': 0 if verification_state == 'verified' else 1,
             }
             con.execute(
-                'INSERT INTO service_requests(id,proposal_id,property_id,kind,language,details,payload_json,service_code,'
+                'INSERT INTO service_requests(id,proposal_id,property_id,kind,language,details,payload_json,confirmation_code,service_code,'
                 'status,created_at,updated_at,guest_verification_state,guest_verification_provider,'
                 'guest_verification_reference,department_id,priority,ack_due_at,sla_due_at,unverified_room) '
-                'VALUES(:id,:proposal_id,:property_id,:kind,:language,:details,:payload_json,:service_code,:status,'
+                'VALUES(:id,:proposal_id,:property_id,:kind,:language,:details,:payload_json,:confirmation_code,:service_code,:status,'
                 ':created_at,:updated_at,:guest_verification_state,:guest_verification_provider,'
                 ':guest_verification_reference,:department_id,:priority,:ack_due_at,:sla_due_at,:unverified_room)', result)
             con.execute(
@@ -450,6 +452,7 @@ class SubmissionWorkflowMixin:
                           "property_id": self.property_id, "kind": row["kind"],
                           "language": row["language"], "details": row["details"],
                           "payload_json": row["payload_json"],
+                          "confirmation_code": public_reference(request_id),
                           "service_code": service_code,
                           "status": "pending_staff", "created_at": now, "updated_at": now,
                           "guest_verification_state": verification_state,
@@ -461,10 +464,10 @@ class SubmissionWorkflowMixin:
                           "sla_due_at": 0,
                           "unverified_room": int(row['kind'] in VERIFICATION_KINDS and verification_state != 'verified')}
                 con.execute(
-                    "INSERT INTO service_requests(id,proposal_id,property_id,kind,language,details,payload_json,service_code,"
+                    "INSERT INTO service_requests(id,proposal_id,property_id,kind,language,details,payload_json,confirmation_code,service_code,"
                     "status,created_at,updated_at,guest_verification_state,guest_verification_provider,"
                     "guest_verification_reference,department_id,priority,ack_due_at,sla_due_at,unverified_room) "
-                    "VALUES(:id,:proposal_id,:property_id,:kind,:language,:details,:payload_json,:service_code,"
+                    "VALUES(:id,:proposal_id,:property_id,:kind,:language,:details,:payload_json,:confirmation_code,:service_code,"
                     ":status,:created_at,:updated_at,:guest_verification_state,:guest_verification_provider,"
                     ":guest_verification_reference,:department_id,:priority,:ack_due_at,:sla_due_at,:unverified_room)", result)
                 con.execute("INSERT INTO audit_events(request_id,action,actor,property_id,at,note) VALUES(?,?,?,?,?,?)",

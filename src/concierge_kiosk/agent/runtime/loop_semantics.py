@@ -12,7 +12,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-from .planner import ActionBatch, ActionPlan, NextAction, PlannedStep, deterministic_next_action
+from .planner import ActionBatch, ActionPlan, NextAction, deterministic_next_action
 from .verifier import Verification, verify
 from .world import AgentFailure, AgentUnknown, facts_from_observation
 from concierge_kiosk.agent.understanding.commands import Command
@@ -117,6 +117,17 @@ def _consume_command(run: "AgentRun") -> tuple[NextAction | None, str | None, bo
     return None, None, progressed
 
 
+def _has_exhausted_tool_failure(state) -> bool:
+    return any(
+        item.get('ok') is False and int(item.get('attempt') or 0) >= 3
+        for item in state.observations
+    )
+
+
+def _handoff_already_observed(state) -> bool:
+    return any(item.get('capability') == 'handoff_staff' for item in state.observations)
+
+
 class GovernedLoopSemantics:
     """Authoritative state-transition semantics shared by all loop adapters."""
 
@@ -145,6 +156,9 @@ class GovernedLoopSemantics:
         # Completion takes precedence over the wall-time bound, just as it does
         # over the step bound below.
         if verification.ready_to_respond:
+            if (not verification.goal_complete and _has_exhausted_tool_failure(state)
+                    and not _handoff_already_observed(state)):
+                return verification, "plan"
             state.status = "completed" if verification.goal_complete else "partial"
             state.termination_reason = verification.reason
             return verification, "done"
@@ -175,6 +189,13 @@ class GovernedLoopSemantics:
         ``execute``, ``verify`` or ``done``.
         """
         state = run.state
+        if (_has_exhausted_tool_failure(state) and not _handoff_already_observed(state)
+                and not verification.goal_complete):
+            action = NextAction(
+                'tool', capability='handoff_staff', query=state.original_query,
+                planner='tool_error_handoff')
+            run.decisions.append(action.public())
+            return action, verification, 'execute'
         if state.commands and state.command_index < len(state.commands):
             command_action, requirement_id, progressed = _consume_command(run)
             if command_action is not None:
@@ -338,7 +359,10 @@ class GovernedLoopSemantics:
             action = self._fallback(state, verification)
             signature = action.signature()
             if signature in state.attempted_signatures and action.type == "tool":
-                state.status = "bounded"
+                # A repeated failed read is a safe partial outcome.  Reserve
+                # ``bounded`` for an actual resource limit; callers need to
+                # distinguish a tool outage from a budget exhaustion.
+                state.status = "partial"
                 state.termination_reason = "planner_repeated_action_without_progress"
                 return None, verification, "done"
 
@@ -371,7 +395,6 @@ class GovernedLoopSemantics:
     ) -> str:
         """Commit one tool result to the world model in deterministic order."""
         state = run.state
-        step_id = str(meta.get('step_id') or f'A{state.iteration + 1}')
         state.iteration += 1
         if action.capability not in _WRITE_CAPABILITIES:
             run.read_calls += 1

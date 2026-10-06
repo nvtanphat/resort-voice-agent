@@ -115,7 +115,8 @@ else:
                 "missing_topics", "evidence_status", "omitted_claims",
                 "related_topics", "support_contact", "task_progress",
                 "agent_progress", "autonomous_action", "clear_suggestions",
-                "session_update",
+                "session_update", "tool_route", "service_code", "retrieval_mode",
+                "generation_mode", "request_completed", "grounding", "synthetic",
             )
             card = {key: result[key] for key in allowed if key in result}
             card["speech_turn_id"] = turn_id

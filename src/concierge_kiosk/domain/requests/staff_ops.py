@@ -328,7 +328,7 @@ class StaffWorkflowMixin:
             request_id=request_id, property_id=self.property_id, kind=row['kind'],
             details=row['details'], payload=payload if isinstance(payload, dict) else {})
         state = str(getattr(outcome, 'state', 'failed'))
-        if state not in {'accepted','queued','failed','not_configured'}:
+        if state not in {'accepted','queued','pending_sync','failed','not_configured'}:
             state = 'failed'
         provider = str(getattr(outcome, 'provider', ''))[:48]
         reference = str(getattr(outcome, 'external_reference', ''))[:120]

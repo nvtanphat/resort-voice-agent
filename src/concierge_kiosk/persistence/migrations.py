@@ -35,7 +35,7 @@ def migrate_service_request_status_constraint(con: sqlite3.Connection) -> None:
             CREATE TABLE service_requests_new (
               id TEXT PRIMARY KEY, proposal_id TEXT NOT NULL UNIQUE REFERENCES proposals(id),
               property_id TEXT NOT NULL, kind TEXT NOT NULL, language TEXT NOT NULL,
-              details TEXT NOT NULL, payload_json TEXT NOT NULL DEFAULT '{}', service_code TEXT NOT NULL DEFAULT '',
+              details TEXT NOT NULL, payload_json TEXT NOT NULL DEFAULT '{}', confirmation_code TEXT NOT NULL DEFAULT '', service_code TEXT NOT NULL DEFAULT '',
               status TEXT NOT NULL CHECK(status IN ('pending_staff','approved','in_progress','paused','rejected','completed')),
               created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
               staff_note TEXT NOT NULL DEFAULT '', verified_by TEXT NOT NULL DEFAULT '',
@@ -56,7 +56,7 @@ def migrate_service_request_status_constraint(con: sqlite3.Connection) -> None:
               unverified_room INTEGER NOT NULL DEFAULT 0 CHECK(unverified_room IN (0,1))
             )
         """)
-        target = ('id,proposal_id,property_id,kind,language,details,payload_json,service_code,status,created_at,updated_at,'
+        target = ('id,proposal_id,property_id,kind,language,details,payload_json,confirmation_code,service_code,status,created_at,updated_at,'
                   'staff_note,verified_by,guest_change_state,guest_change_payload_json,guest_change_note,guest_change_nonce_hash,'
                   'guest_change_updated_at,guest_verification_state,guest_verification_provider,guest_verification_reference,'
                   'eta_minutes,eta_updated_at,external_dispatch_state,external_dispatch_provider,external_reference,external_dispatch_error,'
@@ -72,6 +72,8 @@ def migrate_service_request_status_constraint(con: sqlite3.Connection) -> None:
             elif name in fields:
                 source.append(name)
             elif name == 'service_code':
+                source.append("''")
+            elif name == 'confirmation_code':
                 source.append("''")
             elif name == 'priority':
                 source.append('3')

@@ -15,13 +15,15 @@ from concierge_kiosk.agent.core.tool_contracts import (authorized_tool_result, c
                                                        no_evidence_handoff_details, tool_error_observation,
                                                        validate_tool_result)
 from concierge_kiosk.agent.tools.read_execution import ReadTaskExecution
-from concierge_kiosk.agent.tools.service_slots import looks_like_slot_reply, is_cancel_pending
+from concierge_kiosk.agent.tools.service_slots import (
+    looks_like_slot_reply, is_cancel_pending, extract_slots, service_mode,
+)
 from concierge_kiosk.agent.tools.read_tasks import read_only_task_graph, validate_read_only_result
 from concierge_kiosk.agent.tools.navigation import map_guidance, localized_map_query, MapUnavailable
 from concierge_kiosk.agent.tools.scheduling import schedule_read, ScheduleUnavailable
 from concierge_kiosk.agent.understanding.routing import (
     RouteDecision, classify_dialogue, fast_response, is_location_question,
-    request_change_intent,
+    request_change_intent, availability_service_code,
 )
 from concierge_kiosk.agent.understanding.intent import suggest_service_request, normalize_intent_text
 from concierge_kiosk.agent.understanding.turn_plan import SlotSpan, TurnIntent, TurnPlan, model_turn_plan
@@ -50,10 +52,11 @@ from concierge_kiosk.services import KnowledgeService, TurnCoordinator, Coordina
 from concierge_kiosk.domain.service_registry import route_branch_for_request_kind
 from concierge_kiosk.agent.understanding.domain_nlu import (
     ACTION_FOLLOWUP_TERMS, ACTION_PHRASES, REQUEST_FRAME_PATTERNS,
-    MODEL_FALLBACK_CUES, AFFIRM_TERMS,
+    MODEL_FALLBACK_CUES, AFFIRM_TERMS, TIME_EXPRESSIONS,
 )
 from concierge_kiosk.i18n import text as i18n_text
 from concierge_kiosk.runtime.local_http import slm_turn_budget
+from concierge_kiosk.integrations.synthetic_operations import SyntheticOperations
 
 from .answers import AnswerServices
 
@@ -65,6 +68,39 @@ LOGGER = logging.getLogger(__name__)
 # model-intent hook.  Normal production turns never call this legacy adapter;
 # they use the structured TurnPlan above.
 _DEFAULT_MODEL_SERVICE_INTENT = model_service_intent
+
+
+def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDecision:
+    """Project a validated Command stream onto the bounded route vocabulary.
+
+    The model may propose intent, but it cannot create a new route or bypass
+    the server-owned registry.  This projection fixes the previous gap where a
+    valid ``StartGoal`` inside a command-mode availability turn was ignored and
+    the runtime kept executing the read-only schedule route.
+    """
+    if not commands:
+        return fallback
+    starts = [item for item in commands if item.type == 'StartGoal']
+    reads = [item for item in commands if item.type in {'AskInfo', 'Navigate'}]
+    handoffs = [item for item in commands if item.type == 'Handoff']
+    if any(item.type == 'Confirm' for item in commands):
+        return RouteDecision('confirmation', True)
+    if handoffs:
+        return RouteDecision('handoff', True)
+    if starts:
+        if len(starts) == 1 and not reads and len(commands) == 1:
+            definition = service_definition(starts[0].goal or '')
+            if definition is not None:
+                return RouteDecision(
+                    route_branch_for_request_kind(definition.request_kind) or 'service', True)
+        return RouteDecision('multi_task', False)
+    if any(item.type == 'Navigate' for item in commands):
+        return RouteDecision('navigation', False)
+    if any(item.type == 'AskInfo' for item in commands):
+        return RouteDecision('knowledge', False, None, fallback.question_type)
+    if all(item.type == 'ChitChat' for item in commands):
+        return RouteDecision('greeting', True)
+    return fallback
 
 @dataclass(frozen=True)
 class ConversationEngine:
@@ -411,7 +447,16 @@ class _TurnRuntimeSupport:
                 if resolved_query != query:
                     execution_query = resolved_query
                     contextual = classify_dialogue(execution_query, language)
-                    if contextual.branch not in {'emergency', 'language'}:
+                    # A generic follow-up such as "what time does it open?"
+                    # may resolve an entity anchor, but it must stay on the
+                    # knowledge path.  Otherwise appending the anchor title
+                    # would silently switch a previously ordinary knowledge
+                    # question to the synthetic availability adapter and
+                    # change the public evidence contract.  Explicit schedule
+                    # turns still enter ``check_schedule`` at the first pass.
+                    if (contextual.branch not in {'emergency', 'language'}
+                            and not (decision.branch == 'knowledge'
+                                     and contextual.branch == 'check_schedule')):
                         decision = contextual
 
         if decision.branch == 'knowledge':
@@ -595,6 +640,65 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                                preferences=(request.session_preferences or preference_memory.load(request.session)))
 
     def _agent_check_schedule(request: AgentToolRequest) -> dict:
+        # Operational availability is a read-only observation.  Synthetic
+        # fixtures are deliberately tried before canonical schedule text so a
+        # guest asking "is there a table?" cannot receive a misleading static
+        # opening-hours answer.  The observation remains explicitly labelled
+        # synthetic and never creates/holds a booking.
+        suggestion = suggest_service_request(request.query, request.language)
+        normalized_schedule_query = normalize_intent_text(request.query, request.language)
+        unresolved_relative_date = any(
+            meaning == 'date_window' and normalize_intent_text(term, request.language) in normalized_schedule_query
+            for term, meaning in TIME_EXPRESSIONS.get(request.language, {}).items())
+        try:
+            if unresolved_relative_date:
+                kind = mode = None
+            elif suggestion is not None:
+                kind = suggestion.kind
+                mode = service_mode(request.query, request.language, kind)
+            else:
+                mode = availability_service_code(request.query, request.language)
+                definition = service_definition(mode) if mode is not None else None
+                kind = definition.request_kind if definition is not None else None
+            if kind is not None and mode is not None:
+                slots = extract_slots(request.query, request.language, kind, mode=mode)
+                synthetic = synthetic_operations.check_availability(
+                    service_code=mode, query=request.query,
+                    effective_date=request.effective_date,
+                    preferred_time=(str(slots.get('preferred_time'))
+                                     if slots.get('preferred_time') is not None else None),
+                    party_size=(int(slots['party_size'])
+                                    if isinstance(slots.get('party_size'), int) else None),
+                )
+            else:
+                synthetic = None
+        except (TypeError, ValueError):
+            synthetic = None
+        if synthetic is not None:
+            records = synthetic.records or synthetic.alternatives
+            if synthetic.status == 'available':
+                details = '; '.join(
+                    f"{item.get('name') or item.get('product_id') or item.get('time')}: "
+                    f"{item.get('time') or item.get('depart') or item.get('status')}"
+                    for item in records[:3])
+                answer = i18n_text('operations.synthetic_available', request.language,
+                                   details=details or 'available options')
+            elif synthetic.status == 'ambiguous':
+                details = ', '.join(str(item.get('name') or item.get('entity_id'))
+                                    for item in synthetic.alternatives[:3])
+                answer = i18n_text('operations.synthetic_ambiguous', request.language,
+                                   details=details or 'more than one option')
+            else:
+                answer = i18n_text('operations.synthetic_unavailable', request.language)
+            return {
+                'answer': answer, 'sources': [], 'citations': [],
+                'schedule_verified': synthetic.status in {'available', 'unavailable'},
+                'schedule_result': synthetic.public(), 'synthetic_source': synthetic.source.public(),
+                'retrieval_mode': 'synthetic_operations', 'generation_mode': 'extractive',
+                'request_completed': False, 'grounding': 'synthetic_operational',
+                'evidence_status': 'SUPPORTED_SYNTHETIC' if synthetic.status != 'ambiguous' else 'AMBIGUOUS',
+                'suggested_action': None, 'requires_staff_review': False,
+            }
         try:
             result = schedule_read(
                 store, query=request.query, language=request.language,
@@ -637,8 +741,10 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         orchestrator=cfg.orchestrator, get_graph=get_graph, record_metric=record_metric,
         logger=logger, enabled_request_kinds=enabled_request_kinds,
         low_risk_requires_verified_room=property_profile.low_risk_requires_verified_room,
+        hitl_mode=property_profile.hitl_mode,
         cfg=cfg,
     )
+    synthetic_operations = SyntheticOperations(cfg)
     app.state.service_actions = service_actions
 
     tool_registry = BoundedToolRegistry({
@@ -735,6 +841,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             # records the proposal while retaining deterministic authority.
             if understanding_mode == 'command':
                 understanding_commands = command_proposal
+                if understanding_commands is not None:
+                    decision = _decision_from_commands(tuple(understanding_commands), decision)
             elif understanding_mode == 'legacy':
                 turn_plan = turn_support.turn_plan_for_session(
                     execution_query, body.language, session,

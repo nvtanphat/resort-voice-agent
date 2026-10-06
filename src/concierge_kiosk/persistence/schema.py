@@ -8,6 +8,14 @@ CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, csrf_hash TEXT NOT NULL,
   property_id TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS guest_consents (
+  id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  property_id TEXT NOT NULL, purpose TEXT NOT NULL,
+  policy_version TEXT NOT NULL, granted INTEGER NOT NULL CHECK(granted IN (0,1)),
+  created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS guest_consents_scope
+  ON guest_consents(property_id,session_id,purpose,created_at);
 CREATE TABLE IF NOT EXISTS rate_limits (
   bucket TEXT NOT NULL, period INTEGER NOT NULL, count INTEGER NOT NULL,
   window_seconds INTEGER NOT NULL DEFAULT 60 CHECK(window_seconds > 0),
@@ -52,6 +60,7 @@ CREATE TABLE IF NOT EXISTS service_requests (
   id TEXT PRIMARY KEY, proposal_id TEXT NOT NULL UNIQUE REFERENCES proposals(id),
   property_id TEXT NOT NULL, kind TEXT NOT NULL, language TEXT NOT NULL,
   details TEXT NOT NULL, payload_json TEXT NOT NULL DEFAULT '{}',
+  confirmation_code TEXT NOT NULL DEFAULT '',
   service_code TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL CHECK(status IN ('pending_staff','approved','in_progress','paused','rejected','completed')),
   created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
@@ -214,7 +223,7 @@ CREATE TABLE IF NOT EXISTS knowledge_release_evidence (
 
 
 # Schema upgrades are transactional and monotonic. Never silently open a newer DB.
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 
 # SQLite triggers are defense in depth: the workflow remains responsible for

@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     staff_origin: str = ""
     staff_token: str = ""
     agent_token: str = ""
+    status_token_secret: str = "dev-status-token-secret-change-me-32-bytes"
+    data_consent_required: bool = False
     session_ttl_seconds: int = 1200
     context_ttl_seconds: int = 900
     context_max_topics: int = 12
@@ -84,6 +86,8 @@ class Settings(BaseSettings):
     rerank_model_path: str = ""
     rerank_manifest_path: str = ""
     rag_min_dense_similarity: float = 0.70
+    rag_dense_backend: str = "legacy"
+    rag_vector_path: str = "data/vectors"
     rag_lexical_coverage: float = 0.60
     rag_rrf_k: int = 60
     rag_dense_max_rows: int = 5000
@@ -198,6 +202,7 @@ class Settings(BaseSettings):
         "voice_incremental_enabled", "voice_incremental_require_manifest",
         "voice_final_require_manifest", "nli_require_manifest",
         "intent_parser_enabled", "agent_planner_enabled", "real_runtime_required",
+        "data_consent_required",
         mode="before",
     )
     @classmethod
@@ -287,6 +292,8 @@ class Settings(BaseSettings):
         if self.environment not in {"test", "development", "production"}:
             raise ValueError("Unknown environment")
         if self.environment == "production":
+            if not self.data_consent_required:
+                raise ValueError("Production requires explicit guest data consent")
             from urllib.parse import urlsplit
             public, staff = urlsplit(self.public_origin), urlsplit(self.staff_origin)
             if (public.scheme != "https" or not public.hostname or public.username or
@@ -302,6 +309,10 @@ class Settings(BaseSettings):
                 raise ValueError("Production staff and public ingress require distinct hostnames")
             if (len(self.agent_token) < 32 or self.agent_token.startswith("dev-")):
                 raise ValueError("Use a random, independent agent credential")
+            if (len(self.status_token_secret) < 32 or self.status_token_secret.startswith("dev-")):
+                raise ValueError("Production requires a random status token secret")
+            if self.status_token_secret in {self.agent_token, self.staff_gateway_token}:
+                raise ValueError("Status token secret must be distinct")
             if len(self.staff_gateway_token) < 32 or self.staff_gateway_token.startswith("dev-") or self.staff_gateway_token == self.agent_token:
                 raise ValueError("Production requires a distinct random staff gateway secret")
             if not self.staff_credentials_json:
@@ -421,6 +432,11 @@ class Settings(BaseSettings):
                 and 0 <= self.rag_rerank_fusion_alpha <= 1
                 and 0 <= self.rag_rerank_metadata_bonus <= 1):
             raise ValueError('Invalid RAG policy thresholds')
+        if self.rag_dense_backend not in {'legacy', 'chroma', 'faiss'}:
+            raise ValueError('Invalid dense vector backend')
+        vector_path = Path(self.rag_vector_path)
+        if vector_path.is_symlink() or any(part == '..' for part in vector_path.parts):
+            raise ValueError('Invalid vector index path')
         if self.rag_rerank_input not in {'context_text', 'body'}:
             raise ValueError('Invalid reranker input field')
         if self.rag_rerank_on_failure not in {'keep_rrf', 'abstain'}:
@@ -631,6 +647,8 @@ def load_settings() -> Settings:
         "rerank_model_path": str(reranker_defaults["model_path"]),
         "rerank_manifest_path": str(reranker_defaults["manifest_path"]),
         "rag_min_dense_similarity": float(rag_defaults["min_dense_similarity"]),
+        "rag_dense_backend": str(rag_defaults.get("dense_backend", "legacy")),
+        "rag_vector_path": str(rag_defaults.get("vector_path", "data/vectors")),
         "rag_lexical_coverage": float(rag_defaults["lexical_coverage"]),
         "rag_rrf_k": int(rag_defaults["rrf_k"]),
         "rag_dense_max_rows": int(rag_defaults["dense_max_rows"]),
@@ -706,6 +724,12 @@ def load_settings() -> Settings:
         "nli_model_path": str(nli_defaults["model_path"]),
         "nli_min_confidence": float(nli_defaults["min_confidence"]),
     }
+    status_token_secret = _secret("CONCIERGE_STATUS_TOKEN_SECRET")
+    if not status_token_secret and environment != "production":
+        # Development/test profiles may run without a provisioned secret. The
+        # value is intentionally a clearly non-production fallback; production
+        # validation rejects it and requires operator provisioning.
+        status_token_secret = "dev-status-token-secret-change-me-32-bytes"
     base_values = {
         "property_id": property_id,
         "property_name": property_name,
@@ -716,6 +740,8 @@ def load_settings() -> Settings:
         "context_max_topics": int(memory_defaults.max_topics),
         "staff_token": _secret("CONCIERGE_STAFF_TOKEN"),
         "agent_token": _secret("CONCIERGE_AGENT_TOKEN"),
+        "status_token_secret": status_token_secret,
+        "data_consent_required": environment == "production",
         "staff_credentials_json": _secret("CONCIERGE_STAFF_CREDENTIALS_JSON"),
         "staff_gateway_token": _secret("CONCIERGE_STAFF_GATEWAY_TOKEN"),
         "property_profile_path": property_profile_path,
