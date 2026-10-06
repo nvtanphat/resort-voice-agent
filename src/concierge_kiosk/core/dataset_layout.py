@@ -41,6 +41,18 @@ SERVICE_POLICIES: Final[str] = "synthetic/operations/policies/service_policies.j
 ESCALATION_MATRIX: Final[str] = "synthetic/operations/policies/escalation_matrix.json"
 STAFF_DEPARTMENTS: Final[str] = "synthetic/operations/staffing/departments.json"
 OPS_COVERAGE: Final[str] = "synthetic/operations/metadata/coverage.json"
+RESTAURANTS: Final[str] = "synthetic/operations/food_beverage/restaurants.json"
+ROOM_SERVICE_MENU: Final[str] = "synthetic/operations/food_beverage/room_service_menu.json"
+MINIBAR: Final[str] = "synthetic/operations/food_beverage/minibar.json"
+SPA_OPERATIONS: Final[str] = "synthetic/operations/spa/operations.json"
+TOUR_PRODUCTS: Final[str] = "synthetic/operations/tours/products.json"
+TOUR_OPERATIONS: Final[str] = "synthetic/operations/tours/operations.json"
+TRANSPORT_PRODUCTS: Final[str] = "synthetic/operations/transport/products.json"
+SHUTTLE_SCHEDULE: Final[str] = "synthetic/operations/transport/shuttle_schedule.json"
+COMMERCIAL_SNAPSHOT: Final[str] = "synthetic/operations/inventory/commercial_snapshot.json"
+ROOM_INVENTORY: Final[str] = "synthetic/operations/rooms/inventory.jsonl"
+PMS_STAYS: Final[str] = "synthetic/operations/pms/stays.jsonl"
+CHARGE_RULES: Final[str] = "synthetic/operations/billing/charge_rules.json"
 
 # Evaluation/training inputs are dataset paths too, but are never RAG inputs.
 EVAL_GOLD: Final[str] = "evaluation/gold"

@@ -31,7 +31,7 @@ class GuestVerificationResult:
 
 @dataclass(frozen=True)
 class DispatchResult:
-    state: str  # accepted | queued | failed | not_configured
+    state: str  # accepted | queued | pending_sync | failed | not_configured
     provider: str
     external_reference: str = ""
     eta_minutes: int | None = None
@@ -224,7 +224,9 @@ class HttpServiceDispatcher:
         try:
             data = _post_json(request, timeout=self.timeout_seconds, limit=32_768)
         except Exception:
-            return DispatchResult("failed", "hotel_ops_http", error_code="external_dispatch_unavailable")
+            # The local ticket remains authoritative.  A network failure is
+            # explicitly pending_sync, never a successful external booking.
+            return DispatchResult("pending_sync", "hotel_ops_http", error_code="external_dispatch_unavailable")
         state = str(data.get("state", "accepted"))
         if state not in {"accepted", "queued"}:
             return DispatchResult("failed", "hotel_ops_http", error_code="external_dispatch_rejected")
