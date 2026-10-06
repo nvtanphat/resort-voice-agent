@@ -34,7 +34,7 @@ def inspect_configured_runtime() -> dict:
     signoff_verified = False
     if cfg.real_runtime_required:
         try:
-            from concierge_kiosk.runtime.production_signoff import verify_runtime_signoff
+            from concierge_kiosk.operations.production_signoff import verify_runtime_signoff
             verify_runtime_signoff(cfg)
             signoff_verified = True
         except (OSError, ValueError, TypeError):

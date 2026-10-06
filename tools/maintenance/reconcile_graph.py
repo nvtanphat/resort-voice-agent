@@ -22,8 +22,6 @@ def main():
     if args.rebuild_checkpoint and not args.request_id:
         parser.error('--rebuild-checkpoint requires an explicit --request-id')
     cfg = load_settings()
-    if cfg.orchestrator != 'langgraph':
-        parser.error('CONCIERGE_ORCHESTRATOR must be langgraph')
     store = Store(cfg.db_path)
     workflows = Workflows(store, cfg.property_id, cfg.proposal_ttl_seconds)
     graph = ConciergeGraph(workflows, cfg.db_path.with_name(cfg.db_path.stem + '-graph.sqlite3'))

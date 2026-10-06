@@ -22,3 +22,37 @@ def _reset_slm_circuit():
     local_http._reset_circuit()
     yield
     local_http._reset_circuit()
+
+
+@pytest.fixture
+def understand(monkeypatch):
+    """Script the understanding model for business-flow tests.
+
+    The test profile has no SLM and no embedding understanding, so a service
+    turn needs its interpretation supplied explicitly: ``understand(marker,
+    'amenity_delivery')`` makes any guest turn containing ``marker`` arrive as
+    ``StartGoal(amenity_delivery)`` (a ``Command`` may be passed instead of a
+    goal). The scripted proposal still goes through the real
+    ``validate_commands`` boundary, and every layer after it (goal contract,
+    policy, confirmation, staff review) runs unchanged. Unmatched turns get no
+    proposal, exactly like an unavailable model.
+    """
+    from concierge_kiosk.agent.understanding.commands import Command, validate_commands
+    from concierge_kiosk.application.conversation import engine
+
+    script: list[tuple[str, tuple]] = []
+
+    def scripted(self, query, language, session, *, enabled_request_kinds, voice_turn=False):
+        for marker, commands in script:
+            if marker in query:
+                return validate_commands(commands, query=query,
+                                         enabled_request_kinds=enabled_request_kinds)
+        return None
+
+    monkeypatch.setattr(engine._TurnRuntimeSupport, 'command_for_session', scripted)
+
+    def register(marker: str, *items) -> None:
+        script.append((marker, tuple(
+            Command('StartGoal', goal=item) if isinstance(item, str) else item for item in items)))
+
+    return register

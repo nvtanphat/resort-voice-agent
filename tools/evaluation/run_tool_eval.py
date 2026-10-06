@@ -204,13 +204,24 @@ def _scenario_to_task(row: dict) -> dict:
     catalog_kind = _catalog_request_kind(str(row.get("expected_service_id") or ""))
     expected_db = {}
     if route == "request_change":
-        expected_db = {
-            "requests": [{
-                "kind": str(catalog_kind or "human"),
-                "status": "pending_staff",
-                "guest_change_state": "cancel_requested" if action == "cancel" else "modify_requested",
-            }]
-        }
+        # A modify utterance that names only the previous request contains no
+        # replacement slot/value. The correct agent behavior is to ask what
+        # should change and leave the request unchanged; requiring
+        # ``modify_requested`` here incorrectly penalized that clarification.
+        change_payload = (row.get("changes") or row.get("changed_slots")
+                          or row.get("expected_changes"))
+        if action == "cancel" or change_payload:
+            expected_db = {
+                "requests": [{
+                    "kind": str(catalog_kind or "human"),
+                    "status": "pending_staff",
+                    "guest_change_state": "cancel_requested" if action == "cancel"
+                    else "modify_requested",
+                }]
+            }
+        else:
+            oracle_warnings.append(
+                "modify request has no replacement content; clarification without DB mutation is expected")
     return {
         "id": str(row.get("case_id") or row.get("scenario_id") or "scenario"),
         "lang": str(row.get("language") or row.get("lang") or "en"),

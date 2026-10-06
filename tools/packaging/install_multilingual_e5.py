@@ -18,7 +18,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from concierge_kiosk.rag.model_manifest import rag_model_manifest
+from concierge_kiosk.core.model_manifest import rag_model_manifest
 
 REPO_ID = "intfloat/multilingual-e5-small"
 REVISION = "614241f622f53c4eeff9890bdc4f31cfecc418b3"

@@ -25,6 +25,7 @@ from concierge_kiosk.persistence.sqlite_store import Store  # noqa: E402
 from concierge_kiosk.rag.embedding.local import LocalEmbedder  # noqa: E402
 from concierge_kiosk.rag.rerank.local import LocalReranker  # noqa: E402
 from concierge_kiosk.rag.retrieval import RAGPolicy, retrieve  # noqa: E402
+from concierge_kiosk.rag.vectorstore import open_vector_store  # noqa: E402
 
 SUITES = {
     "grounded": "evaluation/retrieval/grounded.jsonl",
@@ -71,6 +72,8 @@ def run(suite: str, mode: str, rerank: bool, limit: int | None, *,
         rerank_budget_ms: int | None = None) -> dict:
     cfg = load_settings()
     store = Store(Path(cfg.db_path))
+    vector_store = open_vector_store(
+        path=cfg.rag_vector_path, collection=f'{cfg.property_id}-knowledge')
     embedder = LocalEmbedder(cfg.embedding_model_path, cfg.embedding_manifest_path) if mode != "lexical" else None
     reranker = LocalReranker(cfg.rerank_model_path, cfg.rerank_manifest_path) if rerank else None
     policy = _policy(cfg, rerank_alpha=rerank_alpha, rerank_top_k=rerank_top_k,
@@ -92,7 +95,7 @@ def run(suite: str, mode: str, rerank: bool, limit: int | None, *,
         try:
             result = retrieve(store, property_id=cfg.property_id, language=case["language"], query=case["query"],
                               embedder=embedder, reranker=reranker, effective_date=cfg_date(cfg), top_k=5,
-                              policy=policy, mode=mode)
+                              policy=policy, mode=mode, vector_store=vector_store)
             sources, retrieval_mode, rerank_status = list(result.sources), result.mode, result.rerank_status
             if result.rerank_ms is not None:
                 rerank_latencies.append(result.rerank_ms)
@@ -139,6 +142,7 @@ def run(suite: str, mode: str, rerank: bool, limit: int | None, *,
     for miss in misses:
         causes[miss["failure"]] = causes.get(miss["failure"], 0) + 1
     summary["failure_causes"] = causes
+    vector_store.close()
     return {"suite": suite, "mode": mode, "rerank": rerank, "cases": len(cases),
             "policy": {"rerank_fusion_alpha": policy.rerank_fusion_alpha,
                         "rerank_top_k": policy.rerank_top_k,

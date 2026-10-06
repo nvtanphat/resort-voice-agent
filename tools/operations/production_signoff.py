@@ -15,19 +15,19 @@ from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
-from concierge_kiosk.rag.model_manifest import (
+from concierge_kiosk.core.model_manifest import (
     learned_embedding_profile,
     manifest_sha256,
     model_identity,
     verify_rag_model_manifest,
 )
-from concierge_kiosk.runtime.production_signoff import FORMAT, canonical_receipt_bytes
+from concierge_kiosk.operations.production_signoff import FORMAT, canonical_receipt_bytes
 from tools.packaging.knowledge import read_signed_package
 
 TRANSIENT_TABLES = (
     "sessions", "service_requests", "proposals", "audit_events", "rate_limits",
     "agent_checkpoints", "agent_memory_facts", "autonomous_action_receipts",
-    "metric_counts", "read_task_projections", "staff_idempotency", "telemetry_receipts",
+    "metric_counts", "staff_idempotency", "telemetry_receipts",
 )
 
 

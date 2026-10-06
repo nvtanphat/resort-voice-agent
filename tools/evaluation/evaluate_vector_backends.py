@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 from concierge_kiosk.persistence.sqlite_store import Store
-from concierge_kiosk.rag.embedding.cache import decoded_embedding
+from concierge_kiosk.rag.embedding.base import valid_vector
 from concierge_kiosk.rag.vectorstore import open_vector_store
 
 
@@ -25,9 +25,16 @@ def _p95(values: list[float]) -> float | None:
     return round(ordered[max(0, math.ceil(len(ordered) * 0.95) - 1)], 3)
 
 
-def evaluate(*, db: Path, property_id: str, backend: str, vector_path: Path,
+def _stored_vector(raw: str) -> tuple[float, ...]:
+    value = json.loads(raw)
+    if not valid_vector(value):
+        raise ValueError('Invalid stored embedding')
+    return tuple(float(number) for number in value)
+
+
+def evaluate(*, db: Path, property_id: str, vector_path: Path,
              sample_per_language: int = 20, effective_on: str = '2026-10-05') -> dict:
-    if backend not in {'faiss', 'chroma'} or not 1 <= sample_per_language <= 1000:
+    if not 1 <= sample_per_language <= 1000:
         raise ValueError('Invalid vector benchmark options')
     store = Store(db)
     with store.connection() as con:
@@ -45,14 +52,14 @@ def evaluate(*, db: Path, property_id: str, backend: str, vector_path: Path,
         counts[language] = counts.get(language, 0) + 1
         selected.append(row)
     vector_store = open_vector_store(
-        backend=backend, path=vector_path, collection=f'{property_id}-knowledge')
+        path=vector_path, collection=f'{property_id}-knowledge')
     try:
         latencies: list[float] = []
         hits_1 = hits_5 = 0
         for row in selected:
             started = time.perf_counter()
             matches = vector_store.query(
-                decoded_embedding(row['embedding']), k=5,
+                _stored_vector(row['embedding']), k=5,
                 filters={'property_id': property_id, 'language': row['language'],
                          'active': 1, 'effective_on': effective_on})
             latencies.append((time.perf_counter() - started) * 1000)
@@ -64,7 +71,7 @@ def evaluate(*, db: Path, property_id: str, backend: str, vector_path: Path,
         return {
             'schema_version': 1,
             'type': 'vector_backend_storage_spike_self_retrieval_not_rag_certification',
-            'property_id': property_id, 'backend': backend,
+            'property_id': property_id, 'backend': 'faiss',
             'vector_path': str(vector_path), 'cases': cases,
             'by_language': counts, 'r_at_1': round(hits_1 / cases, 4) if cases else None,
             'r_at_5': round(hits_5 / cases, 4) if cases else None,
@@ -82,13 +89,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--db', type=Path, default=Path('data/concierge.sqlite3'))
     parser.add_argument('--property-id', required=True)
-    parser.add_argument('--backend', choices=('faiss', 'chroma'), required=True)
     parser.add_argument('--vector-path', type=Path, required=True)
     parser.add_argument('--sample-per-language', type=int, default=20)
     parser.add_argument('--effective-on', default='2026-10-05')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
-    report = evaluate(db=args.db, property_id=args.property_id, backend=args.backend,
+    report = evaluate(db=args.db, property_id=args.property_id,
                       vector_path=args.vector_path, sample_per_language=args.sample_per_language,
                       effective_on=args.effective_on)
     if args.output:

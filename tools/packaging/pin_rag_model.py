@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from concierge_kiosk.rag.model_manifest import rag_model_manifest, verify_rag_model_manifest
+from concierge_kiosk.core.model_manifest import rag_model_manifest, verify_rag_model_manifest
 
 
 def main() -> None:

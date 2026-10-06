@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from concierge_kiosk.agent.models.model_manifest import model_manifest, verify_model_manifest
+from concierge_kiosk.core.model_manifest import model_manifest, verify_model_manifest
 
 
 def main():

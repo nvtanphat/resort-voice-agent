@@ -16,11 +16,18 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 from concierge_kiosk.persistence.sqlite_store import Store  # noqa: E402
-from concierge_kiosk.rag.embedding.cache import decoded_embedding  # noqa: E402
+from concierge_kiosk.rag.embedding.base import valid_vector  # noqa: E402
 from concierge_kiosk.rag.vectorstore import VectorRecord, open_vector_store  # noqa: E402
 
 
-def build(*, db: Path, property_id: str, backend: str, path: Path,
+def _stored_vector(raw: str) -> tuple[float, ...]:
+    value = json.loads(raw)
+    if not valid_vector(value):
+        raise ValueError('Invalid stored embedding')
+    return tuple(float(number) for number in value)
+
+
+def build(*, db: Path, property_id: str, path: Path,
           collection: str | None = None) -> dict:
     store = Store(db)
     with store.connection() as con:
@@ -54,11 +61,11 @@ def build(*, db: Path, property_id: str, backend: str, path: Path,
         }
         records.append(VectorRecord(
             key=f"{row['id']}::{row['revision']}",
-            vector=decoded_embedding(str(row["embedding"])),
+            vector=_stored_vector(str(row["embedding"])),
             metadata=metadata,
         ))
     vector_store = open_vector_store(
-        backend=backend, path=path,
+        path=path,
         collection=collection or f"{property_id}-knowledge",
     )
     try:
@@ -69,7 +76,7 @@ def build(*, db: Path, property_id: str, backend: str, path: Path,
     return {
         "schema_version": 1,
         "property_id": property_id,
-        "backend": backend,
+        "backend": "faiss",
         "path": str(path),
         "release_version": release_version,
         "source_rows": len(rows),
@@ -83,12 +90,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, default=Path("data/concierge.sqlite3"))
     parser.add_argument("--property-id", required=True)
-    parser.add_argument("--backend", choices=("chroma", "faiss"), required=True)
     parser.add_argument("--path", type=Path, default=Path("data/vectors"))
     parser.add_argument("--collection")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    report = build(db=args.db, property_id=args.property_id, backend=args.backend,
+    report = build(db=args.db, property_id=args.property_id,
                    path=args.path, collection=args.collection)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

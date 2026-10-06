@@ -13,7 +13,7 @@ from pathlib import Path
 
 from huggingface_hub import snapshot_download
 
-from concierge_kiosk.rag.model_manifest import rag_model_manifest
+from concierge_kiosk.core.model_manifest import rag_model_manifest
 
 
 REPOSITORY = "EmbeddedLLM/bge-reranker-v2-m3-int4-ov"

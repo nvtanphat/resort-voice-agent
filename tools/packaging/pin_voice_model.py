@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from concierge_kiosk.voice.models.model_manifest import voice_manifest, verify_voice_manifest
+from concierge_kiosk.core.model_manifest import voice_manifest, verify_voice_manifest
 
 
 def main():

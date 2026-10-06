@@ -5,12 +5,12 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 import sys
 sys.path.insert(0, str(ROOT / 'src'))
-from concierge_kiosk.core.dataset_layout import EVAL_SERVICE_ACTIONS, dataset_path
+from concierge_kiosk.core.dataset_layout import dataset_path
 
 SUITE=dataset_path('evaluation/holdout/service_workflow.jsonl')
 
 def configure(db):
-    os.environ.update({'PYTHON_DOTENV_DISABLED':'1','CONCIERGE_ENV':'test','CONCIERGE_RUNTIME_PROFILE':'test','CONCIERGE_DB_PATH':str(db),'CONCIERGE_ORCHESTRATOR':'direct','CONCIERGE_SEMANTIC_GENERATION_ENABLED':'false','CONCIERGE_INTENT_PARSER_ENABLED':'false'})
+    os.environ.update({'PYTHON_DOTENV_DISABLED':'1','CONCIERGE_ENV':'test','CONCIERGE_RUNTIME_PROFILE':'test','CONCIERGE_DB_PATH':str(db),'CONCIERGE_SEMANTIC_GENERATION_ENABLED':'false','CONCIERGE_INTENT_PARSER_ENABLED':'false'})
     for line in (ROOT/'config/local-runtime.env.example').read_text(encoding='utf-8').splitlines():
         if '=' not in line or line.startswith('#'): continue
         k,v=line.split('=',1)

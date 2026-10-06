@@ -80,13 +80,13 @@ def evaluate_site_acceptance(cfg: Settings, acceptance: dict, probe: Probe = htt
          lambda b: b.get('property_name') == cfg.property_name and b.get('voice_available') is True
          and set(b.get('tts_languages', [])) == {'vi', 'en', 'zh', 'ko'}
          and b.get('orchestrator') == 'langgraph'),
-        ('guest_denies_staff_page', cfg.public_origin + '/ops', (403, 404), None),
-        ('guest_denies_staff_html', cfg.public_origin + '/static/ops.html', (403, 404), None),
-        ('guest_denies_staff_js', cfg.public_origin + '/static/ops.js', (403, 404), None),
+        ('guest_denies_staff_page', cfg.public_origin + '/staff', (403, 404), None),
+        ('guest_denies_staff_html', cfg.public_origin + '/static/staff.html', (403, 404), None),
+        ('guest_denies_staff_js', cfg.public_origin + '/static/staff.js', (403, 404), None),
         ('guest_denies_staff_api', cfg.public_origin + '/staff/requests', (403, 404), None),
         ('guest_denies_internal_api', cfg.public_origin + '/internal/agent/session', (403, 404), None),
         ('guest_denies_schema', cfg.public_origin + '/openapi.json', (403, 404), None),
-        ('staff_page', cfg.staff_origin + '/ops', 200, None),
+        ('staff_page', cfg.staff_origin + '/staff', 200, None),
         ('staff_requires_bearer', cfg.staff_origin + '/staff/requests', (401, 403), None),
         ('staff_does_not_expose_guest', cfg.staff_origin + '/api/config', (403, 404), None),
     )

@@ -1,7 +1,7 @@
 """Benchmark semantic dense retrieval against the canonical multilingual holdout.
 
 Unlike ``evaluate_vector_backends.py``, this command embeds the holdout query
-text with the operator-pinned BGE-M3 model and queries the actual FAISS/Chroma
+text with the operator-pinned BGE-M3 model and queries the actual FAISS
 index.  It measures dense retrieval only: hybrid fusion, reranking, citation
 binding and answer faithfulness remain separate gates.
 """
@@ -49,12 +49,12 @@ def _load_cases(suite: str, limit: int | None) -> tuple[list[dict], str]:
     return (cases[:limit] if limit else cases), _sha256(path)
 
 
-def evaluate(*, db: Path, property_id: str, backend: str, vector_path: Path,
+def evaluate(*, db: Path, property_id: str, vector_path: Path,
              model: str = "bge-m3", manifest: Path = ROOT / "models/embeddings/bge-m3.ollama.manifest.json",
              suite: str = "grounded", limit: int | None = None,
              effective_on: str = "2026-10-06", base_url: str = "http://127.0.0.1:11434",
              timeout: float = 30.0) -> dict:
-    if suite not in SUITES or backend not in {"faiss", "chroma"}:
+    if suite not in SUITES:
         raise ValueError("Invalid semantic vector benchmark options")
     cases, dataset_sha256 = _load_cases(suite, limit)
     if not cases:
@@ -62,7 +62,7 @@ def evaluate(*, db: Path, property_id: str, backend: str, vector_path: Path,
 
     # Rebuild the candidate index from SQLite before measuring.  SQLite remains
     # the source of truth and this makes the report reproducible after an OTA.
-    build_report = build(db=db, property_id=property_id, backend=backend,
+    build_report = build(db=db, property_id=property_id,
                          path=vector_path, collection=f"{property_id}-knowledge")
     embedder = OllamaEmbedder(model=model, base_url=base_url, timeout=timeout,
                               manifest_path=str(manifest))
@@ -74,7 +74,7 @@ def evaluate(*, db: Path, property_id: str, backend: str, vector_path: Path,
         ).fetchall()
     fact_by_key = {f"{row['id']}::{row['revision']}": str(row['canonical_fact_id'] or "")
                    for row in rows}
-    vector_store = open_vector_store(backend=backend, path=vector_path,
+    vector_store = open_vector_store(path=vector_path,
                                      collection=f"{property_id}-knowledge")
     try:
         # Warm the model and network path separately from the measured holdout.
@@ -147,7 +147,7 @@ def evaluate(*, db: Path, property_id: str, backend: str, vector_path: Path,
         return {
             "schema_version": 1,
             "type": "vector_backend_semantic_dense_holdout_not_full_grounding_gate",
-            "property_id": property_id, "backend": backend,
+            "property_id": property_id, "backend": "faiss",
             "vector_path": str(vector_path), "suite": suite,
             "dataset_sha256": dataset_sha256, "cases": count,
             "embedding_model": embedder.model_name,
@@ -177,7 +177,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, default=Path("data/concierge.sqlite3"))
     parser.add_argument("--property-id", required=True)
-    parser.add_argument("--backend", choices=("faiss", "chroma"), required=True)
     parser.add_argument("--vector-path", type=Path, required=True)
     parser.add_argument("--suite", choices=sorted(SUITES), default="grounded")
     parser.add_argument("--limit", type=int)
@@ -189,7 +188,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     report = evaluate(
-        db=args.db, property_id=args.property_id, backend=args.backend,
+        db=args.db, property_id=args.property_id,
         vector_path=args.vector_path, suite=args.suite, limit=args.limit,
         model=args.model, manifest=args.manifest, effective_on=args.effective_on,
         base_url=args.base_url, timeout=args.timeout,
