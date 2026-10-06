@@ -2,12 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Single-property hotel concierge kiosk (currently the Furama resort): FastAPI backend + governed LLM agent (LangGraph) + grounded RAG + service-request workflows + local STT/TTS, with a React guest UI. Guest languages: `vi`, `en`, `zh`, `ko` (Vietnamese is the priority). Everything runs locally on CPU (Ollama SLM + bge-m3, OpenVINO reranker, faster-whisper, Piper). Project docs live in `docs/` (Vietnamese). `AGENT.md` holds the mandatory development rules (no hardcoding, where data goes, bug-fix procedure, voice/benchmark rules); follow it.
+Single-property hotel concierge kiosk (currently the Furama resort): FastAPI backend + governed LLM agent (LangGraph) + grounded RAG + service-request workflows + local STT/TTS, with a React guest UI. Guest languages: `vi`, `en`, `zh`, `ko` (Vietnamese is the priority). Everything runs locally on CPU (Ollama SLM + bge-m3, OpenVINO reranker, faster-whisper, Piper). Project docs live in `docs/` (Vietnamese). `AGENT.md` holds the mandatory development rules (no hardcoding, where data goes, bug-fix procedure, voice/benchmark rules); follow it. `plan.md` is the current roadmap: the target is a governed AI agent, not a branch workflow; no case-specific hardcoding; delete superseded code in the same change.
 
 ## Commands
 
 ```bash
-python -m pip install -e ".[test,ops]"     # backend dev install (Python >= 3.11); add ",voice" for Whisper/Piper
+python -m pip install -e ".[test,ops]"     # backend dev install (Python >= 3.11); add ",voice" for Whisper/Piper/Pipecat
 set -a; . ./.env.example; set +a           # dev env: pinned hashes, Ollama SLM + bge-m3, dataset dir, voice model paths
 python -m concierge_kiosk                  # API on CONCIERGE_BIND_HOST:CONCIERGE_BIND_PORT (default 0.0.0.0:8000)
 python -m pytest -q                        # all tests (pytest config adds src/ and . to sys.path); run it WITHOUT .env.example sourced, its env vars override the test settings
@@ -54,7 +54,7 @@ python tools/repin_configs.py
 ```bash
 python tools/evaluation/run_retrieval_eval.py --suite grounded --output reports/retrieval/grounded.json   # also fact_holdout, compositional; --no-rerank, --mode lexical
 python tools/evaluation/run_human_review_probe.py --lang vi --output reports/vi.json                       # end-to-end gold, also en/ko/zh
-python tools/evaluation/run_tool_eval.py --tasks <tasks.jsonl> --base-url http://localhost:8000 --output reports/tool-eval/x.json
+python tools/evaluation/run_tool_eval.py --tasks <tasks.jsonl> --base-url http://localhost:8000 --output reports/tool-eval/x.json --repeats 5
 python tools/nlu/perturb.py && python tools/nlu/robustness_report.py         # NLU robustness (no-diacritic, typos, fillers…)
 python tools/nlu/calibrate_router.py --model "ollama://bge-m3" --manifest models/embeddings/bge-m3.ollama.manifest.json
 ```
@@ -62,6 +62,7 @@ python tools/nlu/calibrate_router.py --model "ollama://bge-m3" --manifest models
 - Compare per-case results against a run from before your change. `run_retrieval_eval.py` writes every miss with its top-5 results and a failure cause.
 - Calibrate the semantic router with the same learned embedder used at runtime; thresholds computed with the hash embedder are meaningless.
 - Each eval run takes minutes.
+- On the dev machine Ollama offloads to the GPU. For kiosk (CPU-only) latency numbers pass `options.num_gpu = 0`; otherwise SLM timings are several times too optimistic.
 
 Other tools:
 - `tools/generate_ts_contracts.py`;
@@ -74,7 +75,9 @@ Local Docker: `docker compose -f compose.local.yaml up --build` binds 127.0.0.1:
 
 ## Architecture
 
-Layering: `api/` routes → `application/` services → (`agent/` runtime | workflow service) → `rag/`, `domain/` → `persistence/sqlite_store.py`.
+Layering: `api/` routes → `application/` services → (`agent/` runtime | workflow service) → `rag/`, `domain/` → `persistence/` (`sqlite_store.py` holds `Store`; DDL and triggers are in `schema.py`, upgrades in `migrations.py`).
+
+Large modules have been split into packages that re-export their old public API: `core/domain_profile/` (`models`, `files`, `loader`, `accessors`, `validate/*`), `rag/` (see RAG below) and `voice/runtime/`. In `voice/runtime/`, `adapters.py` keeps STT and re-exports `rendering`, `audio`, `tts` and `languages`. Tests monkeypatch `adapters._whisper` and `adapters.voice_policy`, so the STT code must stay in `adapters.py`.
 
 `main.py` is the composition root. `bootstrap.py` builds settings, store, workflows, embedder, reranker and `RAGPolicy`, and warms Ollama and the reranker. `main.py` builds the FastAPI `app` at import time, so importing `concierge_kiosk.main` opens a DB; set env vars first (see `tools/generate_ts_contracts.py` for the isolation pattern). Tests build isolated apps with `create_app(Settings(...))`.
 
@@ -85,9 +88,12 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
   3. Model understanding produces a closed `Command[]` (`agent/understanding/commands.py`: `StartGoal`, `SetSlot`, `CorrectSlot`, `Cancel`, `Confirm`, `AskInfo`, `Navigate`, `Handoff`, `ChitChat`).
      - Commands are validated against the service registry, and slot text must be verbatim guest text.
      - Commands never authorize a write.
+     - `features.understanding_mode` in the runtime profile selects `legacy|shadow|command`. `base.json` is `legacy`, where the SLM paths `turn_plan.py`/`model_intent.py` are only fallbacks for the `knowledge` branch. `development.json` is `command`, where one bounded SLM call per non-emergency turn feeds commands into the loop (`loop_semantics._command_action`).
+     - Even in `command` mode, service candidates and slots still come from keyword/regex matching: `match_terms` and `suggest_service_request` in `intent.py`, `service_clauses`, `extract_slots`, and the per-branch goal requirements in `agent/runtime/state.py::_goal_requirements`; validated `StartGoal` commands are then projected back onto the server-owned route vocabulary. Replacing candidate selection is the main open item in `plan.md`.
   4. The agent runs bounded tools, and every result passes `agent/core/tool_contracts.py` (`authorized_tool_result` / `validate_tool_result`).
-     - A contract mismatch raises and becomes HTTP 500, so new result shapes must satisfy it.
+     - A non-emergency contract mismatch fails closed. The payload is discarded and the guest gets the fixed abstention (`contract_failure_result`, HTTP 200, logged as `tool_contract_failed`). Emergency keeps its own deterministic fallback.
      - Contracts are checked against `execution_query` (the guest text plus any resolved anchor title), not the bare query.
+     - Tool exceptions inside the loop never reach HTTP: `agent/runtime/runtime.py::_execute` turns them into `unavailable` observations with a `failure_class`.
 - **Tools and policy**:
   - Typed tool specs live in `agent/tools/registry.py`: Pydantic params/results for `hotel_info_search`, `hotel_hours_get`, `hotel_route_get`, `service_request_create|confirm|update|cancel|status`, `staff_handoff`, `itinerary_plan`, ….
   - Tool descriptions and examples are data in `agent-domain.json → tools.*`.
@@ -97,8 +103,11 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
   - Loop semantics are centralized in `agent/runtime/loop_semantics.py`, shared by `agent_loop.py` and the LangGraph adapter `langgraph_loop.py`. `CONCIERGE_ORCHESTRATOR` selects `langgraph` (default), `legacy` or `direct`.
   - `presentation/synthesizer.py` composes multi-read results. An abstention from one read must not be glued onto a verified answer from another.
   - `agent/proactive.py` produces suggestions only; it never writes.
-- **Local SLM use is the fallback, not the default.** All SLM HTTP goes through `runtime/local_http.py`: loopback only, no redirects or proxies, per-turn deadline, connection circuit breaker. Voice turns use the tighter `voice_slm_caps`.
-- **Agent vs. business truth**: the agent only proposes or orchestrates. Creating, confirming, changing or cancelling service requests must go through the workflow service and domain transition rules (`application/workflow_service.py`, `application/service_actions.py`, `domain/`). Low-risk services with `approval: none` may auto-execute, but voice turns with numeric slots (room, quantity) are forced to a read-back confirmation.
+- **SLM calls**: in `legacy` mode the local SLM is a fallback. In `command` mode it is called once per non-emergency turn. The planner model runs only for compound goals or after a failed read, and is skipped for voice. All SLM HTTP goes through `runtime/local_http.py`: loopback only, no redirects or proxies, per-turn deadline, connection circuit breaker. Voice turns use the tighter `voice_slm_caps`.
+- **Agent vs. business truth**: the agent only proposes or orchestrates. Creating, confirming, changing or cancelling service requests must go through the workflow service and domain transition rules (`application/workflow_service.py`, `application/service_actions.py`, `domain/`).
+  - Guest confirmation, staff review and fulfillment run as a durable LangGraph graph with `interrupt()` in `agent/orchestration/graph.py`.
+  - The release property profile sets `hitl_mode=guest_confirm_all`, so even low-risk services with `approval: none` (`amenity_delivery`, `housekeeping`, `maintenance`) require the guest confirmation/staff workflow. Fixture profiles may retain `legacy_policy` for compatibility tests; this is not the production release policy. Voice turns with numeric slots (room, quantity) are still forced to a read-back confirmation.
+  - Request lifecycle, ack/SLA clocks and two-level escalation live in `domain/requests/`.
 - **Two state stores**: business requests live in the main SQLite DB (`data/concierge.sqlite3`); LangGraph checkpoints live in a separate `<db-stem>-graph.sqlite3`. `tools/maintenance/reconcile_graph.py` reconciles the two (see `test_langgraph_durable_restart.py`).
 - **Memory** (`agent/memory/`):
   - `conversation.py` resolves follow-ups to stored evidence anchors. Anchors keep the evidence row's own language.
@@ -124,6 +133,7 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
   - `features.voice_transport` selects `legacy|pipecat`. Development uses the authenticated same-origin `/api/voice/agent` Pipecat WebSocket; legacy `/api/audio/stream` and chunk playback remain as a rollback path until voice eval reaches parity.
   - Pipecat uses the official Protobuf WebSocket transport, Silero VAD, Local Smart Turn v3, guarded faster-whisper STT, the governed conversation engine, and in-process Piper TTS. The browser client is `frontend/src/voiceAgent.ts`.
   - STT decodes in the authenticated session language and retains the hallucination, repetition, confidence and `reject_reason` gates.
+  - The runtime profile's `voice_stt_models` can name a different STT model per language. `CONCIERGE_WHISPER_MODEL_PATH` (set in `.env.example`) overrides all of them.
   - `SpeechGate` owns every spoken chunk: authorization, reserve/complete, and evidence freshness checks run before synthesis and again before playback acknowledgement.
   - Barge-in interrupts unheard audio and marks the active chunk failed; it does not roll back a committed workflow transition. `speech_rendering` changes only TTS input, never displayed text.
 
@@ -134,7 +144,7 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
   - Edit `config/runtime-profiles/src/base.json` and the per-profile overlays, then run `python tools/build_runtime_profiles.py` (deep-merge, schema validation, repin).
   - Never edit `config/runtime-profiles/*.json` directly; `--check` detects drift.
   - A new key also needs `config/runtime-profile.schema.json` and wiring in `core/settings.py`. RAG keys additionally need `RAGPolicy` in `rag/retrieval/policy.py` and `bootstrap.py`.
-- **Multilingual language rules live in `config/agent-domain.json`**: NLU frames and regexes, greeting/courtesy/cancel terms, numeral and clock grammar, normalization, emergency patterns and contacts, voice rendering, tool descriptions, semantic-router mode and thresholds. Read them through the accessors in `agent/understanding/domain_nlu.py` and `core/domain_profile.py`.
+- **Multilingual language rules live in `config/agent-domain.json`**: NLU frames and regexes, greeting/courtesy/cancel terms, numeral and clock grammar, normalization, emergency patterns and contacts, voice rendering, tool descriptions, semantic-router mode and thresholds. Read them through the accessors in `agent/understanding/domain_nlu.py` and `core/domain_profile/` (`supported_languages()`, `nlu_policy()`, `rag_policy()`, …).
   - A new key needs `config/agent-domain.schema.json` and validation in `core/domain_profile/validate/`. Per-language keys also need the `_clone_language` helper in `tests/test_nlu_memory.py`.
   - **Do not put hotel entity or service names in it.** Those come from `datasets/` (aliases, `names_by_locale`, `build_domain_vocab.py`).
   - **Do not copy phrases from `datasets/evaluation/` into it.** When a natural phrasing is missed, add it to the router training examples, not to a phrase list.
@@ -152,11 +162,13 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
   - `knowledge/canonical/`: facts, entities, aliases, service catalog, map, planning, contacts, `context_labels.json`. This is the only RAG truth.
   - `knowledge/sources/`: verified sources and evidence snapshots.
   - `quarantine/`: never indexed.
-  - `synthetic/operations/`: product-authored SLAs, escalation and service policies. Usable by workflows, but never stated as official hotel facts.
+  - `synthetic/operations/`: product-authored SLAs, escalation and service policies, plus non-public operational fixtures (restaurants, tours, transport, spa, PMS stays, room inventory, charge rules). They are usable by workflows and tools but never stated as official hotel facts. Each file declares its own usage (`classification`, `truth_status`, `guest_answer_policy`).
+    - Service policies, escalation, departments and workflows are wired into runtime; the read-only synthetic availability adapter also covers restaurant/spa/tour/transport observations with explicit provenance. Write/booking/PMS fixtures remain non-authoritative until an upstream contract is approved.
   - `training/`: router examples and few-shot data.
   - `evaluation/`: measurement only.
 - Never index `training/`, `evaluation/`, `quarantine/` or `synthetic/`, and never tune on `evaluation/`.
 - These are **data, not project docs**. Don't delete or rewrite them when changing code or documentation.
+- `datasets/` and `knowledge/compiled/` are git-ignored on the `dev` branch. The `dev-full-local` branch tracks them, so checking it out and back deletes them from disk. Do not switch branches. To recover a file, use `git restore --source=dev-full-local --worktree -- <path>`.
 - `knowledge/approved/furama/` (editorial source) and `knowledge/compiled/furama/` (generated, ingested into the DB) are derived artifacts. Regenerate them; don't hand-edit them.
 - Keep traceability: source artifact → canonical fact → compiled knowledge → runtime release. After data changes, run `validate_contracts.py`, the schema and semantic validators, the knowledge rebuild above, and the data tests (`test_furama_*`, `test_knowledge_consistency.py`, `test_data_integrity_regressions.py`).
 
