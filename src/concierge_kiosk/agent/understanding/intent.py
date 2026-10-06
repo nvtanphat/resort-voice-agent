@@ -13,23 +13,13 @@ from functools import lru_cache
 
 from concierge_kiosk.agent.understanding.domain_nlu import (
     ACTION_PATTERNS as _ACTION_PATTERNS,
-    ACTION_CONTEXT_PATTERNS as _ACTION_CONTEXT_PATTERNS,
-    ACTION_PHRASES,
     EMERGENCY_EVENT_PATTERNS as _EMERGENCY_EVENT_PATTERNS,
     EMERGENCY_TEXT,
-    EXPLICIT_QUESTION_REQUEST_PATTERNS as _EXPLICIT_QUESTION_REQUEST,
     INFORMATION_FRAME_PATTERNS as _INFORMATION_FRAME,
     INFORMATION_REQUEST_PATTERNS as _INFORMATION_REQUEST,
-    INFO_ONLY,
-    MULTI_CONNECTOR_PATTERNS as _MULTI_CONNECTOR,
-    NEGATION_PATTERNS as _NEGATION,
-    QUESTION_START_PATTERNS as _QUESTION_START,
-    REQUEST_FRAME_PATTERNS as _REQUEST_FRAME,
-    SERVICE_CONCEPT_TERMS as _SERVICE_CONCEPT_TERMS,
     FILLER_TERMS as _FILLER_TERMS,
     SELF_CORRECTION_MARKERS as _SELF_CORRECTION_MARKERS,
     NORMALIZATION,
-    NUMBER_WORDS,
 )
 from concierge_kiosk.agent.understanding.normalization import normalize_with_spans
 from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
@@ -109,7 +99,6 @@ def _substantial_name(remainder: str) -> bool:
     latin_words = [word for word in words if not any(
         unicodedata.name(char, '').startswith(('CJK', 'HANGUL', 'HIRAGANA', 'KATAKANA')) for char in word)]
     return cjk >= 3 or len(latin_words) >= 2
-
 
 
 # multilingual intent vocabulary is checksum-pinned in agent-domain.json.
@@ -211,269 +200,28 @@ def matches_action_pattern(query: str, language: str, kind: str) -> bool:
     return kind in _matched_action_pattern_kinds(normalize_intent_text(query, language), language)
 
 
-def is_non_action_utterance(query: str, language: str) -> bool:
-    """Ambiguous transcripts must never be promoted to an actionable draft."""
+def is_information_question(query: str, language: str) -> bool:
+    """True when the turn explicitly asks for information.
+
+    Only the profile's explicit information-request and information-frame
+    patterns count ("tell me about...", "what are the hours..."). A question
+    mark, info-only markers or question openers are not used: polite service
+    requests carry them too (measured on the training split, they would block
+    4-24% of requests). It names no service, so it can gate the model-free
+    understanding fallback without a keyword list.
+    """
     text = normalize_intent_text(query, language)
-    if not text or language not in ACTION_PHRASES:
-        return True
-    # Failure reports such as "AC is not cooling" contain a lexical negation,
-    # but an allowlisted action regex can prove that the negation describes the
-    # broken facility rather than cancelling a request. Explicit commands such
-    # as "don't fix the AC" do not match those anchored failure-report regexes.
-    matched_action_patterns = _matched_action_pattern_kinds(text, language)
-    if _NEGATION[language].search(text) and not matched_action_patterns:
-        return True
-    explicit_concept_request = len(_concept_service_kinds(text, language)) == 1
-    explicit_action_pattern = len(matched_action_patterns) == 1
-    # "Please tell me how to use the AC" asks for information about a service
-    # concept. Only an anchored action regex may override an explicit
-    # information-request verb; a bare concept term + politeness frame cannot.
-    info_request = _INFORMATION_REQUEST.get(language)
-    if info_request is not None and info_request.search(text):
-        # An instructional frame such as “tell me how to use…” describes a
-        # service, but does not request that service.  Let the profile-owned
-        # information pattern win over catalog/action aliases.
-        return True
-    # A checksum-pinned anchored action regex is high-precision proof of
-    # actionable intent. Natural permission-style requests may contain lexical
-    # information markers (e.g. Chinese 可以) or end in a question mark without
-    # becoming information-only queries.
-    if (any(_phrase_present(text, phrase) for phrase in INFO_ONLY[language])
-            and not (explicit_concept_request or explicit_action_pattern)):
-        return True
-    info_frame = _INFORMATION_FRAME.get(language)
-    if info_frame is not None and info_frame.search(text) and not (explicit_concept_request or explicit_action_pattern):
-        return True
-    if _QUESTION_START[language].search(text) and not (explicit_concept_request or explicit_action_pattern):
-        return True
-    if ('?' in text or '？' in text) and not (
-            _EXPLICIT_QUESTION_REQUEST[language].search(text) or explicit_concept_request or explicit_action_pattern):
-        return True
+    if not text:
+        return False
+    for patterns in (_INFORMATION_REQUEST, _INFORMATION_FRAME):
+        pattern = patterns.get(language)
+        if pattern is not None and pattern.search(text):
+            return True
     return False
 
 
 # Regex/term matching mechanics remain in code; patterns and aliases are profile-owned.
 
-def _concept_service_kinds(text: str, language: str) -> set[str]:
-    frame = _REQUEST_FRAME.get(language)
-    if frame is None or frame.search(text) is None:
-        return set()
-    kinds = {
-        kind for kind, aliases in _SERVICE_CONCEPT_TERMS.get(language, {}).items()
-        if any(_phrase_present(text, normalize_intent_text(alias, language)) for alias in aliases)
-    }
-    # The reviewed property vocabulary contains catalog services that are
-    # intentionally handled by the generic staff/human workflow (medical
-    # centre, lost & found, courier, and similar). Keep those terms data-driven
-    # instead of duplicating a growing list in the routing profile.
-    # Catalog names are the source of truth for service identity.  The
-    # generic concept vocabulary above intentionally stays small; this second
-    # pass projects a catalog selector onto its configured request kind so a
-    # newly added service works without another Python branch.
-    catalog_matches: list[tuple[str, int]] = []
-    from concierge_kiosk.core.domain_profile import get_domain_profile
-    catalog_text = _remove_profile_terms(
-        text, tuple(NUMBER_WORDS.get(language, {}).keys()))
-    for item in get_domain_profile().domain_vocab.get('services', ()):
-        request_kind = item.get('request_kind') if isinstance(item, dict) else None
-        if isinstance(request_kind, str):
-            matched_lengths = [len(normalize_intent_text(term, language))
-                               for term in service_terms(language)
-                               if term in tuple(item.get('names', {}).get(language, ())) +
-                               tuple(item.get('aliases', {}).get(language, ()))
-                               and _phrase_present(catalog_text, normalize_intent_text(term, language))]
-            if matched_lengths:
-                catalog_matches.append((request_kind, max(matched_lengths)))
-    top_match_length = max((length for _, length in catalog_matches), default=0)
-    catalog_kinds = {kind for kind, length in catalog_matches if length == top_match_length}
-    kinds.update(catalog_kinds)
-    # Catalog identity wins over a broad safety/action regex.  For example,
-    # “arrange a wake-up call” contains a human-handoff cue, but the reviewed
-    # catalog maps wake-up calls to the facilities service workflow.
-    if catalog_kinds and catalog_kinds != {'human'}:
-        kinds.discard('human')
-    if not catalog_kinds:
-        from concierge_kiosk.domain.service_registry import SERVICE_DEFINITIONS
-        for definition in SERVICE_DEFINITIONS.values():
-            if any(_phrase_present(text, term) for term in definition.match_terms.get(language, ())):
-                kinds.add(definition.request_kind)
-    # Catalog services without a dedicated registry entry remain a bounded
-    # staff/human request instead of falling through to knowledge.
-    if (not kinds and any(_phrase_present(text, normalize_intent_text(term, language))
-                          for term in service_terms(language))):
-        kinds.add('human')
-    return kinds
-
-
-def matched_service_kinds(query: str, language: str) -> set[str]:
-    """Find *mentions* for ambiguity checks; never commit a tool here."""
-    text = normalize_intent_text(query, language)
-    concept_kinds = _concept_service_kinds(text, language)
-    pattern_kinds = _matched_action_pattern_kinds(text, language)
-    # A catalog may deliberately project a broad service label to ``human``
-    # while the reviewed action registry has a more specific, locale-aware
-    # command pattern.  Keep that explicit pattern (for example Vietnamese
-    # "báo thức lúc 5 giờ") instead of turning a concrete request into a
-    # generic handoff.  An explicit human pattern still wins, so the English
-    # catalog handoff contract remains unchanged.
-    if concept_kinds == {'human'} and (pattern_kinds - {'human'}):
-        concept_kinds = set()
-    elif concept_kinds:
-        # A catalog-backed service is more specific than a generic action cue;
-        # do not manufacture a false multi-intent result from both labels.
-        pattern_kinds.intersection_update(concept_kinds)
-    return ({kind for kind, phrases in ACTION_PHRASES.get(language, {}).items()
-             if any(_phrase_present(text, normalize_intent_text(phrase, language)) for phrase in phrases)} |
-            pattern_kinds | concept_kinds)
-
-
-def ordered_service_kinds(query: str, language: str) -> tuple[str, ...]:
-    """Stable utterance order for recognized multi-intent review choices.
-
-    No new action is inferred; only the high-precision authorized action list is
-    ordered according to the actual phrase positions, not alphabetic order.
-    """
-    normalized = normalize_intent_text(query, language)
-    matched = matched_service_kinds(query, language)
-    positioned = []
-    for kind in matched:
-        locations = [normalized.find(normalize_intent_text(phrase, language))
-                     for phrase in ACTION_PHRASES.get(language, {}).get(kind, ())
-                     if _phrase_present(normalized, normalize_intent_text(phrase, language))]
-        locations += [re.search(pattern, normalized).start()
-                      for pattern in _ACTION_PATTERNS.get(language, {}).get(kind, ())
-                      if re.search(pattern, normalized)]
-        positioned.append((min(locations) if locations else len(normalized), kind))
-    return tuple(kind for _, kind in sorted(positioned))
-
-
 
 # Compound-clause vocabulary is profile-owned.
 
-def _service_clause_analysis(query: str, language: str) -> tuple[tuple[tuple[str, str, int], ...], bool]:
-    """Split a compound utterance and classify each clause independently.
-
-    The key safety property is that negation is local to a clause. A guest may say
-    "do not X, but do Y" without the negative clause cancelling the positive one.
-    Conversely, a non-negated residual clause that cannot be classified makes the
-    whole compound ambiguous, so the system does not silently execute only the
-    part it happened to understand.
-    """
-    if language not in ACTION_PHRASES or not query or len(query) > 500:
-        return (), False
-    text = normalize_intent_text(query, language)
-    connector = _MULTI_CONNECTOR.get(language)
-    if connector is None or connector.search(text) is None:
-        matched = matched_service_kinds(query, language)
-        if len(matched) == 1 and not is_non_action_utterance(query, language):
-            return ((next(iter(matched)), query.strip(), 0),), False
-        return (), False
-
-    pieces: list[tuple[int, str]] = []
-    start = 0
-    for match in connector.finditer(text):
-        part = text[start:match.start()].strip(' ,;')
-        if part:
-            pieces.append((start, part))
-        start = match.end()
-    tail = text[start:].strip(' ,;')
-    if tail:
-        pieces.append((start, tail))
-
-    clauses: list[tuple[str, str, int]] = []
-    ambiguous_residual = False
-    for position, clause in pieces:
-        matched = matched_service_kinds(clause, language)
-        non_action = is_non_action_utterance(clause, language)
-        if len(matched) == 1 and not non_action:
-            clauses.append((next(iter(matched)), clause, position))
-            continue
-        # Clearly negated/informational clauses are safe to ignore. Anything else
-        # may be an elliptical or unsupported action and must not be dropped.
-        clause_text = normalize_intent_text(clause, language)
-        info_frame = _INFORMATION_FRAME.get(language)
-        context_frame = any(pattern.search(clause_text)
-                            for pattern in _ACTION_CONTEXT_PATTERNS.get(language, ()))
-        clearly_non_action = (bool(_NEGATION[language].search(clause_text)) or non_action
-                              or bool(info_frame and info_frame.search(clause_text))
-                              or context_frame)
-        if clause_text and not clearly_non_action:
-            ambiguous_residual = True
-    return tuple(clauses), ambiguous_residual
-
-
-def service_clauses(query: str, language: str) -> tuple[tuple[str, str, int], ...]:
-    """Return safely decomposed actionable clauses in utterance order."""
-    clauses, ambiguous = _service_clause_analysis(query, language)
-    return () if ambiguous else clauses
-
-
-def _has_information_clause(query: str, language: str) -> bool:
-    """Detect a separate information clause without promoting it to an action."""
-    if language not in ACTION_PHRASES or not query or len(query) > 500:
-        return False
-    text = normalize_intent_text(query, language)
-    connector = _MULTI_CONNECTOR.get(language)
-    if connector is None or connector.search(text) is None:
-        return False
-
-    pieces: list[str] = []
-    start = 0
-    for match in connector.finditer(text):
-        part = text[start:match.start()].strip(' ,;')
-        if part:
-            pieces.append(part)
-        start = match.end()
-    tail = text[start:].strip(' ,;')
-    if tail:
-        pieces.append(tail)
-
-    info_frame = _INFORMATION_FRAME.get(language)
-    info_request = _INFORMATION_REQUEST.get(language)
-    question_start = _QUESTION_START.get(language)
-    explicit_question = _EXPLICIT_QUESTION_REQUEST.get(language)
-    for clause in pieces:
-        matched = matched_service_kinds(clause, language)
-        if len(matched) == 1 and not is_non_action_utterance(clause, language):
-            continue
-        if (_NEGATION[language].search(clause)
-                and not (info_frame and info_frame.search(clause))):
-            continue
-        if ((info_frame and info_frame.search(clause))
-                or (info_request and info_request.search(clause))
-                or (question_start and question_start.search(clause))
-                or (explicit_question and explicit_question.search(clause))
-                or '?' in clause or '？' in clause):
-            return True
-    return False
-
-
-def has_multiple_service_intents(query: str, language: str) -> bool:
-    """True for 2+ services or a service plus a separate information task."""
-    clauses = service_clauses(query, language)
-    return len(clauses) > 1 or (bool(clauses) and _has_information_clause(query, language))
-
-
-def suggest_service_request(query: str, language: str) -> Suggestion | None:
-    text = normalize_intent_text(query, language)
-    if not text or len(query) > 500 or language not in ACTION_PHRASES:
-        return None
-    clauses, ambiguous = _service_clause_analysis(query, language)
-    # A recognized safety/human handoff must not be downgraded to knowledge
-    # merely because the guest adds an operational context clause (for
-    # example, "the safe will not open and I am leaving for the airport").
-    # Handoff is non-transactional and remains the safe owner for the turn;
-    # unknown residual text is not used to invent a second service.
-    if ambiguous and len(clauses) == 1 and clauses[0][0] == 'human':
-        return Suggestion('human', clauses[0][1][:500])
-    if ambiguous or len(clauses) > 1:
-        return None
-    if len(clauses) == 1:
-        kind, clause, _ = clauses[0]
-        return Suggestion(kind, clause[:500])
-    if is_non_action_utterance(query, language):
-        return None
-    matched = matched_service_kinds(query, language)
-    if len(matched) != 1:
-        return None
-    return Suggestion(next(iter(matched)), query[:500])

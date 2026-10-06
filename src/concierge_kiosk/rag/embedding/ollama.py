@@ -61,9 +61,21 @@ class OllamaEmbedder:
         self.model_name = f'ollama:{model}'
 
     def _encode(self, text: str) -> list[float]:
-        if not isinstance(text, str) or not text.strip() or len(text) > 4000:
+        return self._encode_many([text])[0]
+
+    def encode_many(self, texts: list[str]) -> list[list[float]]:
+        """Embed a bounded batch in one request (index warm-up, not guest turns)."""
+        vectors: list[list[float]] = []
+        for start in range(0, len(texts), 32):
+            vectors.extend(self._encode_many(texts[start:start + 32]))
+        return vectors
+
+    def _encode_many(self, texts: list[str]) -> list[list[float]]:
+        if (not texts or len(texts) > 32
+                or any(not isinstance(text, str) or not text.strip() or len(text) > 4000 for text in texts)):
             raise ValueError('Invalid embedding input')
-        payload = json.dumps({'model': self.model, 'input': text.strip()}, ensure_ascii=False).encode('utf-8')
+        payload = json.dumps({'model': self.model, 'input': [text.strip() for text in texts]},
+                             ensure_ascii=False).encode('utf-8')
         request = Request(self.base_url + '/api/embed', data=payload,
                           headers={'Content-Type': 'application/json'}, method='POST')
         with local_embedding_open(request, timeout=self.timeout) as response:
@@ -73,17 +85,20 @@ class OllamaEmbedder:
         # Ollama releases have returned both JSON float arrays and a compact
         # whitespace-delimited vector string for /api/embed. Accept only the
         # latter's finite numeric form; never evaluate or coerce arbitrary text.
-        if isinstance(vectors, list) and len(vectors) == 1 and isinstance(vectors[0], str):
-            try:
-                vectors[0] = [float(value) for value in vectors[0].split()]
-            except ValueError as exc:
-                raise ValueError('Invalid Ollama embedding response') from exc
-        if (not isinstance(vectors, list) or len(vectors) != 1
-                or not valid_vector(vectors[0])
-                or (self.manifest is not None
-                    and len(vectors[0]) != self.manifest['dimension'])):
+        if not isinstance(vectors, list) or len(vectors) != len(texts):
             raise ValueError('Invalid Ollama embedding response')
-        return [float(value) for value in vectors[0]]
+        result: list[list[float]] = []
+        for vector in vectors:
+            if isinstance(vector, str):
+                try:
+                    vector = [float(value) for value in vector.split()]
+                except ValueError as exc:
+                    raise ValueError('Invalid Ollama embedding response') from exc
+            if (not valid_vector(vector)
+                    or (self.manifest is not None and len(vector) != self.manifest['dimension'])):
+                raise ValueError('Invalid Ollama embedding response')
+            result.append([float(value) for value in vector])
+        return result
 
     def encode_query(self, text: str) -> list[float]:
         return self._encode(text)

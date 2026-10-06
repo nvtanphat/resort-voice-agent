@@ -7,7 +7,7 @@ from .base import SENSITIVE, InvalidTransition
 from concierge_kiosk.core.operational_policy import (
     escalation_target, escalation_thresholds, dispatch_policy_for_service,
 )
-from concierge_kiosk.domain.service_registry import resolve_service_code
+from concierge_kiosk.domain.service_registry import default_service_for
 from concierge_kiosk.domain.public_reference import public_reference
 
 class GuestRequestQueryMixin:
@@ -163,9 +163,6 @@ class GuestRequestQueryMixin:
         change_state = row['guest_change_state'] or 'none'
         active = row['status'] in {'pending_staff', 'approved', 'in_progress', 'paused'} and change_state != 'cancelled'
         with self.store.connection() as con:
-            autonomous = con.execute(
-                'SELECT 1 FROM autonomous_action_receipts WHERE request_id=? AND property_id=?',
-                (row['id'], self.property_id)).fetchone() is not None
             feedback = con.execute(
                 'SELECT rating,note,created_at FROM request_feedback WHERE request_id=? AND property_id=? AND session_id=?',
                 (row['id'], self.property_id, session_id)).fetchone()
@@ -179,7 +176,7 @@ class GuestRequestQueryMixin:
                 'effective_payload': effective_payload if isinstance(effective_payload, dict) else {},
                 'can_cancel': bool(active and change_state not in {'cancel_requested','modify_requested'}),
                 'can_modify': bool(active and change_state not in {'cancel_requested','modify_requested'}),
-                'staff_review_required': not autonomous,
+                'staff_review_required': True,
                 'guest_verification_state': row['guest_verification_state'],
                 'eta_minutes': row['eta_minutes'],
                 'eta_updated_at': row['eta_updated_at'] or None,
@@ -245,8 +242,7 @@ class GuestRequestQueryMixin:
                 "WHERE property_id=? AND status='pending_staff' AND ack_due_at=0",
                 (self.property_id,)).fetchall()
             for legacy in legacy_rows:
-                service_code = legacy['service_code'] or resolve_service_code(
-                    legacy['details'], legacy['language'], legacy['kind']) or ''
+                service_code = legacy['service_code'] or default_service_for(legacy['kind']) or ''
                 policy = dispatch_policy_for_service(service_code, cfg=self.cfg) if service_code else None
                 if policy is None:
                     continue
@@ -378,7 +374,7 @@ class GuestRequestQueryMixin:
             raise ValueError('Invalid guest page size')
         with self.store.connection() as con:
             rows = [dict(row) for row in con.execute(
-                'SELECT r.id,r.confirmation_code,r.kind,r.language,r.status,r.created_at,r.updated_at,r.guest_change_state,r.guest_change_updated_at,r.guest_verification_state,r.eta_minutes,r.eta_updated_at,r.external_dispatch_state,r.department_id,r.priority,r.ack_due_at,r.ack_overdue,r.ack_escalation_sent_at,r.sla_due_at,r.overdue,r.escalation_sent_at,r.escalation_level,r.unverified_room '
+                'SELECT r.id,r.confirmation_code,r.kind,r.service_code,r.language,r.status,r.created_at,r.updated_at,r.guest_change_state,r.guest_change_updated_at,r.guest_verification_state,r.eta_minutes,r.eta_updated_at,r.external_dispatch_state,r.department_id,r.priority,r.ack_due_at,r.ack_overdue,r.ack_escalation_sent_at,r.sla_due_at,r.overdue,r.escalation_sent_at,r.escalation_level,r.unverified_room '
                 'FROM service_requests r JOIN proposals p ON p.id=r.proposal_id '
                 'WHERE p.session_id=? AND r.property_id=? AND p.property_id=? '
                 'ORDER BY r.updated_at DESC,r.id DESC LIMIT ?',

@@ -46,8 +46,6 @@ class SessionWorkflowMixin:
                                 (previous_id, self.property_id))
                     con.execute('DELETE FROM agent_session_preferences WHERE session_id=? AND property_id=?',
                                 (previous_id, self.property_id))
-                    con.execute('DELETE FROM read_task_projections WHERE session_id=? AND property_id=?',
-                                (previous_id, self.property_id))
             con.execute("INSERT INTO sessions VALUES(?,?,?,?,?,?)",
                         (session_id, digest(token), digest(csrf), self.property_id, now + ttl, now))
         return session_id, token, csrf, previous_id, abandoned
@@ -74,7 +72,5 @@ class SessionWorkflowMixin:
             con.execute('DELETE FROM agent_memory_facts WHERE session_id=? AND property_id=?',
                         (session_id, self.property_id))
             con.execute('DELETE FROM agent_session_preferences WHERE session_id=? AND property_id=?',
-                        (session_id, self.property_id))
-            con.execute('DELETE FROM read_task_projections WHERE session_id=? AND property_id=?',
                         (session_id, self.property_id))
 

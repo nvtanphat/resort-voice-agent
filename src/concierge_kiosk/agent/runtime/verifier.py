@@ -8,11 +8,11 @@ relevant later evidence rather than by any arbitrary knowledge call.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 import unicodedata
 import time
 
 from .state import AgentState, GoalRequirement
+from concierge_kiosk.rag.text.tokenization import tokens
 
 
 @dataclass(frozen=True)
@@ -29,17 +29,18 @@ class Verification:
 def _norm(value: object) -> str:
     text = unicodedata.normalize('NFKD', str(value or '').lower())
     text = ''.join(ch for ch in text if not unicodedata.combining(ch))
-    # Vietnamese đ/Đ is a distinct letter, not a combining-mark variant of d.
-    # NFKD therefore leaves it intact; retain it while removing other noise.
-    return re.sub(r'[^a-z0-9\u0111\u4e00-\u9fff\uac00-\ud7af]+', ' ', text).strip()
+    # Unicode normalization removes combining marks without discarding base
+    # characters from the configured language scripts.
+    return ' '.join(text.split())
 
 
-def _terms(value: object) -> set[str]:
-    return {part for part in _norm(value).split() if len(part) >= 2}
+def _terms(value: object, language: str | None = None) -> set[str]:
+    return {part for part in tokens(_norm(value), language=language, limit=None)
+            if len(part) >= 2}
 
 
-def _topic_match(topic: str, observation: dict) -> bool:
-    wanted = _terms(topic)
+def _topic_match(topic: str, observation: dict, language: str | None = None) -> bool:
+    wanted = _terms(topic, language)
     if not wanted:
         return True
     facts = observation.get('facts') if isinstance(observation.get('facts'), dict) else {}
@@ -50,13 +51,9 @@ def _topic_match(topic: str, observation: dict) -> bool:
         ' '.join(str(v) for v in (facts.get('resolved_topics') or [])
                  if isinstance(v, (str, int, float))),
     ))
-    got = _terms(haystack)
-    # One strong content word is enough for bounded hotel topics such as
-    # "restaurant hours" / "spa hours"; generic words are discarded.
-    generic = {'hours', 'hour', 'information', 'info', 'guest', 'question', 'hotel',
-               'thong', 'tin', 'gio', 'open', 'opening', 'current', 'status'}
-    strong = wanted - generic
-    return bool((strong or wanted) & got)
+    got = _terms(haystack, language)
+    # Tokenization and the profile stopword policy remove non-substantive terms.
+    return bool(wanted & got)
 
 
 def _planning_gaps_resolved(state: AgentState, planning_index: int, missing_topics: list[str]) -> bool:
@@ -66,7 +63,8 @@ def _planning_gaps_resolved(state: AgentState, planning_index: int, missing_topi
     knowledge = [item for item in later
                  if item.get('capability') == 'knowledge'
                  and item.get('status') in {'completed', 'safe_fallback'}]
-    return all(any(_topic_match(topic, item) for item in knowledge) for topic in missing_topics)
+    return all(any(_topic_match(topic, item, state.language) for item in knowledge)
+               for topic in missing_topics)
 
 
 def _matching_observations(state: AgentState, req: GoalRequirement) -> list[tuple[int, dict]]:
@@ -98,7 +96,7 @@ def _memory_supports_requirement(state: AgentState, req: GoalRequirement) -> boo
         return False
     if req.topic in _GENERIC_TOPICS:
         return False
-    wanted = _terms(req.topic)
+    wanted = _terms(req.topic, state.language)
     if not wanted:
         return False
     now = int(time.time())
@@ -113,7 +111,7 @@ def _memory_supports_requirement(state: AgentState, req: GoalRequirement) -> boo
         if not isinstance(citations, list) or not citations:
             continue
         topic = fact.value.get('topic') if isinstance(fact.value, dict) else ''
-        got = _terms(topic)
+        got = _terms(topic, state.language)
         if wanted & got:
             return True
     return False
@@ -129,7 +127,7 @@ def _requirement_status(state: AgentState, req: GoalRequirement) -> tuple[bool, 
 
     if req.outcome.startswith('service:') or req.outcome in {'command:Cancel', 'command:Handoff'}:
         terminal = {
-            'confirmation_required', 'auto_execute_ready', 'needs_user_input', 'denied',
+            'confirmation_required', 'needs_user_input', 'denied',
             'action_ready', 'completed', 'safe_fallback', 'unavailable',
         }
         return (any(item.get('status') in terminal for _, item in matches),
@@ -175,7 +173,8 @@ def _requirement_status(state: AgentState, req: GoalRequirement) -> tuple[bool, 
                     and item.get('status') in {'completed', 'safe_fallback'}
                     and (citations > 0 or evidence in {
                         'supported', 'verified', 'supported_synthetic'})):
-                if req.topic in {'', 'guest question', 'hotel facts'} or _topic_match(req.topic, item):
+                if (req.topic in {'', 'guest question', 'hotel facts'}
+                        or _topic_match(req.topic, item, state.language)):
                     return True, 'source_bound_answer'
         return False, 'evidence_not_sufficient'
 
@@ -272,7 +271,7 @@ def verify(state: AgentState) -> Verification:
 
     statuses = {str(item.get('status')) for item in state.observations}
     external = [status for status in (
-        'needs_user_input', 'confirmation_required', 'auto_execute_ready',
+        'needs_user_input', 'confirmation_required',
         'denied', 'unavailable') if status in statuses]
     if external:
         return Verification(

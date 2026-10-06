@@ -36,8 +36,8 @@ Các test LangGraph import dependency trực tiếp. Nếu dependency bắt bu�
 Ví dụ:
 
 ```bash
-python -m pytest -q tests/test_langgraph_durable_restart.py
-python -m pytest -q tests/test_agent_runtime.py
+python -m pytest -q tests/ops/test_langgraph_durable_restart.py
+python -m pytest -q tests/agent/test_agent_runtime.py
 ```
 
 ## 4. ResourceWarning
@@ -57,9 +57,9 @@ Ngoài pytest còn có các tool kiểm tra dataset, schema và semantic trong `
 Ví dụ:
 
 ```bash
-python tools/validate_furama_schemas.py
-python tools/validate_furama_semantics.py
-python tools/audit_furama_data.py
+python tools/validate/schemas.py
+python tools/validate/semantics.py
+python tools/validate/audit_data.py
 ```
 
 Cần xem `--help` hoặc source nếu script yêu cầu tham số.
@@ -69,6 +69,12 @@ Cần xem `--help` hoặc source nếu script yêu cầu tham số.
 Regression test kiểm tra contract và behavior đã được encode trong test suite. Benchmark/evaluation đo chất lượng model/retrieval theo dataset riêng. Hai loại kết quả không nên thay thế cho nhau.
 
 Repository có evaluation utilities trong `tools/evaluation/`, nhưng tài liệu này không đưa ra kết luận về chất lượng model dựa chỉ trên việc test pass.
+
+### 6.1 Evaluation artifacts
+
+Các phép đo trong thư mục `reports/` là kết quả phụ thuộc môi trường, không phải canonical facts của property. Bộ hospitality direct probe hiện có 236 ca độc lập ngữ cảnh, 104 ca pass (44,07%) và emergency regex gate 200/200; điểm thấp của bộ direct probe là chủ ý để tìm khoảng trống, không dùng để báo cáo như độ chính xác đầy đủ của model.
+
+Khi semantic generation và model-intent fallback bị tắt vì Ollama không khả dụng, kết quả chỉ đo deterministic coverage. Không dùng riêng kết quả evaluation để thay thế regression tests hoặc kết luận KPI sản phẩm.
 
 ## 7. Trước khi merge/release
 

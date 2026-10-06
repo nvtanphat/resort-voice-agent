@@ -16,7 +16,7 @@ def register_internal_agent_routes(app: FastAPI, *, cfg, workflows, require_agen
     def agent_ask(body: AgentAsk):
         session = workflows.session_for(body.token, body.csrf)
         with conversations.serialize(session):
-            # Internal software callers never receive autonomous guest-write authority.
+            # Internal software callers never receive guest-write authority.
             # Removing the stable nonce makes low-risk actions fall back to review.
             safe_body = body.model_copy(update={'turn_nonce': None})
             return finalize_answer(answer(safe_body, session), body.language, session)

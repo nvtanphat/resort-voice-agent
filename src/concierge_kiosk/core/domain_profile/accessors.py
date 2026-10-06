@@ -40,10 +40,6 @@ def rag_policy() -> RagPolicy:
     return get_domain_profile().rag
 
 
-def tool_documentation() -> Mapping[str, ToolDocumentation]:
-    return get_domain_profile().tools
-
-
 def voice_policy() -> Mapping[str, Any]:
     return get_domain_profile().voice
 

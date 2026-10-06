@@ -86,7 +86,6 @@ class Settings(BaseSettings):
     rerank_model_path: str = ""
     rerank_manifest_path: str = ""
     rag_min_dense_similarity: float = 0.70
-    rag_dense_backend: str = "legacy"
     rag_vector_path: str = "data/vectors"
     rag_lexical_coverage: float = 0.60
     rag_rrf_k: int = 60
@@ -128,10 +127,8 @@ class Settings(BaseSettings):
     slm_circuit_cooldown_seconds: float = 15.0
     # ``legacy`` keeps the existing HTTP chunk transport. ``pipecat`` selects
     # the guarded full-duplex websocket adapter when the optional extra is
-    # installed. Understanding is independently staged so it can be shadowed
-    # before becoming authoritative.
+    # installed.
     voice_transport: str = "legacy"
-    understanding_mode: str = "legacy"
     llm_base_url: str = ""
     llm_model: str = ""
     llm_fallback_model: str = ""
@@ -151,11 +148,10 @@ class Settings(BaseSettings):
     voice_final_require_manifest: bool = False
     nli_manifest_path: str = ""
     nli_require_manifest: bool = False
-    # Reserved compatibility flag: the advisory read-only intent_parser module
-    # is intentionally not wired into the request runtime yet. Enabling this
-    # currently only participates in configuration validation.
-    intent_parser_enabled: bool = False
     agent_planner_enabled: bool = False
+    # Embedding-based service understanding (candidates, few-shots and the
+    # model-free fallback). Off only where tests need hermetic routing.
+    semantic_understanding_enabled: bool = True
     agent_max_steps: int = 8
     agent_max_wall_time_ms: int = 15000
     agent_max_planner_calls: int = 5
@@ -173,7 +169,6 @@ class Settings(BaseSettings):
     allowed_client_cidrs: str = ""
     staff_credentials_json: str = ""
     staff_gateway_token: str = ""
-    orchestrator: str = "langgraph"
     map_release_path: str = ""
     map_release_sha256: str = ""
     planning_release_path: str = ""
@@ -201,7 +196,7 @@ class Settings(BaseSettings):
         "voice_windowed_preview_enabled", "voice_preview_stability_enabled",
         "voice_incremental_enabled", "voice_incremental_require_manifest",
         "voice_final_require_manifest", "nli_require_manifest",
-        "intent_parser_enabled", "agent_planner_enabled", "real_runtime_required",
+        "agent_planner_enabled", "semantic_understanding_enabled", "real_runtime_required",
         "data_consent_required",
         mode="before",
     )
@@ -239,11 +234,11 @@ class Settings(BaseSettings):
                 validate_ollama_manifest(self.embedding_manifest_path,
                                          self.embedding_model_path.removeprefix('ollama://').strip('/'))
             else:
-                from ..rag.model_manifest import verify_rag_model_manifest
+                from .model_manifest import verify_rag_model_manifest
                 if not verify_rag_model_manifest(self.embedding_model_path, self.embedding_manifest_path):
                     raise ValueError('Local embedding model manifest integrity check failed')
         if self.rerank_manifest_path:
-            from ..rag.model_manifest import verify_rag_model_manifest
+            from .model_manifest import verify_rag_model_manifest
             if not verify_rag_model_manifest(self.rerank_model_path, self.rerank_manifest_path):
                 raise ValueError('Local reranker manifest integrity check failed')
 
@@ -354,7 +349,7 @@ class Settings(BaseSettings):
                 'approved activity release and hash': bool(self.planning_release_path and self.planning_release_sha256),
                 'pinned learned multilingual dense embedding model': bool(
                     self.embedding_model_path and self.embedding_manifest_path and
-                    __import__('concierge_kiosk.rag.model_manifest', fromlist=['learned_embedding_profile'])
+                    __import__('concierge_kiosk.core.model_manifest', fromlist=['learned_embedding_profile'])
                     .learned_embedding_profile(self.embedding_model_path)),
                 'pinned local reranker': bool(self.rerank_model_path and self.rerank_manifest_path),
                 'local multilingual final STT': bool(self.whisper_model_path),
@@ -369,7 +364,7 @@ class Settings(BaseSettings):
                     bool(self.voice_incremental_model_path and self.voice_incremental_manifest_path)),
                 'pinned final Whisper/Piper assets': (self.voice_final_require_manifest and
                     bool(self.voice_final_manifest_path)),
-                'durable graph': self.orchestrator == 'langgraph',
+                'durable graph': True,
                 'operator-signed production readiness receipt': bool(
                     self.production_signoff_path and self.production_signoff_signature_path
                     and self.production_signoff_public_key_path),
@@ -377,11 +372,7 @@ class Settings(BaseSettings):
             missing = [name for name, present in required.items() if not present]
             if missing:
                 raise ValueError('Real-runtime configuration incomplete: ' + ', '.join(missing))
-        if self.orchestrator not in {"langgraph", "direct"}:
-            raise ValueError("Unknown orchestrator")
-        if self.environment == "production" and self.orchestrator != "langgraph":
-            raise ValueError("Production requires durable LangGraph orchestration")
-        if (self.environment == "production" and self.orchestrator == "langgraph"
+        if (self.environment == "production"
                 and os.getenv("LANGGRAPH_STRICT_MSGPACK", "").lower() != "true"):
             raise ValueError("Production requires LANGGRAPH_STRICT_MSGPACK=true for checkpoint safety")
         if self.retention_days < 1 or self.session_ttl_seconds < 60:
@@ -420,8 +411,6 @@ class Settings(BaseSettings):
             raise ValueError("Invalid SLM circuit cooldown")
         if self.voice_transport not in {"legacy", "pipecat"}:
             raise ValueError("Unknown voice transport")
-        if self.understanding_mode not in {"legacy", "shadow", "command"}:
-            raise ValueError("Unknown understanding mode")
         if not (-1 <= self.rag_min_dense_similarity <= 1 and
                 0 < self.rag_lexical_coverage <= 1 and 1 <= self.rag_rrf_k <= 1000
                 and 10 <= self.rag_dense_max_rows <= 100000
@@ -432,8 +421,6 @@ class Settings(BaseSettings):
                 and 0 <= self.rag_rerank_fusion_alpha <= 1
                 and 0 <= self.rag_rerank_metadata_bonus <= 1):
             raise ValueError('Invalid RAG policy thresholds')
-        if self.rag_dense_backend not in {'legacy', 'chroma', 'faiss'}:
-            raise ValueError('Invalid dense vector backend')
         vector_path = Path(self.rag_vector_path)
         if vector_path.is_symlink() or any(part == '..' for part in vector_path.parts):
             raise ValueError('Invalid vector index path')
@@ -454,7 +441,7 @@ class Settings(BaseSettings):
             if self.voice_incremental_require_manifest and not self.voice_incremental_manifest_path:
                 raise ValueError("Pinned PCM STT requires an operator-approved manifest")
             if self.voice_incremental_manifest_path:
-                from ..voice.models.model_manifest import verify_voice_manifest
+                from .model_manifest import verify_voice_manifest
                 if not verify_voice_manifest(self.voice_incremental_model_path,
                                              self.voice_incremental_manifest_path):
                     raise ValueError("Local Vosk model manifest integrity check failed")
@@ -467,7 +454,7 @@ class Settings(BaseSettings):
         if self.nli_require_manifest and not (self.nli_model_path and self.nli_manifest_path):
             raise ValueError("Strict NLI artifact policy requires a local model and manifest")
         if self.nli_manifest_path:
-            from ..agent.models.model_manifest import verify_model_manifest
+            from .model_manifest import verify_model_manifest
             if not verify_model_manifest(self.nli_model_path, self.nli_manifest_path):
                 raise ValueError("Local NLI manifest integrity check failed")
         if self.llm_fallback_model and (len(self.llm_fallback_model) > 128 or self.llm_fallback_model == self.llm_model):
@@ -480,8 +467,6 @@ class Settings(BaseSettings):
                 self.semantic_generation_enabled and self.semantic_require_independent_nli and
                 self.nli_model_path and self.nli_manifest_path and self.nli_require_manifest):
             raise ValueError('Strict local AI requires pinned generator, independent NLI and semantic opt-in')
-        if self.intent_parser_enabled and not (self.llm_base_url and self.llm_model):
-            raise ValueError('Model-assisted intent parser requires a local SLM')
         if self.agent_planner_enabled and not (self.llm_base_url and self.llm_model):
             raise ValueError('Next-action planner requires a local SLM')
         if not 2 <= self.agent_max_steps <= 12:
@@ -647,7 +632,6 @@ def load_settings() -> Settings:
         "rerank_model_path": str(reranker_defaults["model_path"]),
         "rerank_manifest_path": str(reranker_defaults["manifest_path"]),
         "rag_min_dense_similarity": float(rag_defaults["min_dense_similarity"]),
-        "rag_dense_backend": str(rag_defaults.get("dense_backend", "legacy")),
         "rag_vector_path": str(rag_defaults.get("vector_path", "data/vectors")),
         "rag_lexical_coverage": float(rag_defaults["lexical_coverage"]),
         "rag_rrf_k": int(rag_defaults["rrf_k"]),
@@ -680,7 +664,6 @@ def load_settings() -> Settings:
             voice_budget_defaults["voice_user_turn_stop_timeout_seconds"]),
         "slm_circuit_cooldown_seconds": float(slm_budget_defaults["circuit_cooldown_seconds"]),
         "voice_transport": str(features.get("voice_transport", "legacy")),
-        "understanding_mode": str(features.get("understanding_mode", "legacy")),
         "piper_models_dir": str(voice_defaults["piper_models_dir"]),
         "piper_executable": str(voice_defaults["piper_executable"]),
         "voice_tts": voice_defaults.get("tts", {}),
@@ -707,8 +690,8 @@ def load_settings() -> Settings:
         "voice_final_require_manifest": bool(voice_defaults["final_require_manifest"]),
         "nli_manifest_path": str(nli_defaults["manifest_path"]),
         "nli_require_manifest": bool(nli_defaults["require_manifest"]),
-        "intent_parser_enabled": bool(features["intent_parser"]),
         "agent_planner_enabled": bool(features["agent_planner"]),
+        "semantic_understanding_enabled": bool(features["semantic_understanding"]),
         "agent_max_steps": int(agent_defaults["max_steps"]),
         "agent_max_wall_time_ms": int(agent_defaults["max_wall_time_ms"]),
         "agent_max_planner_calls": int(agent_defaults["max_planner_calls"]),

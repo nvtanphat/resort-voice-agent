@@ -53,9 +53,6 @@ class SessionTopics:
     workflow_status: str | None = None
     guest_confirmed: bool = False
     expected_reply: str | None = None
-    pending_review_kinds: tuple[str, ...] = ()
-    last_read_execution: tuple[tuple[str, str], ...] = ()
-    read_execution_revision: int = 0
 
 @dataclass
 class _SessionGate:

@@ -116,11 +116,6 @@ class FaissVectorStore:
             self._rebuild(list(merged.values()))
         return len(batch)
 
-    def rebuild_records(self, records: Iterable[VectorRecord]) -> int:
-        batch = list(records)
-        with self._lock:
-            self._rebuild(batch)
-        return len(batch)
 
     def query(self, vector: Sequence[float], *, k: int,
               filters: Mapping[str, Any] | None = None) -> list[VectorMatch]:

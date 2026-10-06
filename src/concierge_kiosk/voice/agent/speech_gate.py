@@ -10,7 +10,7 @@ import secrets
 from dataclasses import dataclass
 from typing import Callable
 
-from concierge_kiosk.rag.common import unsafe_knowledge_text
+from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
 
 
 def evidence_is_current(*, store, cfg, voice_turns, session: str, turn_id: str) -> bool:

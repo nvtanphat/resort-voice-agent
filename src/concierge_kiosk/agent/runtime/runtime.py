@@ -18,7 +18,6 @@ from .planner import ActionPlan, NextAction
 from .state import AgentState, build_initial_state
 from .verifier import Verification
 from .planning.goal_interpreter import GoalInterpretation, apply_goal_interpretation
-from concierge_kiosk.agent.understanding.turn_plan import TurnPlan
 from concierge_kiosk.agent.understanding.commands import Command
 from concierge_kiosk.agent.tools.policies import PolicyContext, evaluate_policies
 from concierge_kiosk.agent.tools.registry import ToolRegistry
@@ -52,7 +51,6 @@ class AutonomousConciergeRuntime:
         self._planner = planner
         self._tool_contracts = ToolRegistry.from_domain()
         self._agent_graph = None
-        self._agent_graph_unavailable = False
         self._agent_graph_lock = threading.Lock()
 
 
@@ -60,26 +58,15 @@ class AutonomousConciergeRuntime:
         """Return one lazily compiled LangGraph adapter per runtime instance.
 
         The compiled topology is planner-independent; planner overrides are passed
-        in per invocation. Missing LangGraph dependencies are memoized so offline
-        validation does not repeatedly attempt the same unavailable import.
+        in per invocation.
         """
-        if self._agent_graph_unavailable:
-            return None
         if self._agent_graph is not None:
             return self._agent_graph
         with self._agent_graph_lock:
             if self._agent_graph is not None:
                 return self._agent_graph
-            if self._agent_graph_unavailable:
-                return None
-            try:
-                from .langgraph_loop import GovernedAgentGraph
-                self._agent_graph = GovernedAgentGraph(self)
-            except ModuleNotFoundError as exc:
-                if not (exc.name or '').startswith('langgraph'):
-                    raise
-                self._agent_graph_unavailable = True
-                return None
+            from .langgraph_loop import GovernedAgentGraph
+            self._agent_graph = GovernedAgentGraph(self)
         return self._agent_graph
 
     @staticmethod
@@ -391,7 +378,7 @@ class AutonomousConciergeRuntime:
     def _addressed(meta: dict) -> bool:
         if meta.get('capability') == 'service_action':
             return meta.get('status') in {
-                'confirmation_required', 'auto_execute_ready', 'needs_user_input', 'denied',
+                'confirmation_required', 'needs_user_input', 'denied',
                 'action_ready', 'completed', 'unavailable'
             }
         # Read failure is an observation, not completion. The verifier decides
@@ -403,7 +390,6 @@ class AutonomousConciergeRuntime:
             goal_interpreter: GoalInterpreter | None = None,
             resume_projection: dict | None = None, memory_facts: list[dict] | None = None,
             preferences: dict | None = None,
-            turn_plan: TurnPlan | None = None,
             commands: tuple[Command, ...] | None = None) -> AgentRun:
         if request.decision is None:
             raise RuntimeError('runtime requires deterministic safety/write-candidate classification')
@@ -417,7 +403,7 @@ class AutonomousConciergeRuntime:
         state = build_initial_state(
             query=request.query, language=request.language, decision=request.decision,
             continuation_context=continuation_context, resume_projection=resume_projection,
-            memory_facts=memory_facts, preferences=preferences, turn_plan=turn_plan,
+            memory_facts=memory_facts, preferences=preferences,
             commands=commands)
         run = AgentRun(state=state)
         if goal_interpreter is not None:
@@ -429,7 +415,4 @@ class AutonomousConciergeRuntime:
                 pass
         active_planner = planner if planner is not None else self._planner
         graph = self._get_agent_graph()
-        if graph is None:
-            from .agent_loop import run_governed_loop
-            return run_governed_loop(self, request, run, active_planner)
         return graph.invoke(request, run, active_planner)

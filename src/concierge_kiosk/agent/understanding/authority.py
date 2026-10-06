@@ -1,8 +1,7 @@
 """Risk-based action authority for the concierge agent.
 
-The policy grants autonomous authority only to explicit, low-risk, reversible
-hotel operations. Consequential actions remain review/confirmation based, and
-restricted actions are never delegated to the agent.
+Guest service requests always require an explicit guest confirmation. Restricted
+actions are never delegated to the agent.
 """
 from __future__ import annotations
 
@@ -24,7 +23,7 @@ from concierge_kiosk.domain.service_registry import service_definition
 
 @dataclass(frozen=True)
 class AuthorityDecision:
-    outcome: str  # auto_execute | confirm | deny
+    outcome: str  # confirm | deny
     level: str    # safe_write | consequential_write | restricted
     risk: str
     reversible: bool
@@ -81,26 +80,9 @@ def evaluate_service_authority(*, query: str, language: str, mode: str,
                                  'service_policy_denies_agent_execution')
 
     if definition.authority == 'auto_if_explicit':
-        # Required slots come only from the canonical service registry. This
-        # keeps capability policy from drifting across slot collection and the
-        # final write boundary.
-        missing = tuple(name for name in (*definition.required_slots, *definition.autonomous_required_slots)
-                        if not slots.get(name))
-        if missing:
-            return AuthorityDecision('confirm', 'safe_write', definition.risk,
-                                     definition.reversible, explicit,
-                                     'required_slots_missing_for_autonomous_execution')
-        if not explicit:
-            return AuthorityDecision('confirm', 'safe_write', definition.risk,
-                                     definition.reversible, False,
-                                     'intent_not_explicit_enough')
-        if not stable_nonce:
-            return AuthorityDecision('confirm', 'safe_write', definition.risk,
-                                     definition.reversible, True,
-                                     'stable_action_nonce_required')
-        return AuthorityDecision('auto_execute', 'safe_write', definition.risk,
-                                 definition.reversible, True,
-                                 'explicit_low_risk_reversible_action')
+        return AuthorityDecision('confirm', 'safe_write', definition.risk,
+                                 definition.reversible, explicit,
+                                 'guest_confirmation_required')
 
     if definition.authority == 'confirm':
         return AuthorityDecision('confirm', 'consequential_write', definition.risk,

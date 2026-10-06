@@ -1,1 +1,0 @@
-"""Package grouped by responsibility."""

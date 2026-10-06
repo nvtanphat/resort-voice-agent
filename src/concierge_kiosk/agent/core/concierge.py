@@ -102,7 +102,7 @@ class AgentRun:
     def trace(self) -> dict:
         action = self.observations.get(ACTION_TOOL, {}).get('agent_action')
         authority = action.get('authority') if isinstance(action, dict) else None
-        write_intent = bool(isinstance(action, dict) and action.get('status') == 'auto_execute_ready')
+        write_intent = False
         return {
             'version': 3,
             'status': self.status,
@@ -128,8 +128,6 @@ class AgentRun:
             'business_write_intent': 1 if write_intent else 0,
             'business_writes': 0,
         }
-
-
 
 
 ToolHandler = Callable[[AgentToolRequest], dict]
@@ -189,9 +187,6 @@ class BoundedToolRegistry:
         if not isinstance(result, dict):
             raise RuntimeError('Concierge tool returned an invalid observation')
         return result
-
-    def public_specs(self) -> list[dict]:
-        return [self._specs[name].public() for name in sorted(self._specs)]
 
 
 class ConciergeAgent:
@@ -349,10 +344,6 @@ class ConciergeAgent:
                 run.status = 'completed'
                 run.termination_reason = 'restricted_action_denied'
                 return 'stop'
-            if isinstance(state, dict) and state.get('status') == 'auto_execute_ready':
-                run.status = 'completed'
-                run.termination_reason = 'safe_write_authorized_for_commit'
-                return 'stop'
             run.status = 'completed'
             run.termination_reason = 'confirmation_required'
             return 'stop'
@@ -399,7 +390,7 @@ class ConciergeAgent:
             state = result.get('agent_action')
             if not isinstance(state, dict):
                 return False
-            return state.get('status') in {'confirmation_required', 'auto_execute_ready', 'denied'}
+            return state.get('status') in {'confirmation_required', 'denied'}
         if tool in {'navigation', 'find_place'}:
             guidance = result.get('map_guidance') if isinstance(result.get('map_guidance'), dict) else result
             return guidance.get('status') == 'verified'

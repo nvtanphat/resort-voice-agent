@@ -86,10 +86,6 @@ class AudioAdmission:
             self._slm = 0
             self._slm_session = None
 
-    def detailed_snapshot(self) -> dict[str, int]:
-        with self._lock:
-            return {'stt_active': self._stt, 'tts_active': self._tts,
-                    'slm_active': self._slm}
 
     def snapshot(self) -> dict[str, int]:
         with self._lock:

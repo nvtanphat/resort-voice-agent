@@ -10,8 +10,8 @@ from typing import Any, Literal, Mapping
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from concierge_kiosk.agent.understanding.routing import RouteDecision, fast_response, is_location_question
-from concierge_kiosk.agent.understanding.intent import Suggestion, suggest_service_request
+from concierge_kiosk.agent.understanding.routing import RouteDecision, directions_request, fast_response
+from concierge_kiosk.agent.understanding.intent import Suggestion
 from concierge_kiosk.rag.retrieval import abstention_answer
 from concierge_kiosk.domain.service_registry import (
     ACTION_REQUEST_KINDS, route_branch_for_request_kind, service_definition,
@@ -184,19 +184,12 @@ def contract_failure_result(language: str) -> dict:
 
 
 def _navigation_suggestion(query: str, language: str) -> dict | None:
-    expected = suggest_service_request(query, language)
-    if expected is not None and route_branch_for_request_kind(expected.kind) == 'navigation':
-        return {'kind': 'directions', 'details': expected.details}
-    if is_location_question(query, language):
-        return {'kind': 'directions', 'details': query.strip()}
-    return None
+    return directions_request(query, language)
 
 
 def _service_suggestion(decision: RouteDecision, query: str, language: str):
-    expected = suggest_service_request(query, language)
-    if expected is not None or not decision.semantic_service_code:
-        return expected
-    definition = service_definition(decision.semantic_service_code)
+    # The validated understanding goal is the only authority for the service.
+    definition = service_definition(decision.semantic_service_code or '')
     if (definition is not None
             and route_branch_for_request_kind(definition.request_kind) == decision.branch):
         return Suggestion(definition.request_kind, query[:500])
@@ -323,15 +316,6 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
                         not isinstance(agent_action.get('missing_slots'), list) or
                         not agent_action.get('missing_slots')):
                     raise RuntimeError('Invalid service clarification state')
-            elif status == 'auto_execute_ready':
-                authority = agent_action.get('authority')
-                pending = result.get('_autonomous_action')
-                if (action is not None or result.get('requires_staff_review') is not False or
-                        agent_action.get('business_writes') != 0 or
-                        not isinstance(authority, dict) or authority.get('outcome') != 'auto_execute' or
-                        authority.get('level') != 'safe_write' or
-                        not isinstance(pending, dict) or not isinstance(pending.get('action_nonce'), str)):
-                    raise RuntimeError('Invalid autonomous safe-write state')
             elif status == 'denied':
                 authority = agent_action.get('authority')
                 if (action is not None or result.get('requires_staff_review') is not False or
@@ -344,12 +328,15 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
                         action.get('kind') not in ACTION_REQUEST_KINDS or
                         not isinstance(action.get('details'), str) or len(action['details']) < 2 or
                         result.get('requires_staff_review') is not True or
-                        not isinstance(authority, dict) or authority.get('outcome') not in {'confirm', 'auto_execute'}):
+                        not isinstance(authority, dict) or authority.get('outcome') != 'confirm'):
                     raise RuntimeError('Invalid confirmation-required service state')
             else:
                 # Compatibility: deterministic service response outside the # agent must still preserve the exact original suggestion.
-                if (expected is None or not isinstance(action, dict) or
-                        action != {'kind': expected.kind, 'details': expected.details}):
+                if (expected is None or not isinstance(action, dict)
+                        or set(action) - {'kind', 'details', 'service'}
+                        or {'kind': action.get('kind'), 'details': action.get('details')}
+                        != {'kind': expected.kind, 'details': expected.details}
+                        or action.get('service') not in {None, decision.semantic_service_code}):
                     raise RuntimeError('Invalid suggested business tool')
                 if result.get('requires_staff_review') is not True:
                     raise RuntimeError('Business suggestion requires staff review')
@@ -361,18 +348,6 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
                     or result.get('emergency_ui', {}).get('normal_request_disabled') is not True):
                 raise RuntimeError('Emergency route must bypass the normal service-request queue')
         elif decision.branch == 'clarification':
-            if result.get('model_intent_fallback') is True:
-                options = result.get('action_options')
-                if (not isinstance(options, list) or not 1 <= len(options) <= 3
-                        or any(not isinstance(item, dict)
-                               or not isinstance(item.get('kind'), str)
-                               or not isinstance(item.get('label'), str)
-                               for item in options)
-                        or len({item['kind'] for item in options}) != len(options)
-                        or result.get('suggested_action') is not None
-                        or result.get('requires_staff_review') is not False):
-                    raise RuntimeError('Invalid model-assisted clarification state')
-                return
             # The graph may add read-only map status, but must not synthesize
             # extra choices or promote a review form into a submitted action.
             expected = fast_response(decision, query, language)

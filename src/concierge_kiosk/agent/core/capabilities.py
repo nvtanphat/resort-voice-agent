@@ -21,13 +21,6 @@ class Capability(StrEnum):
     SERVICE_REVIEW = "service_review"
 
 
-class ProposalKind(StrEnum):
-    """Server-owned UI action kinds produced by read-only capabilities."""
-
-    DIRECTIONS = "directions"
-    HUMAN = "human"
-
-
 READ_ONLY_CAPABILITIES = frozenset({
     Capability.KNOWLEDGE, Capability.NAVIGATION, Capability.PLANNING,
 })

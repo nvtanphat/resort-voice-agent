@@ -200,7 +200,7 @@ def _expected_route_matches(expected: object, response: Mapping[str, object]) ->
 
 
 def _unexpected_action(response: Mapping[str, object], expected: object) -> bool:
-    write = bool(response.get('autonomous_action')) or bool(response.get('autonomous_actions'))
+    write = False
     if isinstance(response.get('agent_action'), Mapping):
         write = write or response['agent_action'].get('status') in {'executed', 'approved'}
     return write and str(expected or '').casefold() not in {'service', 'handoff'}

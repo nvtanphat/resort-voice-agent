@@ -113,8 +113,7 @@
           "autonomous_required_slots",
           "optional_slots",
           "tool",
-          "default_for_kind",
-          "match_terms"
+          "default_for_kind"
         ],
         "properties": {
           "code": {
@@ -163,24 +162,6 @@
           "escalate_without_evidence": {
             "type": "boolean"
           },
-          "match_terms": {
-            "type": "object",
-            "maxProperties": 16,
-            "propertyNames": {
-              "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-            },
-            "additionalProperties": {
-              "type": "array",
-              "minItems": 1,
-              "maxItems": 32,
-              "uniqueItems": true,
-              "items": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 96
-              }
-            }
-          },
           "optional_slots": {
             "$ref": "#/$defs/slots"
           },
@@ -194,6 +175,26 @@
           "catalog_service_id": {
             "type": "string",
             "maxLength": 96
+          },
+          "availability_source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["dataset", "shape", "collection"],
+            "properties": {
+              "dataset": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "shape": {
+                "enum": ["table_capacity", "time_slots", "inventory"]
+              },
+              "collection": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            }
           }
         }
       }
@@ -540,7 +541,6 @@
         "normalization",
         "numerals",
         "clock",
-        "semantic_router",
         "intent",
         "authority",
         "routing",
@@ -549,7 +549,8 @@
         "read_intent",
         "time_expressions",
         "discourse_terms",
-        "qualifier_patterns"
+        "qualifier_patterns",
+        "service_selector"
       ],
       "properties": {
         "normalization": {
@@ -633,19 +634,6 @@
             }
           }
         },
-        "semantic_router": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["mode", "min_score", "min_margin", "max_examples_per_route", "examples_path", "examples_sha256"],
-          "properties": {
-            "mode": {"type": "string", "enum": ["off", "shadow", "active"]},
-            "min_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-            "min_margin": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-            "max_examples_per_route": {"type": "integer", "minimum": 8, "maximum": 2048},
-            "examples_path": {"type": "string", "minLength": 1, "maxLength": 512},
-            "examples_sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
-          }
-        },
         "intent": {
           "type": "object",
           "additionalProperties": false,
@@ -655,14 +643,9 @@
             "action_phrases",
             "info_only",
             "negation_patterns",
-            "question_start_patterns",
-            "explicit_question_request_patterns",
             "action_patterns",
-            "request_frame_patterns",
-            "service_concept_terms",
             "information_frame_patterns",
             "multi_connector_patterns",
-            "model_fallback_cues",
             "emergency_text",
             "emergency_contacts",
             "information_request_patterns"
@@ -748,30 +731,6 @@
                 "maxLength": 2048
               }
             },
-            "question_start_patterns": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 2048
-              }
-            },
-            "explicit_question_request_patterns": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 2048
-              }
-            },
             "action_patterns": {
               "type": "object",
               "maxProperties": 16,
@@ -792,53 +751,6 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2048
-                  }
-                }
-              }
-            },
-            "action_context_patterns": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {"pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"},
-              "additionalProperties": {
-                "type": "array",
-                "maxItems": 32,
-                "uniqueItems": true,
-                "items": {"type": "string", "minLength": 1, "maxLength": 2048}
-              }
-            },
-            "request_frame_patterns": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 2048
-              }
-            },
-            "service_concept_terms": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "object",
-                "maxProperties": 32,
-                "propertyNames": {
-                  "$ref": "#/$defs/identifier"
-                },
-                "additionalProperties": {
-                  "type": "array",
-                  "maxItems": 128,
-                  "uniqueItems": true,
-                  "items": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 512
                   }
                 }
               }
@@ -865,20 +777,6 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 2048
-              }
-            },
-            "model_fallback_cues": {
-              "type": "object",
-              "maxProperties": 16,
-              "additionalProperties": {
-                "type": "array",
-                "maxItems": 64,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "minLength": 2,
-                  "maxLength": 120
-                }
               }
             },
             "emergency_text": {
@@ -1788,47 +1686,6 @@
                   "maxLength": 512
                 }
               }
-            },
-            "schedule_cue_terms": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "array",
-                "maxItems": 128,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                }
-              }
-            },
-            "availability_service_terms": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "object",
-                "maxProperties": 32,
-                "propertyNames": {
-                  "pattern": "^[a-z][a-z0-9_]{1,63}$"
-                },
-                "additionalProperties": {
-                  "type": "array",
-                  "maxItems": 64,
-                  "uniqueItems": true,
-                  "items": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 256
-                  }
-                }
-              }
             }
           }
         },
@@ -1868,6 +1725,17 @@
               "minLength": 1,
               "maxLength": 4096
             }
+          }
+        },
+        "service_selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["top_k", "example_k", "fallback_min_score", "fallback_min_margin"],
+          "properties": {
+            "top_k": {"type": "integer", "minimum": 1, "maximum": 16},
+            "example_k": {"type": "integer", "minimum": 0, "maximum": 8},
+            "fallback_min_score": {"type": "number", "minimum": -1, "maximum": 1},
+            "fallback_min_margin": {"type": "number", "minimum": 0, "maximum": 1}
           }
         },
         "time_expressions": {

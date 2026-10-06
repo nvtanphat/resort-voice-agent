@@ -26,7 +26,7 @@ class LocalEmbedder:
         root = Path(path)
         if not root.is_dir():
             raise ValueError("Embedding model must already exist on disk")
-        from ..model_manifest import model_identity
+        from concierge_kiosk.core.model_manifest import model_identity
         self.model_name = model_identity(path, manifest_path)
         self.query_prefix = ""
         self.passage_prefix = ""

@@ -1,7 +1,15 @@
 {
   "profile_id": "test",
   "features": {
-    "intent_parser": false,
-    "agent_planner": false
+    "semantic_generation": false,
+    "agent_planner": false,
+    "semantic_understanding": false
+  },
+  "models": {
+    "slm": {
+      "base_url": "",
+      "primary_model": "",
+      "fallback_model": ""
+    }
   }
 }

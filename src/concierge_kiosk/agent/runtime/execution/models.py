@@ -67,11 +67,7 @@ class AgentRun:
         raise RuntimeError('agent produced no observation')
 
     def trace(self) -> dict:
-        business_intents = sum(
-            1 for _meta, raw in self.service_results()
-            if isinstance(raw.get('agent_action'), dict)
-            and raw['agent_action'].get('status') == 'auto_execute_ready'
-        )
+        business_intents = 0
         verification = self.verification
         tool_calls = []
         capability_to_tool = {

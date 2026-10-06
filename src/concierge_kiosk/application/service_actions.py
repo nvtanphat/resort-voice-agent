@@ -1,9 +1,9 @@
 """Application service for governed concierge actions.
 
-Service-action orchestration is kept outside ``main.py``. The agent may stage a
-safe write, but this application service owns slot collection, authority policy,
-status reads, accepted-turn commit and workflow projection.  Domain persistence
-remains behind ``Workflows``.
+Service-action orchestration is kept outside ``main.py``. This application
+service owns slot collection, authority policy and status reads; all writes go
+through the explicit prepare/confirm workflow. Domain persistence remains behind
+``Workflows``.
 """
 from __future__ import annotations
 
@@ -14,19 +14,17 @@ import logging
 import re
 from typing import Callable
 
-from fastapi import HTTPException
-
 from ..agent.understanding.authority import evaluate_service_authority
 from ..agent.core.concierge import AgentToolRequest
-from ..agent.understanding.intent import normalize_intent_text, suggest_service_request
+from ..agent.understanding.intent import normalize_intent_text
 from ..agent.understanding.routing import RouteDecision, fast_response, request_change_intent
 from ..agent.understanding.domain_nlu import AFFIRM_TERMS, DENY_TERMS, ROUTING_STATIC_TEXT, SLOT_LABELS
 from ..agent.tools.service_slots import (assess_service, clarification_text, ready_text,
-                                          extract_slots, service_mode)
+                                          extract_slots)
 
-from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, autonomous_required_slots,
+from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, default_service_for,
                                                      route_branch_for_request_kind, service_definition)
-from concierge_kiosk.core.operational_policy import dispatch_policy_for_service, service_catalog_entry
+from concierge_kiosk.core.operational_policy import service_catalog_entry
 
 _MAX_REQUEST_STATUS_ITEMS = int(ui_policy().presentation_limits["max_request_status_items"])
 
@@ -132,22 +130,20 @@ def _replace_changed_slot_values(details: str, old_slots: dict,
 
 
 class ServiceActionService:
-    def __init__(self, *, workflows, task_memory, conversations, orchestrator: str,
+    def __init__(self, *, workflows, task_memory, conversations,
                  get_graph: Callable[[], object], record_metric: Callable[[str, str], None],
                  logger: logging.Logger, enabled_request_kinds: set[str] | frozenset[str] | None = None,
                  low_risk_requires_verified_room: bool = False,
-                 hitl_mode: str = 'legacy_policy', cfg=None):
+                 cfg=None):
         self._workflows = workflows
         self._task_memory = task_memory
         self._conversations = conversations
-        self._orchestrator = orchestrator
         self._get_graph = get_graph
         self._record_metric = record_metric
         self._logger = logger
         self._enabled_request_kinds = (frozenset(enabled_request_kinds)
                                        if enabled_request_kinds is not None else None)
         self._low_risk_requires_verified_room = bool(low_risk_requires_verified_room)
-        self._hitl_mode = hitl_mode if hitl_mode in {'legacy_policy', 'guest_confirm_all'} else 'guest_confirm_all'
         self._cfg = cfg
 
     @staticmethod
@@ -198,12 +194,16 @@ class ServiceActionService:
             answer = prefix + '\n' + '\n'.join(lines)
             if escalated or already_escalated:
                 answer += '\n' + i18n_text('request.escalated', request.language)
+        # ``service_code`` is retained only while the server resolves a
+        # session-scoped follow-up. It is not part of the guest status API.
+        public_rows = [{key: value for key, value in row.items() if key != 'service_code'}
+                       for row in rows]
         return {
             'answer': answer, 'sources': [], 'citations': [], 'suggested_action': None,
             'retrieval_mode': 'business_state', 'generation_mode': 'deterministic',
             'request_completed': False, 'grounding': 'business_state',
             'requires_staff_review': False, 'business_state_verified': True,
-            'request_statuses': rows,
+            'request_statuses': public_rows,
         }
 
     def guest_context_tool(self, request: AgentToolRequest) -> dict:
@@ -276,8 +276,8 @@ class ServiceActionService:
                     'requires_staff_review': False, 'business_state_verified': True}
         payload = None
         if intent == 'modify':
-            progress = self._workflows.guest_request_progress(request.session, row['id'])
-            mode = service_mode(progress.get('details', ''), request.language, row['kind'])
+            mode = (row['service_code'] if 'service_code' in row.keys() and row['service_code']
+                    else default_service_for(row['kind']))
             payload = extract_slots(request.query, request.language, row['kind'], existing={}, mode=mode)
             if not payload:
                 answer = i18n_text('request.change.need_details', request.language)
@@ -305,16 +305,12 @@ class ServiceActionService:
                 },
                 'request_change': {**changed, 'action': intent, 'request_id': row['id']}}
 
-    def request_change_from_text(self, request: AgentToolRequest) -> dict:
-        """Compatibility alias for older application embedders."""
-        return self.manage_request_tool(request)
 
     def voice_proposal_turn(self, request: AgentToolRequest) -> dict | None:
         """Resolve a short answer to the most recent voice read-back.
 
         The proposal is process-local until this accepted turn is finalized.
-        A low-risk service may then produce the normal autonomous-action
-        projection; the domain workflow remains the only business-write gate.
+        The domain workflow remains the only business-write gate.
         """
         pending = self._task_memory.load_voice_proposal(request.session, request.language)
         if pending is None or pending.expected_reply != 'confirm':
@@ -327,55 +323,24 @@ class ServiceActionService:
         base = self._server_owned_service_base()
         base['tool_route'] = 'service'
         base['service_payload'] = dict(pending.slots)
-        definition = service_definition(pending.mode)
         if affirmed:
-            needs_screen = _voice_screen_gate(
-                mode=pending.mode,
-                low_risk_requires_verified_room=self._low_risk_requires_verified_room,
-                verification=request.verification)
             authority = evaluate_service_authority(
                 query=pending.details, language=request.language, mode=pending.mode,
                 slots=pending.slots, stable_nonce=bool(request.action_nonce))
-            if (self._hitl_mode == 'guest_confirm_all' or needs_screen
-                    or authority.outcome != 'auto_execute' or not request.action_nonce):
-                base['answer'] = i18n_text('service.voice_screen_confirmation', request.language)
-                base['suggested_action'] = {
-                    'kind': pending.kind,
-                    'details': _canonical_service_review(
-                        mode=pending.mode, language=request.language, slots=pending.slots,
-                        fallback_details=pending.details, cfg=self._cfg),
-                }
-                base['requires_staff_review'] = True
-                base['agent_action'] = {
-                    'service_kind': pending.kind, 'service_mode': pending.mode,
-                    'collected_slots': dict(pending.slots), 'missing_slots': [],
-                    'action_ready': True, 'resumed': True, 'business_writes': 0,
-                    'status': 'confirmation_required', 'authority': authority.public(),
-                }
-                base['_voice_proposal'] = {'action': 'clear'}
-                base['_expected_reply'] = {'action': 'clear'}
-                return base
-            payload = {**pending.slots, 'note': pending.details}
-            base['answer'] = i18n_text('service.auto_ready', request.language)
-            base['requires_staff_review'] = False
-            base['agent_action'] = {
-                'service_kind': pending.kind, 'service_mode': pending.mode,
-                'department': definition.department if definition is not None else None,
-                'collected_slots': dict(pending.slots), 'missing_slots': [],
-                'action_ready': True, 'resumed': True, 'business_writes': 0,
-                'status': 'auto_execute_ready', 'authority': authority.public(),
-            }
-            base['_autonomous_action'] = {
-                'service_code': pending.mode, 'kind': pending.kind,
-                'language': request.language,
+            base['answer'] = i18n_text('service.voice_screen_confirmation', request.language)
+            base['suggested_action'] = {
+                'kind': pending.kind,
                 'details': _canonical_service_review(
                     mode=pending.mode, language=request.language, slots=pending.slots,
                     fallback_details=pending.details, cfg=self._cfg),
-                'payload': payload, 'action_nonce': request.action_nonce,
-                'authority_level': authority.level, 'policy_reason': authority.reason,
-                'task_id': None,
-                'verification': request.verification if isinstance(request.verification, dict) else None,
-                'require_verified_room': self._low_risk_requires_verified_room,
+                'service': pending.mode,
+            }
+            base['requires_staff_review'] = True
+            base['agent_action'] = {
+                'service_kind': pending.kind, 'service_mode': pending.mode,
+                'collected_slots': dict(pending.slots), 'missing_slots': [],
+                'action_ready': True, 'resumed': True, 'business_writes': 0,
+                'status': 'confirmation_required', 'authority': authority.public(),
             }
             base['_voice_proposal'] = {'action': 'clear'}
             base['_expected_reply'] = {'action': 'clear'}
@@ -410,7 +375,8 @@ class ServiceActionService:
                     verification=request.verification)
                 else 'service.voice_staff_confirmation', request.language,
                 details=_voice_numeric_review(reviewed, updated_slots, request.language))
-            base['suggested_action'] = {'kind': pending.kind, 'details': reviewed}
+            base['suggested_action'] = {'kind': pending.kind, 'details': reviewed,
+                                        'service': pending.mode}
             base['requires_staff_review'] = True
             base['agent_action'] = {
                 'service_kind': pending.kind, 'service_mode': pending.mode,
@@ -463,10 +429,15 @@ class ServiceActionService:
                 raise RuntimeError('Invalid server-owned service continuation')
             resumed = True
         else:
-            suggestion = suggest_service_request(request.query, request.language)
-            if suggestion is None or route_branch_for_request_kind(suggestion.kind) == 'navigation':
+            # The validated understanding goal names the service; it is never
+            # re-derived from the guest text here.
+            understood = service_definition(request.decision.semantic_service_code or '')
+            if understood is None:
+                raise RuntimeError('Service action requires one understood service goal')
+            kind, details, mode = understood.request_kind, request.query[:500], understood.code
+            if route_branch_for_request_kind(kind) == 'navigation':
                 raise RuntimeError('Service action requires one explicit service intent')
-            kind, details, mode, existing, resumed = suggestion.kind, suggestion.details, None, {}, False
+            existing, resumed = {}, False
             persist_pending = True
             slot_source_query = request.query
 
@@ -514,24 +485,6 @@ class ServiceActionService:
             query=details, language=request.language, mode=assessment.mode,
             slots=assessment.slots, stable_nonce=bool(request.action_nonce))
 
-        if (authority.reason == 'required_slots_missing_for_autonomous_execution'
-                and authority.explicit_intent and request.action_nonce):
-            missing = tuple(name for name in autonomous_required_slots(assessment.mode)
-                            if not assessment.slots.get(name))
-            if persist_pending:
-                self._task_memory.save(request.session, kind=kind, language=request.language,
-                                       mode=assessment.mode, details=details,
-                                       slots=assessment.slots, missing=missing)
-            result['answer'] = clarification_text(request.language, missing)
-            result['suggested_action'] = None
-            result['requires_staff_review'] = False
-            action_state['missing_slots'] = list(missing)
-            action_state['action_ready'] = False
-            action_state['authority'] = authority.public()
-            action_state['status'] = 'needs_user_input'
-            result['agent_action'] = action_state
-            return result
-
         if persist_pending:
             self._task_memory.clear(request.session)
         result['_expected_reply'] = {'action': 'clear'}
@@ -541,40 +494,11 @@ class ServiceActionService:
         voice_numeric_confirmation = bool(
             request.voice_input and
             any(name in assessment.slots for name in ('room_number', 'quantity')))
-        dispatch_policy = dispatch_policy_for_service(assessment.mode, cfg=self._cfg)
-        requested_quantity = assessment.slots.get('quantity')
-        quantity_requires_staff_review = bool(
-            dispatch_policy is not None and dispatch_policy.max_quantity is not None
-            and isinstance(requested_quantity, int)
-            and requested_quantity > dispatch_policy.max_quantity)
         if authority.outcome == 'deny':
             result['suggested_action'] = None
             result['requires_staff_review'] = False
             result['answer'] = i18n_text('service.denied', request.language)
             action_state['status'] = 'denied'
-        elif (self._hitl_mode != 'guest_confirm_all' and
-                not voice_numeric_confirmation and authority.outcome == 'auto_execute' and
-                service_definition(assessment.mode) is not None
-                and service_definition(assessment.mode).approval == 'none'
-                and dispatch_policy is not None
-                and not quantity_requires_staff_review
-                and not (self._low_risk_requires_verified_room and not request.verification)):
-            payload = {**assessment.slots, 'note': details}
-            result['suggested_action'] = None
-            result['requires_staff_review'] = False
-            result['answer'] = i18n_text('service.auto_ready', request.language)
-            action_state['status'] = 'auto_execute_ready'
-            result['_autonomous_action'] = {
-                'service_code': assessment.mode, 'kind': kind, 'language': request.language,
-                'details': _canonical_service_review(
-                    mode=assessment.mode, language=request.language, slots=assessment.slots,
-                    fallback_details=details, cfg=self._cfg),
-                'payload': payload, 'action_nonce': request.action_nonce,
-                'authority_level': authority.level, 'policy_reason': authority.reason,
-                'task_id': context.get('task_id') if isinstance(context, dict) else None,
-                'verification': request.verification if isinstance(request.verification, dict) else None,
-                'require_verified_room': self._low_risk_requires_verified_room,
-            }
         else:
             reviewed = _canonical_service_review(
                 mode=assessment.mode, language=request.language, slots=assessment.slots,
@@ -593,7 +517,8 @@ class ServiceActionService:
             result['requires_staff_review'] = True
             action_state['status'] = 'confirmation_required'
             if context is not None or voice_numeric_confirmation:
-                result['suggested_action'] = {'kind': kind, 'details': reviewed}
+                result['suggested_action'] = {'kind': kind, 'details': reviewed,
+                                              'service': assessment.mode}
             if voice_numeric_confirmation:
                 result['_voice_proposal'] = {
                     'action': 'save', 'kind': kind, 'language': request.language,
@@ -626,147 +551,23 @@ class ServiceActionService:
             self._task_memory.save(session, kind=kind, language=language, mode=mode, details=details,
                                    slots=slots, missing=tuple(str(value) for value in missing))
 
-    def commit_autonomous_action(self, result: dict, session: str) -> dict:
-        """Commit safe writes only after the owning guest turn was accepted.
-
-        The commit flow accepts a bounded list of independently authorized low-risk actions.
-        Every item still crosses the domain capability boundary with its own
-        derived nonce, registry lookup and immutable receipt.
-        """
+    def finalize_service_turn(self, result: dict, session: str) -> dict:
+        """Persist only accepted voice read-back state, never a business write."""
         clean = dict(result)
-        answer_parts = clean.pop('_agentic_answer_parts', None)
-        voice_proposal = clean.pop('_voice_proposal', None)
-        if isinstance(voice_proposal, dict):
-            action = voice_proposal.get('action')
-            if action == 'save':
-                self._task_memory.save_voice_proposal(
-                    session,
-                    kind=voice_proposal.get('kind', ''),
-                    language=voice_proposal.get('language', clean.get('language', 'en')),
-                    mode=voice_proposal.get('mode', ''),
-                    details=voice_proposal.get('details', ''),
-                    slots=voice_proposal.get('slots', {}),
-                )
-            elif action == 'clear':
-                self._task_memory.clear_voice_proposal(session)
-        batch = clean.pop('_autonomous_actions', None)
-        if isinstance(batch, list):
-            if not batch or len(batch) > 5 or not all(isinstance(item, dict) for item in batch):
-                raise HTTPException(status_code=409, detail='Invalid autonomous action batch')
-            committed: list[dict] = []
-            for item in batch:
-                one = self.commit_autonomous_action({'_autonomous_action': item}, session)
-                receipt = one.get('autonomous_action')
-                if not isinstance(receipt, dict):
-                    raise HTTPException(status_code=409, detail='Autonomous action batch lost a receipt')
-                committed.append({**receipt, 'task_id': item.get('task_id')})
-            clean['autonomous_actions'] = committed
-            if isinstance(clean.get('agent_action'), dict):
-                clean['agent_action'] = {**clean['agent_action'],
-                                         'business_writes': len(committed),
-                                         'status': 'multi_task_executed'}
-            if isinstance(clean.get('agent_trace'), dict):
-                trace = dict(clean['agent_trace'])
-                trace['business_writes'] = len(committed)
-                trace['business_write_intent'] = len(committed)
-                trace['termination_reason'] = 'safe_writes_committed_with_remaining_goal_state'
-                world = dict(trace.get('world_state') or {})
-                world['autonomous_requests_dispatched'] = len(committed)
-                trace['world_state'] = world
-                clean['agent_trace'] = trace
-            task_plan = clean.get('task_plan')
-            if isinstance(task_plan, list):
-                committed_ids = {item.get('task_id') for item in committed}
-                clean['task_plan'] = [
-                    {**task, 'status': 'executed'}
-                    if isinstance(task, dict) and task.get('id') in committed_ids else task
-                    for task in task_plan
-                ]
-            batch_language = committed[0].get('language', clean.get('language', 'en')) if committed else 'en'
-            queued_text = i18n_text('service.auto_batch_dispatched', batch_language, count=len(committed))
-            # Language is normally preserved in the internal answer-parts record.
-            if isinstance(answer_parts, dict) and answer_parts.get('language') in supported_languages():
-                lang = answer_parts['language']
-                queued_text = i18n_text('service.auto_batch_dispatched', lang, count=len(committed))
-            remainder = answer_parts.get('remainder', '') if isinstance(answer_parts, dict) else clean.get('answer', '')
-            clean['answer'] = queued_text + (('\n' + remainder) if remainder else '')
+        clean.pop('_agentic_answer_parts', None)
+        proposal = clean.pop('_voice_proposal', None)
+        if not isinstance(proposal, dict):
             return clean
-
-        action = clean.pop('_autonomous_action', None)
-        if not isinstance(action, dict):
-            return clean
-        nonce = action.get('action_nonce')
-        if not isinstance(nonce, str):
-            raise HTTPException(status_code=409, detail='Autonomous action lost its idempotency capability')
-        service_code = action.get('service_code')
-        if not isinstance(service_code, str):
-            raise HTTPException(status_code=409, detail='Autonomous action lost its service capability')
-        row = self._workflows.autonomous_submit(
-            session, service_code, action['language'], action['details'], nonce,
-            action.get('payload') if isinstance(action.get('payload'), dict) else None,
-            policy_reason=action.get('policy_reason', ''),
-            verification=action.get('verification') if isinstance(action.get('verification'), dict) else None,
-            require_verified_room=bool(action.get('require_verified_room', False)),
-        )
-        orchestration_sync = 'direct'
-        if self._orchestrator == 'langgraph':
-            try:
-                self._get_graph().sync_staff(row['id'])
-                orchestration_sync = 'ok'
-            except Exception:
-                self._logger.exception('autonomous_action_checkpoint_sync_deferred')
-                orchestration_sync = 'deferred'
-        with self._conversations.serialize(session):
-            self._conversations.sync_workflow(
-                session, row['language'], proposal_id=row['proposal_id'],
-                service_kind=row['kind'], status=row['status'])
-        if not row.get('idempotent_replay'):
-            self._record_metric('request.agent_autonomous', row['language'])
-        payload = action.get('payload') if isinstance(action.get('payload'), dict) else {}
-        department = row.get('department_id') or 'staff'
-        room = payload.get('room_number')
-        quantity = payload.get('quantity')
-        queued_for_staff = row.get('status') == 'pending_staff'
-        if queued_for_staff:
-            clean['answer'] = i18n_text('service.auto_queued', row['language'], code=row['id'])
-        elif room and quantity:
-            quantity_key = 'service.auto_dispatched_quantity.one' if int(quantity) == 1 else 'service.auto_dispatched_quantity.other'
-            clean['answer'] = i18n_text(quantity_key, row['language'],
-                                        department=department, room=room, quantity=quantity)
-        elif room:
-            clean['answer'] = i18n_text('service.auto_dispatched_room', row['language'],
-                                        department=department, room=room)
-        else:
-            clean['answer'] = i18n_text('service.auto_dispatched', row['language'], department=department)
-        clean['suggested_action'] = None
-        clean['requires_staff_review'] = queued_for_staff
-        clean['request_completed'] = False
-        self._task_memory.clear_voice_proposal(session)
-        clean['autonomous_action'] = {
-            'executed': True, 'request_id': row['id'], 'status': row['status'],
-            'service_code': row.get('service_code', service_code),
-            'authority_level': row.get('authority_level', 'safe_write'),
-            'policy_version': row.get('policy_version'),
-            'policy_reason': row.get('policy_reason', action.get('policy_reason', '')),
-            'orchestration_sync': orchestration_sync,
-            'fulfillment_confirmed': False,
-            'department_id': row.get('department_id', ''),
-            'sla_due_at': row.get('sla_due_at', 0),
-            'unverified_room': bool(row.get('unverified_room', 0)),
-        }
-        if isinstance(clean.get('agent_action'), dict):
-            clean['agent_action'] = {
-                **clean['agent_action'], 'status': 'queued_for_staff' if queued_for_staff else 'executed', 'business_writes': 1,
-                'request_id': row['id'],
-            }
-        if isinstance(clean.get('agent_trace'), dict):
-            trace = dict(clean['agent_trace'])
-            trace['business_writes'] = 1
-            trace['business_write_intent'] = 1
-            trace['termination_reason'] = 'safe_write_committed'
-            world = dict(trace.get('world_state') or {})
-            world.update({'goal_complete': True, 'service_state': 'queued_for_staff' if queued_for_staff else 'executed',
-                          'request_status': row['status']})
-            trace['world_state'] = world
-            clean['agent_trace'] = trace
+        action = proposal.get('action')
+        if action == 'save':
+            self._task_memory.save_voice_proposal(
+                session,
+                kind=proposal.get('kind', ''),
+                language=proposal.get('language', clean.get('language', 'en')),
+                mode=proposal.get('mode', ''),
+                details=proposal.get('details', ''),
+                slots=proposal.get('slots', {}),
+            )
+        elif action == 'clear':
+            self._task_memory.clear_voice_proposal(session)
         return clean

@@ -1,14 +1,10 @@
-"""Proposal, autonomous submission and guest-confirmation writes."""
+"""Proposal and guest-confirmation writes."""
 from __future__ import annotations
 import json
-import hashlib
 import secrets
 import time
 from .base import InvalidTransition, KINDS, LANGUAGES, SENSITIVE, digest
-from concierge_kiosk.domain.service_registry import (
-    AUTONOMOUS_POLICY_VERSION, VERIFICATION_KINDS, service_definition,
-    resolve_service_code,
-)
+from concierge_kiosk.domain.service_registry import VERIFICATION_KINDS, default_service_for, service_definition
 from concierge_kiosk.core.operational_policy import (
     dispatch_policy_for_service, service_catalog_entry, catalog_entry_for_details, service_window_state,
 )
@@ -119,7 +115,7 @@ class SubmissionWorkflowMixin:
             return alert
 
     def prepare(self, session_id: str, kind: str, language: str, details: str, nonce: str,
-                payload: dict | None = None) -> dict:
+                payload: dict | None = None, *, service_code: str | None = None) -> dict:
         if kind not in KINDS or language not in LANGUAGES:
             raise ValueError("Invalid category or language")
         self._enforce_property_policy(kind, language)
@@ -137,11 +133,18 @@ class SubmissionWorkflowMixin:
             raise ValueError("Invalid structured request payload")
         self._validate_quantity(payload)
         self._validate_room_inventory(str(payload.get('room_number') or ''))
-        service_code = resolve_service_code(details, language, kind) or ''
+        # The service is the one understanding proposed (or the kind's
+        # default); it is never re-derived from the free-text details.
+        definition = service_definition(service_code or '')
+        if service_code and (definition is None or definition.request_kind != kind):
+            raise ValueError("Service does not match the request kind")
+        service_code = definition.code if definition is not None else (default_service_for(kind) or '')
         flags = self._service_flags(service_code, cfg=self.cfg, now=int(time.time()), details=details, language=language) if service_code else {}
         window = service_window_state(service_code, cfg=self.cfg) if service_code else {
             'within_hours': True, 'next_open_at': None, 'status': 'unknown'}
         payload = dict(payload)
+        if service_code:
+            payload['_service_code'] = service_code
         payload['_service_window'] = {
             'status': window['status'], 'next_open_at': window['next_open_at']}
         payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -177,183 +180,6 @@ class SubmissionWorkflowMixin:
             if flags.get('quantity_limit') and isinstance(payload.get('quantity'), int):
                 proposal['quantity_requires_staff_review'] = payload['quantity'] > flags['quantity_limit']
             return proposal
-
-    def autonomous_submit(self, session_id: str, service_code: str, language: str, details: str,
-                          action_nonce: str, payload: dict | None = None, *,
-                          policy_reason: str = '', verification: dict | None = None,
-                          require_verified_room: bool = False) -> dict:
-        """Atomically queue an explicitly delegated low-risk action.
-
-        ``service_code`` is the capability identity. The domain derives
-        request kind and authority from the canonical registry and validates the
-        required slots again at the final write boundary. Callers cannot assert a
-        free-form ``safe_write`` capability.
-        """
-        definition = service_definition(service_code)
-        if (definition is None or definition.authority != 'auto_if_explicit'
-                or definition.approval != 'none' or definition.risk != 'low' or not definition.reversible):
-            raise PermissionError('Service capability is not authorized for autonomous execution')
-        kind = definition.request_kind
-        authority_level = 'safe_write'
-        dispatch = dispatch_policy_for_service(service_code, cfg=self.cfg)
-        if dispatch is None:
-            raise PermissionError('Autonomous service lacks canonical dispatch/SLA policy')
-        verification_state = 'unverified_room'
-        verification_provider = ''
-        verification_reference = ''
-        supplied = verification or {}
-        if supplied and supplied.get('room_qr_token') and self.guest_verifier is not None:
-            result = self.guest_verifier.verify(
-                property_id=self.property_id,
-                room_number=str(supplied.get('room_number') or '').strip(),
-                last_name='', room_qr_token=str(supplied.get('room_qr_token') or '').strip())
-            state = str(getattr(result, 'state', 'staff_required'))
-            if state == 'rejected':
-                raise PermissionError('Guest room verification failed')
-            if state == 'verified':
-                verification_state = 'verified'
-                verification_provider = str(getattr(result, 'provider', ''))[:48]
-                verification_reference = str(getattr(result, 'reference', ''))[:80]
-        if require_verified_room and verification_state != 'verified':
-            raise PermissionError('Property requires verified room for low-risk autonomous dispatch')
-        if kind not in KINDS or language not in LANGUAGES:
-            raise ValueError('Invalid category or language')
-        self._enforce_property_policy(kind, language)
-        details = details.strip()
-        if not 8 <= len(details) <= 500 or '\x00' in details:
-            raise ValueError('Please provide between 8 and 500 characters')
-        if SENSITIVE.search(details):
-            raise ValueError('Do not enter passwords, identity documents, OTP or payment data')
-        if self._is_emergency(details, language):
-            raise ValueError('Emergency actions cannot be autonomously dispatched by this kiosk')
-        if not 8 <= len(action_nonce) <= 80 or not all(c.isalnum() or c in '-_' for c in action_nonce):
-            raise ValueError('Invalid autonomous action nonce')
-        payload = payload or {'note': details}
-        if not isinstance(payload, dict):
-            raise ValueError('Invalid structured request payload')
-        self._validate_quantity(payload)
-        missing = tuple(name for name in (*definition.required_slots, *definition.autonomous_required_slots) if payload.get(name) in (None, ''))
-        if missing:
-            raise ValueError('Autonomous action is missing required slots: ' + ', '.join(missing))
-        self._validate_room_inventory(str(payload.get('room_number') or ''))
-        flags = self._service_flags(service_code, cfg=self.cfg, now=int(time.time()), details=details, language=language)
-        window = service_window_state(service_code, cfg=self.cfg)
-        if flags.get('price_disclosure_required'):
-            raise PermissionError('Paid services require staff price confirmation before fulfillment')
-        quantity_limit = flags.get('quantity_limit')
-        quantity = payload.get('quantity')
-        if quantity_limit is not None and isinstance(quantity, int) and quantity > quantity_limit:
-            raise PermissionError('Requested quantity exceeds the configured service limit and requires staff review')
-        payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
-        if len(payload_json.encode('utf-8')) > 1200 or SENSITIVE.search(payload_json):
-            raise ValueError('Structured request payload is invalid or contains sensitive data')
-        action_nonce_hash = hashlib.sha256(action_nonce.encode('utf-8')).hexdigest()
-        client_nonce = 'agent-' + action_nonce_hash[:48]
-        policy_reason = str(policy_reason or '')[:120]
-        note = (f'service={service_code};authority={authority_level};'
-                f'policy_v={AUTONOMOUS_POLICY_VERSION};policy={policy_reason}')[:500]
-        with self.store.connection(write=True) as con:
-            now = int(time.time())
-            valid = con.execute(
-                'SELECT 1 FROM sessions WHERE id=? AND property_id=? AND expires_at>?',
-                (session_id, self.property_id, now),
-            ).fetchone()
-            if valid is None:
-                raise PermissionError('Session expired')
-            duplicate = self._request_duplicate(
-                con, property_id=self.property_id, kind=kind, service_code=service_code,
-                payload=payload, now=now,
-                window_minutes=flags['policy'].dedupe_window_minutes if flags.get('policy') else 0)
-            if duplicate is not None:
-                return {**dict(duplicate), 'idempotent_replay': True,
-                        'deduplicated': True, 'service_code': service_code}
-            existing = con.execute(
-                'SELECT * FROM proposals WHERE session_id=? AND client_nonce=?',
-                (session_id, client_nonce),
-            ).fetchone()
-            if existing is not None:
-                if (existing['kind'], existing['language'], existing['details'], existing['payload_json']) != (
-                        kind, language, details, payload_json):
-                    raise InvalidTransition('Autonomous action nonce reused with different payload')
-                request = con.execute(
-                    'SELECT * FROM service_requests WHERE proposal_id=? AND property_id=?',
-                    (existing['id'], self.property_id),
-                ).fetchone()
-                receipt = con.execute(
-                    'SELECT * FROM autonomous_action_receipts WHERE proposal_id=? AND property_id=?',
-                    (existing['id'], self.property_id),
-                ).fetchone()
-                if request is None or receipt is None:
-                    raise InvalidTransition('Autonomous action receipt is incomplete')
-                if (receipt['service_code'] != service_code or receipt['request_kind'] != kind
-                        or receipt['authority_level'] != authority_level
-                        or receipt['action_nonce_hash'] != action_nonce_hash
-                        or receipt['policy_version'] != AUTONOMOUS_POLICY_VERSION):
-                    raise InvalidTransition('Autonomous action capability receipt mismatch')
-                return {**dict(request), 'idempotent_replay': True,
-                        'service_code': service_code, 'authority_level': authority_level,
-                        'policy_version': AUTONOMOUS_POLICY_VERSION,
-                        'policy_reason': receipt['policy_reason']}
-
-            proposal_id = secrets.token_hex(16)
-            proposal = {
-                'id': proposal_id, 'property_id': self.property_id, 'session_id': session_id,
-                'client_nonce': client_nonce, 'kind': kind, 'language': language,
-                'details': details, 'payload_json': payload_json, 'status': 'confirmed',
-                'expires_at': now + self.proposal_ttl, 'created_at': now,
-            }
-            con.execute(
-                'INSERT INTO proposals(id,property_id,session_id,client_nonce,kind,language,details,payload_json,'
-                'status,expires_at,created_at) VALUES(:id,:property_id,:session_id,:client_nonce,:kind,:language,'
-                ':details,:payload_json,:status,:expires_at,:created_at)', proposal)
-            request_id = secrets.token_hex(16)
-            result = {
-                'id': request_id, 'proposal_id': proposal_id, 'property_id': self.property_id,
-                'kind': kind, 'language': language, 'details': details, 'payload_json': payload_json,
-                'confirmation_code': public_reference(request_id),
-                'status': 'pending_staff', 'created_at': now, 'updated_at': now,
-                'guest_verification_state': verification_state,
-                'guest_verification_provider': verification_provider,
-                'guest_verification_reference': verification_reference,
-                'department_id': dispatch.department_id,
-                'service_code': service_code,
-                'priority': dispatch.priority,
-                'ack_due_at': (int(window['next_open_at']) if isinstance(window.get('next_open_at'), int)
-                               and int(window['next_open_at']) > now else now) + dispatch.ack_minutes * 60,
-                'sla_due_at': now + dispatch.sla_minutes * 60 if window.get('within_hours') else 0,
-                'unverified_room': 0 if verification_state == 'verified' else 1,
-            }
-            con.execute(
-                'INSERT INTO service_requests(id,proposal_id,property_id,kind,language,details,payload_json,confirmation_code,service_code,'
-                'status,created_at,updated_at,guest_verification_state,guest_verification_provider,'
-                'guest_verification_reference,department_id,priority,ack_due_at,sla_due_at,unverified_room) '
-                'VALUES(:id,:proposal_id,:property_id,:kind,:language,:details,:payload_json,:confirmation_code,:service_code,:status,'
-                ':created_at,:updated_at,:guest_verification_state,:guest_verification_provider,'
-                ':guest_verification_reference,:department_id,:priority,:ack_due_at,:sla_due_at,:unverified_room)', result)
-            con.execute(
-                'INSERT INTO autonomous_action_receipts(request_id,proposal_id,property_id,service_code,'
-                'request_kind,authority_level,policy_version,policy_reason,action_nonce_hash,created_at) '
-                'VALUES(?,?,?,?,?,?,?,?,?,?)',
-                (request_id, proposal_id, self.property_id, service_code, kind, authority_level,
-                 AUTONOMOUS_POLICY_VERSION, policy_reason, action_nonce_hash, now),
-            )
-            if window.get('within_hours'):
-                con.execute(
-                    "UPDATE service_requests SET status='approved' WHERE id=? AND property_id=?",
-                    (request_id, self.property_id))
-                result['status'] = 'approved'
-                audit_action = 'request.auto_dispatched'
-            else:
-                result['status'] = 'pending_staff'
-                audit_action = 'request.queued_outside_hours'
-            result['outside_operating_hours'] = not bool(window.get('within_hours'))
-            con.execute(
-                'INSERT INTO audit_events(request_id,action,actor,property_id,at,note) VALUES(?,?,?,?,?,?)',
-                (request_id, audit_action, 'agent', self.property_id, now,
-                 note + f';department={dispatch.department_id};sla={dispatch.sla_minutes}m;verification={verification_state}'),
-            )
-            return {**result, 'service_code': service_code, 'authority_level': authority_level,
-                    'policy_version': AUTONOMOUS_POLICY_VERSION, 'policy_reason': policy_reason}
 
     def confirm(self, session_id: str, proposal_id: str, confirmed: bool, *,
                 verification: dict | None = None, price_acknowledged: bool = False) -> dict:
@@ -421,7 +247,10 @@ class SubmissionWorkflowMixin:
                 proposal_payload = {}
             proposal_payload = proposal_payload if isinstance(proposal_payload, dict) else {}
             self._validate_room_inventory(str(proposal_payload.get('room_number') or ''))
-            service_code = resolve_service_code(row['details'], row['language'], row['kind']) or ''
+            stored_service = proposal_payload.get('_service_code')
+            definition = service_definition(stored_service) if isinstance(stored_service, str) else None
+            service_code = (definition.code if definition is not None and definition.request_kind == row['kind']
+                            else default_service_for(row['kind']) or '')
             flags = self._service_flags(service_code, cfg=self.cfg, now=now, details=row['details'], language=row['language']) if service_code else {}
             if (flags.get('price_disclosure_required')
                     and proposal_payload.get('price_acknowledged') is not True

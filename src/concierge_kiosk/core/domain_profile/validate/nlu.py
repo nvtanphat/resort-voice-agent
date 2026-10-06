@@ -9,6 +9,15 @@ from .common import compile_regex, validate_language_keys
 
 def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: set[str]) -> None:
     nlu = payload["nlu"]
+    selector = nlu["service_selector"]
+    for key, low, high in (("top_k", 1, 16), ("example_k", 0, 8)):
+        value = selector.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or not low <= value <= high:
+            raise ValueError(f"nlu.service_selector.{key} must be an integer in [{low}, {high}]")
+    for key, low in (("fallback_min_score", -1.0), ("fallback_min_margin", 0.0)):
+        value = selector.get(key)
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or not low <= value <= 1.0:
+            raise ValueError(f"nlu.service_selector.{key} must be a number in [{low}, 1]")
     for key in ("numerals", "clock"):
         validate_language_keys(nlu[key], languages, label=f"nlu.{key}", require_all=True)
     for language, grammar in nlu["numerals"].items():
@@ -45,24 +54,6 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for language, terms in normalization["phrase_terms"].items():
         if not isinstance(terms, list) or any(not isinstance(term, str) or not term.strip() for term in terms):
             raise ValueError(f"nlu.normalization.phrase_terms.{language} contains an invalid term")
-    semantic_router = nlu["semantic_router"]
-    if semantic_router["mode"] not in {"off", "shadow", "active"}:
-        raise ValueError("nlu.semantic_router.mode is invalid")
-    for key in ("min_score", "min_margin"):
-        value = semantic_router[key]
-        if not isinstance(value, (int, float)) or isinstance(value, bool) or not 0 <= value <= 1:
-            raise ValueError(f"nlu.semantic_router.{key} must be in 0..1")
-    if (not isinstance(semantic_router["max_examples_per_route"], int)
-            or isinstance(semantic_router["max_examples_per_route"], bool)
-            or not 8 <= semantic_router["max_examples_per_route"] <= 2048):
-        raise ValueError("nlu.semantic_router.max_examples_per_route is invalid")
-    examples_path = semantic_router.get("examples_path")
-    if not isinstance(examples_path, str) or not examples_path.strip() or len(examples_path) > 512:
-        raise ValueError("nlu.semantic_router.examples_path is invalid")
-    examples_sha256 = semantic_router.get("examples_sha256")
-    if (not isinstance(examples_sha256, str) or len(examples_sha256) != 64
-            or any(char not in "0123456789abcdefABCDEF" for char in examples_sha256)):
-        raise ValueError("nlu.semantic_router.examples_sha256 is invalid")
     intent = nlu["intent"]
     validate_language_keys(intent["emergency_text"], languages, label="nlu.intent.emergency_text", require_all=True)
     # The structured SOS numbers and the spoken safety text must never drift.
@@ -73,11 +64,10 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
             raise ValueError(f"nlu.intent.emergency_text.{language} omits emergency contact(s): "
                              + ", ".join(sorted(missing)))
     for key in ("emergency_event_patterns", "action_phrases", "info_only", "negation_patterns",
-                "question_start_patterns", "explicit_question_request_patterns",
-                "request_frame_patterns", "information_frame_patterns", "information_request_patterns",
-                "multi_connector_patterns", "model_fallback_cues"):
+                "information_frame_patterns", "information_request_patterns",
+                "multi_connector_patterns"):
         validate_language_keys(intent[key], languages, label=f"nlu.intent.{key}", require_all=True)
-    for key in ("action_phrases", "action_patterns", "service_concept_terms"):
+    for key in ("action_phrases", "action_patterns"):
         validate_language_keys(intent[key], languages, label=f"nlu.intent.{key}")
         for language, kinds in intent[key].items():
             unknown = set(kinds) - request_kinds
@@ -91,8 +81,7 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for language, patterns in intent["completion_claims"].items():
         for pattern in patterns:
             compile_regex(pattern, label=f"nlu.intent.completion_claims.{language}")
-    for key in ("negation_patterns", "question_start_patterns", "explicit_question_request_patterns",
-                "request_frame_patterns", "information_frame_patterns", "information_request_patterns",
+    for key in ("negation_patterns", "information_frame_patterns", "information_request_patterns",
                 "multi_connector_patterns"):
         for language, pattern in intent[key].items():
             compile_regex(pattern, label=f"nlu.intent.{key}.{language}")

@@ -15,7 +15,6 @@ server {
     location = /staff { return 404; }
     location = /static/staff.html { return 404; }
     location = /static/staff.js { return 404; }
-    location = /static/staff.css { return 404; }
     location ^~ /staff/ { return 404; }
     location ^~ /internal/ { return 404; }
     location = /openapi.json { return 404; }
@@ -71,7 +70,7 @@ __STAFF_ALLOW_RULES__
         include __STAFF_GATEWAY_INCLUDE__;
         proxy_pass http://127.0.0.1:8000;
     }
-    location = /static/staff.css {
+    location = /static/app.css {
         include __STAFF_GATEWAY_INCLUDE__;
         proxy_pass http://127.0.0.1:8000;
     }

@@ -16,6 +16,7 @@ build/
 *.egg-info/
 frontend/node_modules/
 frontend/dist/
+.uv-cache/
 
 # Runtime state and real property data stay local/private by default.
 /data/*

@@ -12,6 +12,21 @@ from fastapi.responses import JSONResponse
 from concierge_kiosk.core.settings import Settings
 
 
+def _client_rejection_code(websocket, cfg) -> int | None:
+    """Return the WebSocket close code for a rejected public client."""
+    if websocket.headers.get('origin', '') != cfg.public_origin:
+        return 1008
+    if not cfg.allowed_client_cidrs:
+        return None
+    try:
+        peer = ipaddress.ip_address(websocket.client.host if websocket.client else '')
+        networks = [ipaddress.ip_network(value.strip(), strict=False)
+                    for value in cfg.allowed_client_cidrs.split(',')]
+    except ValueError:
+        return 1011
+    return None if any(peer in network for network in networks) else 1008
+
+
 def install_http_security(app: FastAPI, cfg: Settings) -> None:
     @app.middleware("http")
     async def guard_origin(request: Request, call_next):
@@ -20,13 +35,13 @@ def install_http_security(app: FastAPI, cfg: Settings) -> None:
         # and injects the secret. Even a valid staff bearer is not enough on the
         # public kiosk ingress. Staff HTML must not be served to kiosk guests.
         if cfg.environment == "production" and (
-            request.url.path in {"/ops", "/staff"} or request.url.path.startswith("/staff/")
-            or request.url.path in {"/static/ops.html", "/static/ops.js", "/static/staff.html", "/static/staff.js", "/static/staff.css"}
+            request.url.path == "/staff" or request.url.path.startswith("/staff/")
+            or request.url.path in {"/static/staff.html", "/static/staff.js"}
         ):
             gateway = request.headers.get("X-Concierge-Staff-Gateway", "")
             if not gateway or not secrets.compare_digest(gateway, cfg.staff_gateway_token):
                 return JSONResponse({"detail": "Staff ingress not permitted"}, status_code=403)
-        if cfg.allowed_client_cidrs and request.url.path.startswith(("/api/", "/staff/", "/internal/", "/ops")):
+        if cfg.allowed_client_cidrs and request.url.path.startswith(("/api/", "/staff/", "/internal/")):
             try:
                 peer = ipaddress.ip_address(request.client.host if request.client else "")
                 networks = [ipaddress.ip_network(x.strip(), strict=False) for x in cfg.allowed_client_cidrs.split(",")]
@@ -46,7 +61,7 @@ def install_http_security(app: FastAPI, cfg: Settings) -> None:
             if origin and origin != expected_origin:
                 return JSONResponse({"detail": "Origin not allowed"}, status_code=403)
         response = await call_next(request)
-        if request.url.path.startswith(("/api/", "/internal/", "/staff/")) or request.url.path in {"/ops", "/staff"}:
+        if request.url.path.startswith(("/api/", "/internal/", "/staff/")) or request.url.path == "/staff":
             response.headers["Cache-Control"] = "no-store"
         if cfg.public_origin.startswith("https://"):
             response.headers["Strict-Transport-Security"] = "max-age=31536000"

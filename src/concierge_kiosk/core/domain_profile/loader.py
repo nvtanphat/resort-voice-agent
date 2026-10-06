@@ -47,9 +47,8 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
         tool=item["tool"],
         default_for_kind=bool(item["default_for_kind"]),
         escalate_without_evidence=bool(item.get("escalate_without_evidence", False)),
-        match_terms={
-            language: tuple(terms) for language, terms in item["match_terms"].items()
-        },
+        availability_source=(dict(item["availability_source"])
+                             if item.get("availability_source") is not None else None),
     ) for item in payload["services"])
 
     preference_fields: dict[str, PreferenceField] = {}
@@ -89,9 +88,9 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
                              for language, values in payload["nlu"]["discourse_terms"].items()},
             qualifier_patterns=payload["nlu"]["qualifier_patterns"],
             normalization=payload["nlu"]["normalization"],
+            service_selector=dict(payload["nlu"]["service_selector"]),
             numerals=payload["nlu"]["numerals"],
             clock=payload["nlu"]["clock"],
-            semantic_router=payload["nlu"]["semantic_router"],
         ),
         memory_policy=MemoryPolicy(**payload["memory_policy"]),
         planning=PlanningPolicy(

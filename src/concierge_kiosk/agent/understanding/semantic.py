@@ -18,7 +18,7 @@ from concierge_kiosk.core.settings import SLM_NUM_CTX
 from urllib.error import URLError
 
 from concierge_kiosk.agent.orchestration.grounding import compact_evidence, _model_answer, _QUALIFICATION
-from concierge_kiosk.rag.claims import extract_claims, exact_span
+from concierge_kiosk.rag.grounding.claims import extract_claims, exact_span
 from concierge_kiosk.agent.understanding.nli import verify_local_nli
 from concierge_kiosk.agent.understanding.domain_nlu import NEGATION_PATTERNS, QUALIFIER_PATTERNS
 from concierge_kiosk.core.domain_profile import rag_policy

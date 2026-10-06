@@ -119,13 +119,12 @@ def register_staff_routes(app: FastAPI, *, workflows, store, cfg, get_graph,
                 separators=(',', ':'))
             idempotency_key = 'auto-' + hashlib.sha256(canonical.encode('utf-8')).hexdigest()
         graph = None
-        if cfg.orchestrator == "langgraph":
-            try:
-                graph = get_graph()
-            except HTTPException:
-                # Existing guests still need a human to complete queued work
-                # during an orchestrator outage. Authorization stays in Workflows.
-                logger.warning("staff_business_processing_without_graph")
+        try:
+            graph = get_graph()
+        except HTTPException:
+            # Existing guests still need a human to complete queued work
+            # during an orchestrator outage. Authorization stays in Workflows.
+            logger.warning("staff_business_processing_without_graph")
         row = workflows.staff_transition(request_id, body.action, account["name"],
                                          verified=body.verified, note=body.note, eta_minutes=body.eta_minutes,
                                          assignee=body.assignee,
@@ -142,7 +141,7 @@ def register_staff_routes(app: FastAPI, *, workflows, store, cfg, get_graph,
             except Exception:
                 logger.exception("graph_sync_deferred request_id=%s", request_id)
                 row["orchestration_sync"] = "deferred"
-        if cfg.orchestrator == "langgraph" and graph is None:
+        if graph is None:
             row["orchestration_sync"] = "deferred"
         if not row.get('idempotent_replay'):
             record_metric('request.' + body.action, row['language'])
@@ -163,8 +162,6 @@ def register_staff_routes(app: FastAPI, *, workflows, store, cfg, get_graph,
                            after_id: str = Query(default='', max_length=32),
                            account: dict = Depends(staff_write)):
         """Operator-triggered, bounded checkpoint repair; never commits requests."""
-        if cfg.orchestrator != 'langgraph':
-            raise HTTPException(status_code=409, detail='Durable workflow reconciliation is not enabled')
         graph = get_graph()
         result = graph.reconcile_deferred(limit=limit, after_updated_at=after_updated_at,
                                           after_id=after_id)

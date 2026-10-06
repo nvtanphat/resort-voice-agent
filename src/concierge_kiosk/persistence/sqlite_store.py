@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Iterator
 
 from .constants import SQLITE_BUSY_TIMEOUT_MS
-from .migrations import migrate_service_request_status_constraint
+from .migrations import migrate_remove_read_task_projections, migrate_service_request_status_constraint
 from .schema import GUARDS, SCHEMA, SCHEMA_VERSION
 
 
@@ -46,6 +46,7 @@ class Store:
                 raise RuntimeError('Database schema is newer than this application')
             con.execute('PRAGMA journal_mode=WAL')
             migrate_service_request_status_constraint(con)
+            migrate_remove_read_task_projections(con)
             con.executescript('BEGIN IMMEDIATE;\n' + SCHEMA)
             # explicit semantic parent and hotel-domain metadata. These
             # Additive columns allow upgrades from older schemas without a table rewrite.
@@ -448,6 +449,5 @@ class Store:
             from datetime import datetime, timezone
             con.execute('DELETE FROM telemetry_receipts WHERE expires_at < ?', (now,))
             con.execute('DELETE FROM guest_consents WHERE expires_at < ?', (now,))
-            con.execute('DELETE FROM read_task_projections WHERE expires_at <= ?', (now,))
             con.execute('DELETE FROM metric_counts WHERE day < ?',
                         (datetime.fromtimestamp(max(0, cutoff), timezone.utc).date().isoformat(),))

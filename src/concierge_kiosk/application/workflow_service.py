@@ -10,22 +10,20 @@ from concierge_kiosk.domain.service_requests import InvalidTransition
 
 
 class WorkflowApplicationService:
-    def __init__(self, *, workflows, store, orchestrator: str, property_id: str,
+    def __init__(self, *, workflows, store, property_id: str,
                  get_graph: Callable[[], object], logger: logging.Logger):
         self._workflows = workflows
         self._store = store
-        self._orchestrator = orchestrator
         self._property_id = property_id
         self._get_graph = get_graph
         self._logger = logger
 
     def prepare(self, session: str, body) -> tuple[dict, str]:
-        graph = self._get_graph() if self._orchestrator == 'langgraph' else None
+        graph = self._get_graph()
         payload = body.payload.model_dump(exclude_none=True) if body.payload is not None else None
         proposal = self._workflows.prepare(
-            session, body.kind, body.language, body.details, body.nonce, payload)
-        if graph is None:
-            return proposal, 'direct'
+            session, body.kind, body.language, body.details, body.nonce, payload,
+            service_code=getattr(body, 'service', None))
         try:
             graph.begin(session, proposal['id'])
         except Exception:
@@ -34,11 +32,6 @@ class WorkflowApplicationService:
         return proposal, 'ok'
 
     def confirm(self, session: str, body) -> dict:
-        if self._orchestrator != 'langgraph':
-            verification = body.verification.model_dump() if body.verification is not None else None
-            return self._workflows.confirm(session, body.proposal_id, body.confirmed,
-                                           verification=verification,
-                                           price_acknowledged=body.price_acknowledged)
         try:
             verification = body.verification.model_dump() if body.verification is not None else None
             return self._get_graph().confirm(session, body.proposal_id, body.confirmed,

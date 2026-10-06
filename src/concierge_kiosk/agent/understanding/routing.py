@@ -8,12 +8,11 @@ import re
 from concierge_kiosk.core.domain_profile import rag_policy
 from dataclasses import dataclass
 from concierge_kiosk.agent.understanding.intent import (
-    Suggestion, emergency_response, suggest_service_request, normalize_intent_text,
-    has_multiple_service_intents, _uses_word_boundaries,
+    emergency_response, matches_action_pattern, normalize_intent_text, _uses_word_boundaries,
 )
-from concierge_kiosk.agent.understanding.intent import is_non_action_utterance, ordered_service_kinds
 from concierge_kiosk.agent.tools.planning import itinerary_topics
 from concierge_kiosk.agent.understanding.domain_nlu import (
+    ACTION_PHRASES,
     BARE_TOPIC_TERMS,
     CONFIRMATION_TERMS,
     COURTESY_PARTICLES,
@@ -27,17 +26,26 @@ from concierge_kiosk.agent.understanding.domain_nlu import (
     SEQUENCE_PATTERN as _SEQUENCE_PATTERN,
     SWITCH_COMMAND_PATTERNS as _SWITCH_COMMANDS,
     AVAILABILITY_TERMS,
-    SCHEDULE_CUE_TERMS,
-    AVAILABILITY_SERVICE_TERMS,
+    READ_INFO_TERMS,
     FACET_ALIASES,
 )
-from concierge_kiosk.domain.service_registry import route_branch_for_request_kind, service_definition
+from concierge_kiosk.domain.service_registry import (
+    route_branch_for_request_kind,
+    service_definition,
+)
 from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
 
 _QUESTION_TYPE_PATTERNS = {
     language: re.compile(pattern, re.I)
     for language, pattern in rag_policy().explain_patterns.items()
 }
+_TOKENIZATION = rag_policy().tokenization
+_SEGMENTATION = {str(key): str(value) for key, value in
+                 (_TOKENIZATION.get('segmentation') or {}).items()}
+
+
+def _uses_segmented_tokens(language: str) -> bool:
+    return _SEGMENTATION.get(language, 'auto') != 'whitespace'
 
 
 def _read_question_type(query: str, language: str) -> str:
@@ -50,6 +58,23 @@ def is_location_question(query: str, language: str) -> bool:
     text = normalize_intent_text(query, language)
     return any(normalize_intent_text(alias, language) in text
                for alias in FACET_ALIASES.get('location', ()))
+
+def directions_request(query: str, language: str) -> dict | None:
+    """Return the consent-only directions action when the guest asks for a route.
+
+    Uses only the profile's navigation grammar (directions phrases/patterns and
+    the location facet); no service vocabulary is involved.
+    """
+    text = normalize_intent_text(query, language)
+    if not text:
+        return None
+    phrases = ACTION_PHRASES.get(language, {}).get('directions', ())
+    if (is_location_question(query, language)
+            or any(normalize_intent_text(phrase, language) in text for phrase in phrases)
+            or matches_action_pattern(query, language, 'directions')):
+        return {'kind': 'directions', 'details': query.strip()[:500]}
+    return None
+
 
 @dataclass(frozen=True)
 class RouteDecision:
@@ -77,7 +102,7 @@ def request_change_intent(query: str, language: str) -> str | None:
         value = normalize_intent_text(term, language)
         # CJK profile phrases often have no spaces, so use character length
         # there; for spaced languages a one-token term is the generic marker.
-        return (len(value) <= 3 if language in {"zh", "ja"}
+        return (len(value) <= 3 if _uses_segmented_tokens(language)
                 else len(value.split()) <= 1)
 
     matches = [action for action, terms in REQUEST_CHANGE_TERMS.get(language, {}).items()
@@ -117,7 +142,7 @@ def wants_schedule_check(query: str, language: str) -> bool:
     # entity names in ordinary knowledge/map questions.  Require a reviewed
     # service phrase with enough specificity before selecting the synthetic
     # operational adapter; the full catalog aliases remain data-owned.
-    minimum_length = 3 if language in {"zh", "ko"} else 4
+    minimum_length = 3 if _uses_segmented_tokens(language) else 4
     has_service_reference = any(
         len(normalize_intent_text(term, language).replace(" ", "")) >= minimum_length
         and normalize_intent_text(term, language) in text
@@ -128,37 +153,28 @@ def wants_schedule_check(query: str, language: str) -> bool:
     # as "what time does the spa open?" remain knowledge-grounded.
     has_entity_reference = any(
         len(normalize_intent_text(term, language).replace(" ", ""))
-        >= (2 if language in {"zh", "ko"} else 3)
+        >= (2 if _uses_segmented_tokens(language) else 3)
         and normalize_intent_text(term, language) in text
         for term in entity_terms(language))
-    schedule_cues = tuple(
-        normalize_intent_text(cue, language)
-        for cue in SCHEDULE_CUE_TERMS.get(language, ()))
-    availability_cues = {
-        value for value in (
-            normalize_intent_text(term, language)
-            for term in AVAILABILITY_TERMS.get(language, ()))
-        if value and not any(
-            cue == value or cue.startswith(value + " ")
-            for cue in schedule_cues)}
+    all_availability_cues = {
+        normalize_intent_text(term, language)
+        for term in AVAILABILITY_TERMS.get(language, ())
+        if normalize_intent_text(term, language)}
+    info_cues = {
+        normalize_intent_text(term, language)
+        for term in READ_INFO_TERMS.get(language, ())
+        if normalize_intent_text(term, language)}
+    schedule_cues = all_availability_cues & info_cues
+    availability_cues = all_availability_cues - schedule_cues
     if (has_service_reference or has_entity_reference) and any(
             cue in text for cue in availability_cues):
         return True
     if not has_service_reference:
         return False
-    has_schedule_cue = any(normalize_intent_text(term, language) in text
-                           for term in SCHEDULE_CUE_TERMS.get(language, ()))
+    # Generic information cues are grammar, not service identity. The
+    # reviewed service/entity reference above remains the gate for this read.
+    has_schedule_cue = any(cue in text for cue in schedule_cues)
     return has_schedule_cue
-
-
-def availability_service_code(query: str, language: str) -> str | None:
-    """Resolve a read-only availability question to a governed service code."""
-    text = normalize_intent_text(query, language)
-    matches = {
-        code for code, terms in AVAILABILITY_SERVICE_TERMS.get(language, {}).items()
-        if any(normalize_intent_text(term, language) in text for term in terms)
-    }
-    return next(iter(matches)) if len(matches) == 1 else None
 
 
 def _exact_or_short_match(text: str, phrases: tuple[str, ...]) -> bool:
@@ -206,6 +222,13 @@ def _strip_courtesy(text: str, language: str) -> str:
     return value
 
 
+def _strip_configured_courtesy(text: str) -> str:
+    value = text
+    for language in COURTESY_PARTICLES:
+        value = _strip_courtesy(value, language)
+    return value
+
+
 # Language changes are explicit whole-turn commands. A substring such as
 # "do not switch to Korean" or "switch to English restaurant menu" must not
 # silently mutate the guest's language. No model output can change this state.
@@ -221,8 +244,7 @@ def _explicit_language_target(query: str, language: str) -> str | None:
         if matched is None:
             continue
         name = matched.group(1).strip()
-        if name.endswith(' please'):
-            name = name[:-7].strip()
+        name = _strip_configured_courtesy(name)
         targets.extend(code for code, names in LANGUAGE_SWITCH_TERMS.items()
                        if name in {normalize_intent_text(option) for option in names})
     distinct = set(targets)
@@ -260,17 +282,11 @@ def classify_dialogue(query: str, language: str) -> RouteDecision:
     # service orders. It never prepares or confirms the individual services.
     if itinerary_topics(query, language):
         return RouteDecision("planning", False)
-    if has_multiple_service_intents(query, language):
-        # A safely decomposable multi-intent turn enters the governed
-        # agent loop instead of forcing the guest to choose one service.
-        return RouteDecision("multi_task", False)
-    suggestion = suggest_service_request(query, language)
-    if suggestion is None:
-        if is_location_question(query, language):
-            return RouteDecision('navigation', False, None, _read_question_type(query, language))
-        return RouteDecision("knowledge", False, None, _read_question_type(query, language))
-    branch = route_branch_for_request_kind(suggestion.kind)
-    return RouteDecision(branch, branch in {"service", "handoff"})
+    # Which service (if any) the guest wants is decided by understanding
+    # (validated commands, or the embedding fallback), never by a keyword list.
+    if directions_request(query, language) is not None:
+        return RouteDecision('navigation', False, None, _read_question_type(query, language))
+    return RouteDecision("knowledge", False, None, _read_question_type(query, language))
 
 
 def fast_response(decision: RouteDecision, query: str, language: str) -> dict:
@@ -305,20 +321,10 @@ def fast_response(decision: RouteDecision, query: str, language: str) -> dict:
     if decision.branch == "clarification":
         # Structured, consent-only choices: a combined command never silently
         # becomes one prepared request, and no action is executed by the router.
-        kinds = list(ordered_service_kinds(query, language)) if (
-            has_multiple_service_intents(query, language) and
-            not is_non_action_utterance(query, language)) else []
-        choices = [{'kind': kind} for kind in kinds[:4]] if len(kinds) > 1 else []
-        tasks = [{
-                  'kind': kind,
-                  'operation': ('read_approved_map'
-                                if route_branch_for_request_kind(kind) == 'navigation'
-                                else 'open_review_form'),
-                  'status': ('pending_read'
-                             if route_branch_for_request_kind(kind) == 'navigation'
-                             else 'awaiting_guest_choice'),
-                  'requires_confirmation': route_branch_for_request_kind(kind) != 'navigation'}
-                 for kind in kinds[:4]] if len(kinds) > 1 else []
+        # Combined commands are decomposed by understanding into a multi-task
+        # goal; the deterministic clarification offers no keyword-derived menu.
+        choices: list[dict] = []
+        tasks: list[dict] = []
         # Explicit DAG metadata only; no agent/tool receives transaction authority.
         # An utterance containing "then" establishes review ordering, not a DB write.
         sequential = bool(_SEQUENCE_PATTERN.search(normalize_intent_text(query, language)))
@@ -337,20 +343,14 @@ def fast_response(decision: RouteDecision, query: str, language: str) -> dict:
                 "retrieval_mode": "not_used", "generation_mode": "deterministic",
                 "request_completed": False, "grounding": "not_required",
                 "requires_staff_review": False, "fast_path": True}
-    suggestion = suggest_service_request(query, language)
-    if suggestion is None and decision.semantic_service_code:
-        definition = service_definition(decision.semantic_service_code)
-        if (definition is not None
-                and route_branch_for_request_kind(definition.request_kind) == decision.branch):
-            suggestion = Suggestion(definition.request_kind, query[:500])
-    if decision.branch in {"service", "handoff"} and suggestion is not None:
+    definition = service_definition(decision.semantic_service_code or '')
+    if (decision.branch in {"service", "handoff"} and definition is not None
+            and route_branch_for_request_kind(definition.request_kind) == decision.branch):
         return {"answer": STATIC_TEXT[decision.branch][language], "sources": [],
-                "suggested_action": {"kind": suggestion.kind, "details": suggestion.details},
+                "suggested_action": {"kind": definition.request_kind, "details": query[:500],
+                                     "service": definition.code},
                 "retrieval_mode": "not_used", "generation_mode": "deterministic",
                 "request_completed": False, "grounding": "not_required",
                 "requires_staff_review": True, "fast_path": True}
     raise ValueError("No deterministic response for route")
 
-def route_dialogue(query: str, language: str) -> str:
-    """Backward-compatible branch label for tests and diagnostics."""
-    return classify_dialogue(query, language).branch

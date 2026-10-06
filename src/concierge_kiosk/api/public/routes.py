@@ -21,13 +21,6 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
     def staff_console():
         return FileResponse(web_dir / "staff.html", headers={"Cache-Control": "no-store"})
 
-    @app.get("/ops")
-    def ops_legacy_redirect():
-        # Keep old bookmarks recoverable while making the React console the only
-        # supported staff surface.
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse("/staff", status_code=307)
-
     @app.get("/healthz")
     def health():
         with store.connection() as con:
@@ -68,16 +61,15 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
             except (ScheduleUnavailable, OSError) as exc:
                 raise HTTPException(status_code=503,
                                     detail='Approved multilingual planning release unavailable') from exc
-        if cfg.orchestrator == "langgraph":
-            # Probe the durable store on every readiness check; graph object
-            # creation alone does not prove checkpoints are still writable/readable.
-            try:
-                get_graph().check_readiness()
-            except Exception as exc:
-                # A damaged serialized checkpoint can raise msgpack errors
-                # which are not necessarily sqlite3.Error or ValueError.
-                logger.error("langgraph_readiness_failed type=%s", type(exc).__name__)
-                raise HTTPException(status_code=503, detail="Durable agent orchestrator unavailable") from exc
+        # Probe the durable store on every readiness check; graph object
+        # creation alone does not prove checkpoints are still writable/readable.
+        try:
+            get_graph().check_readiness()
+        except Exception as exc:
+            # A damaged serialized checkpoint can raise msgpack errors
+            # which are not necessarily sqlite3.Error or ValueError.
+            logger.error("langgraph_readiness_failed type=%s", type(exc).__name__)
+            raise HTTPException(status_code=503, detail="Durable agent orchestrator unavailable") from exc
         today = property_today(cfg.property_timezone)
         with store.connection() as con:
             rows = con.execute("SELECT DISTINCT language FROM knowledge WHERE property_id=? "
@@ -109,19 +101,18 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
         dense = dense_index_status(store, cfg.property_id, embedder)
         if cfg.real_runtime_required and dense['state'] != 'ok':
             raise HTTPException(status_code=503, detail='Dense retrieval index does not match the embedder')
-        vector_state = 'legacy'
-        if cfg.rag_dense_backend != 'legacy':
-            if vector_store is None:
-                raise HTTPException(status_code=503, detail='Configured dense vector backend unavailable')
-            try:
-                vector_state = 'ok' if int(vector_store.stats().get('count', 0)) > 0 else 'empty'
-            except Exception as exc:
-                logger.error('vector_index_readiness_failed type=%s', type(exc).__name__)
-                raise HTTPException(status_code=503, detail='Dense vector index unavailable') from exc
-            if vector_state != 'ok':
-                raise HTTPException(status_code=503, detail='Dense vector index is empty')
+        if vector_store is None:
+            raise HTTPException(status_code=503, detail='FAISS dense vector index unavailable')
+        try:
+            vector_stats = vector_store.stats()
+            vector_state = 'ok' if int(vector_stats.get('count', 0)) > 0 else 'empty'
+        except Exception as exc:
+            logger.error('vector_index_readiness_failed type=%s', type(exc).__name__)
+            raise HTTPException(status_code=503, detail='Dense vector index unavailable') from exc
+        if vector_state != 'ok':
+            raise HTTPException(status_code=503, detail='Dense vector index is empty')
         return {"status": "ready", "knowledge_languages": sorted(languages),
-                "dense_retrieval": dense['state'], "vector_backend": cfg.rag_dense_backend,
+                "dense_retrieval": dense['state'], "vector_backend": vector_stats.get('backend', ''),
                 "vector_index": vector_state}
 
     @app.get("/api/config", response_model=PublicConfigResponse)
@@ -151,7 +142,7 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
                 "max_audio_bytes": cfg.max_audio_bytes,
                 "max_audio_seconds": cfg.max_audio_seconds,
                 "retrieval_mode": "hybrid" if embedder else "lexical",
-                "orchestrator": cfg.orchestrator,
+                "orchestrator": "langgraph",
                 "data_consent_required": cfg.data_consent_required,
                 "generation_mode": ("local_semantic_ready" if current_ai_ready else "extractive")
                 if cfg.local_ai_strict_mode else

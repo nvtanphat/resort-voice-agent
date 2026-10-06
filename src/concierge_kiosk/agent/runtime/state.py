@@ -13,20 +13,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from concierge_kiosk.agent.tools.service_slots import service_mode, extract_slots
-from concierge_kiosk.agent.understanding.intent import (
-    normalize_intent_text, service_clauses, suggest_service_request,
-    matched_service_kinds,
-)
-from concierge_kiosk.agent.understanding.domain_nlu import MULTI_CONNECTOR_PATTERNS
-from concierge_kiosk.agent.understanding.routing import RouteDecision
+from concierge_kiosk.agent.tools.service_slots import extract_slots
+from concierge_kiosk.agent.understanding.routing import RouteDecision, directions_request
 from concierge_kiosk.agent.orchestration.composite_tasks import wants_knowledge_read
 from concierge_kiosk.domain.service_registry import (route_branch_for_request_kind, service_definition,
                                                      service_tool)
 from .catalog import service_risk_tier
 from .world import VerifiedFact, AgentUnknown, AgentFailure
 from .model import constraint_specs, wants_navigation_goal
-from concierge_kiosk.agent.understanding.turn_plan import TurnPlan
 from concierge_kiosk.agent.understanding.commands import Command
 from concierge_kiosk.core.domain_profile import ui_policy
 
@@ -258,51 +252,8 @@ def _constraint_models(query: str, language: str) -> tuple[GoalConstraint, ...]:
     return tuple(GoalConstraint(f'C{i+1}', kind, value, hard)
                  for i, (kind, value, hard) in enumerate(constraint_specs(query, language)))
 
-def _single_candidate(query: str, language: str) -> list[ServiceCandidate]:
-    suggestion = suggest_service_request(query, language)
-    if suggestion is None or route_branch_for_request_kind(suggestion.kind) == 'navigation':
-        return []
-    code = service_mode(query, language, suggestion.kind)
-    definition = service_definition(code)
-    if definition is None or definition.request_kind != suggestion.kind:
-        return []
-    return [ServiceCandidate(
-        id='S1', service_code=code, request_kind=suggestion.kind,
-        guest_text=suggestion.details, slot_source_query=query,
-        risk_tier=service_risk_tier(code),
-        existing_slots=extract_slots(query, language, suggestion.kind, mode=code),
-    )]
-
-
-def _multi_candidates(query: str, language: str) -> tuple[list[ServiceCandidate], list[tuple[str, ...]]]:
-    candidates: list[ServiceCandidate] = []
-    deps: list[tuple[str, ...]] = []
-    directions_positions = []
-    for kind, clause, position in service_clauses(query, language):
-        if route_branch_for_request_kind(kind) == 'navigation':
-            directions_positions.append(position)
-            continue
-        code = service_mode(clause, language, kind)
-        definition = service_definition(code)
-        if definition is None or definition.request_kind != kind:
-            continue
-        candidates.append(ServiceCandidate(
-            id=f'S{len(candidates)+1}', service_code=code, request_kind=kind,
-            guest_text=clause, slot_source_query=query,
-            risk_tier=service_risk_tier(code),
-            existing_slots=extract_slots(clause, language, kind, mode=code),
-        ))
-        deps.append(())
-    text = normalize_intent_text(query)
-    connector = MULTI_CONNECTOR_PATTERNS.get(language)
-    if connector is not None and connector.search(text):
-        deps = [(f'R{i}',) if i else () for i in range(len(candidates))]
-    return candidates, deps
-
-
 def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
                        candidates: list[ServiceCandidate], service_deps: list[tuple[str, ...]],
-                       turn_plan: TurnPlan | None = None,
                        commands: tuple[Command, ...] | None = None) -> list[GoalRequirement]:
     reqs: list[GoalRequirement] = []
 
@@ -318,17 +269,15 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
 
     # Write requirements are canonical server-recognized guest intents.  They are
     # the only requirements that can ever lead to a business side effect.
-    previous_service_req: str | None = None
-    connector = MULTI_CONNECTOR_PATTERNS.get(language)
-    sequential = bool(connector is not None and connector.search(normalize_intent_text(query)))
-    for candidate in candidates:
-        dep = (previous_service_req,) if sequential and previous_service_req else ()
+    for index, candidate in enumerate(candidates):
+        # The validated StartGoal order is the source of semantic intent;
+        # service dependencies are never reconstructed from connector words.
+        dep = (service_deps[index] if index < len(service_deps) else ())
         tool = service_tool(candidate.service_code)
         if tool is None:
             continue
         add(f'service:{candidate.service_code}', (tool,),
             candidate_id=candidate.id, depends_on=dep)
-        previous_service_req = reqs[-1].id
 
     if commands is not None:
         # Each command remains an auditable semantic requirement.  StartGoal,
@@ -351,8 +300,7 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
             elif command.type == 'ChitChat':
                 add('command:ChitChat', ('command_noop',))
 
-    mentions = matched_service_kinds(query, language)
-    wants_navigation = (any(route_branch_for_request_kind(kind) == 'navigation' for kind in mentions)
+    wants_navigation = (directions_request(query, language) is not None
                         or _wants_navigation_goal(query, language))
     if commands is not None:
         # Command mode must not derive a second goal from the deterministic
@@ -382,11 +330,8 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
     elif decision.branch == 'guest_context':
         add('session_context_verified', ('guest_context',), topic='session context')
     elif decision.branch == 'multi_task':
-        plan_questions = [item.question for item in (turn_plan.intents if turn_plan else ())
-                          if item.type == 'read' and item.question]
-        if commands is not None:
-            plan_questions = [item.query for item in commands
-                              if item.type == 'AskInfo' and item.query]
+        plan_questions = [item.query for item in (commands or ())
+                          if item.type == 'AskInfo' and item.query]
         if plan_questions:
             for question in plan_questions[:_PRESENTATION_LIMITS['max_plan_items']]:
                 add('verified_answer', ('knowledge',), topic=question[:80])
@@ -435,7 +380,6 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                         resume_projection: dict | None = None,
                         memory_facts: list[dict] | None = None,
                         preferences: dict | None = None,
-                        turn_plan: TurnPlan | None = None,
                         commands: tuple[Command, ...] | None = None) -> AgentState:
     """Create a goal contract without pre-computing an execution sequence."""
     candidates: list[ServiceCandidate] = []
@@ -476,23 +420,6 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
             for command in commands:
                 if command.type in {'SetSlot', 'CorrectSlot'} and command.field and command.value:
                     candidates[0].existing_slots[command.field] = command.value
-    elif turn_plan is not None and decision.branch in {'service', 'handoff', 'multi_task'}:
-        for intent in turn_plan.writes:
-            definition = service_definition(intent.service_mode or '')
-            if definition is None or route_branch_for_request_kind(definition.request_kind) not in {'service', 'handoff'}:
-                # The parser already checks the property request-kind boundary;
-                # this second guard keeps state construction fail-closed if a
-                # registry changes between interpretation and execution.
-                continue
-            kind = definition.request_kind
-            slots = extract_slots(query, language, kind, mode=intent.service_mode)
-            candidates.append(ServiceCandidate(
-                id=f'S{len(candidates)+1}', service_code=intent.service_mode or '',
-                request_kind=kind, guest_text=query[:500], slot_source_query=query,
-                risk_tier=service_risk_tier(intent.service_mode or ''),
-                existing_slots=slots,
-            ))
-            service_deps.append(())
     elif continuation_context is not None and decision.branch in {'service', 'handoff'}:
         code = continuation_context.get('mode')
         kind = continuation_context.get('kind')
@@ -505,8 +432,6 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                 slot_source_query=query, risk_tier=service_risk_tier(code),
                 existing_slots=(dict(slots) if isinstance(slots, dict) else {})))
             service_deps = [()]
-    elif decision.branch == 'multi_task':
-        candidates, service_deps = _multi_candidates(query, language)
     elif decision.branch in {'service', 'handoff'}:
         if decision.semantic_service_code:
             definition = service_definition(decision.semantic_service_code)
@@ -520,8 +445,6 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                     existing_slots=slots)]
             else:
                 candidates = []
-        else:
-            candidates = _single_candidate(query, language)
         service_deps = [() for _ in candidates]
 
     constraints = list(_constraint_models(query, language))
@@ -546,7 +469,7 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                 existing.add((kind, value))
     requirements = _goal_requirements(
         query=query, language=language, decision=decision,
-        candidates=candidates, service_deps=service_deps, turn_plan=turn_plan,
+        candidates=candidates, service_deps=service_deps,
         commands=commands)
     contract = GoalContract(
         summary=_goal_summary(decision, requirements),

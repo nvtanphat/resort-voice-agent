@@ -10,7 +10,7 @@ from importlib.util import find_spec
 from pathlib import Path
 
 from concierge_kiosk.voice.session.incremental import _model
-from concierge_kiosk.voice.models.model_manifest import check_voice_manifest, voice_manifest_identity
+from concierge_kiosk.core.model_manifest import check_voice_manifest, voice_manifest_identity
 
 
 def incremental_voice_ready(*, enabled: bool, model_path: str,

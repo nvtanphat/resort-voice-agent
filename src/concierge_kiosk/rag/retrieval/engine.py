@@ -8,8 +8,7 @@ import re
 import unicodedata
 from concierge_kiosk.persistence.sqlite_store import Store
 from concierge_kiosk.rag.documents import LANGUAGES
-from concierge_kiosk.rag.embedding.base import Embedder, cosine
-from concierge_kiosk.rag.embedding.cache import decoded_embedding
+from concierge_kiosk.rag.embedding.base import Embedder
 from concierge_kiosk.rag.rerank.local import LocalReranker
 from concierge_kiosk.rag.retrieval.evidence import evidence_passage, retrieve_parent_context
 from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
@@ -138,7 +137,6 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                        not unsafe_knowledge_text(row['body'])]
             rankings.append([r["id"] for r in lexical])
             candidates.update({r["id"]: dict(r) for r in lexical})
-        dense_index_succeeded = False
         if vector_store is not None and embedder is not None and mode != 'lexical' and not structured_succeeded:
             # The external index is an acceleration layer only.  It returns
             # document ids/metadata; this SQL query re-authorizes every row
@@ -154,24 +152,28 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                     'classification': 'public', 'active': 1,
                     'embedding_model': embedder.model_name, 'effective_on': today,
                 }
+                allowed_dense_languages = {language}
                 matches = vector_store.query(vector, k=policy.dense_top_k, filters=filters)
                 if (not matches and _allow_language_fallback and _clock_ns() < shared_deadline_ns):
                     fallback_order = policy.cross_language_fallback_order or tuple(
                         domain_rag_policy().cross_language_fallback_order)
-                    filters['language'] = tuple(dict.fromkeys(
+                    allowed_dense_languages = set(dict.fromkeys(
                         [language, *[item for item in fallback_order if item in LANGUAGES]]))
+                    filters['language'] = tuple(allowed_dense_languages)
                     matches = vector_store.query(vector, k=policy.dense_top_k, filters=filters)
                     cross_language_dense = bool(matches)
                 match_rows = []
                 for match in matches:
                     doc_id = str(match.metadata.get('doc_id') or '')
                     revision = str(match.metadata.get('revision') or '')
-                    if not doc_id or not revision:
+                    match_language = str(match.metadata.get('language') or '')
+                    if not doc_id or not revision or match_language not in allowed_dense_languages:
                         continue
                     row = con.execute(
                         f"SELECT k.* FROM knowledge k WHERE {where} AND k.id=? AND k.revision=? "  # nosec B608  # where is assembled from fixed clauses; all values are bound
                         "AND k.embedding_model=? AND k.embedding IS NOT NULL",
-                        (*params, doc_id, revision, embedder.model_name),
+                        (property_id, match_language, today, today,
+                         doc_id, revision, embedder.model_name),
                     ).fetchone()
                     if row is None or unsafe_knowledge_text(row['body']):
                         continue
@@ -198,99 +200,8 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                 rankings.append([row['id'] for score, row in valid_dense])
                 candidates.update({row['id']: dict(row) for score, row in valid_dense})
                 dense_succeeded = bool(valid_dense)
-                dense_index_succeeded = bool(matches)
             except (RuntimeError, OSError, ValueError, TypeError, TimeoutError, VectorStoreError) as exc:
                 LOGGER.warning('External dense index unavailable: %s', type(exc).__name__)
-        if (not dense_index_succeeded and embedder is not None and mode != 'lexical'
-                and not structured_succeeded):
-            # Every candidate is scoped in SQL *before* Python sees its vector.
-            try:
-                dense_deadline = _deadline_ns(policy.dense_budget_ms)
-                rows = con.execute(f"SELECT k.* FROM knowledge k WHERE {where} AND k.embedding_model=? "  # nosec B608  # constant SQL fragments; all values are bound parameters
-                                   "AND k.embedding IS NOT NULL LIMIT ?",
-                                   (*params, embedder.model_name, policy.dense_max_rows + 1)).fetchall()
-                # A multilingual learned encoder can search the configured
-                # fallback locales in the same embedding pass when the
-                # requested locale has no indexed dense corpus. This preserves
-                # the shared deadline and avoids a second dense/reranker turn;
-                # lexical rescue remains the only recursive fallback below.
-                if not rows and _allow_language_fallback and _clock_ns() < shared_deadline_ns:
-                    fallback_order = policy.cross_language_fallback_order or tuple(
-                        domain_rag_policy().cross_language_fallback_order)
-                    languages = list(dict.fromkeys(
-                        [language, *[item for item in fallback_order if item in LANGUAGES]]))
-                    placeholders = ','.join('?' for _ in languages)
-                    cross_where = where.replace('k.language=?', f'k.language IN ({placeholders})')
-                    rows = con.execute(f"SELECT k.* FROM knowledge k WHERE {cross_where} AND k.embedding_model=? "  # nosec B608
-                                       "AND k.embedding IS NOT NULL LIMIT ?",
-                                       (property_id, *languages, today, today,
-                                        embedder.model_name, policy.dense_max_rows + 1)).fetchall()
-                    cross_language_dense = bool(rows)
-                if len(rows) > policy.dense_max_rows:
-                    raise ValueError('Dense corpus exceeds configured in-memory candidate cap')
-                remaining_ms = _remaining_ms(dense_deadline)
-                if remaining_ms <= 0:
-                    raise TimeoutError('Dense retrieval budget exhausted before embedding')
-                vector = _bounded_query_embedding(embedder, query, remaining_ms)
-                if _clock_ns() > dense_deadline:
-                    raise TimeoutError('Dense retrieval budget exceeded after embedding')
-                similarities = []
-                learned_dense = bool(getattr(embedder, "is_learned", False))
-                # Calibrated learned encoders use the configured similarity floor.
-                # The deterministic hash fallback is lexical/fuzzy rather than a
-                # semantic cosine model, so its safety gate remains lexical and
-                # does not pretend that the learned-model threshold applies.
-                dense_threshold = policy.min_dense_similarity if learned_dense else 0.0
-                for row in rows:
-                    if _clock_ns() > dense_deadline:
-                        raise TimeoutError('Dense retrieval budget exceeded while ranking')
-                    if unsafe_knowledge_text(row['body']):
-                        continue
-                    # The deterministic hash fallback is intentionally lexical/fuzzy,
-                    # so keep the conservative lexical evidence gate for it. A learned
-                    # multilingual encoder must be allowed to retrieve paraphrases and
-                    # synonyms that share no literal tokens with the approved passage.
-                    if not learned_dense and not candidate_relevant(
-                            query, language, row['search_text'], row['body'], row['title'], row['heading'],
-                            threshold=policy.lexical_coverage):
-                        continue
-                    similarities.append((cosine(vector, decoded_embedding(row['embedding'])), row))
-                dense = sorted(similarities, key=lambda pair: (-pair[0], pair[1]['id']))[:policy.dense_top_k]
-                # Threshold is conservative and must be calibrated with real queries.
-                for score, row in dense:
-                    # Conflict detection is deliberately stricter than candidate
-                    # discovery. A semantically similar sibling document (for
-                    # example a promotion for the same restaurant) must not be
-                    # treated as a conflicting assertion about opening hours.
-                    # Only evidence that is directly relevant to the query facet
-                    # participates in the conflict set.
-                    if (score > 0 and score >= dense_threshold and
-                            evidence_relevant(query, language, row['body'], row['title'], row['heading'],
-                                              threshold=policy.lexical_coverage)):
-                        conflict_candidates[row['id']] = dict(row)
-                valid_dense = [(score, row) for score, row in dense
-                               if score > 0 and score >= dense_threshold
-                               and concrete_facets_supported(
-                                   query, row['body'], row['title'], row['heading'])]
-                # sqlite3.Row is immutable; copy before carrying the score into
-                # the answerability gate.
-                dense_candidates = []
-                for score, row in valid_dense:
-                    candidate = dict(row)
-                    # Keep the calibrated semantic score with the candidate so
-                    # the final answerability gate can distinguish a genuine
-                    # paraphrase from a merely adjacent lexical topic.
-                    candidate['_dense_similarity'] = float(score)
-                    dense_candidates.append((score, candidate))
-                valid_dense = dense_candidates
-                if learned_dense:
-                    semantic_candidate_ids.update(row["id"] for score, row in valid_dense)
-                rankings.append([row["id"] for score, row in valid_dense])
-                candidates.update({row["id"]: dict(row) for score, row in valid_dense})
-                dense_succeeded = bool(valid_dense)
-            except (RuntimeError, OSError, ValueError, TypeError, TimeoutError) as exc:
-                # Degrade to lexical but make the model failure observable.
-                LOGGER.warning('Dense retrieval unavailable: %s', type(exc).__name__)
     scores: dict[str, float] = {}
     for rank_list in rankings:
         for rank, key in enumerate(dict.fromkeys(rank_list), start=1):

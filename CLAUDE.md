@@ -11,7 +11,7 @@ python -m pip install -e ".[test,ops]"     # backend dev install (Python >= 3.11
 set -a; . ./.env.example; set +a           # dev env: pinned hashes, Ollama SLM + bge-m3, dataset dir, voice model paths
 python -m concierge_kiosk                  # API on CONCIERGE_BIND_HOST:CONCIERGE_BIND_PORT (default 0.0.0.0:8000)
 python -m pytest -q                        # all tests (pytest config adds src/ and . to sys.path); run it WITHOUT .env.example sourced, its env vars override the test settings
-python -m pytest -q tests/test_agent_runtime.py -k <name>   # one test
+python -m pytest -q tests/agent/test_agent_runtime.py -k <name>   # one test
 ```
 
 Open the UI at exactly `CONCIERGE_PUBLIC_ORIGIN` (default `http://localhost:8000`). Origin is enforced: `127.0.0.1:8000` gets 403 on `/api/session` and the voice WebSocket is rejected. The running server does not reload code or config; restart it after changes.
@@ -20,8 +20,8 @@ CI (`.github/workflows/ci.yml`) runs these; they should pass before finishing a 
 
 ```bash
 python -m compileall -q src tools
-python tools/repin_configs.py --check      # pinned SHA-256 of config/releases match files and env templates
-python tools/audit_furama_data.py
+python tools/config/repin_configs.py --check      # pinned SHA-256 of config/releases match files and env templates
+python tools/validate/audit_data.py
 python -m pytest -q -W error::ResourceWarning   # unclosed SQLite connections/files fail the build
 python -m pip_audit --strict
 bandit -q -r src/concierge_kiosk tools -ll
@@ -29,23 +29,23 @@ cd frontend && npm ci && npm run build && cd ..
 for f in web/guest.js web/ops.js web/pcm-worklet.js web/sos.js; do node --check "$f"; done
 ```
 
-After data changes, also run `python datasets/schemas/validate_contracts.py` (fails on unclassified files or shape drift), `tools/validate_furama_schemas.py`, `tools/validate_furama_semantics.py` and `tools/validate_agent_domain.py`. To check a runtime profile, run `tools/validate_runtime_profile.py <profile.json>` with `PYTHONPATH=src`.
+After data changes, also run `python datasets/schemas/validate_contracts.py` (fails on unclassified files or shape drift), `tools/validate/schemas.py`, `tools/validate/semantics.py` and `tools/validate/agent_domain.py`. To check a runtime profile, run `tools/validate/runtime_profile.py <profile.json>` with `PYTHONPATH=src`.
 
 ### Knowledge rebuild (after editing `datasets/knowledge/canonical/*`)
 
 ```bash
-python tools/build_domain_vocab.py                  # data-derived NLU vocabulary
-python tools/repin_configs.py                       # pin the new releases/domain-vocab.json now, or the steps below refuse to load it
+python tools/knowledge/build_domain_vocab.py        # data-derived NLU vocabulary
+python tools/config/repin_configs.py                # pin the new releases/domain-vocab.json now, or the steps below refuse to load it
 set -a; . ./.env.example; set +a                    # re-source: the pinned *_SHA256 values in the env changed
-python tools/build_furama_localized_knowledge.py    # -> knowledge/compiled/furama/<lang>/*.md (no CLI flags; runs immediately)
-python tools/rebuild_furama_runtime_knowledge.py --model "ollama://bge-m3" \
+python tools/knowledge/build_localized_knowledge.py # -> knowledge/compiled/furama/<lang>/*.md (no CLI flags; runs immediately)
+python tools/knowledge/rebuild_runtime_knowledge.py --model "ollama://bge-m3" \
   --manifest models/embeddings/bge-m3.ollama.manifest.json --require-learned   # re-ingests data/concierge.sqlite3 (~4 min)
-python tools/build_furama_releases.py               # releases/*.json + config/local-runtime.env.example
-python tools/repin_configs.py
+python tools/knowledge/build_releases.py             # releases/*.json + config/local-runtime.env.example
+python tools/config/repin_configs.py
 ```
 
 - Stop the server before re-ingesting.
-- After editing a data file, refresh the pinned hashes of its manifest with `tools/refresh_dataset_manifest.py`, `tools/refresh_synthetic_manifest.py` or `tools/refresh_furama_manifest.py` (each has `--check`); a stale manifest fails `tools/validate_property_dataset.py`.
+- After editing a data file, refresh the pinned hashes of its manifest with `tools/manifest/refresh_dataset.py`, `tools/manifest/refresh_synthetic.py` or `tools/manifest/refresh_property.py` (each has `--check`); a stale manifest fails `tools/validate/property_dataset.py`.
 - If you omit `--require-learned` and the bge-m3 model is unavailable, the rebuild can silently fall back to the hash embedder. Dense retrieval then reports a model mismatch in `/readyz`.
 - Pass model URIs as plain strings: on Windows, `Path("ollama://…")` becomes `ollama:\…`.
 
@@ -65,7 +65,7 @@ python tools/nlu/calibrate_router.py --model "ollama://bge-m3" --manifest models
 - On the dev machine Ollama offloads to the GPU. For kiosk (CPU-only) latency numbers pass `options.num_gpu = 0`; otherwise SLM timings are several times too optimistic.
 
 Other tools:
-- `tools/generate_ts_contracts.py`;
+- `tools/config/generate_ts_contracts.py`;
 - `tools/runtime/download_voice_models.py` and `download_reranker_model.py` (download into the git-ignored `models/`);
 - `tools/runtime/probe_local_slm.py`.
 
@@ -79,18 +79,23 @@ Layering: `api/` routes → `application/` services → (`agent/` runtime | work
 
 Large modules have been split into packages that re-export their old public API: `core/domain_profile/` (`models`, `files`, `loader`, `accessors`, `validate/*`), `rag/` (see RAG below) and `voice/runtime/`. In `voice/runtime/`, `adapters.py` keeps STT and re-exports `rendering`, `audio`, `tts` and `languages`. Tests monkeypatch `adapters._whisper` and `adapters.voice_policy`, so the STT code must stay in `adapters.py`.
 
-`main.py` is the composition root. `bootstrap.py` builds settings, store, workflows, embedder, reranker and `RAGPolicy`, and warms Ollama and the reranker. `main.py` builds the FastAPI `app` at import time, so importing `concierge_kiosk.main` opens a DB; set env vars first (see `tools/generate_ts_contracts.py` for the isolation pattern). Tests build isolated apps with `create_app(Settings(...))`.
+`main.py` is the composition root. `bootstrap.py` builds settings, store, workflows, embedder, reranker and `RAGPolicy`, and warms Ollama and the reranker. `main.py` builds the FastAPI `app` at import time, so importing `concierge_kiosk.main` opens a DB; set env vars first (see `tools/config/generate_ts_contracts.py` for the isolation pattern). Tests build isolated apps with `create_app(Settings(...))`.
 
 - **API route groups** (`api/`): `guest`, `staff`, `public`, `internal`, `voice` (HTTP transcription, WebSocket streaming, TTS playback/proof); shared auth/security/contracts in `api/shared/`.
 - **Turn flow** (`application/conversation/engine.py`, `services/turn_coordinator.py`):
-  1. A deterministic router (`agent/understanding/routing.py::classify_dialogue`) runs first: emergency → language switch → greeting → confirmation → request change/status → planning → multi-task → service → knowledge fallback. Emergency always wins and must never be overridden.
-  2. The embedding router (`agent/understanding/semantic_router.py`, bge-m3 kNN over route examples) is controlled by `nlu.semantic_router.mode` (`off|shadow|active`) in `config/agent-domain.json`.
-  3. Model understanding produces a closed `Command[]` (`agent/understanding/commands.py`: `StartGoal`, `SetSlot`, `CorrectSlot`, `Cancel`, `Confirm`, `AskInfo`, `Navigate`, `Handoff`, `ChitChat`).
-     - Commands are validated against the service registry, and slot text must be verbatim guest text.
-     - Commands never authorize a write.
-     - `features.understanding_mode` in the runtime profile selects `legacy|shadow|command`. `base.json` is `legacy`, where the SLM paths `turn_plan.py`/`model_intent.py` are only fallbacks for the `knowledge` branch. `development.json` is `command`, where one bounded SLM call per non-emergency turn feeds commands into the loop (`loop_semantics._command_action`).
-     - Even in `command` mode, service candidates and slots still come from keyword/regex matching: `match_terms` and `suggest_service_request` in `intent.py`, `service_clauses`, `extract_slots`, and the per-branch goal requirements in `agent/runtime/state.py::_goal_requirements`; validated `StartGoal` commands are then projected back onto the server-owned route vocabulary. Replacing candidate selection is the main open item in `plan.md`.
-  4. The agent runs bounded tools, and every result passes `agent/core/tool_contracts.py` (`authorized_tool_result` / `validate_tool_result`).
+  1. Emergency is detected deterministically first (`agent/understanding/routing.py::classify_dialogue`) and always wins; no model call runs for it and nothing may override it.
+  2. Every other turn gets one bounded SLM call that proposes a closed `Command[]` (`agent/understanding/commands.py::model_commands`: `StartGoal`, `SetSlot`, `CorrectSlot`, `Cancel`, `Confirm`, `AskInfo`, `Navigate`, `Handoff`, `ChitChat`). There is no other understanding mode.
+     - `agent/understanding/service_selector.py::ServiceSelector` embeds the service catalog and the train-split examples in `datasets/training/agent/` with bge-m3. It ranks services by their best similarity to either and hands the model the top-k candidates plus the nearest examples as few-shots. Evaluation data is never loaded here.
+     - The JSON schema sent to Ollama is a per-type union: each `StartGoal` variant has a `const` goal from the candidates and an `enum` of that service's slots; `SetSlot`/`CorrectSlot` are offered only while a server question is pending. The model cannot emit a service or slot outside that set.
+     - The server re-validates every command against the registry. A slot whose text is not verbatim guest text, or that the service does not accept, is dropped (never trusted) and the goal is kept, so the agent asks for it. Commands never authorize a write.
+     - Validated commands override the route (`engine.py::_decision_from_commands`) and drive goal construction (`agent/runtime/state.py::build_initial_state`) and the loop (`loop_semantics._command_action`).
+     - If the SLM is unavailable, times out or proposes nothing valid, `ServiceSelector.fallback_goal` picks a service by the nearest reviewed training turn (no model, no keyword list). It answers only above `nlu.service_selector.fallback_min_score`/`fallback_min_margin` (calibrated on the train split by `tools/nlu/calibrate_service_fallback.py`, leave-one-situation-out) and never for turns the generic question grammar marks as information questions (`intent.py::is_information_question`); otherwise the turn stays a knowledge read.
+     - There is no keyword service routing anywhere: `classify_dialogue` only decides emergency, language switch, greeting, confirmation, request change/status, availability, planning and navigation grammar. `agent-domain.json` holds no service names (`action_phrases`/`action_patterns` keep only `directions`).
+     - The understood service code travels end to end: `suggested_action.service` → `/api/requests/prepare` `service` → proposal payload `_service_code` → `service_requests.service_code`. The workflow never re-derives a service from free-text details; without one it uses the kind's default.
+     - The selector indexes (catalog + about 600 examples, ~25 s) are built at startup in the background. A guest turn never builds them (`runtime/local_http.py::in_guest_turn`); before they are ready the model sees the full registry and no few-shots.
+     - Measure understanding with `tools/evaluation/evaluate_command_understanding.py` (selector recall, command accuracy; `--fallback-only` for the model-free fallback).
+     - Business-flow tests script understanding with the `understand` fixture in `tests/conftest.py`; the test profile has no SLM and `features.semantic_understanding=false`, so tests stay hermetic.
+  3. The agent runs bounded tools, and every result passes `agent/core/tool_contracts.py` (`authorized_tool_result` / `validate_tool_result`).
      - A non-emergency contract mismatch fails closed. The payload is discarded and the guest gets the fixed abstention (`contract_failure_result`, HTTP 200, logged as `tool_contract_failed`). Emergency keeps its own deterministic fallback.
      - Contracts are checked against `execution_query` (the guest text plus any resolved anchor title), not the bare query.
      - Tool exceptions inside the loop never reach HTTP: `agent/runtime/runtime.py::_execute` turns them into `unavailable` observations with a `failure_class`.
@@ -103,7 +108,7 @@ Large modules have been split into packages that re-export their old public API:
   - Loop semantics are centralized in `agent/runtime/loop_semantics.py`, shared by `agent_loop.py` and the LangGraph adapter `langgraph_loop.py`. `CONCIERGE_ORCHESTRATOR` selects `langgraph` (default), `legacy` or `direct`.
   - `presentation/synthesizer.py` composes multi-read results. An abstention from one read must not be glued onto a verified answer from another.
   - `agent/proactive.py` produces suggestions only; it never writes.
-- **SLM calls**: in `legacy` mode the local SLM is a fallback. In `command` mode it is called once per non-emergency turn. The planner model runs only for compound goals or after a failed read, and is skipped for voice. All SLM HTTP goes through `runtime/local_http.py`: loopback only, no redirects or proxies, per-turn deadline, connection circuit breaker. Voice turns use the tighter `voice_slm_caps`.
+- **SLM calls**: the local SLM is called once per non-emergency turn for understanding. The planner model runs only for compound goals or after a failed read, and is skipped for voice. All SLM HTTP goes through `runtime/local_http.py`: loopback only, no redirects or proxies, per-turn deadline, connection circuit breaker. Voice turns use the tighter `voice_slm_caps`.
 - **Agent vs. business truth**: the agent only proposes or orchestrates. Creating, confirming, changing or cancelling service requests must go through the workflow service and domain transition rules (`application/workflow_service.py`, `application/service_actions.py`, `domain/`).
   - Guest confirmation, staff review and fulfillment run as a durable LangGraph graph with `interrupt()` in `agent/orchestration/graph.py`.
   - The release property profile sets `hitl_mode=guest_confirm_all`, so even low-risk services with `approval: none` (`amenity_delivery`, `housekeeping`, `maintenance`) require the guest confirmation/staff workflow. Fixture profiles may retain `legacy_policy` for compatibility tests; this is not the production release policy. Voice turns with numeric slots (room, quantity) are still forced to a read-back confirmation.
@@ -141,16 +146,16 @@ Large modules have been split into packages that re-export their old public API:
 
 - `core/settings.py` reads `CONCIERGE_*` env vars over the selected runtime profile; `Settings.validate()` is strict when `CONCIERGE_ENV=production`. `tests/conftest.py` forces `CONCIERGE_ENV=test` and `CONCIERGE_RUNTIME_PROFILE=test` before app import.
 - **Runtime profiles are generated.**
-  - Edit `config/runtime-profiles/src/base.json` and the per-profile overlays, then run `python tools/build_runtime_profiles.py` (deep-merge, schema validation, repin).
+  - Edit `config/runtime-profiles/src/base.json` and the per-profile overlays, then run `python tools/config/build_runtime_profiles.py` (deep-merge, schema validation, repin).
   - Never edit `config/runtime-profiles/*.json` directly; `--check` detects drift.
   - A new key also needs `config/runtime-profile.schema.json` and wiring in `core/settings.py`. RAG keys additionally need `RAGPolicy` in `rag/retrieval/policy.py` and `bootstrap.py`.
 - **Multilingual language rules live in `config/agent-domain.json`**: NLU frames and regexes, greeting/courtesy/cancel terms, numeral and clock grammar, normalization, emergency patterns and contacts, voice rendering, tool descriptions, semantic-router mode and thresholds. Read them through the accessors in `agent/understanding/domain_nlu.py` and `core/domain_profile/` (`supported_languages()`, `nlu_policy()`, `rag_policy()`, …).
-  - A new key needs `config/agent-domain.schema.json` and validation in `core/domain_profile/validate/`. Per-language keys also need the `_clone_language` helper in `tests/test_nlu_memory.py`.
-  - **Do not put hotel entity or service names in it.** Those come from `datasets/` (aliases, `names_by_locale`, `build_domain_vocab.py`).
+  - A new key needs `config/agent-domain.schema.json` and validation in `core/domain_profile/validate/`. Per-language keys also need the `_clone_language` helper in `tests/agent/test_nlu_memory.py`.
+  - **Do not put hotel entity or service names in it.** Those come from `datasets/` (aliases, `names_by_locale`, `tools/knowledge/build_domain_vocab.py`).
   - **Do not copy phrases from `datasets/evaluation/` into it.** When a natural phrasing is missed, add it to the router training examples, not to a phrase list.
 - Guest-facing text lives in `locales/*.json`, read by `i18n/catalog.py` on the backend and through `frontend/src/i18n.ts` on the frontend. All four locales must be translated; an English placeholder left in vi/ko/zh is a bug.
-- **After editing any pinned JSON** (`config/agent-domain.json`, runtime profiles, `releases/*.json`), run `python tools/repin_configs.py`. It rewrites the `.sha256` sidecars and the `*_SHA256=` lines in `.env.example` and `config/local-runtime.env.example`. With stale hashes, the map and planning releases refuse to load at runtime, and `tests/test_env_templates.py` fails.
-- **Hard-code guard**: `tests/test_no_hardcode.py` fails on non-ASCII string literals (vi/zh/ko text), fixed `{'vi','en','zh','ko'}` sets, or `FURAMA`/`furama` literals in `src/`.
+- **After editing any pinned JSON** (`config/agent-domain.json`, runtime profiles, `releases/*.json`), run `python tools/config/repin_configs.py`. It rewrites the `.sha256` sidecars and the `*_SHA256=` lines in `.env.example` and `config/local-runtime.env.example`. With stale hashes, the map and planning releases refuse to load at runtime, and `tests/ops/test_env_templates.py` fails.
+- **Hard-code guard**: `tests/agent/test_no_hardcode.py` fails on non-ASCII string literals (vi/zh/ko text), fixed `{'vi','en','zh','ko'}` sets, or `FURAMA`/`furama` literals in `src/`.
   - Exceptions are listed in `tests/hardcode_allowlist.txt` as `path:line:reason`.
   - Entries are keyed by line number, so edits that shift lines in an allowlisted file require updating the entry. Stale entries also fail the test. The allowlist should only shrink.
   - Use `supported_languages()` instead of literal language sets. Never add `if language == …` branches; put per-language behaviour in config.
@@ -174,6 +179,6 @@ Large modules have been split into packages that re-export their old public API:
 
 ## Frontend
 
-- Edit `frontend/src/` and rebuild. Never hand-patch `web/guest.js` or `web/guest.css`: the bundle comes from the custom `build_offline.cjs` (not Vite) and embeds a `source-sha256` of the sources. `npm run build` runs `tsc` first, so a type error leaves a stale bundle.
+- Edit `frontend/src/` and rebuild. Never hand-patch `web/guest.js` or `web/app.css`: the bundle comes from the custom `build_offline.cjs` (not Vite) and embeds a `source-sha256` of the sources. `npm run build` runs `tsc` first, so a type error leaves a stale bundle.
 - `web/ops.html`, `web/ops.js`, `web/pcm-worklet.js` and `web/sos.js` are hand-maintained. The CSP is `script-src 'self'`, so inline `<script>` in `web/*.html` is blocked; put code in a static file.
-- `frontend/src/generated/api-contracts.ts` is generated from the FastAPI OpenAPI schema by `tools/generate_ts_contracts.py`; regenerate it when the `Ask`/`Prepare`/`ServicePayload` models change.
+- `frontend/src/generated/api-contracts.ts` is generated from the FastAPI OpenAPI schema by `tools/config/generate_ts_contracts.py`; regenerate it when the `Ask`/`Prepare`/`ServicePayload` models change.

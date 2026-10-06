@@ -3,9 +3,9 @@
   "profile_id": "test",
   "models": {
     "slm": {
-      "base_url": "http://127.0.0.1:11434",
-      "primary_model": "qwen2.5:3b",
-      "fallback_model": "qwen2.5:1.5b",
+      "base_url": "",
+      "primary_model": "",
+      "fallback_model": "",
       "digest": "",
       "strict_mode": false
     },
@@ -67,15 +67,14 @@
     }
   },
   "features": {
-    "semantic_generation": true,
+    "semantic_generation": false,
     "semantic_require_independent_nli": false,
-    "intent_parser": false,
     "agent_planner": false,
+    "semantic_understanding": false,
     "voice_windowed_preview": false,
     "voice_preview_stability": false,
     "voice_incremental": false,
-    "voice_transport": "legacy",
-    "understanding_mode": "legacy"
+    "voice_transport": "legacy"
   },
   "budgets": {
     "agent": {
@@ -85,7 +84,6 @@
       "max_read_calls": 8
     },
     "rag": {
-      "dense_backend": "legacy",
       "vector_path": "data/vectors",
       "min_dense_similarity": 0.65,
       "lexical_coverage": 0.6,

@@ -1,6 +1,6 @@
 """Durable LangGraph orchestration for service-request lifecycle.
 
-The autonomous guest-turn router and agent loop live outside this module.
+The guest-turn router and agent loop live outside this module.
 This module owns only the SQLite-checkpointed service workflow for guest
 confirmation, staff review and fulfillment. Business authority remains in the
 Workflows/SQLite domain layer rather than model output. Keeping guest routing out

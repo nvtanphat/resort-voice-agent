@@ -10,8 +10,8 @@ Generate deterministic perturbations from reviewed scenarios:
 
 ```powershell
 $env:PYTHONPATH = 'src'
-python tools/nlu/perturb.py --output reports/nlu-perturbations.jsonl --per-case 4
-python tools/nlu/robustness_report.py --per-case 1 --output reports/nlu-robustness.json
+python tools/nlu/perturb.py --output reports/nlu/nlu-perturbations.jsonl --per-case 4
+python tools/nlu/robustness_report.py --per-case 1 --output reports/nlu/nlu-robustness.json
 ```
 
 Normalization is profile-owned. It applies Unicode normalization, configured
@@ -27,8 +27,8 @@ against a concept-held-out split:
 ```powershell
 $env:PYTHONPATH = 'src'
 python tools/nlu/build_route_examples.py
-python tools/refresh_furama_manifest.py
-python tools/nlu/calibrate_router.py --output reports/nlu-router-calibration.json
+python tools/manifest/refresh_property.py
+python tools/nlu/calibrate_router.py --output reports/nlu/nlu-router-calibration.json
 ```
 
 The checked-in calibration report is evidence for a later model/config decision,

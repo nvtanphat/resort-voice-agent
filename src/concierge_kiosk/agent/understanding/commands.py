@@ -6,10 +6,10 @@ runtime registry before a command stream is accepted.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import unicodedata
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping, Sequence
 
 from concierge_kiosk.agent.understanding.semantic import _chat
 from concierge_kiosk.core.settings import SLM_NUM_CTX
@@ -62,38 +62,61 @@ class Command:
         return result
 
 
-def command_schema() -> dict[str, Any]:
-    """Return the closed JSON schema used by an understanding model."""
-    slot = {
-        'type': 'object', 'additionalProperties': False,
-        'required': ['name', 'text'],
-        'properties': {
-            'name': {'type': 'string', 'minLength': 1, 'maxLength': 64},
-            'text': {'type': 'string', 'minLength': 1, 'maxLength': 120},
-        },
-    }
-    item = {
-        'type': 'object', 'additionalProperties': False,
-        'required': ['type'],
-        'properties': {
-            'type': {'type': 'string', 'enum': sorted(COMMAND_TYPES)},
-            'goal': {'type': ['string', 'null'], 'maxLength': 96},
-            'slots': {'type': 'array', 'maxItems': MAX_SLOTS, 'items': slot},
-            'query': {'type': ['string', 'null'], 'maxLength': MAX_TEXT},
-            'keys': {'type': 'array', 'maxItems': 8,
-                     'items': {'type': 'string', 'minLength': 1, 'maxLength': 64}},
-            'field': {'type': ['string', 'null'], 'maxLength': 64},
-            'value': {'type': ['string', 'null'], 'maxLength': 120},
-            'confirmed': {'type': ['boolean', 'null']},
-            'reason': {'type': ['string', 'null'], 'maxLength': 160},
-        },
-    }
+def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
+                   *, slot_reply: bool = True) -> dict[str, Any]:
+    """Return the closed JSON schema used by an understanding model.
+
+    Each command type is its own schema variant carrying only that type's
+    fields, so grammar-constrained decoding cannot emit a mixed shape such as
+    a ``SetSlot`` holding a slot list. ``goal_slots`` maps every
+    server-selected service to its accepted slot names, giving each
+    ``StartGoal`` variant a closed goal and slot vocabulary. ``slot_reply``
+    offers ``SetSlot``/``CorrectSlot`` only while a server-owned question is
+    pending. The parser still re-validates everything against the registry.
+    """
+    text = {'type': 'string', 'minLength': 1, 'maxLength': 120}
+
+    def name_schema(names: Iterable[str]) -> dict[str, Any]:
+        values = sorted(set(names))
+        return ({'type': 'string', 'enum': values} if values
+                else {'type': 'string', 'minLength': 1, 'maxLength': 64})
+
+    def variant(command_type: str, **properties: Any) -> dict[str, Any]:
+        return {
+            'type': 'object', 'additionalProperties': False,
+            'required': ['type', *properties],
+            'properties': {'type': {'type': 'string', 'const': command_type}, **properties},
+        }
+
+    query = {'type': 'string', 'minLength': 1, 'maxLength': MAX_TEXT}
+    variants = []
+    for goal, names in (goal_slots or {}).items():
+        slot = {
+            'type': 'object', 'additionalProperties': False,
+            'required': ['name', 'text'],
+            'properties': {'name': name_schema(names), 'text': text},
+        }
+        variants.append(variant(
+            'StartGoal', goal={'type': 'string', 'const': goal},
+            slots={'type': 'array', 'maxItems': MAX_SLOTS, 'items': slot}))
+    if slot_reply:
+        reply_name = name_schema(name for names in (goal_slots or {}).values() for name in names)
+        variants += [variant('SetSlot', field=reply_name, value=text),
+                     variant('CorrectSlot', field=reply_name, value=text)]
+    variants += [
+        variant('AskInfo', query=query),
+        variant('Navigate', query=query),
+        variant('Confirm', confirmed={'type': 'boolean', 'const': True}),
+        variant('Cancel'),
+        variant('Handoff', reason={'type': 'string', 'minLength': 1, 'maxLength': 160}),
+        variant('ChitChat'),
+    ]
     return {
         'type': 'object', 'additionalProperties': False,
         'required': ['commands'],
         'properties': {
             'commands': {'type': 'array', 'minItems': 1, 'maxItems': MAX_COMMANDS,
-                         'items': item},
+                         'items': {'anyOf': variants}},
         },
     }
 
@@ -126,29 +149,37 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             return None
         if len(command.slots) > MAX_SLOTS:
             return None
-        for slot in command.slots:
-            if (not isinstance(slot, CommandSlot) or not _text(slot.name, 64)
-                    or not _text(slot.text, 120) or not _verbatim(query, slot.text)):
-                return None
+        if any(not isinstance(slot, CommandSlot) for slot in command.slots):
+            return None
 
         if command.type == 'StartGoal':
             definition = service_definition(command.goal or '')
             if (definition is None or definition.request_kind not in enabled_request_kinds
                     or definition.request_kind == 'directions'):
                 return None
-            allowed = set(accepted_slots(command.goal or ''))
-            if any(slot.name not in allowed for slot in command.slots):
-                return None
             if any(value is not None for value in (command.query, command.field,
                                                     command.value, command.reason,
                                                     command.confirmed)) or command.keys:
                 return None
+            # A slot the guest did not literally state, or one the service
+            # does not accept, is dropped rather than trusted. The goal is
+            # kept so the runtime asks for the missing value instead of
+            # discarding the guest's whole intent.
+            allowed = set(accepted_slots(command.goal or ''))
+            kept = tuple(slot for slot in command.slots
+                         if slot.name in allowed and _text(slot.name, 64)
+                         and _text(slot.text, 120) and _verbatim(query, slot.text))
+            if kept != command.slots:
+                command = replace(command, slots=kept)
         elif command.type in {'SetSlot', 'CorrectSlot'}:
+            if command.goal is not None or command.query is not None or command.keys or command.slots:
+                return None
             if (not _text(command.field, 64) or not _text(command.value, 120)
                     or not _verbatim(query, command.value)):
-                return None
-            if command.goal is not None or command.query is not None or command.keys:
-                return None
+                # An unstated value is never applied; the pending question stays open.
+                continue
+        elif command.slots:
+            return None
         elif command.type == 'AskInfo':
             if (not _text(command.query, MAX_TEXT) or command.goal is not None
                     or command.slots or command.field is not None or command.value is not None
@@ -184,7 +215,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             if command.slots or command.keys:
                 return None
         validated.append(command)
-    return tuple(validated)
+    return tuple(validated) or None
 
 
 def parse_commands(raw: str, *, query: str,
@@ -234,6 +265,8 @@ def parse_commands(raw: str, *, query: str,
 
 def model_commands(*, query: str, language: str, base_url: str, model: str,
                    enabled_request_kinds: frozenset[str],
+                   service_candidates: Sequence[Mapping[str, Any]] | None = None,
+                   examples: Sequence[Mapping[str, Any]] = (),
                    pending_reply: str | None = None,
                    should_cancel=None, timeout_seconds: float = 1.5
                    ) -> tuple[Command, ...] | None:
@@ -249,37 +282,82 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         return None
     from concierge_kiosk.domain.service_registry import SERVICE_DEFINITIONS
 
-    services = [
-        {
-            'service_mode': code,
-            'request_kind': definition.request_kind,
-            'accepted_slots': list(accepted_slots(code)),
-        }
-        for code, definition in SERVICE_DEFINITIONS.items()
-        if definition.request_kind in enabled_request_kinds
-        and definition.request_kind != 'directions'
-    ]
+    if service_candidates is None:
+        services = [
+            {
+                'service_mode': code,
+                'request_kind': definition.request_kind,
+                'accepted_slots': list(accepted_slots(code)),
+            }
+            for code, definition in SERVICE_DEFINITIONS.items()
+            if definition.request_kind in enabled_request_kinds
+            and definition.request_kind != 'directions'
+        ]
+    else:
+        # The selector is only a retrieval hint. Rebuild every candidate's
+        # authority-bearing fields from the registry before it reaches the
+        # model prompt; catalog text may describe a service but cannot invent
+        # a goal or slot contract.
+        services = []
+        seen: set[str] = set()
+        for raw in service_candidates:
+            if not isinstance(raw, Mapping):
+                continue
+            code = raw.get('service_mode')
+            if not isinstance(code, str):
+                continue
+            definition = service_definition(str(code or ''))
+            if (definition is None or code in seen
+                    or definition.request_kind not in enabled_request_kinds
+                    or definition.request_kind == 'directions'):
+                continue
+            item: dict[str, Any] = {
+                'service_mode': definition.code,
+                'request_kind': definition.request_kind,
+                'accepted_slots': list(accepted_slots(definition.code)),
+            }
+            for key in ('catalog_service_id', 'name', 'description'):
+                value = raw.get(key)
+                if isinstance(value, str) and value.strip():
+                    item[key] = value[:320]
+            services.append(item)
+            seen.add(definition.code)
+        if not services:
+            return None
     pending = pending_reply or 'none'
     payload = {
         'model': model,
         'stream': True,
         'keep_alive': '5m',
-        'format': command_schema(),
+        'format': command_schema(
+            {item['service_mode']: item['accepted_slots'] for item in services},
+            slot_reply=pending_reply is not None),
         'messages': [
             {'role': 'system', 'content': (
                 'Interpret exactly one hotel concierge guest turn and return only the JSON schema. '
-                'Use StartGoal for an explicit service request, AskInfo for a factual hotel question, '
-                'Navigate for directions, Confirm or Cancel only for the pending server-owned task, '
-                'SetSlot or CorrectSlot only when the guest supplies a missing/corrected slot, '
-                'Handoff when the guest asks for staff, and ChitChat for social text. '
-                'Select goals only from AVAILABLE_SERVICES. Copy every slot/value/query verbatim from '
-                'GUEST_TURN; never invent a room, quantity, booking, price, permission or completion. '
+                'When the guest wants something done, brought, fixed, booked or arranged, emit StartGoal '
+                'with the closest service_mode from AVAILABLE_SERVICES (match by meaning, using each '
+                'name and description) and put the details the guest stated into its slots. '
+                'Use AskInfo for a factual hotel question, Navigate for directions, Confirm or Cancel '
+                'only for the pending server-owned task, SetSlot or CorrectSlot only to answer or '
+                'correct PENDING_REPLY, Handoff when the guest asks for staff, and ChitChat for social '
+                'text. One utterance may need several commands. Every slot text, value and query must '
+                'be an exact substring of GUEST_TURN, in the guest\'s own words and digits; omit any '
+                'slot the guest did not state. Never invent a room, '
+                'quantity, booking, price, permission or completion. '
+                'EXAMPLES are reviewed guest turns with their correct commands; follow their pattern. '
                 'A command proposes intent only; the server owns policy, evidence, confirmation and writes.')},
             {'role': 'user', 'content': json.dumps({
                 'language': language,
                 'guest_turn': query[:500],
                 'pending_reply': pending,
                 'available_services': services,
+                # Nearest reviewed training turns (never evaluation data),
+                # limited to goals offered above so they cannot widen the schema.
+                'examples': [dict(item) for item in examples
+                             if all(command.get('type') != 'StartGoal'
+                                    or command.get('goal') in {s['service_mode'] for s in services}
+                                    for command in item.get('commands', ()))],
             }, ensure_ascii=False)},
         ],
         'options': {'temperature': 0, 'num_predict': 220, 'num_ctx': SLM_NUM_CTX},
@@ -291,37 +369,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
     ) if raw else None
 
 
-def commands_from_turn_plan(plan, *, query: str,
-                            enabled_request_kinds: frozenset[str],
-                            pending_reply: str | None = None) -> tuple[Command, ...] | None:
-    """Convert the legacy bounded TurnPlan into the shared command protocol."""
-    commands: list[Command] = []
-    for intent in getattr(plan, 'intents', ()):
-        kind = getattr(intent, 'type', None)
-        if kind == 'write':
-            commands.append(Command(
-                'StartGoal', goal=getattr(intent, 'service_mode', None),
-                slots=tuple(CommandSlot(slot.name, slot.text) for slot in intent.slots)))
-        elif kind == 'read':
-            commands.append(Command('AskInfo', query=getattr(intent, 'question', None)))
-        elif kind == 'smalltalk':
-            commands.append(Command('ChitChat'))
-        elif kind == 'answer_to_pending':
-            referent = getattr(intent, 'refers_to', None)
-            if _surface(referent or '') == 'confirm':
-                commands.append(Command('Confirm', confirmed=True))
-            elif referent:
-                commands.append(Command('SetSlot', field=referent, value=query))
-            else:
-                return None
-        else:
-            return None
-    return validate_commands(commands, query=query,
-                             enabled_request_kinds=enabled_request_kinds,
-                             pending_reply=pending_reply)
-
-
 __all__ = [
     'COMMAND_TYPES', 'Command', 'CommandSlot', 'command_schema',
-    'commands_from_turn_plan', 'model_commands', 'parse_commands', 'validate_commands',
+    'model_commands', 'parse_commands', 'validate_commands',
 ]

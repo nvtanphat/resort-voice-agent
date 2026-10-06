@@ -14,28 +14,25 @@ from concierge_kiosk.agent.core.concierge import BoundedToolRegistry, AgentToolR
 from concierge_kiosk.agent.core.tool_contracts import (authorized_tool_result, contract_failure_result,
                                                        no_evidence_handoff_details, tool_error_observation,
                                                        validate_tool_result)
-from concierge_kiosk.agent.tools.read_execution import ReadTaskExecution
 from concierge_kiosk.agent.tools.service_slots import (
-    looks_like_slot_reply, is_cancel_pending, extract_slots, service_mode,
+    looks_like_slot_reply, is_cancel_pending, extract_slots,
 )
 from concierge_kiosk.agent.tools.read_tasks import read_only_task_graph, validate_read_only_result
 from concierge_kiosk.agent.tools.navigation import map_guidance, localized_map_query, MapUnavailable
 from concierge_kiosk.agent.tools.scheduling import schedule_read, ScheduleUnavailable
 from concierge_kiosk.agent.understanding.routing import (
+    directions_request,
     RouteDecision, classify_dialogue, fast_response, is_location_question,
-    request_change_intent, availability_service_code,
+    request_change_intent,
 )
-from concierge_kiosk.agent.understanding.intent import suggest_service_request, normalize_intent_text
-from concierge_kiosk.agent.understanding.turn_plan import SlotSpan, TurnIntent, TurnPlan, model_turn_plan
-from concierge_kiosk.agent.understanding.commands import commands_from_turn_plan, model_commands
-from concierge_kiosk.agent.understanding.semantic_router import SemanticRouter
-from concierge_kiosk.agent.understanding.model_intent import ModelIntent, model_service_intent
+from concierge_kiosk.agent.understanding.intent import normalize_intent_text
+from concierge_kiosk.agent.understanding.commands import Command, model_commands
+from concierge_kiosk.core.domain_profile import nlu_policy
+from concierge_kiosk.agent.understanding.service_selector import ServiceSelector
 from concierge_kiosk.domain.service_registry import service_definition
+from concierge_kiosk.core.domain_vocab import service_terms_by_catalog_id
 from concierge_kiosk.core.operational_policy import service_code_for_anchor
 from concierge_kiosk.agent.orchestration.composite_tasks import composite_review_plan, validate_composite_review, wants_knowledge_read
-from concierge_kiosk.agent.orchestration.mixed_workflow import (
-    mixed_read_review, validate_mixed_read_review, prepare_mixed_plan,
-)
 from concierge_kiosk.agent.runtime.runtime import AutonomousConciergeRuntime, AgentBudget
 from concierge_kiosk.agent.runtime.planner import model_action_plan, model_next_action
 from concierge_kiosk.agent.runtime.planning.goal_interpreter import model_goal_interpretation
@@ -48,26 +45,20 @@ from concierge_kiosk.agent.memory.heuristics import (is_followup, is_pending_ans
                                                          needs_model_reference_resolution)
 from concierge_kiosk.api.shared.contracts import Ask
 from concierge_kiosk.application.service_actions import ServiceActionService
-from concierge_kiosk.services import KnowledgeService, TurnCoordinator, CoordinatedTurn
+from concierge_kiosk.application import KnowledgeService, TurnCoordinator, CoordinatedTurn
 from concierge_kiosk.domain.service_registry import route_branch_for_request_kind
 from concierge_kiosk.agent.understanding.domain_nlu import (
-    ACTION_FOLLOWUP_TERMS, ACTION_PHRASES, REQUEST_FRAME_PATTERNS,
-    MODEL_FALLBACK_CUES, AFFIRM_TERMS, TIME_EXPRESSIONS,
+    ACTION_FOLLOWUP_TERMS, AFFIRM_TERMS, TIME_EXPRESSIONS,
 )
 from concierge_kiosk.i18n import text as i18n_text
 from concierge_kiosk.runtime.local_http import slm_turn_budget
 from concierge_kiosk.integrations.synthetic_operations import SyntheticOperations
+from concierge_kiosk.rag.text.tokenization import tokens
 
 from .answers import AnswerServices
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-# Kept as a compatibility seam for integrations that monkeypatch the former
-# model-intent hook.  Normal production turns never call this legacy adapter;
-# they use the structured TurnPlan above.
-_DEFAULT_MODEL_SERVICE_INTENT = model_service_intent
 
 
 def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDecision:
@@ -91,8 +82,11 @@ def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDe
         if len(starts) == 1 and not reads and len(commands) == 1:
             definition = service_definition(starts[0].goal or '')
             if definition is not None:
+                # The validated goal is the authority for which service the
+                # guest asked for; downstream contracts read it from here.
                 return RouteDecision(
-                    route_branch_for_request_kind(definition.request_kind) or 'service', True)
+                    route_branch_for_request_kind(definition.request_kind) or 'service', True,
+                    semantic_service_code=definition.code)
         return RouteDecision('multi_task', False)
     if any(item.type == 'Navigate' for item in commands):
         return RouteDecision('navigation', False)
@@ -143,28 +137,9 @@ def _apply_verified_map_answer(result: dict, language: str, query: str) -> dict:
         result['related_topics'] = []
         result['support_contact'] = None
         result['recovery_mode'] = 'not_needed'
-        expected = suggest_service_request(query, language)
-        result['suggested_action'] = ({'kind': 'directions', 'details': expected.details}
-                                      if expected is not None else
-                                      {'kind': 'directions', 'details': query.strip()}
-                                      if is_location_question(query, language) else None)
+        result['suggested_action'] = directions_request(query, language)
         result['requires_staff_review'] = True
     return result
-
-
-def _model_intent_fallback_allowed(query: str, language: str) -> bool:
-    """Only spend a model call on an action/social-shaped ambiguous turn."""
-    text = normalize_intent_text(query)
-    if not text or len(text) > 180:
-        return False
-    phrases = ACTION_PHRASES.get(language, {})
-    action = any(normalize_intent_text(phrase) in text
-                 for terms in phrases.values() for phrase in terms)
-    request = bool(REQUEST_FRAME_PATTERNS.get(language)
-                   and REQUEST_FRAME_PATTERNS[language].search(text))
-    social_or_issue = any(normalize_intent_text(phrase) in text
-                          for phrase in MODEL_FALLBACK_CUES.get(language, ()))
-    return action or request or social_or_issue
 
 
 def _is_expected_confirmation(query: str, language: str) -> bool:
@@ -176,44 +151,15 @@ def _is_expected_confirmation(query: str, language: str) -> bool:
                for code in languages for term in AFFIRM_TERMS.get(code, ()))
 
 
-def _apply_semantic_read_fallback(decision: RouteDecision, suggestion) -> RouteDecision:
-    """Project a reviewed semantic suggestion onto safe governed branches."""
-    if decision.branch != 'knowledge' or suggestion is None or not suggestion.accepted:
-        return decision
-    branch = {
-        'knowledge': 'knowledge',
-        'knowledge_abstain': 'knowledge',
-        'non_action': 'knowledge',
-        'navigation': 'navigation',
-        'planning': 'planning',
-        'status': 'request_status',
-        'request_change': 'request_change',
-        'smalltalk': 'smalltalk',
-        'out_of_scope': 'out_of_scope',
-    }.get(suggestion.route)
-    if branch is not None:
-        return RouteDecision(
-            branch, branch in {'smalltalk', 'out_of_scope'}, None,
-            decision.question_type)
-    service_code = getattr(suggestion, 'service_code', None)
-    if suggestion.route == 'service' and isinstance(service_code, str):
-        definition = service_definition(service_code)
-        if definition is not None and route_branch_for_request_kind(definition.request_kind) == 'service':
-            return RouteDecision('service', True, None, decision.question_type, service_code)
-    return decision
-
-
-
-
 def _project_read_workflow(*, result: dict, agent_run, query: str, language: str,
-                           branch: str, read_graph: dict | None, preplan: dict | None) -> None:
+                           branch: str, read_graph: dict | None) -> None:
     """Attach validated internal read orchestration state for final projection.
 
     This keeps response composition separate from turn routing. TurnFinalizer
     consumes these internal structures and removes them before returning the
     guest-facing response.
     """
-    if read_graph is not None and preplan is None:
+    if read_graph is not None:
         result['task_graph'] = read_graph
         status_by_kind = {
             meta.get('capability'): meta.get('status')
@@ -227,35 +173,6 @@ def _project_read_workflow(*, result: dict, agent_run, query: str, language: str
         ]
         validate_read_only_result(query, language, result, expected_graph=read_graph)
 
-    if preplan is None:
-        return
-    ordered_reads = tuple(preplan['reads'])
-    task_execution = ReadTaskExecution(preplan, ordered_reads)
-    latest_meta: dict[str, dict] = {}
-    latest_raw: dict[str, dict] = {}
-    for meta, raw in zip(agent_run.observations, agent_run.raw_results):
-        capability = meta.get('capability')
-        if capability in ordered_reads:
-            latest_meta[capability] = meta
-            latest_raw[capability] = raw
-    for kind in ordered_reads:
-        task_execution.begin(kind)
-        meta = latest_meta.get(kind)
-        task_execution.finish(kind, verified=bool(meta and meta.get('verified')))
-    navigation = latest_raw.get('navigation')
-    mixed_map = (navigation.get('map_guidance') if isinstance(navigation, dict)
-                 and isinstance(navigation.get('map_guidance'), dict) else None)
-    extra = latest_raw.get('knowledge') if branch == 'planning' else None
-    workflow = mixed_read_review(query, language, branch, result, mixed_map, extra, ordered_reads)
-    if workflow is None:
-        return
-    validate_mixed_read_review(
-        workflow, query, language, branch, result, mixed_map, extra, ordered_reads)
-    workflow['planned_before_execution'] = False
-    workflow['agent_selected_reads'] = True
-    result['mixed_workflow'] = workflow
-    result['task_execution'] = task_execution.snapshot()
-
 
 @dataclass(frozen=True)
 class _TurnRuntimeSupport:
@@ -266,7 +183,7 @@ class _TurnRuntimeSupport:
     agent_tasks: object
     audio_admission: object
     slm_permitted: Callable[[], bool]
-    semantic_router: SemanticRouter | None = None
+    service_selector: ServiceSelector | None = None
 
     def command_for_session(self, query: str, language: str, session: str,
                             *, enabled_request_kinds: frozenset[str],
@@ -294,9 +211,24 @@ class _TurnRuntimeSupport:
             models = self.cfg.llm_candidates()
             if not models:
                 return None
+            candidates = None
+            examples: tuple = ()
+            if self.service_selector is not None:
+                try:
+                    candidates, examples = self.service_selector.understand(
+                        query, language=language,
+                        enabled_request_kinds=enabled_request_kinds)
+                    # A not-yet-built index yields nothing; the model then sees
+                    # the full registry rather than an empty candidate set.
+                    candidates = candidates or None
+                except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
+                    # Candidate retrieval is advisory. A missing local embedder
+                    # must not turn a bounded command proposal into an error.
+                    LOGGER.warning('service_selector_unavailable', exc_info=True)
             return model_commands(
                 query=query, language=language, base_url=self.cfg.llm_base_url,
                 model=models[0], enabled_request_kinds=enabled_request_kinds,
+                service_candidates=candidates, examples=examples,
                 pending_reply=pending_reply,
                 should_cancel=lambda: self.audio_admission.slm_cancelled(session),
                 timeout_seconds=(min(self.cfg.intent_parser_timeout_seconds,
@@ -306,79 +238,26 @@ class _TurnRuntimeSupport:
         finally:
             self.audio_admission.leave_slm()
 
-    def turn_plan_for_session(self, query: str, language: str, session: str,
-                              *, enabled_request_kinds: frozenset[str],
-                              voice_turn: bool = False) -> TurnPlan | None:
-        """Run at most one structured understanding call for an ambiguous turn."""
-        workflow = self.conversations.workflow_projection(session, language)
-        pending_reply = workflow.get('expected_reply') if isinstance(workflow, dict) else None
-        if pending_reply is None and self.agent_checkpoints is not None:
-            checkpoint = self.agent_checkpoints.load(session, language)
-            pending_question = checkpoint.get('pending_question') if isinstance(checkpoint, dict) else None
-            if isinstance(pending_question, dict):
-                field = pending_question.get('field')
-                if isinstance(field, str) and field:
-                    pending_reply = field
-        t2_hint = (self.semantic_router.intent_hint(query, language)
-                   if self.semantic_router is not None else None)
-        # T3 is a recovery path only. An accepted T2 prediction has already
-        # gone through the governed semantic-router projection.
-        if t2_hint is not None and getattr(t2_hint, 'accepted', False):
-            return None
-        candidate_labels = tuple(getattr(t2_hint, 'candidates', ()))
-        nearest_examples = (self.semantic_router.nearest_examples(query, language, limit=5)
-                            if self.semantic_router is not None else ())
-        if (voice_turn or not self.cfg.intent_parser_enabled
-                or not self.cfg.llm_base_url or not self.cfg.llm_model
-                or (pending_reply is None and not _model_intent_fallback_allowed(query, language))
-                or not self.slm_permitted()
-                or not self.audio_admission.try_enter_slm(session)):
-            return None
-        try:
-            models = self.cfg.llm_candidates()
-            if not models:
-                return None
-            return model_turn_plan(
-                query=query, language=language, base_url=self.cfg.llm_base_url,
-                model=models[0], enabled_request_kinds=enabled_request_kinds,
-                pending_reply=pending_reply,
-                candidate_labels=candidate_labels,
-                nearest_examples=nearest_examples,
-                should_cancel=lambda: self.audio_admission.slm_cancelled(session),
-                timeout_seconds=(min(self.cfg.intent_parser_timeout_seconds,
-                                     self.cfg.voice_slm_caps['intent'])
-                                 if voice_turn else self.cfg.intent_parser_timeout_seconds),
-            )
-        finally:
-            self.audio_admission.leave_slm()
+    def fallback_commands(self, query: str, language: str, *,
+                          enabled_request_kinds: frozenset[str]):
+        """Model-free understanding used only when the SLM gives no valid proposal.
 
-    def legacy_model_intent_for_session(self, query: str, language: str, session: str,
-                                        *, enabled_request_kinds: frozenset[str],
-                                        voice_turn: bool = False) -> ModelIntent | None:
-        """Bridge only an explicitly replaced pre-TurnPlan hook.
-
-        This is intentionally inert with the shipped implementation.  It lets
-        older embedders migrate without making the normal path spend a second
-        understanding call or giving legacy JSON any authority.
+        Nearest reviewed training turn by embedding, with thresholds calibrated
+        by ``tools/nlu/calibrate_service_fallback.py``. Returns ``None`` (the
+        turn stays a knowledge question) when no service is clearly indicated.
         """
-        if model_service_intent is _DEFAULT_MODEL_SERVICE_INTENT:
+        if self.service_selector is None:
             return None
-        if (voice_turn or not self.cfg.intent_parser_enabled
-                or not self.cfg.llm_base_url or not self.cfg.llm_model
-                or not _model_intent_fallback_allowed(query, language)
-                or not self.slm_permitted()
-                or not self.audio_admission.try_enter_slm(session)):
-            return None
+        policy = nlu_policy().service_selector
         try:
-            return model_service_intent(
-                query=query, language=language, base_url=self.cfg.llm_base_url,
-                model=self.cfg.llm_candidates()[0],
-                enabled_request_kinds=enabled_request_kinds,
-                should_cancel=lambda: self.audio_admission.slm_cancelled(session),
-                timeout_seconds=self.cfg.intent_parser_timeout_seconds,
-            )
-        finally:
-            self.audio_admission.leave_slm()
+            goal = self.service_selector.fallback_goal(
+                query, language=language, enabled_request_kinds=enabled_request_kinds,
+                min_score=float(policy['fallback_min_score']),
+                min_margin=float(policy['fallback_min_margin']))
+        except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
+            LOGGER.warning('service_fallback_unavailable', exc_info=True)
+            return None
+        return (Command('StartGoal', goal=goal),) if goal else None
 
     def pending_task_context(self, query: str, language: str, session: str,
                              decision: RouteDecision):
@@ -411,6 +290,37 @@ class _TurnRuntimeSupport:
                 raise RuntimeError('Pending task has no configured service route')
             decision = RouteDecision(branch, True)
         return decision, task_context
+
+    def active_request_status_followup(self, query: str, language: str, session: str,
+                                       decision: RouteDecision) -> RouteDecision:
+        """Route a non-action reference to an active session request to status.
+
+        Request identity comes from the server-owned workflow row. The guest's
+        wording is compared only with names and aliases from that request's
+        catalog entry, tokenized by the configured multilingual RAG policy.
+        This keeps a phrase such as a subject-only follow-up from becoming a
+        service-name exception in the routing profile.
+        """
+        # These are read-only routes. Do not override an actionable or other
+        # more specific operational route with session context.
+        if decision.branch not in {'knowledge', 'navigation'}:
+            return decision
+        query_tokens = set(tokens(normalize_intent_text(query, language), language=language, limit=None))
+        if not query_tokens:
+            return decision
+        active_statuses = {'pending_staff', 'approved', 'in_progress', 'paused'}
+        rows = self.workflows.list_guest_requests(session, limit=5)
+        for row in rows:
+            if row.get('status') not in active_statuses:
+                continue
+            definition = service_definition(str(row.get('service_code') or ''))
+            if definition is None or not definition.catalog_service_id:
+                continue
+            for term in service_terms_by_catalog_id(definition.catalog_service_id, language):
+                term_tokens = set(tokens(normalize_intent_text(term, language), language=language, limit=None))
+                if term_tokens and query_tokens.intersection(term_tokens):
+                    return RouteDecision('request_status', False)
+        return decision
 
     def resolve_execution_context(self, query: str, language: str, session: str,
                                   decision: RouteDecision, *, voice_turn: bool = False):
@@ -469,16 +379,14 @@ class _TurnRuntimeSupport:
                 anchor = self.conversations.recent_anchor(session, language)
                 service_code = service_code_for_anchor(anchor, cfg=self.cfg)
                 definition = service_definition(service_code) if service_code else None
-                activation_terms = definition.match_terms.get(language, ()) if definition else ()
-                if anchor is not None and anchor.title and activation_terms:
-                    # The selector phrase is read from the registry; the
-                    # verified anchor supplies the entity. This lets the same
-                    # continuation work for any catalog-backed service.
-                    candidate_query = f'{activation_terms[0]} {anchor.title}. {query}'[:500]
-                    contextual = classify_dialogue(candidate_query, language)
-                    if contextual.branch == 'service':
-                        execution_query = candidate_query
-                        decision = contextual
+                if (anchor is not None and anchor.title and definition is not None
+                        and route_branch_for_request_kind(definition.request_kind) == 'service'):
+                    # "Book it" after a verified answer: the anchor names the
+                    # entity and the registry names its service. No phrase
+                    # list is consulted.
+                    execution_query = f'{anchor.title}. {query}'[:500]
+                    decision = RouteDecision('service', True,
+                                             semantic_service_code=definition.code)
         return execution_query, decision
 
     def planner_for_session(self, session: str, *, voice_turn: bool = False, skip: bool = False,
@@ -545,7 +453,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                               agent_checkpoints, agent_memory, preference_memory, property_profile, enabled_request_kinds, get_graph,
                               record_metric, turn_events, audio_admission, slm_permitted,
                               answers: AnswerServices, logger,
-                              semantic_router: SemanticRouter | None = None) -> ConversationEngine:
+                              service_selector: ServiceSelector | None = None) -> ConversationEngine:
     ensure_active_context_session = answers.ensure_active_context_session
     emergency_answer = answers.emergency_answer
     grounded_answer = answers.grounded_answer
@@ -645,7 +553,6 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         # guest asking "is there a table?" cannot receive a misleading static
         # opening-hours answer.  The observation remains explicitly labelled
         # synthetic and never creates/holds a booking.
-        suggestion = suggest_service_request(request.query, request.language)
         normalized_schedule_query = normalize_intent_text(request.query, request.language)
         unresolved_relative_date = any(
             meaning == 'date_window' and normalize_intent_text(term, request.language) in normalized_schedule_query
@@ -653,11 +560,11 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         try:
             if unresolved_relative_date:
                 kind = mode = None
-            elif suggestion is not None:
-                kind = suggestion.kind
-                mode = service_mode(request.query, request.language, kind)
             else:
-                mode = availability_service_code(request.query, request.language)
+                mode = (service_selector.select_availability_mode(
+                    request.query, language=request.language,
+                    enabled_request_kinds=frozenset(enabled_request_kinds))
+                        if service_selector is not None else None)
                 definition = service_definition(mode) if mode is not None else None
                 kind = definition.request_kind if definition is not None else None
             if kind is not None and mode is not None:
@@ -738,10 +645,9 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
 
     service_actions = ServiceActionService(
         workflows=workflows, task_memory=agent_tasks, conversations=conversations,
-        orchestrator=cfg.orchestrator, get_graph=get_graph, record_metric=record_metric,
+        get_graph=get_graph, record_metric=record_metric,
         logger=logger, enabled_request_kinds=enabled_request_kinds,
         low_risk_requires_verified_room=property_profile.low_risk_requires_verified_room,
-        hitl_mode=property_profile.hitl_mode,
         cfg=cfg,
     )
     synthetic_operations = SyntheticOperations(cfg)
@@ -771,7 +677,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         cfg=cfg, workflows=workflows, conversations=conversations, agent_tasks=agent_tasks,
         agent_checkpoints=agent_checkpoints,
         audio_admission=audio_admission, slm_permitted=slm_permitted,
-        semantic_router=semantic_router)
+        service_selector=service_selector)
 
     def _execute_turn(body: Ask, session: str, turn_id: str | None,
                       coordinated: CoordinatedTurn, voice_input: bool):
@@ -801,6 +707,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                 query, body.language, session, decision)
             execution_query, decision = turn_support.resolve_execution_context(
                 query, body.language, session, decision, voice_turn=voice_input)
+            decision = turn_support.active_request_status_followup(
+                query, body.language, session, decision)
         else:
             decision = RouteDecision('service', True)
             task_context = None
@@ -815,122 +723,29 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                     and _is_expected_confirmation(query, body.language)):
                 decision = RouteDecision('confirmation', True)
 
-        # A structured model proposal may broaden understanding, but only after
-        # the server validates every intent/service/slot against this turn.
-        # Deterministic emergency and known service routes have already won and
-        # never need this call. Voice keeps the faster deterministic path.
-        turn_plan: TurnPlan | None = None
+        # The agent understands every non-emergency turn with one bounded SLM
+        # call that proposes a closed Command stream; the server validates
+        # every service, slot and verb against this turn before it can steer
+        # the loop. Emergency has already won deterministically. A missing
+        # model, timeout or invalid proposal keeps the deterministic route as
+        # a fail-closed fallback.
         understanding_commands = None
-        legacy_intent: ModelIntent | None = None
-        legacy_conversational_result: dict | None = None
-        turn_plan_smalltalk = False
-        understanding_mode = getattr(cfg, 'understanding_mode', 'legacy')
-        command_proposal = None
-        # Emergency has already won deterministically. Every other turn in a
-        # staged command profile gets at most one bounded SLM understanding
-        # call; timeout/invalid JSON keeps the existing deterministic route.
-        if (voice_reply_result is None and decision.branch != 'emergency'
-                and understanding_mode in {'command', 'shadow'}):
-            command_proposal = turn_support.command_for_session(
+        if voice_reply_result is None and decision.branch != 'emergency':
+            understanding_commands = turn_support.command_for_session(
                 execution_query, body.language, session,
                 enabled_request_kinds=frozenset(enabled_request_kinds), voice_turn=voice_input)
-        if (voice_reply_result is None and
-                (decision.branch == 'knowledge' or
-                 (understanding_mode == 'command' and command_proposal is not None))):
-            # Command mode is a single bounded understanding call. Shadow mode
-            # records the proposal while retaining deterministic authority.
-            if understanding_mode == 'command':
-                understanding_commands = command_proposal
-                if understanding_commands is not None:
-                    decision = _decision_from_commands(tuple(understanding_commands), decision)
-            elif understanding_mode == 'legacy':
-                turn_plan = turn_support.turn_plan_for_session(
-                    execution_query, body.language, session,
-                    enabled_request_kinds=frozenset(enabled_request_kinds), voice_turn=voice_input)
-            # Backward-compatible adapter for an embedding that explicitly
-            # replaced the old hook. The shipped hook is never reached.
-            if turn_plan is None and understanding_commands is None and understanding_mode != 'command':
-                legacy_intent = turn_support.legacy_model_intent_for_session(
-                    execution_query, body.language, session,
-                    enabled_request_kinds=frozenset(enabled_request_kinds), voice_turn=voice_input)
-            if turn_plan is not None:
-                understanding_commands = commands_from_turn_plan(
-                    turn_plan, query=execution_query,
+            if understanding_commands is None:
+                understanding_commands = turn_support.fallback_commands(
+                    execution_query, body.language,
                     enabled_request_kinds=frozenset(enabled_request_kinds))
-                if understanding_commands is not None:
-                    writes = tuple(item for item in understanding_commands
-                                   if item.type == 'StartGoal')
-                    reads = tuple(item for item in understanding_commands
-                                  if item.type == 'AskInfo')
-                    turn_plan_smalltalk = bool(understanding_commands) and all(
-                        item.type == 'ChitChat' for item in understanding_commands)
-                else:
-                    # Keep the pre-command adapter as a fail-closed fallback
-                    # for older embedding integrations.
-                    writes = turn_plan.writes
-                    reads = tuple(item for item in turn_plan.intents if item.type == 'read')
-                    turn_plan_smalltalk = bool(turn_plan.intents) and all(
-                        item.type == 'smalltalk' for item in turn_plan.intents)
-                if turn_plan_smalltalk:
-                    decision = RouteDecision('greeting', True)
-                elif ((understanding_commands is not None and
-                       len(understanding_commands) == 1 and
-                       understanding_commands[0].type == 'Confirm') or
-                      (understanding_commands is None and len(turn_plan.intents) == 1 and
-                       turn_plan.intents[0].type == 'answer_to_pending' and
-                       turn_plan.intents[0].refers_to == 'confirm')):
-                    decision = RouteDecision('confirmation', True)
-                if writes:
-                    if len(writes) == 1 and not reads:
-                        service_mode = (writes[0].goal if understanding_commands is not None
-                                        else writes[0].service_mode)
-                        definition = service_definition(service_mode or '')
-                        if definition is not None:
-                            decision = RouteDecision(
-                                route_branch_for_request_kind(definition.request_kind) or 'service', True)
-                        else:
-                            decision = RouteDecision('multi_task', False)
-            elif legacy_intent is not None:
-                if legacy_intent.intent == 'service_request':
-                    definition = service_definition(legacy_intent.service_mode)
-                    if (definition is not None
-                            and definition.request_kind in enabled_request_kinds):
-                        turn_plan = TurnPlan((TurnIntent(
-                            'write', legacy_intent.service_mode,
-                            tuple(SlotSpan(name, str(value))
-                                  for name, value in legacy_intent.slots.items()),
-                            None, None),))
-                        understanding_commands = commands_from_turn_plan(
-                            turn_plan, query=execution_query,
-                            enabled_request_kinds=frozenset(enabled_request_kinds))
-                        decision = RouteDecision(
-                            route_branch_for_request_kind(definition.request_kind) or 'service', True)
-                elif legacy_intent.intent == 'ambiguous':
-                    decision = RouteDecision('clarification', True)
-                elif legacy_intent.intent in {'smalltalk', 'out_of_scope'}:
-                    decision = RouteDecision('knowledge', True)
-                    legacy_conversational_result = {
-                        'answer': legacy_intent.reply or '', 'sources': [], 'citations': [],
-                        'suggested_action': None, 'request_completed': False,
-                        'requires_staff_review': False, 'grounding': 'not_required',
-                        'retrieval_mode': 'not_used',
-                        'generation_mode': 'local_slm_conversational',
-                    }
-
-        command_loop = understanding_mode == 'command' and understanding_commands is not None
+            if understanding_commands is not None:
+                decision = _decision_from_commands(tuple(understanding_commands), decision)
+        command_loop = understanding_commands is not None
 
         # Read graphs are response-compatibility projections only.
         # They are never fed into the runtime and never determine tool execution.
         read_graph = (read_only_task_graph(execution_query, body.language)
                       if decision.branch in {'knowledge', 'navigation'} else None)
-        preplan = None
-        if decision.branch in {'knowledge', 'planning'}:
-            from concierge_kiosk.agent.understanding.intent import matched_service_kinds
-            preplan = prepare_mixed_plan(
-                execution_query, body.language, decision.branch,
-                has_navigation=('directions' in matched_service_kinds(query, body.language)),
-                has_extra_knowledge=(decision.branch == 'planning' and
-                                     wants_knowledge_read(query, body.language)))
 
         if turn_id is not None:
             turn_events.emit(session, turn_id, 'router.decided')
@@ -950,12 +765,11 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             # latency by running independent reads together. A structured
             # understanding plan still supplies the server-owned candidates;
             # it must not suppress execution planning for that compound turn.
-            skip=(voice_simple_route or command_loop
-                  or (turn_plan is not None and decision.branch != 'multi_task')),
+            skip=voice_simple_route or command_loop,
             recovery_only=(simple_route and decision.branch != 'multi_task'))
         _goal_interpreter_for_turn = turn_support.goal_interpreter_for_session(
             session, voice_turn=voice_input,
-            skip=simple_route or command_loop or turn_plan is not None)
+            skip=simple_route or command_loop)
 
         agent_run = None
         if voice_reply_result is not None:
@@ -977,25 +791,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                               if body.room_qr_token else None))
             result = service_actions.manage_request_tool(request)
             result['_agent_checkpoint'] = {'action': 'clear'}
-        elif legacy_conversational_result is not None:
-            result = legacy_conversational_result
-            result['model_intent_fallback'] = True
         elif decision.branch == 'emergency':
             result = emergency_answer(query, body.language, session, source=body.source)
-        elif legacy_intent is not None and legacy_intent.intent == 'ambiguous':
-            from concierge_kiosk.domain.service_registry import SERVICE_DEFINITIONS
-            kinds = []
-            for definition in SERVICE_DEFINITIONS.values():
-                kind = definition.request_kind
-                if kind in enabled_request_kinds and kind not in kinds and kind != 'directions':
-                    kinds.append(kind)
-                if len(kinds) >= 3:
-                    break
-            result = fast_response(decision, query, body.language)
-            result['action_options'] = [
-                {'kind': kind, 'label': kind.replace('_', ' ')} for kind in kinds
-            ]
-            result['model_intent_fallback'] = True
         elif decision.fast and decision.branch not in {'service', 'handoff'} and not command_loop:
             result = fast_response(decision, query, body.language)
         else:
@@ -1022,9 +819,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                     request, continuation_context=task_context, planner=_planner_for_turn,
                     goal_interpreter=_goal_interpreter_for_turn,
                     resume_projection=resume_projection, memory_facts=memory_facts,
-                    preferences=effective_preferences, turn_plan=turn_plan,
-                    commands=(tuple(understanding_commands)
-                              if command_loop and understanding_commands is not None else None))
+                    preferences=effective_preferences,
+                    commands=(tuple(understanding_commands) if command_loop else None))
             finally:
                 voice_input_context.reset(voice_token)
 
@@ -1055,10 +851,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
 
                 _project_read_workflow(
                     result=result, agent_run=agent_run, query=query, language=body.language,
-                    branch=decision.branch, read_graph=read_graph, preplan=preplan)
-
-            if legacy_intent is not None and legacy_intent.intent == 'service_request':
-                result['model_intent_fallback'] = True
+                    branch=decision.branch, read_graph=read_graph)
 
         if understanding_commands is not None and isinstance(result, dict):
             # This is an auditable understanding projection only.  The normal
@@ -1235,29 +1028,9 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         result['_turn_effective_date'] = turn_context.property_date
         return result
 
-    def _classify_with_semantic_fallback(query: str, language: str) -> RouteDecision:
-        """Apply reviewed semantic routing only to an existing read fallback.
-
-        Emergency, service, handoff, confirmation and other deterministic
-        branches win first. A semantic match can select only a read/status
-        branch; it never creates a write candidate or safety decision.
-        """
-        decision = classify_dialogue(query, language)
-        if semantic_router is None or decision.branch != 'knowledge':
-            return decision
-        suggestion = semantic_router.route(query, language)
-        projected = _apply_semantic_read_fallback(decision, suggestion)
-        if (suggestion.accepted and projected.branch != decision.branch):
-            LOGGER.info(
-                'semantic_router_disagreement language=%s deterministic=%s semantic=%s '
-                'projected=%s score=%.4f margin=%.4f example=%s',
-                language, decision.branch, suggestion.route, projected.branch,
-                suggestion.score, suggestion.margin, suggestion.example_id)
-        return projected if semantic_router.mode == 'active' else decision
-
     turn_coordinator = TurnCoordinator(
         timezone=cfg.property_timezone, ensure_session=ensure_active_context_session,
-        memory_version=conversations.topic_version, classifier=_classify_with_semantic_fallback,
+        memory_version=conversations.topic_version, classifier=classify_dialogue,
         executor=_execute_turn)
     def answer(body: Ask, session: str, turn_id: str | None = None, *, voice_input: bool = False) -> dict:
         if body.language not in property_profile.enabled_languages:
@@ -1265,8 +1038,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         # If the operator selected durable LangGraph orchestration, its
         # checkpoint store is a required safety dependency for any new guest
         # work even though public reasoning runs in the governed agent loop.
-        if cfg.orchestrator == 'langgraph':
-            get_graph()
+        get_graph()
         cache_token = turn_read_cache.set({})
         try:
             with slm_turn_budget(cfg.slm_generation_timeout_seconds):

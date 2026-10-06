@@ -290,139 +290,10 @@ class ConversationMemory:
                 self._bump_version_locked(sid)
             return True, turn_number
 
-    def remember(self, session: str, language: str, sources: list[dict], *,
-                 query: str | None = None) -> int:
-        with self._lock:
-            now = time.monotonic()
-            current = self._active(session, language, now)
-            if current is None:
-                current = SessionTopics(language, now + self.ttl)
-                self._sessions[session] = current
-            current.total_turns += 1
-            if not sources:
-                current.last_facet = None
-                # A failed question must not make "it/there" refer to stale
-                # evidence, but explicit topic returns may still use previously
-                # verified anchors (each is re-authorized on use).
-                current.turns.clear()
-            else:
-                current.last_facet = question_facet(query or '')
-                source = sources[0]
-                anchor = EvidenceAnchor(
-                    source_id=source["source_id"], revision=source["revision"],
-                    chunk_id=source["chunk_id"], title=source["title"],
-                    # The evidence row's own language: cross-language fallback
-                    # cites e.g. an English row for a Korean question.
-                    heading=source["heading"], language=source.get("language") or language,
-                    section_id=str(source.get("section_id", "")),
-                    focus=next(iter(_focuses(query))) if query and len(_focuses(query)) == 1 else None)
-                current.turns.append(anchor)
-                topic_key = (anchor.source_id, anchor.revision, anchor.section_id, anchor.chunk_id, anchor.focus)
-                current.summary.pop(topic_key, None)
-                current.summary[topic_key] = anchor
-                while len(current.summary) > self.max_topics:
-                    current.summary.popitem(last=False)
-            current.deadline = now + self.ttl
-            # Evict *only* old/expired sessions, never a healthy session-wide
-            # global reset when a busy lobby reaches its memory limit.
-            for sid, value in list(self._sessions.items()):
-                if value.deadline <= now:
-                    self._sessions.pop(sid, None)
-                    self._bump_version_locked(sid)
-            while len(self._sessions) > self.max_sessions:
-                sid, _ = self._sessions.popitem(last=False)
-                self._bump_version_locked(sid)
-            self._bump_version_locked(session)
-            return current.total_turns
-
-    def forget_anchor(self, session: str, anchor: EvidenceAnchor) -> None:
-        """Evict a revoked source without destroying unrelated conversation topics."""
-        with self._lock:
-            current = self._sessions.get(session)
-            if current is None:
-                return
-            current.turns = deque((item for item in current.turns
-                                   if (item.source_id, item.revision) !=
-                                   (anchor.source_id, anchor.revision)), maxlen=MAX_TURNS)
-            for key, item in list(current.summary.items()):
-                if ((item.source_id, item.revision) == (anchor.source_id, anchor.revision)):
-                    current.summary.pop(key, None)
-            self._bump_version_locked(session)
-
-    def remember_review(self, session: str, language: str, kinds: tuple[str, ...]) -> None:
-        """Store only bounded *uncommitted* review kinds from server validation.
-
-        The projection carries no proposal ID or authority to confirm anything;
-        the database and existing /prepare-/confirm endpoints remain authoritative.
-        """
-        allowed = ACTION_REQUEST_KINDS
-        if (not isinstance(kinds, tuple) or len(kinds) > 3 or len(set(kinds)) != len(kinds)
-                or any(kind not in allowed for kind in kinds)):
-            raise ValueError('Unapproved service review projection')
-        with self._lock:
-            now = time.monotonic()
-            current = self._active(session, language, now)
-            if current is None:
-                current = SessionTopics(language, now + self.ttl)
-                self._sessions[session] = current
-            current.pending_review_kinds = kinds
-            current.deadline = now + self.ttl
-            while len(self._sessions) > self.max_sessions:
-                sid, _ = self._sessions.popitem(last=False)
-                self._bump_version_locked(sid)
 
     def review_projection(self, session: str, language: str) -> dict:
-        with self._lock:
-            current = self._active(session, language, time.monotonic())
-            return {'pending_review_kinds': list(current.pending_review_kinds) if current else [],
-                    'requires_guest_confirmation': bool(current and current.pending_review_kinds),
-                    'business_writes': 0}
-
-    def remember_task_execution(self, session: str, language: str, execution: dict) -> None:
-        """Commit a bounded READ-only snapshot after successful answer finalization.
-
-        Reconstructed source status is intentionally not reusable as authority:
-        subsequent questions must retrieve and revalidate current documents.
-        """
-        from concierge_kiosk.agent.tools.read_execution import _READS, _REVIEWS
-        if (not isinstance(execution, dict) or execution.get('authority') != 'server_owned_read_and_review'
-                or execution.get('business_writes') != 0 or execution.get('request_completed') is not False
-                or not isinstance(execution.get('tasks'), list) or not 2 <= len(execution['tasks']) <= 6):
-            raise ValueError('Untrusted task execution snapshot')
-        pairs = []
-        for task in execution['tasks']:
-            if (not isinstance(task, dict) or set(task) !=
-                    {'id', 'kind', 'status', 'depends_on', 'requires_confirmation'}):
-                raise ValueError('Invalid task snapshot')
-            kind, status = task['kind'], task['status']
-            if (kind in _READS and status in {'completed', 'unavailable'}
-                    and task['requires_confirmation'] is False):
-                pairs.append((kind, status))
-            elif (kind in _REVIEWS and status == 'awaiting_guest_choice'
-                  and task['requires_confirmation'] is True):
-                pairs.append((kind, status))
-            else:
-                raise ValueError('Unexpected task authority')
-        with self._lock:
-            now = time.monotonic()
-            current = self._active(session, language, now)
-            if current is None:
-                current = SessionTopics(language, now + self.ttl)
-                self._sessions[session] = current
-            current.read_execution_revision += 1
-            current.last_read_execution = tuple(pairs)
-            current.deadline = now + self.ttl
-            while len(self._sessions) > self.max_sessions:
-                sid, _ = self._sessions.popitem(last=False)
-                self._bump_version_locked(sid)
-
-    def task_projection(self, session: str, language: str) -> dict:
-        with self._lock:
-            current = self._active(session, language, time.monotonic())
-            return {'revision': current.read_execution_revision if current else 0,
-                    'last_tasks': [{'kind': kind, 'status': status} for kind, status in
-                                   (current.last_read_execution if current else ())],
-                    'read_only': True, 'business_writes': 0}
+        return {'pending_review_kinds': [], 'requires_guest_confirmation': False,
+                'business_writes': 0}
 
     def clear_workflow(self, session: str, proposal_id: str) -> None:
         """Discard only a cancelled proposal's disposable UI projection.
@@ -439,7 +310,6 @@ class ConversationMemory:
             current.workflow_status = None
             current.guest_confirmed = False
             current.expected_reply = None
-            current.pending_review_kinds = ()
 
     def remember_expected_reply(self, session: str, language: str,
                                 expected_reply: str | None) -> None:
@@ -467,13 +337,6 @@ class ConversationMemory:
                 sid, _ = self._sessions.popitem(last=False)
                 self._bump_version_locked(sid)
 
-    def suspend_topic(self, session: str) -> None:
-        """An action/form turn breaks pronoun reference, not past approved topics."""
-        with self._lock:
-            current = self._sessions.get(session)
-            if current is not None:
-                current.turns.clear()
-                self._bump_version_locked(session)
 
     def sync_workflow(self, session: str, language: str, *, proposal_id: str,
                       service_kind: str, status: str) -> None:
@@ -490,7 +353,6 @@ class ConversationMemory:
             if current is None:
                 current = SessionTopics(language, now + self.ttl)
                 self._sessions[session] = current
-            current.pending_review_kinds = ()
             current.proposal_id = proposal_id if status not in {'cancelled', 'expired'} else None
             current.service_kind = service_kind if status not in {'cancelled', 'expired'} else None
             current.workflow_status = status

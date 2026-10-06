@@ -7,7 +7,8 @@ workflow. Source quotes and map geometry are checked by their own authorities.
 """
 from __future__ import annotations
 
-from concierge_kiosk.agent.understanding.intent import matched_service_kinds, normalize_intent_text
+from concierge_kiosk.agent.understanding.intent import normalize_intent_text
+from concierge_kiosk.agent.understanding.routing import directions_request
 from concierge_kiosk.agent.understanding.domain_nlu import (
     ACTION_PHRASES,
     NEGATION_PATTERNS,
@@ -26,9 +27,9 @@ def read_only_task_graph(query: str, language: str) -> dict | None:
     text = normalize_intent_text(query)
     if not _CONJ[language].search(text) or not any(cue in text for cue in _INFO[language]):
         return None
-    kinds = matched_service_kinds(query, language)
-    # A mixed booking/request must use the existing service clarification route.
-    if kinds != {'directions'}:
+    # Only a knowledge read combined with a directions read qualifies; any
+    # service request in the turn is handled by understanding, not here.
+    if directions_request(query, language) is None:
         return None
     negation = NEGATION_PATTERNS.get(language)
     if negation is not None and negation.search(text):

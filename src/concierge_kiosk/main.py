@@ -6,7 +6,7 @@ only wires concrete adapters, HTTP routes and lifecycle resources.
 from __future__ import annotations
 
 import logging
-import hashlib
+import json
 import os
 import sqlite3
 import sys
@@ -20,7 +20,6 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .agent.memory.conversation import ConversationMemory
-from .agent.memory.task_checkpoint import ReadTaskCheckpoint
 from .agent.memory.task_memory import AgentTaskMemory
 from .agent.memory.preferences import SessionPreferenceMemoryStore
 from .agent.proactive import ProactiveEngine
@@ -36,12 +35,15 @@ from .application import TurnFinalizer, WorkflowApplicationService
 from .bootstrap import prepare_runtime
 from .core.property_profile import load_property_profile, unconfigured_property_profile
 from .core.domain_profile import get_domain_profile, load_domain_profile, voice_policy
-from .agent.understanding.semantic_router import SemanticRouter, read_route_examples
+from .agent.understanding.service_selector import ServiceSelector, load_command_examples
+from .core.dataset_layout import (
+    SERVICE_CATALOG, TRAIN_AGENT_MULTILINGUAL, TRAIN_AGENT_VI_GOLD, dataset_path,
+)
 from .core.settings import Settings
 from .domain.service_requests import InvalidTransition
 from .runtime.metrics import latency_bucket
 from .runtime.turn_events import TurnEvents
-from .services import SpeechService
+from .application import SpeechService
 from .voice.runtime.adapters import synthesize, synthesize_cancellable, transcribe, transcribe_detected, validate_audio
 from .voice.session.turns import VoiceTurns
 
@@ -107,26 +109,21 @@ def _load_bound_profiles(cfg, workflows):
     return domain_profile, property_profile, enabled_request_kinds
 
 
-def _build_semantic_router(domain_profile, embedder):
-    """Build the reviewed-example router from the pinned domain profile."""
-    spec = domain_profile.nlu.semantic_router
-    if spec.get('mode') != 'active' or embedder is None:
+def _build_service_selector(cfg, embedder):
+    """Build the lazy catalog/example index behind embedding-based understanding."""
+    if embedder is None or not cfg.semantic_understanding_enabled:
         return None
-    source = (domain_profile.source_path.parent / str(spec['examples_path'])).resolve()
+    from .core.domain_profile import nlu_policy
+    policy = nlu_policy().service_selector
+    root = getattr(cfg, 'structured_dataset_dir', None)
+    path = dataset_path(SERVICE_CATALOG, root)
     try:
-        raw = source.read_bytes()
-        if hashlib.sha256(raw).hexdigest() != str(spec['examples_sha256']).lower():
-            raise ValueError('route-example SHA-256 mismatch')
-        examples = read_route_examples(source, split='train')
-        return SemanticRouter(
-            examples, embedder,
-            min_score=float(spec['min_score']), min_margin=float(spec['min_margin']),
-            max_examples_per_route=int(spec['max_examples_per_route']),
-            mode=str(spec['mode']))
-    except (OSError, UnicodeError, ValueError, TypeError, KeyError, RuntimeError) as exc:
-        # Retrieval and deterministic routing remain available when the
-        # optional reviewed-example asset is unavailable or stale.
-        LOGGER.warning('semantic_router_unavailable path=%s error=%s', source, type(exc).__name__)
+        examples = load_command_examples(
+            [dataset_path(name, root) for name in (TRAIN_AGENT_VI_GOLD, TRAIN_AGENT_MULTILINGUAL)])
+        return ServiceSelector(path, embedder, top_k=int(policy['top_k']),
+                               examples=examples, example_k=int(policy['example_k']))
+    except (OSError, UnicodeError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        LOGGER.warning('service_selector_unavailable path=%s error=%s', path, type(exc).__name__)
         return None
 
 
@@ -153,6 +150,13 @@ def _build_lifespan(graph_holder, store, workflows, cfg=None):
                     await asyncio.to_thread(warm_local_slm, cfg.llm_base_url, cfg.llm_model)
                 except Exception as exc:
                     LOGGER.warning('slm_warmup_failed type=%s', type(exc).__name__)
+            selector = getattr(_app.state, 'service_selector', None)
+            if selector is not None:
+                # Embed the catalog and reviewed examples before the first turn.
+                try:
+                    await asyncio.to_thread(selector.warm)
+                except Exception as exc:
+                    LOGGER.warning('service_selector_warmup_failed type=%s', type(exc).__name__)
         warmup = asyncio.create_task(warm_voice()) if cfg is not None else None
         async def overdue_worker():
             while not stop.is_set():
@@ -214,7 +218,7 @@ def _configure_voice_runtime(app: FastAPI, cfg):
         if not pcm_ready_at_boot:
             return False
         if cfg.voice_incremental_require_manifest:
-            from .voice.models.model_manifest import check_voice_manifest
+            from .core.model_manifest import check_voice_manifest
             return check_voice_manifest(cfg.voice_incremental_model_path,
                                         cfg.voice_incremental_manifest_path)
         return True
@@ -231,7 +235,7 @@ def _configure_voice_runtime(app: FastAPI, cfg):
         if (exact_ollama_digest(cfg.llm_base_url, cfg.llm_model, timeout=cfg.slm_probe_timeout_seconds)
                 != cfg.llm_model_digest.removeprefix('sha256:')):
             return False
-        from .agent.models.model_manifest import check_model_manifest
+            from .core.model_manifest import check_model_manifest
         return check_model_manifest(cfg.nli_model_path, cfg.nli_manifest_path)
 
     audio_admission = AudioAdmission()
@@ -268,7 +272,6 @@ def _configure_memory_runtime(app: FastAPI, cfg, store):
     conversations = ConversationMemory(
         ttl=cfg.context_ttl_seconds, max_topics=cfg.context_max_topics,
         max_sessions=memory_cfg.max_sessions)
-    task_checkpoints = ReadTaskCheckpoint(store, cfg.property_id, cfg.context_ttl_seconds)
     agent_checkpoints = AgentCheckpointStore(store, cfg.property_id, cfg.context_ttl_seconds)
     agent_memory = SessionSemanticMemoryStore(store, cfg.property_id, cfg.context_ttl_seconds)
     preference_memory = SessionPreferenceMemoryStore(
@@ -277,20 +280,17 @@ def _configure_memory_runtime(app: FastAPI, cfg, store):
         ttl=min(memory_cfg.task_ttl_seconds, cfg.context_ttl_seconds),
         max_sessions=memory_cfg.max_sessions)
     app.state.conversations = conversations
-    app.state.task_checkpoints = task_checkpoints
     app.state.agent_checkpoints = agent_checkpoints
     app.state.agent_memory = agent_memory
     app.state.preference_memory = preference_memory
     app.state.agent_tasks = agent_tasks
-    return conversations, task_checkpoints, agent_checkpoints, agent_memory, preference_memory, agent_tasks
+    return conversations, agent_checkpoints, agent_memory, preference_memory, agent_tasks
 
 
 def _build_graph_getter(*, app, cfg, workflows, graph_holder):
     graph_lock = threading.Lock()
 
     def get_graph():
-        if cfg.orchestrator != "langgraph":
-            raise RuntimeError("LangGraph orchestrator is not enabled")
         with graph_lock:
             if graph_holder["instance"] is None:
                 try:
@@ -353,17 +353,15 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
     cfg, store, rag_policy, workflows, embedder, reranker = prepare_runtime(settings, embedder, reranker)
     vector_store = None
     vector_store_error = None
-    if cfg.rag_dense_backend != 'legacy':
-        try:
-            from .rag.vectorstore import open_vector_store
-            vector_store = open_vector_store(
-                backend=cfg.rag_dense_backend, path=cfg.rag_vector_path,
-                collection=f'{cfg.property_id}-knowledge')
-        except (OSError, RuntimeError, ValueError) as exc:
-            vector_store_error = type(exc).__name__
-            LOGGER.error('dense_vector_index_unavailable type=%s', vector_store_error)
+    try:
+        from .rag.vectorstore import open_vector_store
+        vector_store = open_vector_store(
+            path=cfg.rag_vector_path, collection=f'{cfg.property_id}-knowledge')
+    except (OSError, RuntimeError, ValueError) as exc:
+        vector_store_error = type(exc).__name__
+        LOGGER.error('dense_vector_index_unavailable type=%s', vector_store_error)
     domain_profile, property_profile, enabled_request_kinds = _load_bound_profiles(cfg, workflows)
-    semantic_router = _build_semantic_router(domain_profile, embedder)
+    service_selector = _build_service_selector(cfg, embedder)
     workflows.emergency_escalation_seconds = property_profile.emergency.escalation_after_seconds
     workflows.default_kiosk_location = property_profile.emergency.default_kiosk_location
     graph_holder = {"instance": None}
@@ -375,6 +373,7 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
     app.state.domain_profile = domain_profile
     app.state.vector_store = vector_store
     app.state.vector_store_error = vector_store_error
+    app.state.service_selector = service_selector
     app.state.status_tokens = StatusTokenService(cfg.status_token_secret)
     # Suggestions are consent-gated at the route and remain read-only. The
     # engine is enabled so an explicitly opted-in kiosk can use it; without
@@ -382,7 +381,7 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
     app.state.proactive_engine = ProactiveEngine(enabled=True)
     (audio_admission, voice_turns, turn_events, stt_semaphore, tts_semaphore,
      pcm_permitted, slm_permitted, strict_ai_ready_at_boot) = _configure_voice_runtime(app, cfg)
-    (conversations, task_checkpoints, agent_checkpoints, agent_memory,
+    (conversations, agent_checkpoints, agent_memory,
      preference_memory, agent_tasks) = _configure_memory_runtime(app, cfg, store)
     get_graph = _build_graph_getter(
         app=app, cfg=cfg, workflows=workflows, graph_holder=graph_holder)
@@ -441,34 +440,33 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
         enabled_request_kinds=enabled_request_kinds, get_graph=get_graph,
         record_metric=record_metric, turn_events=turn_events,
         audio_admission=audio_admission, slm_permitted=slm_permitted,
-        answers=answer_services, logger=LOGGER, semantic_router=semantic_router,
+        answers=answer_services, logger=LOGGER, service_selector=service_selector,
     )
     answer = conversation_engine.answer
     ensure_active_context_session = answer_services.ensure_active_context_session
     service_actions = conversation_engine.service_actions
 
     turn_finalizer = TurnFinalizer(
-        conversations=conversations, task_checkpoints=task_checkpoints,
-        agent_checkpoints=agent_checkpoints, agent_memory=agent_memory, preference_memory=preference_memory,
+        conversations=conversations, agent_checkpoints=agent_checkpoints,
+        agent_memory=agent_memory, preference_memory=preference_memory,
         ensure_session=ensure_active_context_session, logger=LOGGER,
     )
     finalize_answer = turn_finalizer.finalize
+    finalize_service_turn = service_actions.finalize_service_turn
 
     workflow_service = WorkflowApplicationService(
-        workflows=workflows, store=store, orchestrator=cfg.orchestrator,
-        property_id=cfg.property_id, get_graph=get_graph, logger=LOGGER,
+        workflows=workflows, store=store, property_id=cfg.property_id,
+        get_graph=get_graph, logger=LOGGER,
     )
     prepare_authorized_proposal = workflow_service.prepare
     confirm_authorized_proposal = workflow_service.confirm
-
-    commit_autonomous_action = service_actions.commit_autonomous_action
 
     register_guest_routes(
         app, cfg=cfg, workflows=workflows, store=store,
         voice_turns=voice_turns, turn_events=turn_events, audio_admission=audio_admission,
         conversations=conversations, agent_tasks=agent_tasks, rate=rate,
         guest_session=guest_session, answer=answer, finalize_answer=finalize_answer,
-        commit_autonomous_action=commit_autonomous_action,
+        finalize_service_turn=finalize_service_turn,
         get_graph=get_graph,
         prepare_authorized_proposal=prepare_authorized_proposal,
         confirm_authorized_proposal=confirm_authorized_proposal,
@@ -517,7 +515,7 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
             'synthesize_fn': lambda config, text, language: synthesize(config, text, language),
             'answer': answer,
             'finalize_answer': finalize_answer,
-            'commit_autonomous_action': commit_autonomous_action,
+            'finalize_service_turn': finalize_service_turn,
         },
     )
 

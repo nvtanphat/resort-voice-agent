@@ -256,13 +256,12 @@
       "required": [
         "semantic_generation",
         "semantic_require_independent_nli",
-        "intent_parser",
         "agent_planner",
+        "semantic_understanding",
         "voice_windowed_preview",
         "voice_preview_stability",
         "voice_incremental"
         ,"voice_transport"
-        ,"understanding_mode"
       ],
       "properties": {
         "semantic_generation": {
@@ -271,10 +270,10 @@
         "semantic_require_independent_nli": {
           "type": "boolean"
         },
-        "intent_parser": {
+        "agent_planner": {
           "type": "boolean"
         },
-        "agent_planner": {
+        "semantic_understanding": {
           "type": "boolean"
         },
         "voice_windowed_preview": {
@@ -288,9 +287,6 @@
         },
         "voice_transport": {
           "enum": ["legacy", "pipecat"]
-        },
-        "understanding_mode": {
-          "enum": ["legacy", "shadow", "command"]
         }
       }
     },
@@ -340,7 +336,6 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "dense_backend",
             "vector_path",
             "min_dense_similarity",
             "lexical_coverage",
@@ -356,9 +351,6 @@
             "rerank_on_failure"
           ],
           "properties": {
-            "dense_backend": {
-              "enum": ["legacy", "chroma", "faiss"]
-            },
             "vector_path": {
               "type": "string",
               "minLength": 1,

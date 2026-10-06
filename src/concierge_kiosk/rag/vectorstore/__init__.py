@@ -11,12 +11,10 @@ from .base import (
     VectorStoreError,
     validate_filter,
 )
-from .chroma import ChromaVectorStore
 from .faiss import FaissVectorStore
 from .factory import open_vector_store
 
 __all__ = [
-    "ChromaVectorStore",
     "FaissVectorStore",
     "VectorMatch",
     "VectorRecord",

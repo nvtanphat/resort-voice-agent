@@ -16,7 +16,6 @@ from .accessors import (
     request_kinds,
     security_policy,
     supported_languages,
-    tool_documentation,
     ui_policy,
     voice_policy,
 )

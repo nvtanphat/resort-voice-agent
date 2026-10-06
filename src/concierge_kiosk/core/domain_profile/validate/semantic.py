@@ -33,7 +33,6 @@ def semantic_validate(payload: dict[str, Any]) -> None:
 
     seen_codes: set[str] = set()
     defaults: dict[str, str] = {}
-    selectors: dict[tuple[str, str, str], str] = {}
     action_kinds: set[str] = set()
     for service in payload["services"]:
         code = service["code"]
@@ -66,20 +65,6 @@ def semantic_validate(payload: dict[str, Any]) -> None:
             if kind in defaults:
                 raise ValueError(f"Multiple default services configured for request kind {kind}")
             defaults[kind] = code
-        for language, terms in service["match_terms"].items():
-            if language not in languages:
-                raise ValueError(f"Service {code} selector uses unsupported language")
-            for term in terms:
-                normalized = " ".join(term.casefold().split())
-                if not normalized:
-                    raise ValueError(f"Service {code} contains an empty selector term")
-                key = (kind, language, normalized)
-                previous = selectors.get(key)
-                if previous is not None and previous != code:
-                    raise ValueError(
-                        f"Selector term collision for request kind {kind}: {term}")
-                selectors[key] = code
-
     missing_defaults = action_kinds - set(defaults)
     if missing_defaults:
         raise ValueError(

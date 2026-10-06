@@ -57,63 +57,6 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": false,
-      "match_terms": {
-        "en": [
-          "towel",
-          "towels",
-          "amenity",
-          "amenities",
-          "pillow",
-          "pillows",
-          "blanket",
-          "blankets",
-          "bottle of water",
-          "bottles of water",
-          "water bottle",
-          "water bottles",
-          "toiletries",
-          "slippers",
-          "bathrobe",
-          "bathrobes",
-          "hangers"
-        ],
-        "vi": [
-          "khăn",
-          "vật dụng",
-          "đồ dùng",
-          "gối",
-          "chăn",
-          "mền",
-          "nước suối",
-          "chai nước",
-          "dép",
-          "áo choàng"
-        ],
-        "zh": [
-          "毛巾",
-          "用品",
-          "浴巾",
-          "矿泉水",
-          "瓶水",
-          "枕头",
-          "毯子",
-          "被子",
-          "拖鞋",
-          "浴袍",
-          "衣架"
-        ],
-        "ko": [
-          "수건",
-          "비품",
-          "생수",
-          "베개",
-          "담요",
-          "이불",
-          "슬리퍼",
-          "가운",
-          "옷걸이"
-        ]
-      },
       "optional_slots": [
         "quantity"
       ],
@@ -135,89 +78,6 @@
       "tool": "service_action",
       "default_for_kind": false,
       "escalate_without_evidence": true,
-      "match_terms": {
-        "en": [
-          "air conditioner",
-          "air conditioning",
-          "ac",
-          "fix",
-          "tv",
-          "television",
-          "sink",
-          "toilet",
-          "light",
-          "lights",
-          "lamp",
-          "shower",
-          "tap",
-          "faucet",
-          "fridge",
-          "minibar",
-          "kettle",
-          "adjust",
-          "thermostat",
-          "temperature",
-          "leaking",
-          "blocked",
-          "clogged",
-          "no signal",
-          "not working"
-        ],
-        "vi": [
-          "điều hòa",
-          "máy lạnh",
-          "sửa",
-          "tivi",
-          "đèn",
-          "bồn rửa",
-          "vòi nước",
-          "bồn cầu",
-          "vòi sen",
-          "tủ lạnh",
-          "rò rỉ",
-          "tắc",
-          "nghẹt",
-          "tv",
-          "rò nước",
-          "chảy nước",
-          "không mát",
-          "chỉnh",
-          "nhiệt độ",
-          "lạnh quá",
-          "nóng quá"
-        ],
-        "zh": [
-          "空调",
-          "维修",
-          "电灯",
-          "灯",
-          "电视",
-          "洗手池",
-          "水龙头",
-          "马桶",
-          "漏水",
-          "堵了",
-          "没有信号",
-          "打不开",
-          "不制冷"
-        ],
-        "ko": [
-          "에어컨",
-          "수리",
-          "조명",
-          "전등",
-          "tv",
-          "티비",
-          "세면대",
-          "변기",
-          "샤워기",
-          "냉장고",
-          "고장",
-          "막혔",
-          "새요",
-          "신호가 없"
-        ]
-      },
       "optional_slots": [],
       "approval": "none",
       "catalog_service_id": ""
@@ -236,7 +96,6 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": true,
-      "match_terms": {},
       "optional_slots": [
         "preferred_time"
       ],
@@ -255,7 +114,6 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": true,
-      "match_terms": {},
       "optional_slots": [
         "room_number",
         "preferred_time",
@@ -279,26 +137,14 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": false,
-      "match_terms": {
-        "en": [
-          "spa appointment",
-          "book a spa",
-          "reserve a spa"
-        ],
-        "vi": [
-          "đặt lịch spa",
-          "đặt spa"
-        ],
-        "zh": [
-          "预约水疗"
-        ],
-        "ko": [
-          "스파 예약"
-        ]
-      },
       "optional_slots": [],
       "approval": "staff",
-      "catalog_service_id": "spa.booking"
+      "catalog_service_id": "spa.booking",
+      "availability_source": {
+        "dataset": "synthetic/operations/spa/operations.json",
+        "shape": "time_slots",
+        "collection": "slots"
+      }
     },
     {
       "code": "dining_reservation",
@@ -315,27 +161,14 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": false,
-      "match_terms": {
-        "en": [
-          "reserve a table",
-          "book a table",
-          "table reservation"
-        ],
-        "vi": [
-          "đặt bàn"
-        ],
-        "zh": [
-          "预订餐桌",
-          "订餐位"
-        ],
-        "ko": [
-          "테이블 예약",
-          "식당 예약"
-        ]
-      },
       "optional_slots": [],
       "approval": "staff",
-      "catalog_service_id": "dining.restaurant_reservation"
+      "catalog_service_id": "dining.restaurant_reservation",
+      "availability_source": {
+        "dataset": "synthetic/operations/food_beverage/restaurants.json",
+        "shape": "table_capacity",
+        "collection": "venues"
+      }
     },
     {
       "code": "food_order",
@@ -351,22 +184,6 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": false,
-      "match_terms": {
-        "en": [
-          "order food",
-          "room service"
-        ],
-        "vi": [
-          "gọi món",
-          "đặt món"
-        ],
-        "zh": [
-          "点餐"
-        ],
-        "ko": [
-          "음식 주문"
-        ]
-      },
       "optional_slots": [],
       "approval": "staff",
       "catalog_service_id": "service.in_room_dining"
@@ -385,30 +202,14 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": false,
-      "match_terms": {
-        "en": [
-          "book a tour",
-          "arrange a tour",
-          "reserve a tour",
-          "schedule a tour"
-        ],
-        "vi": [
-          "đặt tour",
-          "đăng ký tour"
-        ],
-        "zh": [
-          "预订旅游",
-          "报名旅游",
-          "订旅游"
-        ],
-        "ko": [
-          "투어 예약",
-          "관광 예약"
-        ]
-      },
       "optional_slots": [],
       "approval": "staff",
-      "catalog_service_id": ""
+      "catalog_service_id": "",
+      "availability_source": {
+        "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
+        "shape": "inventory",
+        "collection": "tours"
+      }
     },
     {
       "code": "wake_up_call",
@@ -424,25 +225,6 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": false,
-      "match_terms": {
-        "en": [
-          "wake-up call",
-          "wake up call",
-          "wake me"
-        ],
-        "vi": [
-          "báo thức",
-          "đánh thức"
-        ],
-        "zh": [
-          "叫早",
-          "叫醒服务"
-        ],
-        "ko": [
-          "모닝콜",
-          "기상 전화"
-        ]
-      },
       "optional_slots": [
         "room_number"
       ],
@@ -461,7 +243,6 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": true,
-      "match_terms": {},
       "optional_slots": [
         "preferred_time"
       ],
@@ -480,7 +261,6 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": true,
-      "match_terms": {},
       "optional_slots": [
         "party_size",
         "preferred_time"
@@ -500,12 +280,16 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": true,
-      "match_terms": {},
       "optional_slots": [
         "preferred_time"
       ],
       "approval": "staff",
-      "catalog_service_id": ""
+      "catalog_service_id": "",
+      "availability_source": {
+        "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
+        "shape": "inventory",
+        "collection": "tours"
+      }
     },
     {
       "code": "transport_request",
@@ -521,35 +305,16 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": true,
-      "match_terms": {
-        "en": [
-          "taxi",
-          "cab",
-          "airport transfer",
-          "car to the airport"
-        ],
-        "vi": [
-          "taxi",
-          "xe ra sân bay",
-          "xe đi sân bay",
-          "đưa ra sân bay"
-        ],
-        "zh": [
-          "出租车",
-          "机场接送",
-          "去机场的车"
-        ],
-        "ko": [
-          "택시",
-          "공항 이동",
-          "공항 차량"
-        ]
-      },
       "optional_slots": [
         "destination"
       ],
       "approval": "staff",
-      "catalog_service_id": "transportation.taxi"
+      "catalog_service_id": "transportation.taxi",
+      "availability_source": {
+        "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
+        "shape": "inventory",
+        "collection": "transport"
+      }
     },
     {
       "code": "late_checkout",
@@ -566,27 +331,6 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": true,
-      "match_terms": {
-        "en": [
-          "late checkout",
-          "check out late",
-          "extend checkout"
-        ],
-        "vi": [
-          "trả phòng muộn",
-          "check-out muộn",
-          "checkout muộn",
-          "gia hạn giờ trả phòng"
-        ],
-        "zh": [
-          "延迟退房",
-          "晚退房"
-        ],
-        "ko": [
-          "늦은 체크아웃",
-          "레이트 체크아웃"
-        ]
-      },
       "optional_slots": [],
       "approval": "staff",
       "catalog_service_id": "service.late_checkout"
@@ -948,14 +692,6 @@
         ]
       }
     },
-    "semantic_router": {
-      "mode": "shadow",
-      "min_score": 0.58,
-      "min_margin": 0.04,
-      "max_examples_per_route": 256,
-      "examples_path": "../releases/route-examples.jsonl",
-      "examples_sha256": "8F6E642844AE202D25EBC85A0999B023B9ED3BFEFC52A9212C5B40F10CDD98E2"
-    },
     "intent": {
       "completion_claims": {
         "en": [
@@ -1038,218 +774,31 @@
       },
       "action_phrases": {
         "vi": {
-          "housekeeping": [
-            "dọn phòng",
-            "lau phòng",
-            "dọn giúp phòng"
-          ],
-          "facilities": [
-            "mang thêm khăn",
-            "cho thêm khăn",
-            "bổ sung khăn",
-            "sửa điều hòa",
-            "đặt lịch spa",
-            "đặt spa",
-            "cho tôi thêm khăn",
-            "thêm khăn tắm",
-            "mang khăn tắm",
-            "máy lạnh hỏng",
-            "điều hòa hỏng",
-            "đặt massage spa",
-            "đặt massage"
-          ],
-          "dining": [
-            "đặt bàn",
-            "gọi món",
-            "đặt món",
-            "room service",
-            "gọi room service",
-            "gọi đồ ăn lên phòng",
-            "mang đồ ăn lên phòng"
-          ],
-          "tour": [
-            "đặt tour",
-            "đăng ký tour"
-          ],
           "directions": [
             "dẫn đường",
             "đưa tôi đến",
             "dẫn tôi đến",
             "chỉ đường"
-          ],
-          "human": [
-            "gặp lễ tân",
-            "gặp nhân viên",
-            "gọi nhân viên"
-          ],
-          "transport": [
-            "gọi taxi",
-            "đặt taxi",
-            "gọi giúp taxi",
-            "đặt giúp taxi",
-            "xe ra sân bay",
-            "xe đi sân bay"
-          ],
-          "front_office": [
-            "trả phòng muộn",
-            "check-out muộn",
-            "checkout muộn",
-            "gia hạn giờ trả phòng"
           ]
         },
         "en": {
-          "housekeeping": [
-            "clean my room",
-            "arrange housekeeping",
-            "send housekeeping"
-          ],
-          "facilities": [
-            "bring towels",
-            "send towels",
-            "fix the air conditioner",
-            "book a spa appointment",
-            "reserve a spa appointment",
-            "bring me towels",
-            "send me towels",
-            "air conditioner is broken",
-            "ac is broken",
-            "air conditioning is broken",
-            "book a spa massage",
-            "book a massage",
-            "reserve a massage"
-          ],
-          "dining": [
-            "reserve a table",
-            "book a table",
-            "can i book",
-            "order food",
-            "order food to my room",
-            "bring food to my room"
-          ],
-          "tour": [
-            "book a tour",
-            "arrange a tour",
-            "reserve a tour"
-          ],
           "directions": [
             "show me the way",
             "guide me to",
             "take me to",
             "directions to"
-          ],
-          "human": [
-            "speak to staff",
-            "talk to reception",
-            "call reception"
-          ],
-          "transport": [
-            "get me a taxi",
-            "call me a taxi",
-            "book a taxi",
-            "arrange a taxi",
-            "get a taxi",
-            "taxi to the airport",
-            "airport transfer"
-          ],
-          "front_office": [
-            "late checkout",
-            "check out late",
-            "extend checkout",
-            "request late checkout"
           ]
         },
         "zh": {
-          "housekeeping": [
-            "打扫房间",
-            "清洁房间",
-            "安排客房清洁"
-          ],
-          "facilities": [
-            "送毛巾",
-            "修空调",
-            "预约水疗",
-            "再送毛巾",
-            "空调坏了",
-            "空调不工作",
-            "预约按摩",
-            "预约水疗按摩",
-            "送浴巾",
-            "再送浴巾"
-          ],
-          "dining": [
-            "订餐位",
-            "预订餐桌",
-            "点餐"
-          ],
-          "tour": [
-            "预订旅游",
-            "报名旅游",
-            "订旅游"
-          ],
           "directions": [
             "带我去",
             "引导我去"
-          ],
-          "human": [
-            "找工作人员",
-            "联系前台",
-            "叫前台"
-          ],
-          "transport": [
-            "叫出租车",
-            "预订出租车",
-            "去机场的车",
-            "机场接送"
-          ],
-          "front_office": [
-            "延迟退房",
-            "晚退房"
           ]
         },
         "ko": {
-          "housekeeping": [
-            "객실 청소해",
-            "방 청소해",
-            "청소를 부탁"
-          ],
-          "facilities": [
-            "수건을 가져",
-            "에어컨을 고쳐",
-            "스파 예약",
-            "수건 더 가져다",
-            "에어컨이 고장",
-            "에어컨이 안 돼",
-            "마사지 예약",
-            "스파 마사지 예약"
-          ],
-          "dining": [
-            "테이블 예약",
-            "음식 주문",
-            "식당 예약"
-          ],
-          "tour": [
-            "투어 예약",
-            "관광 예약"
-          ],
           "directions": [
             "안내해 주세요",
             "데려다 주세요"
-          ],
-          "human": [
-            "직원 연결",
-            "프런트 연결",
-            "직원을 불러"
-          ],
-          "transport": [
-            "택시 불러",
-            "택시 예약",
-            "공항 택시",
-            "공항 이동"
-          ],
-          "front_office": [
-            "늦은 체크아웃",
-            "레이트 체크아웃",
-            "체크아웃 연장"
           ]
         }
       },
@@ -1319,339 +868,25 @@
         "zh": "不要|不用|别|取消|不想|不需要",
         "ko": "하지\\s*마|안\\s*할|취소|원하지\\s*않|필요\\s*없"
       },
-      "question_start_patterns": {
-        "vi": "^(?:cho\\s+tôi\\s+hỏi|tôi\\s+có\\s+thể|có\\s+thể|liệu|làm\\s+sao|cách\\s+|ở\\s+đâu|mấy\\s+giờ)",
-        "en": "^(?:can\\s+i|may\\s+i|how\\b|what\\b|where\\b|when\\b|why\\b|do\\s+you\\s+have|is\\s+there)",
-        "zh": "^(?:请问|我可以|可以|如何|怎么|是否)",
-        "ko": "^(?:어떻게|제가|혹시|가능한가요)"
-      },
-      "explicit_question_request_patterns": {
-        "vi": "^(?:xin|vui\\s+lòng|hãy|làm\\s+ơn)\\b",
-        "en": "^(?:please\\b|(?:can|could|would)\\s+you\\b)",
-        "zh": "^请(?:帮我|给我|替我|为我)",
-        "ko": "(?:주세요|부탁드립니다)[\\s?？!.。]*$"
-      },
       "action_patterns": {
         "en": {
-          "housekeeping": [
-            "^(?:please\\s+)?(?:clean\\s+(?:(?:my|our|the)\\s+)?room|(?:could you|can you|would you|please)\\s+(?:please\\s+)?(?:send someone to )?clean\\s+(?:(?:my|our|the)\\s+)?room)"
-          ],
-          "facilities": [
-            "^(?!(?:don't|do\\s+not)\\s+)(?:please\\s+)?(?:adjust|fix|turn\\s+(?:up|down|off|on))\\s+(?:the\\s+)?(?:ac|air\\s*con\\w*|thermostat|temperature)",
-            "too\\s+(?:cold|hot).{0,30}\\b(?:ac|air\\s*con\\w*)",
-            "^(?:please\\s+)?(?:could you|can you|would you|please)\\s+(?:please\\s+)?(?:send|bring) (?:me |us )?(?:(?:some|more|extra|one|two|three|four|five|six|seven|eight|nine|ten|\\d{1,2}) )?towels",
-            "^(?:(?:my|our|the)\\s+)?(?:air\\s*con\\w*|ac)\\b.{0,35}\\b(?:broken|not\\s+(?:working|cooling)|isn't\\s+(?:working|cooling)|doesn't\\s+(?:work|cool))(?:\\s+.*)?$",
-            "^(?:i\\s+want\\s+to\\s+|please\\s+|can\\s+you\\s+|could\\s+you\\s+)?book\\s+(?:a\\s+)?(?:spa\\s+)?massage(?:\\s+.*)?$",
-            "^(?:please\\s+)?(?:(?:can|could|would)\\s+you\\s+(?:please\\s+)?)?(?:send|bring|deliver)\\s+(?:me\\s+|us\\s+)?(?:(?:a|an|one|two|three|four|five|six|some|more|extra|a\\s+few|\\d{1,2})\\s+)?(?:(?:extra|more|bath|clean|fresh|spare)\\s+)*(?:towels?|pillows?|blankets?|bottles?\\s+of\\s+water|water\\s+bottles?|toiletries|slippers|bathrobes?|hangers?)\\b",
-            "^(?:(?:the|my|our)\\s+)?(?:ac|air\\s*con\\w*|lights?|lamp|tv|television|sink|toilet|shower|tap|faucet|fridge|minibar|kettle|hair\\s*dryer)(?:\\s+in\\s+(?:room\\s+\\d{1,5}|my\\s+room|our\\s+room))?\\s+(?:is\\s+|are\\s+)?(?:broken|leaking|blocked|clogged|not\\s+working|not\\s+cooling|(?:will\\s+not|won't|does\\s+not|doesn't)\\s+(?:turn\\s+on|work|flush|drain)|has\\s+no\\s+signal)\\b",
-            "^(?:please\\s+)?(?:(?:some|more|extra|one|two|three|four|five|six|seven|eight|nine|ten|\\d{1,2})\\s+)?(?:(?:extra|more|bath|clean|fresh|spare)\\s+)*(?:towels?|pillows?|blankets?|bottles?\\s+of\\s+water|water\\s+bottles?|toiletries|slippers|bathrobes?|hangers?)\\s+to\\s+(?:the\\s+)?room\\s+\\d{1,5}(?:\\s+please)?$"
-          ],
-          "dining": [
-            "^(?:can|could|may)\\s+i\\s+book(?:\\s+(?:a\\s+)?table)?(?:\\s+.*)?$",
-            "^(?:please\\s+)?(?:could you|can you|would you|please)\\s+(?:please\\s+)?(?:make|arrange) (?:a |the )?table reservation",
-            "^(?:my family and i|we|i)\\b.{0,80}\\b(?:want|would like|need|plan)\\b.{0,80}\\b(?:dinner|eat|a meal|a table|restaurant)\\b",
-            "^(?:please\\s+)?(?:bring|send|deliver)\\s+(?:me\\s+)?(?:a\\s+)?(?:bowl\\s+of\\s+)?(?:pho|food)\\b.*\\broom\\s+\\d{1,5}\\b"
-          ],
-          "tour": [
-            "^(?:please\\s+)?(?:could you|can you|would you|please)\\s+(?:please\\s+)?(?:schedule|arrange) (?:a |the )?tour"
-          ],
-          "transport": [
-            "^(?:can\\s+you\\s+|could\\s+you\\s+|please\\s+|i\\s+(?:need|want)\\s+)?(?:get|call|book|arrange)\\s+(?:me\\s+)?(?:a\\s+)?(?:taxi|cab)(?:\\s+.*)?$"
-          ],
-          "front_office": [
-            "^(?:i\\s+(?:want|need)\\s+to\\s+|can\\s+i\\s+|could\\s+i\\s+|please\\s+)?(?:request\\s+)?(?:a\\s+)?late\\s+check-?out(?:\\s+.*)?$",
-            "^(?:can|could)\\s+(?:room\\s+\\d{1,4}|i|we)\\s+check\\s*-?out\\s+(?:at|by)\\s+(?:[01]?\\d|2[0-3])(?::[0-5]\\d)?(?:\\s*(?:am|pm))?(?:\\s*.*)?$"
-          ],
           "directions": [
             "^(?:where\\s+(?:is|are)|directions?\\s+to)\\s+.+$"
-          ],
-          "human": [
-            "\\b(?:safe|key|room\\s+safe)\\b.{0,40}\\b(?:won't|will not|doesn't|does not|cannot|can't)\\s+(?:open|unlock)",
-            "\\b(?:room\\s+next\\s+door|next\\s+door)\\b.{0,30}\\b(?:noisy|noise|loud)",
-            "\\b(?:restaurant|dining|table)\\b.{0,60}\\b(?:couldn't find|cannot find|can't find|not found|waited too long|wrong dish|wrong order)",
-            "\\b(?:need|want|arrange|request)\\b.{0,30}\\b(?:wake[- ]?up call|wake me)",
-            "\\b(?:need|want|request)\\b.{0,30}\\b(?:luggage|bags?)\\b.{0,30}\\b(?:check[- ]?out|departure)"
           ]
         },
         "vi": {
-          "housekeeping": [
-            "^(?:làm ơn|vui lòng|xin|hãy)\\s+(?:cho người |giúp tôi )?dọn (?:giúp )?phòng"
-          ],
-          "facilities": [
-            "(?:lạnh|nóng|bí) quá.{0,30}(?:điều hòa|máy lạnh)",
-            "(?:chỉnh|điều chỉnh|tăng|giảm|tắt|bật)(?:\\s+giúp|\\s+hộ)?(?:\\s+tôi)?\\s+(?:điều hòa|máy lạnh|nhiệt độ)",
-            "^(?:làm ơn|vui lòng|xin|hãy)\\s+(?:mang|đưa|cho) (?:tôi )?(?:thêm )?khăn",
-            "^(?:cho|mang|đưa|gửi)(?:\\s+giúp)?\\s+(?:tôi\\s+)?(?:thêm\\s+)?(?:\\d{1,2}\\s+|một\\s+|hai\\s+|ba\\s+)?khăn(?:\\s+tắm)?(?:\\s+.*)?$",
-            "^(?:(?:phòng\\s+(?:tôi|mình).{0,30})?)?(?:máy lạnh|điều hòa).{0,30}(?:bị\\s+)?(?:hỏng|không\\s+(?:chạy|hoạt động|mát))(?:\\s+.*)?$",
-            "^(?:tôi\\s+muốn\\s+|vui\\s+lòng\\s+|làm\\s+ơn\\s+)?(?:đặt|book)\\s+(?:lịch\\s+)?(?:spa\\s+)?massage(?:\\s+.*)?$",
-            "^(?:làm ơn\\s+|vui lòng\\s+|xin\\s+|hãy\\s+)?(?:mang|đưa|gửi|cho)(?:\\s+giúp)?\\s+(?:tôi\\s+)?(?:thêm\\s+)?(?:\\d{1,2}\\s+|một\\s+|hai\\s+|ba\\s+|bốn\\s+|năm\\s+)?(?:cái\\s+|chai\\s+|chiếc\\s+|đôi\\s+)?(?:gối|chăn|mền|nước suối|chai nước|dép|áo choàng)(?:\\s+.*)?$",
-            "(?:tivi|tv|đèn|bồn rửa|vòi nước|bồn cầu|toilet|vòi sen|tủ lạnh).{0,30}(?:bị\\s+)?(?:hỏng|hư|rò rỉ|rỉ nước|tắc|nghẹt|không\\s+(?:sáng|bật được|lên hình|chạy|hoạt động|có tín hiệu|xả được))",
-            "^(?:cho|mang|đưa|gửi)\\s+(?:lên\\s+)?phòng\\s+\\d{2,5}\\s+(?:thêm\\s+)?(?:\\d{1,2}\\s+|một\\s+|hai\\s+|ba\\s+|bốn\\s+)?(?:cái\\s+|chai\\s+|chiếc\\s+|đôi\\s+)?(?:gối|chăn|mền|khăn|nước suối|chai nước|dép|áo choàng)",
-            "(?:máy lạnh|điều hòa).{0,20}không\\s+(?:mát|lạnh)",
-            "(?:tivi|tv|đèn|bồn rửa|vòi nước|bồn cầu|vòi sen|tủ lạnh).{0,30}(?:rò nước|chảy nước)",
-            "\\b(?:cần|muốn|nhờ)\\b.{0,30}\\b(?:báo\\s+thức|đánh\\s+thức)"
-          ],
-          "dining": [
-            "^(?:gia đình tôi|gia đình chúng tôi|chúng tôi|tôi)\\b.{0,80}\\b(?:muốn|cần|định)\\b.{0,80}\\b(?:ăn tối|ăn|bữa tối|nhà hàng|đặt bàn)\\b",
-            "^(?:làm ơn\\s+)?(?:mang|đưa|gửi|cho)\\s+(?:tôi\\s+)?(?:một\\s+)?(?:tô\\s+)?phở\\b.*\\bphòng\\s+\\d{1,5}\\b"
-          ],
           "directions": [
             "^(?:chỉ\\s+đường|đường\\s+đến|đến\\s+đâu|ở\\s+đâu)\\s+.+$"
-          ],
-          "human": [
-            "\\b(?:két\\s+sắt|két)\\b.{0,40}\\b(?:không\\s+mở|mở\\s+không\\s+được|không\\s+khóa)",
-            "\\b(?:phòng\\s+bên\\s+cạnh|phòng\\s+kế\\s+bên)\\b.{0,30}\\b(?:ồn|ồn\\s+quá|tiếng\\s+ồn)",
-            "\\b(?:nhà\\s+hàng|đặt\\s+bàn)\\b.{0,60}\\b(?:không\\s+thấy|không\\s+tìm\\s+thấy|đợi\\s+.*lâu|sai\\s+món|nhầm\\s+món)",
-            "\\b(?:cần|muốn|nhờ)\\b.{0,30}\\b(?:hỗ\\s+trợ|giúp)\\b.{0,30}\\b(?:hành\\s+lý|vali)\\b"
-          ],
-          "transport": [
-            "^(?:tôi\\s+muốn\\s+|vui\\s+lòng\\s+|làm\\s+ơn\\s+|có\\s+thể\\s+)?(?:gọi|đặt|gọi\\s+giúp|đặt\\s+giúp)\\s+(?:cho\\s+tôi\\s+)?(?:một\\s+)?taxi(?:\\s+.*)?$"
-          ],
-          "front_office": [
-            "^(?:tôi\\s+muốn\\s+|tôi\\s+cần\\s+|cho\\s+tôi\\s+|vui\\s+lòng\\s+)?(?:trả\\s+phòng\\s+muộn|check-?out\\s+muộn|gia\\s+hạn\\s+giờ\\s+trả\\s+phòng)(?:\\s+.*)?$",
-            "^(?:ph[oòóỏõọôồốổỗộơờớởỡợ]ng\\s+\\d{2,5}\\s+)?(?:c[oó]\\s+th[eể]\\s+)?(?:tr[aả](?:\\s+ph[oòóỏõọôồốổỗộơờớởỡợ]ng)?|check-?out)\\s+(?:l[uú]c|v[aà]o|[đd][eế]n)\\s+(?:[01]?\\d|2[0-3])(?::[0-5]\\d)?(?:\\s*(?:gi[oờ]|h))?\\s*(?:kh[oô]ng)?[?.!]*$"
           ]
         },
         "zh": {
-          "housekeeping": [
-            "^请(?:帮我|安排工作人员)打扫(?:一下)?房间"
-          ],
-          "facilities": [
-            "^(?:我的|我们|房间的|我房间的|客房的)?(?:空调|空調).{0,12}(?:坏了|壞了|故障|不工作|不制冷|不冷).*$",
-            "^(?:请|麻烦|可以)?\\s*(?:送|拿|带)(?:给我)?\\s*(?:(?:\\d{1,2}|一|二|两|三|四|五|六|七|八|九|十)\\s*(?:条|份)?\\s*)?(?:毛巾|浴巾)(?:\\s*(?:到|给)\\s*\\d{2,5}\\s*(?:号)?(?:房|房间))?.*$",
-            "^(?:请|麻烦)?(?:帮我)?(?:送|拿|给).{0,12}?(?:矿泉水|瓶水|枕头|毛巾|浴巾|毯子|被子|拖鞋|浴袍|衣架)",
-            "(?:空调|电灯|灯|电视|洗手池|水龙头|马桶|淋浴|冰箱).{0,8}(?:坏了|漏水|打不开|不亮|没有信号|没信号|堵了|不制冷|不凉|不工作)"
-          ],
-          "transport": [
-            "^(?:请)?(?:帮我)?(?:叫|预订)(?:一辆)?出租车.*$"
-          ],
-          "front_office": [
-            "^(?:我想|我要|请)?(?:延迟退房|晚退房).*$",
-            "^(?:\\d{2,5}\\s*(?:号)?(?:房|房间)\\s*)?(?:可以|能否|能不能|请)?\\s*(?:延迟|延后|推迟)\\s*(?:到|至)?\\s*(?:[01]?\\d|2[0-3])(?::[0-5]\\d)?\\s*(?:退房|办理退房)(?:吗|么)?[？?!！]*$"
-          ],
           "directions": [
             "^(?:哪里|在哪儿|怎么去)\\s*.+"
-          ],
-          "human": [
-            "(?:保险箱|房间保险箱).{0,20}(?:打不开|不能打开|无法打开)",
-            "(?:隔壁房间|旁边房间).{0,20}(?:太吵|噪音|吵闹)",
-            "(?:餐厅|餐桌|预订).{0,40}(?:找不到|没有找到|等了很久|上错菜|菜错了)",
-            "(?:需要|请|想要).{0,20}(?:叫早|叫醒服务)",
-            "(?:需要|请|想要).{0,30}(?:行李|退房).{0,20}(?:帮助|协助)"
           ]
         },
         "ko": {
-          "housekeeping": [
-            "^(?:제 )?객실을? 청소해 주세요"
-          ],
-          "facilities": [
-            "^(?:(?:제|내|우리)\\s*)?(?:객실\\s*)?에어컨(?:이|가|은|는|을|를)?\\s*.{0,20}(?:고장|안\\s*(?:돼|되)|작동(?:이)?\\s*안|작동하지\\s*않|시원하지\\s*않|냉방.{0,6}안).*$",
-            "(?:생수|베개|수건|담요|이불|슬리퍼|가운|옷걸이).{0,12}(?:보내|가져다|갖다)\\s*(?:주세요|줘요|주실\\s*수|줄\\s*수)",
-            "(?:에어컨|조명|전등|불|tv|티비|텔레비전|세면대|변기|샤워기|냉장고).{0,20}(?:고장|켜지지\\s*않|안\\s*켜|시원하지\\s*않|새요|샙니다|막혔|막혀|신호가\\s*없)"
-          ],
-          "transport": [
-            "^(?:택시를?\\s*)?(?:불러|예약).*$"
-          ],
-          "front_office": [
-            "^(?:늦은\\s*체크아웃|레이트\\s*체크아웃|체크아웃\\s*연장).*$",
-            "^(?:\\d{2,5}\\s*호\\s*)?체크아웃(?:을|를)?\\s*(?:\\d{1,2}(?::\\d{2})?\\s*시(?:\\s*\\d{1,2}\\s*분)?(?:로|까지)?\\s*)?(?:늦출|연장(?:할|해)?)(?:\\s*수\\s*있(?:나요|어요|습니까))?.*$"
-          ],
           "directions": [
             "^(?:어디에\\s+있나요|어떻게\\s+가나요|가는\\s+길)\\s*.+"
-          ],
-          "human": [
-            "(?:금고|객실\\s*금고).{0,20}(?:안\\s*열|열리지|열\\s*수\\s*없)",
-            "(?:옆방|옆\\s*객실).{0,20}(?:너무\\s*시끄럽|소음|시끄러)",
-            "(?:식당|예약).{0,40}(?:찾을\\s*수\\s*없|오래\\s*기다|잘못된\\s*요리|음식이\\s*틀)",
-            "(?:필요|원하).{0,20}(?:모닝콜|기상\\s*전화)",
-            "(?:필요|원하).{0,30}(?:수하물|짐).{0,20}(?:도움|지원)"
-          ]
-        }
-      },
-      "action_context_patterns": {
-        "en": [
-          "^\\s*i(?:'m| am)\\s+in\\s+the\\s+room\\b"
-        ],
-        "vi": [
-          "^\\s*mình\\s+đang\\s+ở\\s+trong\\s+phòng\\b"
-        ],
-        "zh": [
-          "^\\s*我现在就在房间里"
-        ],
-        "ko": [
-          "^\\s*지금\\s+객실에\\s+있는데"
-        ]
-      },
-      "request_frame_patterns": {
-        "en": "\\b(?:i need|i want|i(?:'d| would) like to request|i need to request|please|can you|could you|would you|can i (?:get|have|request)|send me|get me|bring me|have someone)\\b",
-        "vi": "(?<!\\w)(?:tôi cần|tôi muốn|mình cần|mình muốn|yêu cầu|vui lòng|làm ơn|tôi có thể (?:xin|nhờ|yêu cầu)|có thể|nhờ|cho tôi|mang cho tôi|gọi giúp|đặt giúp|giúp tôi|gọi taxi)(?!\\w)",
-        "zh": "(?:我需要|我要|我想|申请|请|帮我|给我|替我)",
-        "ko": "(?:필요해|원해|요청하고 싶|신청하고 싶|주세요|부탁|가져다|불러)"
-      },
-      "service_concept_terms": {
-        "en": {
-          "housekeeping": [
-            "housekeeping",
-            "room cleaning",
-            "cleaning"
-          ],
-          "facilities": [
-            "towel",
-            "towels",
-            "amenity",
-            "amenities",
-            "air conditioner",
-            "air conditioning",
-            "spa appointment",
-            "broken air conditioner",
-            "broken ac",
-            "spa",
-            "massage",
-            "spa massage"
-          ],
-          "dining": [
-            "table reservation",
-            "dinner reservation",
-            "restaurant reservation",
-            "room service",
-            "food order"
-          ],
-          "tour": [
-            "tour",
-            "excursion"
-          ],
-          "human": [
-            "staff",
-            "reception",
-            "front desk"
-          ],
-          "transport": [
-            "taxi",
-            "cab",
-            "airport transfer",
-            "ride to the airport"
-          ],
-          "front_office": [
-            "late checkout",
-            "checkout time extension",
-            "check out late"
-          ]
-        },
-        "vi": {
-          "housekeeping": [
-            "dọn phòng",
-            "buồng phòng",
-            "vệ sinh phòng"
-          ],
-          "facilities": [
-            "khăn",
-            "điều hòa",
-            "máy lạnh",
-            "lịch spa",
-            "đặt spa",
-            "spa",
-            "khăn tắm",
-            "máy lạnh hỏng",
-            "điều hòa hỏng",
-            "massage",
-            "spa massage"
-          ],
-          "dining": [
-            "đặt bàn",
-            "nhà hàng",
-            "gọi món",
-            "đặt món",
-            "room service"
-          ],
-          "tour": [
-            "tour",
-            "tham quan"
-          ],
-          "human": [
-            "nhân viên",
-            "lễ tân"
-          ],
-          "transport": [
-            "taxi",
-            "sân bay",
-            "xe ra sân bay",
-            "xe đi sân bay"
-          ],
-          "front_office": [
-            "trả phòng muộn",
-            "check-out muộn",
-            "checkout muộn",
-            "giờ trả phòng"
-          ]
-        },
-        "zh": {
-          "housekeeping": [
-            "客房清洁",
-            "打扫房间"
-          ],
-          "facilities": [
-            "毛巾",
-            "空调",
-            "水疗预约",
-            "空调坏了",
-            "按摩",
-            "水疗按摩"
-          ],
-          "dining": [
-            "餐桌",
-            "餐厅预订",
-            "点餐"
-          ],
-          "tour": [
-            "旅游",
-            "游览"
-          ],
-          "human": [
-            "工作人员",
-            "前台"
-          ],
-          "transport": [
-            "出租车",
-            "机场接送"
-          ],
-          "front_office": [
-            "延迟退房",
-            "晚退房"
-          ]
-        },
-        "ko": {
-          "housekeeping": [
-            "객실 청소",
-            "방 청소"
-          ],
-          "facilities": [
-            "수건",
-            "에어컨",
-            "스파 예약",
-            "에어컨 고장",
-            "마사지",
-            "스파 마사지"
-          ],
-          "dining": [
-            "테이블 예약",
-            "식당 예약",
-            "음식 주문"
-          ],
-          "tour": [
-            "투어",
-            "관광"
-          ],
-          "human": [
-            "직원",
-            "프런트"
-          ],
-          "transport": [
-            "택시",
-            "공항 이동"
-          ],
-          "front_office": [
-            "늦은 체크아웃",
-            "레이트 체크아웃"
           ]
         }
       },
@@ -1672,32 +907,6 @@
         "vi": "\\b(?:và|rồi|với|sau đó|nhưng)\\b",
         "zh": "并|和|还要|同时|然后|但是|但",
         "ko": "그리고|또|와|과|다음에|하지만"
-      },
-      "model_fallback_cues": {
-        "en": [
-          "meaning of life",
-          "who are you",
-          "how are you",
-          "feels wrong",
-          "is broken",
-          "not working",
-          "problem with"
-        ],
-        "vi": [
-          "bị hỏng",
-          "không hoạt động",
-          "có vấn đề"
-        ],
-        "zh": [
-          "坏了",
-          "不能工作",
-          "有问题"
-        ],
-        "ko": [
-          "고장",
-          "작동하지",
-          "문제가 있"
-        ]
       },
       "emergency_text": {
         "vi": "Tình huống khẩn cấp: hãy báo ngay cho nhân viên gần nhất hoặc Tổng đài resort máy lẻ 0. Cấp cứu y tế: 115. Cứu hỏa: 114. Trung tâm Y tế resort: máy lẻ 3420. Kiosk không thể tự điều động cơ quan khẩn cấp.",
@@ -2052,33 +1261,24 @@
           "status of my request",
           "my service request",
           "my request",
-          "my ticket",
-          "where are my towels",
-          "where is my towel",
-          "where is my housekeeping"
+          "my ticket"
         ],
         "vi": [
           "trạng thái yêu cầu",
           "yêu cầu của tôi",
           "phiếu yêu cầu của tôi",
           "yêu cầu dịch vụ của tôi",
-          "khăn của tôi đâu",
-          "dọn phòng tới đâu rồi",
           "yêu cầu tới đâu rồi"
         ],
         "zh": [
           "我的请求",
           "请求状态",
-          "服务请求状态",
-          "我的毛巾呢",
-          "客房服务到哪了"
+          "服务请求状态"
         ],
         "ko": [
           "내 요청",
           "요청 상태",
-          "서비스 요청 상태",
-          "수건은 어디에 있나요",
-          "객실 청소는 어떻게 됐나요"
+          "서비스 요청 상태"
         ]
       },
       "request_change_terms": {
@@ -3184,38 +2384,6 @@
           "이용 시간",
           "몇 시"
         ]
-      },
-      "schedule_cue_terms": {
-        "en": ["what time", "when can i use", "operating window", "what times", "when is", "when it operates", "when it is available", "service hours", "opening hours", "operating hours", "hours"],
-        "vi": ["giờ hoạt động", "khung giờ", "mấy giờ", "giờ nào", "khi nào", "lúc nào", "giờ mở cửa", "phục vụ"],
-        "zh": ["营业时间", "服务时间", "什么时间", "几点", "什么时候", "哪些时间段", "开放时间", "营业时段"],
-        "ko": ["운영 시간", "이용 시간", "몇 시", "언제", "시간대", "몇 시에", "서비스 시간"]
-      },
-      "availability_service_terms": {
-          "en": {
-            "dining_reservation": ["table", "restaurant", "cafe", "dining"],
-            "spa_reservation": ["spa", "massage"],
-            "tour_reservation": ["tour", "excursion"],
-            "transport_request": ["taxi", "shuttle", "airport transfer"]
-          },
-          "vi": {
-            "dining_reservation": ["bàn", "nhà hàng", "cafe", "ăn tối"],
-            "spa_reservation": ["spa", "massage", "mát-xa"],
-            "tour_reservation": ["tour", "chuyến tham quan"],
-            "transport_request": ["taxi", "xe đưa đón", "sân bay"]
-          },
-          "zh": {
-            "dining_reservation": ["桌位", "餐厅", "餐廳", "用餐"],
-            "spa_reservation": ["水疗", "按摩"],
-            "tour_reservation": ["旅游", "行程"],
-            "transport_request": ["出租车", "接送", "机场"]
-          },
-          "ko": {
-            "dining_reservation": ["테이블", "식당", "레스토랑", "식사"],
-            "spa_reservation": ["스파", "마사지"],
-            "tour_reservation": ["투어", "여행"],
-            "transport_request": ["택시", "셔틀", "공항"]
-          }
       }
     },
     "time_expressions": {
@@ -3307,7 +2475,13 @@
       "turns": "\\b(?:unless|except|excluding|subject to|provided that|only if|however|not available|additional charge)\\b|ngo\\u1ea1i tr\\u1eeb|tr\\u1eeb khi|ch\\u1ec9 khi|\\u0111i\\u1ec1u ki\\u1ec7n|ph\\u1ee5 thu|\\u9664\\u5916|\\u4ec5\\u9650|\\u6761\\u4ef6|\\uc81c\\uc678|\\ud55c\\uc815|\\uc870\\uac74",
       "policy": "\\b(?:policy|must|required|prohibited|permitted|only if|subject to|cancel(?:lation)?|refund)\\b|ch\\u00ednh s\\u00e1ch|b\\u1eaft bu\\u1ed9c|kh\\u00f4ng \\u0111\\u01b0\\u1ee3c|ch\\u1ec9 khi|h\\u1ee7y|ho\\u00e0n ti\\u1ec1n|\\u653f\\u7b56|\\u5fc5\\u987b|\\u7981\\u6b62|\\ucde8\\uc18c|\\ud658\\ubd88",
       "dynamic_state": "\\b(?:confirmed|completed|assigned|booked|cancelled|canceled|refunded|payment received|request submitted|order placed|room assigned)\\b|x\\u00e1c nh\\u1eadn|\\u0111\\u00e3 \\u0111\\u1eb7t|\\u0111\\u00e3 h\\u1ee7y|\\u0111\\u00e3 ho\\u00e0n ti\\u1ec1n|\\u0111\\u00e3 thanh to\\u00e1n|\\u0111\\u00e3 g\\u1eedi y\\u00eau c\\u1ea7u|\\u0111\\u00e3 ph\\u00e2n ph\\u00f2ng|\\u786e\\u8ba4\\u5b8c\\u6210|\\u5df2\\u9884\\u8ba2|\\u5df2\\u53d6\\u6d88|\\u5df2\\u9000\\u6b3e|\\uc608\\uc57d \\uc644\\ub8cc|\\ucde8\\uc18c \\uc644\\ub8cc|\\ud658\\ubd88 \\uc644\\ub8cc"
-    }
+    },
+      "service_selector": {
+        "top_k": 8,
+        "example_k": 4,
+        "fallback_min_score": 0.7,
+        "fallback_min_margin": 0.02
+      }
   },
   "memory_policy": {
     "conversation_ttl_seconds": 900,

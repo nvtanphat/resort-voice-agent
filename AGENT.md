@@ -34,7 +34,7 @@ Mọi key mới phải có:
 1. JSON schema tương ứng.
 2. Loader/accessor typed hoặc có kiểm tra kiểu.
 3. Test config hợp lệ, thiếu key và sai kiểu.
-4. Cập nhật SHA-256 bằng công cụ của repo (`python tools/repin_configs.py`).
+4. Cập nhật SHA-256 bằng công cụ của repo (`python tools/config/repin_configs.py`).
 
 Không sửa tay generated release, frontend bundle hoặc file có ghi là generated.
 
@@ -98,7 +98,7 @@ Nếu thật sự chưa thể chuyển một giá trị ra config:
 3. Thêm issue/next step để loại bỏ entry đó.
 4. Không tăng allowlist cho tiện. Allowlist phải giảm dần.
 
-`tests/test_no_hardcode.py` là gate bắt buộc. Entry allowlist dùng line number, nên sau khi refactor phải xử lý stale entry.
+`tests/agent/test_no_hardcode.py` là gate bắt buộc. Entry allowlist dùng line number, nên sau khi refactor phải xử lý stale entry.
 
 ## 7. Nguồn tham khảo kỹ thuật
 
@@ -119,8 +119,8 @@ Khi tham khảo paper/project, phải kiểm tra license, version, điều kiệ
 
 ```bash
 python -m compileall -q src tools
-python tools/repin_configs.py --check
-python tools/audit_furama_data.py
+python tools/config/repin_configs.py --check
+python tools/validate/audit_data.py
 python -m pytest -q -W error::ResourceWarning
 bandit -q -r src/concierge_kiosk tools -ll
 ```

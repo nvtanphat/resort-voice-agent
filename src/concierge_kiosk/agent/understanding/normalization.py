@@ -16,12 +16,9 @@ import unicodedata
 from typing import Any, Iterable
 
 from concierge_kiosk.agent.understanding.domain_nlu import (
-    ACTION_PHRASES,
-    INFO_ONLY,
     MEMORY_VOCABULARY,
     READ_INTENT,
     ROUTING,
-    SERVICE_CONCEPT_TERMS,
     SLOTS,
     TIME_EXPRESSIONS,
     DISCOURSE_TERMS,
@@ -98,9 +95,7 @@ def _language_strings(value: Any, language: str | None = None) -> Iterable[tuple
 def _profile_terms(language: str | None) -> tuple[tuple[str, str], ...]:
     sources = (
         INTENT["action_phrases"],
-        INTENT["service_concept_terms"],
         INTENT["info_only"],
-        INTENT["model_fallback_cues"],
         ROUTING["greeting_terms"],
         ROUTING["courtesy_particles"],
         ROUTING["confirmation_terms"],

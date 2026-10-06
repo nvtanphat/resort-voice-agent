@@ -10,7 +10,7 @@ class LocalReranker:
         root = Path(path)
         if not root.is_dir():
             raise ValueError("Reranker model must already exist on disk")
-        from ..model_manifest import model_identity
+        from concierge_kiosk.core.model_manifest import model_identity
         self.model_name = model_identity(path, manifest_path)
         if (root / "openvino_model.xml").is_file():
             self.model = OpenVINOReranker(root)

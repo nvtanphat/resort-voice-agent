@@ -4,13 +4,13 @@ from __future__ import annotations
 import asyncio
 from fastapi import WebSocket, WebSocketDisconnect
 
-from concierge_kiosk.api.voice.streaming import _client_rejection_code
+from concierge_kiosk.api.shared.security import _client_rejection_code
 from concierge_kiosk.domain.service_registry import LANGUAGES
 from .pipeline import build_pipeline, pipecat_available, run_pipeline
 
 def register_pipecat_route(app, *, cfg, voice_turns, turn_events, store,
                            session_for, transcribe_fn, synthesize_fn, answer,
-                           finalize_answer, commit_autonomous_action):
+                           finalize_answer, finalize_service_turn):
     """Register the Pipecat route only for the explicitly selected profile."""
     @app.websocket("/api/voice/agent")
     async def voice_agent(websocket: WebSocket):
@@ -39,7 +39,7 @@ def register_pipecat_route(app, *, cfg, voice_turns, turn_events, store,
                 language=language, voice_turns=voice_turns,
                 turn_events=turn_events, store=store, answer=answer,
                 finalize_answer=finalize_answer,
-                commit_autonomous_action=commit_autonomous_action,
+                finalize_service_turn=finalize_service_turn,
                 transcribe_fn=transcribe_fn, synthesize_fn=synthesize_fn,
             )
             await run_pipeline(

@@ -2,7 +2,7 @@
 
 This module never commits business state. It extracts a small allowlisted set
 of operational fields and identifies missing blockers. The authority policy
-then decides whether a ready action may be autonomously queued, requires guest
+then prepares a ready action for guest confirmation, requires guest
 confirmation, or must be denied.
 
 The parser is deterministic and conservative. Guest text remains untrusted;
@@ -30,7 +30,7 @@ from concierge_kiosk.agent.understanding.domain_nlu import (
 )
 from concierge_kiosk.agent.tools.numerals import normalize_number_words, preferred_time
 from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVICE_SLOTS, accepted_slots,
-                                                     required_slots, resolve_service_code, service_definition)
+                                                     required_slots, service_definition)
 
 # Domain-owned slot names and parsing vocabulary come from the
 # checksum-pinned profile; deterministic parsing mechanics stay in code.
@@ -61,18 +61,6 @@ class ServiceSlotAssessment:
             'missing_slots': list(self.missing),
             'action_ready': self.ready,
         }
-
-
-def service_mode(query: str, language: str, kind: str) -> str:
-    if kind not in _SERVICE_KINDS:
-        raise ValueError('Unsupported service kind')
-    mode = resolve_service_code(normalize_intent_text(query, language), language, kind)
-    if mode is None:
-        # The pinned profile is semantically required to provide one default
-        # service for every actionable request kind. Fail closed if a caller
-        # somehow bypasses that invariant.
-        raise ValueError('Service kind has no configured default')
-    return mode
 
 
 def _room_number(text: str, language: str) -> str | None:
@@ -123,11 +111,11 @@ def _preferred_time(text: str, language: str) -> str | None:
     return preferred_time(text, language)
 
 
-def extract_slots(query: str, language: str, kind: str, *, existing: Mapping[str, str | int] | None = None,
-                  mode: str | None = None) -> dict[str, str | int]:
+def extract_slots(query: str, language: str, kind: str, *, mode: str,
+                  existing: Mapping[str, str | int] | None = None) -> dict[str, str | int]:
     if kind not in _SERVICE_KINDS:
         raise ValueError('Unsupported service kind')
-    selected_mode = mode or service_mode(query, language, kind)
+    selected_mode = mode
     supported = frozenset(accepted_slots(selected_mode))
     slots = {key: value for key, value in (existing or {}).items()
              if key in _ALLOWED_SLOTS and key in supported}
@@ -150,9 +138,9 @@ def extract_slots(query: str, language: str, kind: str, *, existing: Mapping[str
     return slots
 
 
-def assess_service(query: str, language: str, kind: str, *, existing: Mapping[str, str | int] | None = None,
-                   mode: str | None = None) -> ServiceSlotAssessment:
-    selected_mode = mode or service_mode(query, language, kind)
+def assess_service(query: str, language: str, kind: str, *, mode: str,
+                   existing: Mapping[str, str | int] | None = None) -> ServiceSlotAssessment:
+    selected_mode = mode
     slots = extract_slots(query, language, kind, existing=existing, mode=selected_mode)
     required = required_slots(selected_mode)
     missing = tuple(name for name in required if not slots.get(name))
@@ -231,18 +219,3 @@ def looks_like_slot_reply(query: str, language: str, missing: tuple[str, ...]) -
     return probes['quantity'] or probes['preferred_time']
 
 
-def review_details(details: str, language: str, slots: Mapping[str, str | int]) -> str:
-    """Append collected structured fields for legacy review clients.
-
-    New clients may consume ``service_payload`` directly. Existing kiosk builds
-    still receive the same information in human-readable details so a resumed
-    slot is never lost before proposal preparation.
-    """
-    labels = _SLOT_LABELS[language]
-    ordered = ('room_number', 'quantity', 'preferred_time', 'party_size')
-    lines = [details.strip()]
-    for key in ordered:
-        value = slots.get(key)
-        if value not in (None, ''):
-            lines.append(f'{labels[key]}: {value}')
-    return '\n'.join(lines)[:500]

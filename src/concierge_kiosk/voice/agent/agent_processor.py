@@ -40,7 +40,7 @@ else:
 
         def __init__(self, *, cfg, session: str, language: str, voice_turns,
                      turn_events, answer: Callable, finalize_answer: Callable,
-                     commit_autonomous_action: Callable, gate: SpeechGate,
+                     finalize_service_turn: Callable, gate: SpeechGate,
                      on_progress: Callable[[str, str], object] | None = None):
             super().__init__()
             self.cfg = cfg
@@ -50,7 +50,7 @@ else:
             self.turn_events = turn_events
             self.answer = answer
             self.finalize_answer = finalize_answer
-            self.commit_autonomous_action = commit_autonomous_action
+            self.finalize_service_turn = finalize_service_turn
             self.gate = gate
             self.on_progress = on_progress or (lambda _kind, _turn: None)
             self._answer_task: asyncio.Task | None = None
@@ -114,7 +114,7 @@ else:
                 "action_options", "map_guidance", "plan", "plan_is_draft",
                 "missing_topics", "evidence_status", "omitted_claims",
                 "related_topics", "support_contact", "task_progress",
-                "agent_progress", "autonomous_action", "clear_suggestions",
+                "agent_progress", "clear_suggestions",
                 "session_update", "tool_route", "service_code", "retrieval_mode",
                 "generation_mode", "request_completed", "grounding", "synthetic",
             )
@@ -151,7 +151,7 @@ else:
                 if not self.voice_turns.finish(self.session, turn_id):
                     raise RuntimeError("voice turn superseded")
                 result = self.finalize_answer(result, self.language, self.session)
-                result = self.commit_autonomous_action(result, self.session)
+                result = self.finalize_service_turn(result, self.session)
                 evidence = tuple(
                     (item["chunk_id"], item["source_id"], item["revision"],
                      item["quote"], item["language"])

@@ -49,7 +49,7 @@ class NluPolicy:
     normalization: Mapping[str, Any]
     numerals: Mapping[str, Any]
     clock: Mapping[str, Any]
-    semantic_router: Mapping[str, Any]
+    service_selector: Mapping[str, Any]
 
 
 @dataclass(frozen=True)
@@ -119,7 +119,7 @@ class ServiceRule:
     tool: str
     default_for_kind: bool
     escalate_without_evidence: bool
-    match_terms: Mapping[str, tuple[str, ...]]
+    availability_source: Mapping[str, str] | None
 
 
 @dataclass(frozen=True)

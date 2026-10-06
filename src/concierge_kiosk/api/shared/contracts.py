@@ -65,6 +65,10 @@ class GuestVerificationInput(StrictRequest):
 class Prepare(StrictRequest):
     kind: str
     language: str
+    # Registry service code from the agent's suggestion; validated against
+    # ``kind`` by the workflow. Omitted means the kind's default service.
+    service: str | None = Field(default=None, min_length=1, max_length=64,
+                                pattern=r'^[a-z][a-z0-9_]*$')
 
     @field_validator("kind")
     @classmethod

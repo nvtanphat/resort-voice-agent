@@ -30,7 +30,7 @@ class IncrementalPCM:
             raise RuntimeError('Pinned local Vosk model is required')
         model_identity = None
         if manifest_path:
-            from concierge_kiosk.voice.models.model_manifest import check_voice_manifest, voice_manifest_identity
+            from concierge_kiosk.core.model_manifest import check_voice_manifest, voice_manifest_identity
             if not check_voice_manifest(str(root), manifest_path):
                 raise RuntimeError('Local Vosk model integrity mismatch')
             model_identity = voice_manifest_identity(str(root), manifest_path)

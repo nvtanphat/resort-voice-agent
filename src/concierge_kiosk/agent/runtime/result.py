@@ -31,7 +31,6 @@ def _dedupe(items: list[dict], fields: tuple[str, ...]) -> list[dict]:
 
 
 def compose_multi_result(run: AgentRun, language: str) -> dict:
-    autonomous: list[dict] = []
     confirmations: list[dict] = []
     missing: list[dict] = []
     denied: list[dict] = []
@@ -51,12 +50,7 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
             action_state = raw.get('agent_action') if isinstance(raw.get('agent_action'), dict) else {}
             status = action_state.get('status', meta.get('status'))
             public_status = status
-            if status == 'auto_execute_ready':
-                prepared = raw.get('_autonomous_action')
-                if isinstance(prepared, dict):
-                    autonomous.append({**prepared, 'task_id': candidate.id})
-                public_status = 'authorized_safe_write'
-            elif status == 'confirmation_required':
+            if status == 'confirmation_required':
                 suggested = raw.get('suggested_action')
                 if isinstance(suggested, dict):
                     confirmations.append({
@@ -164,11 +158,7 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
         lines.append(i18n_text('agent.denied', language))
 
     remainder = '\n'.join(lines)
-    if autonomous:
-        prefix = i18n_text('agent.autonomous', language, count=len(autonomous))
-        answer = prefix + (('\n' + remainder) if remainder else '')
-    else:
-        answer = remainder or i18n_text('agent.goal_processed', language)
+    answer = remainder or i18n_text('agent.goal_processed', language)
 
     if isinstance(run.state.pending_question, dict):
         field = str(run.state.pending_question.get('field') or 'preference')
@@ -223,8 +213,6 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
             'action': 'save',
             'value': field if field in allowed_reply_fields else 'choice',
         }
-    if autonomous:
-        result['_autonomous_actions'] = autonomous
     ui_actions = []
     if run.state.pending_question:
         ui_actions.append({'type': 'show_clarification', 'source': 'agent_decision'})
@@ -247,17 +235,7 @@ def validate_multi_result(run: AgentRun, result: dict) -> None:
     if result.get('agent_action', {}).get('business_writes') != 0:
         raise RuntimeError('inference cannot commit a business write')
     candidates = {item.id: item for item in run.state.service_candidates}
-    autonomous = result.get('_autonomous_actions') or []
-    if not isinstance(autonomous, list) or len(autonomous) > len(candidates):
-        raise RuntimeError('Invalid autonomous action projection')
     seen = set()
-    for item in autonomous:
-        candidate = candidates.get(item.get('task_id')) if isinstance(item, dict) else None
-        if (candidate is None or candidate.risk_tier != 1 or
-                item.get('service_code') != candidate.service_code or
-                not isinstance(item.get('action_nonce'), str)):
-            raise RuntimeError('write projection exceeded server-created candidate authority')
-        seen.add(candidate.id)
     for item in result.get('proposed_actions') or []:
         candidate = candidates.get(item.get('task_id')) if isinstance(item, dict) else None
         if (candidate is None or candidate.risk_tier not in {1, 2} or
@@ -265,4 +243,5 @@ def validate_multi_result(run: AgentRun, result: dict) -> None:
                 item.get('requires_confirmation') is not True):
             raise RuntimeError('confirmation projection exceeded capability policy')
         if candidate.id in seen:
-            raise RuntimeError('candidate cannot be autonomous and pending confirmation')
+            raise RuntimeError('duplicate confirmation candidate')
+        seen.add(candidate.id)

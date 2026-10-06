@@ -3,32 +3,18 @@ from __future__ import annotations
 import asyncio
 import io
 import wave
-import ipaddress
 import json
 import time
 from fastapi import HTTPException, WebSocket, WebSocketDisconnect
 from starlette.concurrency import run_in_threadpool
 from concierge_kiosk.rag import LANGUAGES
 from concierge_kiosk.core.domain_profile import supported_languages
+from concierge_kiosk.api.shared.security import _client_rejection_code
 
 SUPPORTED_LANGUAGES = frozenset(supported_languages())
 from concierge_kiosk.voice.runtime.adapters import MIME_FORMATS
 from concierge_kiosk.voice.session.partials import PartialRevisions
 from concierge_kiosk.voice.session.incremental import IncrementalPCM, PCM_MIME, SAMPLE_RATE
-
-
-def _client_rejection_code(websocket: WebSocket, cfg) -> int | None:
-    if websocket.headers.get('origin', '') != cfg.public_origin:
-        return 1008
-    if not cfg.allowed_client_cidrs:
-        return None
-    try:
-        peer = ipaddress.ip_address(websocket.client.host if websocket.client else '')
-        networks = [ipaddress.ip_network(value.strip(), strict=False)
-                    for value in cfg.allowed_client_cidrs.split(',')]
-    except ValueError:
-        return 1011
-    return None if any(peer in network for network in networks) else 1008
 
 
 def _valid_start_event(hello, cfg) -> bool:

@@ -47,7 +47,6 @@ READ_INTENT = _POLICY.read_intent
 NORMALIZATION = _POLICY.normalization
 NUMERALS = _POLICY.numerals
 CLOCK = _POLICY.clock
-SEMANTIC_ROUTER = _POLICY.semantic_router
 
 EMERGENCY_TEXT = dict(INTENT["emergency_text"])
 EMERGENCY_CONTACTS = dict(INTENT["emergency_contacts"])
@@ -58,16 +57,10 @@ EMERGENCY_EVENT_PATTERNS = {
 ACTION_PHRASES = _nested_terms(INTENT["action_phrases"])
 INFO_ONLY = _terms(INTENT["info_only"])
 NEGATION_PATTERNS = _patterns(INTENT["negation_patterns"])
-QUESTION_START_PATTERNS = _patterns(INTENT["question_start_patterns"])
-EXPLICIT_QUESTION_REQUEST_PATTERNS = _patterns(INTENT["explicit_question_request_patterns"])
 ACTION_PATTERNS = _nested_pattern_strings(INTENT["action_patterns"])
-ACTION_CONTEXT_PATTERNS = _pattern_lists(INTENT["action_context_patterns"])
-REQUEST_FRAME_PATTERNS = _patterns(INTENT["request_frame_patterns"])
-SERVICE_CONCEPT_TERMS = _nested_terms(INTENT["service_concept_terms"])
 INFORMATION_FRAME_PATTERNS = _patterns(INTENT["information_frame_patterns"])
 INFORMATION_REQUEST_PATTERNS = _patterns(INTENT["information_request_patterns"])
 MULTI_CONNECTOR_PATTERNS = _patterns(INTENT["multi_connector_patterns"])
-MODEL_FALLBACK_CUES = _terms(INTENT["model_fallback_cues"])
 TIME_EXPRESSIONS = {language: dict(values) for language, values in _POLICY.time_expressions.items()}
 DISCOURSE_TERMS = _terms({language: list(values) for language, values in _POLICY.discourse_terms.items()})
 _VOICE = voice_policy()
@@ -146,9 +139,6 @@ READ_INFO_MORE_TERMS = _terms(READ_INTENT["info_more_terms"])
 READ_DENY_PATTERN = re.compile(READ_INTENT["deny_pattern"], re.I)
 COMPOSITE_INFORMATION_TERMS = _terms(READ_INTENT["composite_information_terms"])
 AVAILABILITY_TERMS = _terms(READ_INTENT.get("availability_terms", {}))
-SCHEDULE_CUE_TERMS = _terms(READ_INTENT.get("schedule_cue_terms", {}))
-AVAILABILITY_SERVICE_TERMS = _nested_terms(
-    READ_INTENT.get("availability_service_terms", {}))
 QUALIFIER_PATTERNS = _patterns(_POLICY.qualifier_patterns)
 
 

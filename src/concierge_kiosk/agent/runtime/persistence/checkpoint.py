@@ -21,7 +21,7 @@ _ALLOWED_CAPS = {
 }
 _ALLOWED_STATUS = {
     'completed', 'safe_fallback', 'unavailable', 'confirmation_required',
-    'auto_execute_ready', 'needs_user_input', 'denied', 'action_ready',
+    'needs_user_input', 'denied', 'action_ready',
 }
 
 

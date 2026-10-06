@@ -15,10 +15,9 @@ from ..api.shared.workflow_progress import project_task_progress
 
 
 class TurnFinalizer:
-    def __init__(self, *, conversations, task_checkpoints, agent_checkpoints=None, agent_memory=None,
+    def __init__(self, *, conversations, agent_checkpoints=None, agent_memory=None,
                  preference_memory=None, ensure_session: Callable[[str], None], logger: logging.Logger):
         self._conversations = conversations
-        self._task_checkpoints = task_checkpoints
         self._agent_checkpoints = agent_checkpoints
         self._agent_memory = agent_memory
         self._preference_memory = preference_memory
@@ -50,29 +49,12 @@ class TurnFinalizer:
                 session, language, expected_version=expected_version, clear=True)
             if not committed:
                 raise HTTPException(status_code=409, detail='Conversation context changed; retry turn')
-            self._task_checkpoints.clear(session)
         elif (clean.get('suggested_action') is not None or clean.get('tool_route') == 'planning'
-              or isinstance(clean.get('_autonomous_action'), dict)
-              or isinstance(clean.get('_autonomous_actions'), list)
               or bool(clean.get('proposed_actions'))):
             committed, _ = self._conversations.commit_topic(
                 session, language, expected_version=expected_version, suspend=True)
             if not committed:
                 raise HTTPException(status_code=409, detail='Conversation context changed; retry turn')
-
-        workflow = clean.get('mixed_workflow')
-        if isinstance(workflow, dict) and workflow.get('business_writes') == 0:
-            kinds = tuple(option['kind'] for option in workflow.get('action_options', [])
-                          if isinstance(option, dict) and isinstance(option.get('kind'), str))
-            self._conversations.remember_review(session, language, kinds)
-            execution = clean.get('task_execution')
-            if isinstance(execution, dict):
-                self._conversations.remember_task_execution(session, language, execution)
-                try:
-                    self._task_checkpoints.save(
-                        session, language, self._conversations.task_projection(session, language))
-                except (OSError, ValueError, sqlite3.Error):
-                    self._logger.exception('read_task_projection_sync_deferred')
 
         if self._agent_checkpoints is not None and isinstance(agent_checkpoint, dict):
             try:
@@ -116,14 +98,10 @@ class TurnFinalizer:
                 self._logger.exception('expected_reply_sync_deferred')
 
         clean['review_state'] = self._conversations.review_projection(session, language)
-        live_projection = self._conversations.task_projection(session, language)
-        persisted_projection = self._task_checkpoints.load(session, language)
-        clean['task_state'] = persisted_projection or live_projection
         clean['task_progress'] = project_task_progress(clean)
         # The detailed orchestration structures are internal validation state.
         # Persist/use them above, then expose only the bounded guest-safe
         # projections (task_progress/task_state/review_state) to the client.
-        for internal_key in ('task_graph', 'task_plan', 'mixed_workflow',
-                             'task_execution', 'composite_plan'):
+        for internal_key in ('task_graph', 'task_plan', 'composite_plan'):
             clean.pop(internal_key, None)
         return clean

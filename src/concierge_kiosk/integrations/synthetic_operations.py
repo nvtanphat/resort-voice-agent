@@ -16,12 +16,10 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from concierge_kiosk.core.dataset_layout import (
-    COMMERCIAL_SNAPSHOT,
-    RESTAURANTS,
-    SPA_OPERATIONS,
     dataset_path,
     dataset_root,
 )
+from concierge_kiosk.domain.service_registry import service_definition
 
 
 @dataclass(frozen=True)
@@ -158,10 +156,9 @@ class SyntheticOperations:
         wanted = str(preferred_time).strip()
         return [dict(row) for row in rows if str(row.get("time") or row.get("depart") or "") == wanted]
 
-    def restaurant_availability(self, *, query: str, effective_date: str,
+    def restaurant_availability(self, *, path: str, query: str, effective_date: str,
                                 preferred_time: str | None = None,
                                 party_size: int | None = None) -> AvailabilityObservation | None:
-        path = RESTAURANTS
         payload = self._json(path)
         if payload is None or not isinstance(payload.get("venues"), list):
             return None
@@ -196,9 +193,8 @@ class SyntheticOperations:
         return AvailabilityObservation(status, source, records=records,
                                        reason=None if available else "no_matching_capacity")
 
-    def spa_availability(self, *, effective_date: str, preferred_time: str | None = None,
+    def spa_availability(self, *, path: str, effective_date: str, preferred_time: str | None = None,
                          party_size: int | None = None) -> AvailabilityObservation | None:
-        path = SPA_OPERATIONS
         payload = self._json(path)
         if payload is None or not isinstance(payload.get("slots"), list):
             return None
@@ -221,9 +217,8 @@ class SyntheticOperations:
                                        records=records,
                                        reason=None if available else "no_matching_capacity")
 
-    def commercial_availability(self, *, category: str, effective_date: str,
+    def commercial_availability(self, *, path: str, category: str, effective_date: str,
                                 product_id: str | None = None) -> AvailabilityObservation | None:
-        path = COMMERCIAL_SNAPSHOT
         payload = self._json(path)
         if payload is None:
             return None
@@ -251,16 +246,25 @@ class SyntheticOperations:
                            preferred_time: str | None = None,
                            party_size: int | None = None) -> AvailabilityObservation | None:
         """Return a read-only synthetic availability observation for a service."""
-        if service_code == "dining_reservation":
+        definition = service_definition(service_code)
+        source = definition.availability_source if definition is not None else None
+        if not isinstance(source, Mapping):
+            return None
+        path = str(source.get("dataset") or "")
+        shape = str(source.get("shape") or "")
+        collection = str(source.get("collection") or "")
+        if not path or not shape:
+            return None
+        if shape == "table_capacity":
             return self.restaurant_availability(query=query, effective_date=effective_date,
+                                                path=path,
                                                 preferred_time=preferred_time, party_size=party_size)
-        if service_code == "spa_reservation":
-            return self.spa_availability(effective_date=effective_date,
+        if shape == "time_slots":
+            return self.spa_availability(path=path, effective_date=effective_date,
                                          preferred_time=preferred_time, party_size=party_size)
-        if service_code in {"tour_reservation", "tour_request"}:
-            return self.commercial_availability(category="tours", effective_date=effective_date)
-        if service_code in {"transport_request"}:
-            return self.commercial_availability(category="transport", effective_date=effective_date)
+        if shape == "inventory" and collection:
+            return self.commercial_availability(path=path, category=collection,
+                                                effective_date=effective_date)
         return None
 
 

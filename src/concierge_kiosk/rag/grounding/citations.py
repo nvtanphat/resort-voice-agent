@@ -21,11 +21,6 @@ class CitationResult:
     citations: list[dict]
 
 
-def _answer_span(passage: str, answer: str) -> tuple[int, int] | None:
-    """Compatibility wrapper for the strict single-claim evidence matcher."""
-    return exact_span(passage, answer)
-
-
 def _source_claim_span(source: dict, passage: str, claim: str) -> tuple[int, int] | None:
     """Match exact evidence or a server-rendered structured-fact template."""
     span = exact_span(passage, claim)

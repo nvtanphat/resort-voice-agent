@@ -17,7 +17,7 @@ def pipecat_available() -> bool:
 
 def build_pipeline(*, websocket, cfg, session: str, language: str,
                    voice_turns, turn_events, store, answer, finalize_answer,
-                   commit_autonomous_action, transcribe_fn, synthesize_fn):
+                   finalize_service_turn, transcribe_fn, synthesize_fn):
     """Build a fully local Pipecat pipeline without an LLM-generated prose path."""
     if not pipecat_available():
         raise RuntimeError("Pipecat voice extra is not installed")
@@ -72,7 +72,7 @@ def build_pipeline(*, websocket, cfg, session: str, language: str,
     agent = ConciergeAgentProcessor(
         cfg=cfg, session=session, language=language, voice_turns=voice_turns,
         turn_events=turn_events, answer=answer, finalize_answer=finalize_answer,
-        commit_autonomous_action=commit_autonomous_action, gate=gate,
+        finalize_service_turn=finalize_service_turn, gate=gate,
     )
     tts = ConciergeTTS(cfg=cfg, gate=gate, synthesize_fn=synthesize_fn)
     return Pipeline([

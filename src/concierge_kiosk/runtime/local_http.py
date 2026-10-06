@@ -88,6 +88,11 @@ def slm_turn_budget(seconds: float):
         _SLM_TURN_BUDGET.reset(token)
 
 
+def in_guest_turn() -> bool:
+    """True while a guest turn's bounded model budget is installed."""
+    return _SLM_TURN_BUDGET.get() is not None
+
+
 def _active_deadline() -> float | None:
     budget = _SLM_TURN_BUDGET.get()
     if budget is None:

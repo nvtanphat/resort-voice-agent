@@ -101,7 +101,7 @@ Một số profile yêu cầu thêm model, manifest, hash hoặc credential trư
 ## 6. Tài liệu kỹ thuật
 
 - `docs/ARCHITECTURE.md`: cấu trúc và luồng xử lý
-- `docs/AGENT.md`: agent runtime và orchestration
+- `AGENT.md`: agent runtime và orchestration
 - `docs/RAG.md`: ingestion, retrieval và grounding
 - `docs/API.md`: nhóm endpoint
 - `docs/DATA.md`: dữ liệu property và knowledge
@@ -109,6 +109,8 @@ Một số profile yêu cầu thêm model, manifest, hash hoặc credential trư
 - `docs/TESTING.md`: test và kiểm tra
 - `docs/SECURITY.md`: boundary và cấu hình liên quan bảo mật
 - `docs/LIMITATIONS.md`: giới hạn và phần chưa được xác minh
+
+`Dockerfile` là image edge/production; `Dockerfile.local` đi cùng `compose.local.yaml` cho chạy thử local với bind mounts. Hai file phục vụ hai môi trường khác nhau.
 
 ## 7. Ghi chú về kết luận kỹ thuật
 

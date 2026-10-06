@@ -9,8 +9,8 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from threading import BoundedSemaphore
 from dataclasses import dataclass
 from concierge_kiosk.rag.documents import LANGUAGES
-from concierge_kiosk.rag.embedding.base import Embedder, cosine
-from concierge_kiosk.rag.embedding.cache import decoded_embedding, query_embedding
+from concierge_kiosk.rag.embedding.base import Embedder
+from concierge_kiosk.rag.embedding.cache import query_embedding
 from concierge_kiosk.rag.rerank.local import LocalReranker
 from concierge_kiosk.rag.retrieval.evidence import evidence_passage, retrieve_parent_context
 from concierge_kiosk.rag.text.normalize import searchable

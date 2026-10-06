@@ -7,10 +7,8 @@ Python owns only generic fail-closed mechanics and compatibility helpers.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 from types import MappingProxyType
 from typing import Mapping
-import unicodedata
 
 from concierge_kiosk.core.domain_profile import DomainProfile, get_domain_profile
 
@@ -32,7 +30,7 @@ class ServiceDefinition:
     tool: str = 'service_action'
     default_for_kind: bool = False
     escalate_without_evidence: bool = False
-    match_terms: Mapping[str, tuple[str, ...]] = MappingProxyType({})
+    availability_source: Mapping[str, str] | None = None
 
     @property
     def risk_tier(self) -> int:
@@ -53,33 +51,6 @@ class ServiceDefinition:
         if self.requires_confirmation:
             return 'commit'
         return 'policy'
-
-
-def _normalize_selector(value: str) -> str:
-    return ' '.join(unicodedata.normalize('NFKC', value).casefold().split())
-
-
-def _phrase_present(text: str, phrase: str) -> bool:
-    """Match Latin-script selectors on token boundaries and CJK by substring."""
-    if all(ord(char) < 128 or '\u00c0' <= char <= '\u024f' for char in phrase):
-        return bool(re.search(r'(?<!\w)' + re.escape(phrase) + r'(?!\w)', text))
-    return phrase in text
-
-
-def _catalog_terms(profile: DomainProfile, catalog_service_id: str) -> dict[str, tuple[str, ...]]:
-    """Return approved names/aliases for a catalog service from the data release."""
-    if not catalog_service_id:
-        return {}
-    services = profile.domain_vocab.get("services", ())
-    match = next((item for item in services if item.get("code") == catalog_service_id), None)
-    if not isinstance(match, dict):
-        return {}
-    terms: dict[str, list[str]] = {}
-    for field in ("names", "aliases"):
-        for language, values in (match.get(field) or {}).items():
-            terms.setdefault(language, []).extend(value for value in values if isinstance(value, str))
-    return {language: tuple(dict.fromkeys(_normalize_selector(value) for value in values if value.strip()))
-            for language, values in terms.items()}
 
 
 class ServiceRegistry:
@@ -126,12 +97,8 @@ class ServiceRegistry:
                 optional_slots=item.optional_slots,
                 tool=item.tool,
                 default_for_kind=item.default_for_kind,
-                match_terms=MappingProxyType({
-                    language: tuple(dict.fromkeys(
-                        (*(_normalize_selector(term) for term in item.match_terms.get(language, ())),
-                         *_catalog_terms(profile, item.catalog_service_id).get(language, ()))) )
-                    for language in set(item.match_terms) | set(_catalog_terms(profile, item.catalog_service_id))
-                }),
+                availability_source=(MappingProxyType(dict(item.availability_source))
+                                     if item.availability_source is not None else None),
                 escalate_without_evidence=item.escalate_without_evidence,
             )
             for item in profile.services
@@ -154,22 +121,6 @@ class ServiceRegistry:
 
     def default_for_kind(self, request_kind: str) -> str | None:
         return self._defaults.get(request_kind)
-
-    def resolve(self, text: str, language: str, request_kind: str) -> str | None:
-        """Resolve a concrete service without service-specific Python branches.
-
-        Multiple distinct matches are treated as ambiguous and collapse to the
-        configured generic/default service, preventing accidental escalation.
-        """
-        normalized = _normalize_selector(text)
-        matches: set[str] = set()
-        for definition in self._by_kind.get(request_kind, ()):
-            terms = definition.match_terms.get(language, ())
-            if any(_phrase_present(normalized, term) for term in terms):
-                matches.add(definition.code)
-        if len(matches) == 1:
-            return next(iter(matches))
-        return self.default_for_kind(request_kind)
 
 
 _DOMAIN = get_domain_profile()
@@ -229,10 +180,6 @@ def route_branch_for_request_kind(request_kind: str) -> str | None:
     return SERVICE_REGISTRY.route_for_request_kind(request_kind)
 
 
-def resolve_service_code(text: str, language: str, request_kind: str) -> str | None:
-    return SERVICE_REGISTRY.resolve(text, language, request_kind)
-
-
 def service_tool(code: str) -> str | None:
     definition = service_definition(code)
     return definition.tool if definition is not None else None
@@ -275,7 +222,7 @@ __all__ = [
     'SERVICE_SLOTS', 'SERVICE_TOOLS', 'ServiceDefinition', 'ServiceRegistry', 'VERIFICATION_KINDS',
     'accepted_slots', 'autonomous_required_slots', 'default_service_for', 'request_kind_for',
     'route_branch_for_request_kind',
-    'required_slots', 'resolve_service_code', 'service_confirmation_boundary',
+    'required_slots', 'service_confirmation_boundary',
     'service_definition', 'service_requires_confirmation', 'service_risk_tier',
     'service_tool', 'service_escalates_without_evidence', 'service_code_for_catalog_id',
 ]

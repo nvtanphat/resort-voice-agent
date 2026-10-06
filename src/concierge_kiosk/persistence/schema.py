@@ -161,15 +161,6 @@ CREATE TABLE IF NOT EXISTS telemetry_receipts (
   event_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS telemetry_receipts_expiry ON telemetry_receipts(expires_at);
--- Status-only diagnostic projection. NEVER a task queue or transaction authority.
-CREATE TABLE IF NOT EXISTS read_task_projections (
-  session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
-  property_id TEXT NOT NULL, language TEXT NOT NULL,
-  revision INTEGER NOT NULL CHECK(revision > 0),
-  tasks_json TEXT NOT NULL CHECK(length(tasks_json) <= 700),
-  expires_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS read_task_projections_expiry ON read_task_projections(expires_at);
 -- non-authoritative AgentState checkpoint. It contains only bounded goal
 -- tags/public-status facts and can never authorize a tool or business write.
 CREATE TABLE IF NOT EXISTS agent_checkpoints (
@@ -223,7 +214,7 @@ CREATE TABLE IF NOT EXISTS knowledge_release_evidence (
 
 
 # Schema upgrades are transactional and monotonic. Never silently open a newer DB.
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 
 
 # SQLite triggers are defense in depth: the workflow remains responsible for

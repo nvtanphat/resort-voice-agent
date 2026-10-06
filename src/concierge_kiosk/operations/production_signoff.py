@@ -116,7 +116,7 @@ def verify_runtime_signoff(cfg) -> dict[str, Any]:
             or receipt.get("fresh_runtime_image") is not True):
         raise ValueError("Production sign-off receipt does not match this property/runtime")
 
-    from concierge_kiosk.rag.model_manifest import (
+    from concierge_kiosk.core.model_manifest import (
         learned_embedding_profile,
         manifest_sha256,
         model_identity,

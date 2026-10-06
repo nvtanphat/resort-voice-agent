@@ -429,19 +429,6 @@ class VoiceTurns:
             self._refresh(turn, self.playback_ttl_seconds)
             return True
 
-    def approved_evidence(self, session: str, identifier: str) -> tuple[tuple[str, str, str, str, str], ...] | None:
-        """Snapshot for fresh DB authorization; None means stale/invalid turn.
-
-        Empty tuple is allowed for greetings, safety routes and explicit no-evidence
-        replies, which must not claim to be grounded hotel facts.
-        """
-        with self._lock:
-            if not self._valid(session, identifier):
-                return None
-            turn = self._turns[session]
-            if turn.state != 'finalized' or not turn.approved_text:
-                return None
-            return turn.speech_evidence
 
     def approved_evidence_snapshot(self, session: str, identifier: str) -> tuple[tuple[tuple[str, str, str, str, str], ...], str] | None:
         """Return evidence and the immutable property-date captured for this turn."""
@@ -453,53 +440,12 @@ class VoiceTurns:
                 return None
             return turn.speech_evidence, turn.effective_date
 
-    def reserve_speech(self, session: str, identifier: str, text: str,
-                       language: str) -> str | None:
-        """Atomically grant exactly one in-flight synthesis for the next chunk.
-
-        A concurrent replay cannot start the same chunk while the first request
-        is generating audio. Failed synthesis may release the lease for retry.
-        """
-        with self._lock:
-            if not self._valid(session, identifier):
-                return None
-            turn = self._turns[session]
-            if turn.speech_lease:
-                return None
-            if turn.speech_pending_text:
-                # Synthesis is not delivery. The next chunk is blocked until the
-                # browser explicitly ACKs /played or NACKs /playback-failed.
-                return None
-            if self._matching_chunk(turn, text, language) < 0:
-                return None
-            turn.speech_lease = secrets.token_hex(16)
-            return turn.speech_lease
 
     def speech_lease_current(self, session: str, identifier: str, lease: str) -> bool:
         with self._lock:
             return bool(self._valid(session, identifier) and
                         secrets.compare_digest(self._turns[session].speech_lease, lease))
 
-    def complete_speech(self, session: str, identifier: str, lease: str,
-                        text: str, language: str) -> bool:
-        """Finish synthesis without consuming the chunk.
-
-        Playback is a separate delivery boundary. The client must acknowledge a
-        successfully played chunk via mark_spoken(); failed playback may retry it.
-        """
-        with self._lock:
-            if not self._valid(session, identifier):
-                return False
-            turn = self._turns[session]
-            if not turn.speech_lease or not secrets.compare_digest(turn.speech_lease, lease):
-                return False
-            if self._matching_chunk(turn, text, language) < 0:
-                return False
-            turn.speech_pending_text = " ".join(text.split())
-            turn.speech_pending_language = language
-            turn.speech_lease = ""
-            self._refresh(turn, self.playback_ttl_seconds)
-            return True
 
     def release_speech(self, session: str, identifier: str, lease: str) -> None:
         with self._lock:
@@ -530,11 +476,6 @@ class VoiceTurns:
             return -1
         return turn.speech_offset + consumed_spaces + len(chunk)
 
-    def can_speak(self, session: str, identifier: str, text: str,
-                  language: str) -> bool:
-        with self._lock:
-            return (self._valid(session, identifier) and
-                    self._matching_chunk(self._turns[session], text, language) >= 0)
 
     def mark_spoken(self, session: str, identifier: str, text: str,
                     language: str) -> bool:

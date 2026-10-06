@@ -13,7 +13,7 @@ import json
 import re
 from urllib.parse import urlsplit
 
-from ..agent.models.model_manifest import check_model_manifest
+from ..core.model_manifest import check_model_manifest
 from ..agent.understanding.nli import local_model_fingerprint, _load_local_nli
 from .local_http import LOOPBACK_HOSTS
 

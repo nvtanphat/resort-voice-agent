@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from concierge_kiosk.agent.understanding.intent import (
-    emergency_response, matches_action_pattern, normalize_intent_text, suggest_service_request,
+    emergency_response, normalize_intent_text,
 )
 from concierge_kiosk.agent.orchestration.grounding import grounded_response
 from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS, MULTI_CONNECTOR_PATTERNS, INFORMATION_FRAME_PATTERNS
@@ -19,7 +19,6 @@ from concierge_kiosk.domain.entity_resolver import record_alias_matches
 from concierge_kiosk.domain.entity_resolver import property_entity_matches
 from concierge_kiosk.core.structured_loader import load_structured_dataset
 from concierge_kiosk.agent.understanding.domain_nlu import FACET_FACT_TYPES
-from concierge_kiosk.domain.service_registry import resolve_service_code, service_escalates_without_evidence
 from concierge_kiosk.agent.core.tool_contracts import no_evidence_handoff_details
 from concierge_kiosk.core.domain_profile import ui_policy
 from concierge_kiosk.core.context_labels import context_terms
@@ -66,10 +65,7 @@ def _no_evidence_handoff_suggestion(query: str, language: str,
     no-evidence knowledge fallback from leaving a guest with a broken facility
     and no escalation path if routing/context changes between stages.
     """
-    service_code = None
-    if matches_action_pattern(query, language, 'facilities'):
-        service_code = resolve_service_code(normalize_intent_text(query), language, 'facilities')
-    if not (recovery_handoff or (service_code and service_escalates_without_evidence(service_code))):
+    if not recovery_handoff:
         return None
     return {"kind": "human", "details": no_evidence_handoff_details(query, language)}
 
@@ -518,7 +514,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                 'knowledge.staff_confirmation_required', language)
         # Stage the pointer. The /api/ask boundary commits only after its
         # turn remains current and its speech authorization succeeds.
-        suggested = suggest_service_request(query, language)
+        suggested = None
         if pending_domain_reviews:
             suggested = {"kind": "human", "details": i18n_text(
                 'knowledge.staff_confirmation_required', language)}

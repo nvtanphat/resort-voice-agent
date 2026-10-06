@@ -188,11 +188,6 @@
       "type": "boolean",
       "default": false
     },
-    "hitl_mode": {
-      "type": "string",
-      "enum": ["legacy_policy", "guest_confirm_all"],
-      "default": "legacy_policy"
-    },
     "emergency_policy": {
       "type": "object",
       "additionalProperties": false,

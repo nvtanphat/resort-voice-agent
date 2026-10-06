@@ -58,7 +58,7 @@ def verify_local_nli(model_path: str, quote: str, claim: str, *, min_confidence:
             not 0.5 <= min_confidence <= 1.0):
         return False
     try:
-        from concierge_kiosk.agent.models.model_manifest import check_model_manifest
+        from concierge_kiosk.core.model_manifest import check_model_manifest
         if require_manifest and not manifest_path:
             return False
         if manifest_path and not check_model_manifest(model_path, manifest_path):

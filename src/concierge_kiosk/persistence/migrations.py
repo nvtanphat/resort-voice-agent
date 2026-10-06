@@ -4,6 +4,11 @@ from __future__ import annotations
 import sqlite3
 
 
+def migrate_remove_read_task_projections(con: sqlite3.Connection) -> None:
+    """Remove the obsolete non-authoritative read-task projection table."""
+    con.execute('DROP TABLE IF EXISTS read_task_projections')
+
+
 def migrate_service_request_status_constraint(con: sqlite3.Connection) -> None:
     """Rebuild v19 request storage so the DB itself accepts work states.
 

@@ -24,7 +24,7 @@ from concierge_kiosk.domain.public_reference import PUBLIC_REFERENCE_RE, public_
 
 def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, turn_events, audio_admission,
                           conversations, agent_tasks, rate, guest_session, answer, finalize_answer,
-                          commit_autonomous_action, get_graph, prepare_authorized_proposal,
+                          finalize_service_turn, get_graph, prepare_authorized_proposal,
                           confirm_authorized_proposal, record_metric, logger, status_tokens,
                           web_dir) -> None:
     @app.get('/status/{token}')
@@ -126,7 +126,7 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
             with conversations.serialize(previous_id):
                 conversations.clear(previous_id)
                 agent_tasks.clear(previous_id)
-            if abandoned and cfg.orchestrator == 'langgraph':
+            if abandoned:
                 try:
                     get_graph().remove_unconfirmed(previous_id, abandoned)
                 except (HTTPException, RuntimeError, sqlite3.Error, OSError):
@@ -145,12 +145,10 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
         voice_turns.end_session(session)
         turn_events.end_session(session)
         with conversations.serialize(session):
-            unconfirmed = []
-            if cfg.orchestrator == "langgraph":
-                with store.connection() as con:
-                    unconfirmed = [row[0] for row in con.execute(
-                        "SELECT id FROM proposals WHERE session_id=? AND status='awaiting_confirmation'",
-                        (session,))]
+            with store.connection() as con:
+                unconfirmed = [row[0] for row in con.execute(
+                    "SELECT id FROM proposals WHERE session_id=? AND status='awaiting_confirmation'",
+                    (session,))]
             workflows.end_session(token or "", csrf or "")
             if unconfirmed:
                 try:
@@ -196,9 +194,7 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
             # Finalize uses a memory compare-and-swap. A turn derived from stale
             # context cannot overwrite a newer accepted topic.
             result = finalize_answer(result, body.language, session)
-            # Commit only after this turn has survived stale/superseded checks and
-            # conversation acceptance. The commit itself is idempotent.
-            result = commit_autonomous_action(result, session)
+            result = finalize_service_turn(result, session)
             approved_proofs = tuple((c['chunk_id'], c['source_id'], c['revision'],
                                      c['quote'], c['language'])
                                     for c in result.get('citations', []))
@@ -331,7 +327,7 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
             # HTTP boundary instead of returning a misleading 200 Completed.
             response.status_code = 202
         return {"request_id": row["id"], "status": status,
-                "orchestration_sync": row.get("orchestration_sync", "ok" if cfg.orchestrator == "langgraph" else "direct"),
+                "orchestration_sync": row.get("orchestration_sync", "ok"),
                 "guest_verification_state": row.get("guest_verification_state", "staff_required"),
                 "eta_minutes": row.get("eta_minutes"),
                 "external_dispatch_state": row.get("external_dispatch_state", "not_requested"),
@@ -346,7 +342,7 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
         result = workflows.cancel_proposal(session, body.proposal_id)
         # Cancellation is already committed. Graph cleanup must never falsely
         # report that the proposal is still actionable if the checkpointer fails.
-        if cfg.orchestrator == "langgraph" and result["status"] in {"cancelled", "expired"}:
+        if result["status"] in {"cancelled", "expired"}:
             try:
                 get_graph().remove_unconfirmed(session, [body.proposal_id])
             except (HTTPException, RuntimeError, sqlite3.Error, OSError):

@@ -57,7 +57,7 @@ def prepare_runtime(settings: Settings | None, embedder, reranker):
         except (ImportError, OSError, ValueError, RuntimeError) as exc:
             raise RuntimeError('Local embedding/reranking models cannot be loaded') from exc
         try:
-            from .runtime.production_signoff import verify_runtime_signoff
+            from .operations.production_signoff import verify_runtime_signoff
             verify_runtime_signoff(cfg)
         except (OSError, ValueError, TypeError) as exc:
             raise RuntimeError('Operator production sign-off is missing, invalid, or stale') from exc

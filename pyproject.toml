@@ -15,6 +15,8 @@ dependencies = [
   "langgraph-checkpoint-sqlite>=3,<4",
   "jsonschema>=4.23,<5",
   "qrcode>=7.4,<9",
+  "faiss-cpu>=1.8,<2",
+  "numpy>=1.26,<3",
 ]
 
 [project.optional-dependencies]
@@ -28,8 +30,6 @@ voice-agent = ["pipecat-ai[silero,local-smart-turn,websocket]>=1.3,<2"]
 embeddings = ["sentence-transformers>=3.0,<4"]
 reranker = ["openvino>=2024.0,<2027", "transformers>=4.44,<5"]
 embeddings-onnx = ["onnxruntime>=1.20,<2", "tokenizers>=0.20,<1", "numpy>=1.26,<3"]
-rag-chroma = ["chromadb>=0.5,<2", "numpy>=1.26,<3"]
-rag-faiss = ["faiss-cpu>=1.8,<2", "numpy>=1.26,<3"]
 ota-tuf = ["tuf>=5,<6"]
 nli = ["transformers>=4.44,<5", "torch>=2.3"]
 incremental-stt = ["vosk>=0.3.45,<1"]
@@ -60,7 +60,7 @@ include = ["concierge_kiosk*", "tools*"]
 [tool.setuptools.data-files]
 "share/concierge-kiosk/config" = ["config/agent-domain.json", "config/agent-domain.schema.json", "config/agent-domain.sha256", "config/property-profile.schema.json", "config/runtime-profile.schema.json", "config/voice-stt-manifest.schema.json", "config/voice-tts-manifest.schema.json", "config/local-runtime.env.example"]
 "share/concierge-kiosk/config/runtime-profiles" = ["config/runtime-profiles/*.json", "config/runtime-profiles/*.sha256"]
-"share/concierge-kiosk/web" = ["web/index.html", "web/guest.js", "web/guest.css", "web/staff.html", "web/staff.js", "web/staff.css", "web/status.html", "web/status.js", "web/favicon.ico", "web/header-bg.webp", "web/header-bg-original.jpg", "web/voice-crop.png", "web/pcm-worklet.js", "web/sos.js"]
+"share/concierge-kiosk/web" = ["web/index.html", "web/guest.js", "web/app.css", "web/staff.html", "web/staff.js", "web/status.html", "web/status.js", "web/favicon.ico", "web/header-bg.webp", "web/header-bg-original.jpg", "web/pcm-worklet.js", "web/sos.js"]
 "share/concierge-kiosk/web/media" = ["web/media/*.svg"]
 "share/concierge-kiosk/datasets/map" = ["datasets/schemas/knowledge/map.schema.json"]
 "share/concierge-kiosk/datasets/planning" = ["datasets/schemas/knowledge/planning.schema.json"]

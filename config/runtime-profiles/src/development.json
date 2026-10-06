@@ -1,7 +1,6 @@
 {
   "features": {
-    "voice_transport": "pipecat",
-    "understanding_mode": "command"
+    "voice_transport": "pipecat"
   },
   "models": {
     "embedding": {
