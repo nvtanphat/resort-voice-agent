@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({command}) => ({
   base: command === 'serve' ? '/' : '/static/',
   plugins: [react()],
-  build: { outDir: '../web', emptyOutDir: false, rollupOptions: {output: {entryFileNames:'guest.js',assetFileNames:'guest.css'}} },
+  build: { outDir: '../web', emptyOutDir: false, rollupOptions: {output: {entryFileNames:'guest.js',assetFileNames:'app.css'}} },
   server: {
     port: 5173,
     host: true,

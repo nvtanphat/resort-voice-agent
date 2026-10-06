@@ -4,7 +4,7 @@ export interface ServiceItem { id:string; title:string; description:string; requ
 export interface ChatMessage {
   id:string; sender:'user'|'assistant'; time:string; text:string;
   answerTitle?:string|null;
- citations?:Citation[]; suggestedAction?:{kind:RequestKind;details:string}|null; speechTurnId?:string;
+ citations?:Citation[]; suggestedAction?:{kind:RequestKind;details:string;service?:string}|null; speechTurnId?:string;
  planIsDraft?:boolean; missingTopics?:string[]; mapGuidance?:MapGuidance;
  plan?:DraftPlan; evidenceStatus?:string; omittedClaims?:number;
  actionOptions?:Array<{kind:RequestKind}>;

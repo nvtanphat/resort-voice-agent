@@ -54,7 +54,7 @@ export interface Answer {
   answer: string; answer_title?: string | null; citations: Citation[]; speech_turn_id: string;
   speech_plan?: SpeechPlan;
   clear_suggestions?: boolean;
-  suggested_action: {kind: RequestKind; details: string} | null;
+  suggested_action: {kind: RequestKind; details: string; service?: string} | null;
   action_options?: Array<{kind:RequestKind}>;
   tool_route?: string; retrieval_mode?: string;
   plan_is_draft?: boolean; plan_topics?: string[]; missing_topics?: string[];
@@ -189,9 +189,9 @@ export function ask(query:string,language:LanguageCode,previous_query:string,sig
       return response.json() as Promise<Answer>;
     });
 }
-export const prepare = (kind:RequestKind,language:LanguageCode,details:string,nonce:string,payload?:ServicePayload,dataConsent=false) =>
+export const prepare = (kind:RequestKind,language:LanguageCode,details:string,nonce:string,payload?:ServicePayload,dataConsent=false,service?:string) =>
   request<{proposal_id:string;kind:RequestKind;details:string;status:string;expires_at:number;requires_confirmation:boolean;staff_verification_required:boolean;service_code?:string;price_disclosure_required?:boolean;price_disclosure?:string;outside_operating_hours?:boolean;next_open_at?:number|null}>(
-    '/api/requests/prepare','POST',{kind,language,details,nonce,payload:payload||null,data_consent:dataConsent});
+    '/api/requests/prepare','POST',{kind,language,details,nonce,payload:payload||null,data_consent:dataConsent,...(service?{service}:{})});
 export interface GuestVerificationInput { room_number:string; last_name?:string; room_qr_token?:string; }
 export const confirm = (proposal_id:string, verification?:GuestVerificationInput, priceAcknowledged=false) =>
   request<{request_id:string;status:RequestStatus;message:string;guest_verification_state:string;eta_minutes:number|null;external_dispatch_state:string;confirmation_code:string;status_url:string;status_token_expires_at:number}>('/api/requests/confirm','POST',{proposal_id,confirmed:true,price_acknowledged:priceAcknowledged,verification:verification||null});

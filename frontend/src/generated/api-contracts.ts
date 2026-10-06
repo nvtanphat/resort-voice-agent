@@ -1,12 +1,12 @@
 // AUTO-GENERATED from FastAPI OpenAPI. Do not edit by hand.
-export type LanguageCode = 'zh' | 'en' | 'ko' | 'vi';
-export type RequestKind = 'housekeeping' | 'front_office' | 'facilities' | 'directions' | 'tour' | 'transport' | 'human' | 'dining';
+export type LanguageCode = 'en' | 'ko' | 'vi' | 'zh';
+export type RequestKind = 'dining' | 'directions' | 'facilities' | 'front_office' | 'housekeeping' | 'human' | 'tour' | 'transport';
 export type RequestStatus = 'pending_staff' | 'approved' | 'in_progress' | 'paused' | 'rejected' | 'completed';
 export interface ServicePayload {
-  room_number?: string;
-  quantity?: number;
-  preferred_time?: string;
-  party_size?: number;
   note?: string;
+  party_size?: number;
+  preferred_time?: string;
   price_acknowledged?: boolean;
+  quantity?: number;
+  room_number?: string;
 }

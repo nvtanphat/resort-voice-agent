@@ -53,6 +53,5 @@ const staffId=add(staffEntry);
 fs.writeFileSync(path.join(dir,'staff.js'),bundle(staffId,'staff',sourceSha).replace(/[ \t]+$/gm,''));
 fs.copyFileSync(path.join(base,'staff.html'),path.join(dir,'staff.html'));
 const cssCLI=require.resolve('tailwindcss/lib/cli.js');
-cp.execFileSync(process.execPath,[cssCLI,'-c','tailwind.config.js','-i','src/index.css','-o','../web/guest.css','--minify'],{cwd:base,stdio:'pipe'});
-cp.execFileSync(process.execPath,[cssCLI,'-c','tailwind.config.js','-i','src/index.css','-o','../web/staff.css','--minify'],{cwd:base,stdio:'pipe'});
+cp.execFileSync(process.execPath,[cssCLI,'-c','tailwind.config.js','-i','src/index.css','-o','../web/app.css','--minify'],{cwd:base,stdio:'pipe'});
 console.log('Bundled guest and staff assets; modules:',mod.length);

@@ -13,9 +13,9 @@ import {SidebarNav} from './components/SidebarNav';
 import {ChatSection} from './components/ChatSection';
 import {VoiceAssistant} from './components/VoiceAssistant';
 import {MyRequests} from './components/MyRequests';
-import {EditRequestModal} from './components/EditRequestModal';
-import {TicketModal} from './components/TicketModal';
-import {VerificationModal} from './components/VerificationModal';
+import {Chat} from './screens/Chat';
+import {RequestFlow} from './screens/RequestFlow';
+import {useRequestDraft} from './hooks/useRequestDraft';
 
 function clock(lang:LanguageCode){return new Date().toLocaleTimeString(lang,{hour:'2-digit',minute:'2-digit'});}
 function uuid(): string {
@@ -44,21 +44,12 @@ export const App:React.FC=()=>{
  const [startLocation,setStartLocation]=useState('');
  const [sessionReady,setSessionReady]=useState(false);
  const [toastMessage,setToastMessage]=useState<string|null>(null);
- const [dataConsent,setDataConsent]=useState(false);
  const [latestStatus,setLatestStatus]=useState<{code:string;url:string;qr:string}|null>(null);
  const [now,setNow]=useState(new Date());
- const [requestType,setRequestType]=useState<RequestKind|null>(null);
- const [quantity,setQuantity]=useState(1);
- const [roomNumber,setRoomNumber]=useState('');
- const [requestTime,setRequestTime]=useState('');
- const [partySize,setPartySize]=useState('');
- const [note,setNote]=useState('');
- const [suggestedDetails,setSuggestedDetails]=useState<{kind:RequestKind;details:string}|null>(null);
- const [pendingProposal,setPendingProposal]=useState<{proposal_id:string;kind:RequestKind;details:string;expires_at:number;staff_verification_required?:boolean;price_disclosure_required?:boolean;price_disclosure?:string;outside_operating_hours?:boolean;next_open_at?:number|null}|null>(null);
- const [priceAcknowledged,setPriceAcknowledged]=useState(false);
- const [submitting,setSubmitting]=useState(false);
- const [verificationModalOpen,setVerificationModalOpen]=useState(false);
- const [isEditModalOpen,setIsEditModalOpen]=useState(false);
+ const {requestType,setRequestType,quantity,setQuantity,roomNumber,setRoomNumber,requestTime,setRequestTime,
+  partySize,setPartySize,note,setNote,suggestedDetails,setSuggestedDetails,pendingProposal,setPendingProposal,
+  priceAcknowledged,setPriceAcknowledged,submitting,setSubmitting,verificationModalOpen,setVerificationModalOpen,
+  isEditModalOpen,setIsEditModalOpen,dataConsent,setDataConsent}=useRequestDraft();
  const [isThinking,setIsThinking]=useState(false);
  const [inputText,setInputText]=useState('');
  const [messages,setMessages]=useState<ChatMessage[]>([]);
@@ -177,7 +168,7 @@ export const App:React.FC=()=>{
   try{await api.endSession();}catch{}await connect();};
  const handleSelectService=(service:ServiceItem)=>{setSelectedServiceId(service.id);if(service.requestKind)setRequestType(service.requestKind);
   if(service.question)void handleSendMessage(service.question);};
- const applySuggested=(kind:RequestKind,details:string)=>{if(!allowedRequestKinds.includes(kind))return;if(pendingProposal){showToast(t(selectedLanguage,'cancel'));return;}setRequestType(kind);setSuggestedDetails(details.trim()?{kind,details}:null);setNote(details);draftNonce.current=null;
+ const applySuggested=(kind:RequestKind,details:string,service?:string)=>{if(!allowedRequestKinds.includes(kind))return;if(pendingProposal){showToast(t(selectedLanguage,'cancel'));return;}setRequestType(kind);setSuggestedDetails(details.trim()?{kind,details,service}:null);setNote(details);draftNonce.current=null;
   if(details.trim())showToast(t(selectedLanguage,'reviewRequest'));else setIsEditModalOpen(true);};
  const handleSendMessage=async(textToSend?:string,voiceTurn?:string,voiceSignal?:AbortSignal,turnLanguage?:LanguageCode,
                                endedAt?:number,source:'dialogue'|'sos_button'='dialogue')=>{
@@ -681,7 +672,8 @@ export const App:React.FC=()=>{
    if(fields.has('preferred_time')&&requestTime)payload.preferred_time=requestTime;
    if(fields.has('party_size')&&partySize)payload.party_size=Number(partySize);
    if(serverConfig?.data_consent_required&&!dataConsent){showToast(({vi:'Vui lòng đồng ý chính sách dữ liệu.',en:'Please agree to the data notice.',zh:'请同意数据说明。',ko:'데이터 안내에 동의해 주세요.'} as Record<LanguageCode,string>)[selectedLanguage]);return;}
-   const proposal=await api.prepare(requestType,selectedLanguage,details,draftNonce.current||(draftNonce.current=uuid()),payload,dataConsent);
+   const proposal=await api.prepare(requestType,selectedLanguage,details,draftNonce.current||(draftNonce.current=uuid()),payload,dataConsent,
+     suggestedDetails?.kind===requestType?suggestedDetails.service:undefined);
    if(epoch!==sessionEpoch.current)return;setPendingProposal(proposal);setPriceAcknowledged(false);showToast(t(selectedLanguage,'reviewRequest'));
   }catch(err){expireIfAuth(err);showToast(!navigator.onLine?t(langRef.current,'networkLost'):err instanceof api.RequestTimeoutError?t(langRef.current,'requestPending'):err instanceof api.ApiError&&[401,403].includes(err.status)?t(langRef.current,'sessionExpired'):t(langRef.current,'prepareError'));}finally{setSubmitting(false);}};
  const handleConfirmRequest=async(confirmedVerification?:api.GuestVerificationInput)=>{if(!pendingProposal||submitting)return;if(pendingProposal.price_disclosure_required&&!priceAcknowledged){showToast(t(langRef.current,'priceDisclosureAcknowledgement'));return;}if(confirmedVerification===undefined&&pendingProposal.staff_verification_required&&roomNumber.trim()){setVerificationModalOpen(true);return;}setSubmitting(true);
@@ -793,7 +785,7 @@ export const App:React.FC=()=>{
       <SidebarNav language={selectedLanguage} items={serviceItems} activeId={selectedServiceId} onSelectItem={id=>{
         const service=serviceItems.find(item=>item.id===id);if(service)handleSelectService(service);
       }}/>
-      <ChatSection propertyName={serverConfig?.property_name||'Concierge Kiosk'} language={selectedLanguage}
+      <Chat propertyName={serverConfig?.property_name||'Concierge Kiosk'} language={selectedLanguage}
         messages={messages} value={inputText} onChange={setInputText} onSendMessage={text=>void handleSendMessage(text)}
         isThinking={isThinking} ready={sessionReady} error={errorText} onRetry={()=>void connect()}
         onSuggested={applySuggested} kindLabel={kind=>requestKindLabel(kind,selectedLanguage)} onStartRequest={()=>{if(allowedRequestKinds.length)setIsEditModalOpen(true);}} canCreateRequest={Boolean(uiContract?.capabilities.create_request&&allowedRequestKinds.length>0)} onOpenEditModal={()=>setIsEditModalOpen(true)}
@@ -810,16 +802,19 @@ export const App:React.FC=()=>{
         <MyRequests language={selectedLanguage} tickets={requestsList.map(req=>({...req,title:req.kind?requestKindLabel(req.kind,selectedLanguage):req.title,statusText:statusLabel(selectedLanguage,req.status)}))} selectedId={expandedRequest} onSelectTicket={id=>void checkRequest(id)}/>
       </aside>
     </main>
-    {requestType&&<EditRequestModal isOpen={isEditModalOpen} kind={requestType} requestTypes={(changeTargetId?uiContract?.request_types.filter(item=>item.kind===requestType):uiContract?.request_types.filter(item=>item.actions.includes('create_request')))||[]} room={roomNumber} quantity={quantity}
-      time={requestTime} party={partySize} note={note} dataConsent={dataConsent} showConsent={!Boolean(changeTargetId)} language={selectedLanguage}
-      onClose={()=>{setIsEditModalOpen(false);setChangeTargetId(null);}} onSave={handleSaveEdit}/>}
-    <VerificationModal isOpen={verificationModalOpen} language={selectedLanguage} room={roomNumber}
-      onClose={()=>setVerificationModalOpen(false)}
-      onSubmit={(lastName,roomQrToken)=>{setVerificationModalOpen(false);void handleConfirmRequest({room_number:roomNumber.trim(),last_name:lastName,room_qr_token:roomQrToken});}}/>
-    <TicketModal language={selectedLanguage} isOpen={Boolean(expandedRequest)} progress={requestProgress} error={requestProgressError}
-      busy={changeBusy} onCancelRequest={()=>void requestCancelSubmitted()} onModifyRequest={requestModifySubmitted}
-      onSubmitFeedback={(rating,note)=>void submitFeedback(rating,note)}
-      onClose={()=>{expandedRequestRef.current=null;setExpandedRequest(null);setRequestProgress(null);}}/>
+    <RequestFlow
+      edit={requestType?{isOpen:isEditModalOpen,kind:requestType,
+        requestTypes:(changeTargetId?uiContract?.request_types.filter(item=>item.kind===requestType):uiContract?.request_types.filter(item=>item.actions.includes('create_request')))||[],
+        room:roomNumber,quantity,time:requestTime,party:partySize,note,dataConsent,
+        showConsent:!Boolean(changeTargetId),language:selectedLanguage,
+        onClose:()=>{setIsEditModalOpen(false);setChangeTargetId(null);},onSave:handleSaveEdit}:null}
+      verification={{isOpen:verificationModalOpen,language:selectedLanguage,room:roomNumber,
+        onClose:()=>setVerificationModalOpen(false),
+        onSubmit:(lastName,roomQrToken)=>{setVerificationModalOpen(false);void handleConfirmRequest({room_number:roomNumber.trim(),last_name:lastName,room_qr_token:roomQrToken});}}}
+      ticket={{language:selectedLanguage,isOpen:Boolean(expandedRequest),progress:requestProgress,error:requestProgressError,
+        busy:changeBusy,onCancelRequest:()=>void requestCancelSubmitted(),onModifyRequest:requestModifySubmitted,
+        onSubmitFeedback:(rating,note)=>void submitFeedback(rating,note),
+        onClose:()=>{expandedRequestRef.current=null;setExpandedRequest(null);setRequestProgress(null);}}}/>
   </div>;
 };
 export default App;
