@@ -12,6 +12,10 @@ server {
     location = /ops { return 404; }
     location = /static/ops.html { return 404; }
     location = /static/ops.js { return 404; }
+    location = /staff { return 404; }
+    location = /static/staff.html { return 404; }
+    location = /static/staff.js { return 404; }
+    location = /static/staff.css { return 404; }
     location ^~ /staff/ { return 404; }
     location ^~ /internal/ { return 404; }
     location = /openapi.json { return 404; }
@@ -49,7 +53,7 @@ server {
 __STAFF_ALLOW_RULES__
     deny all;
     client_max_body_size 1m;
-    location = /ops {
+    location = /staff {
         include __STAFF_GATEWAY_INCLUDE__;
         proxy_set_header Host $host;
         proxy_pass http://127.0.0.1:8000;
@@ -59,14 +63,17 @@ __STAFF_ALLOW_RULES__
         proxy_set_header Host $host;
         proxy_pass http://127.0.0.1:8000;
     }
-    location = /static/ops.js {
+    location = /static/staff.js {
         include __STAFF_GATEWAY_INCLUDE__;
         proxy_pass http://127.0.0.1:8000;
     }
-    location = /static/ops.html {
+    location = /static/staff.html {
         include __STAFF_GATEWAY_INCLUDE__;
         proxy_pass http://127.0.0.1:8000;
     }
-    location = /static/style.css { proxy_pass http://127.0.0.1:8000; }
+    location = /static/staff.css {
+        include __STAFF_GATEWAY_INCLUDE__;
+        proxy_pass http://127.0.0.1:8000;
+    }
     location / { return 404; }
 }

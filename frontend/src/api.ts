@@ -102,6 +102,7 @@ export interface KioskConfig {
     vad:{engine:'energy'|'silero_v5';noise_floor_initial:number;positive_threshold:number;negative_threshold:number;redemption_ms:number;pre_speech_pad_ms:number;min_speech_ms:number;playback_positive_threshold:number;continuation_extra_ms:number};
     continuation_cues:Record<LanguageCode,string[]>;clause_delimiters:Record<LanguageCode,string[]>;sentence_endings:Record<LanguageCode,string[]>};
   stt_modes?:Partial<Record<LanguageCode,string>>;
+  data_consent_required?:boolean;
 }
 let csrfToken = '';
 export const csrf = () => csrfToken;
@@ -188,12 +189,12 @@ export function ask(query:string,language:LanguageCode,previous_query:string,sig
       return response.json() as Promise<Answer>;
     });
 }
-export const prepare = (kind:RequestKind,language:LanguageCode,details:string,nonce:string,payload?:ServicePayload) =>
+export const prepare = (kind:RequestKind,language:LanguageCode,details:string,nonce:string,payload?:ServicePayload,dataConsent=false) =>
   request<{proposal_id:string;kind:RequestKind;details:string;status:string;expires_at:number;requires_confirmation:boolean;staff_verification_required:boolean;service_code?:string;price_disclosure_required?:boolean;price_disclosure?:string;outside_operating_hours?:boolean;next_open_at?:number|null}>(
-    '/api/requests/prepare','POST',{kind,language,details,nonce,payload:payload||null});
+    '/api/requests/prepare','POST',{kind,language,details,nonce,payload:payload||null,data_consent:dataConsent});
 export interface GuestVerificationInput { room_number:string; last_name?:string; room_qr_token?:string; }
 export const confirm = (proposal_id:string, verification?:GuestVerificationInput, priceAcknowledged=false) =>
-  request<{request_id:string;status:RequestStatus;message:string;guest_verification_state:string;eta_minutes:number|null;external_dispatch_state:string}>('/api/requests/confirm','POST',{proposal_id,confirmed:true,price_acknowledged:priceAcknowledged,verification:verification||null});
+  request<{request_id:string;status:RequestStatus;message:string;guest_verification_state:string;eta_minutes:number|null;external_dispatch_state:string;confirmation_code:string;status_url:string;status_token_expires_at:number}>('/api/requests/confirm','POST',{proposal_id,confirmed:true,price_acknowledged:priceAcknowledged,verification:verification||null});
 export const cancelProposal = (proposal_id:string) => request('/api/requests/cancel','POST',{proposal_id});
 export const myRequests = () => request<{items:RequestRow[]}>('/api/requests/mine?limit=30');
 export const requestProgress = (id:string) => request<GuestRequestProgress>(`/api/requests/${encodeURIComponent(id)}/progress`);

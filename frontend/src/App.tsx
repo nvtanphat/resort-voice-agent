@@ -44,6 +44,8 @@ export const App:React.FC=()=>{
  const [startLocation,setStartLocation]=useState('');
  const [sessionReady,setSessionReady]=useState(false);
  const [toastMessage,setToastMessage]=useState<string|null>(null);
+ const [dataConsent,setDataConsent]=useState(false);
+ const [latestStatus,setLatestStatus]=useState<{code:string;url:string;qr:string}|null>(null);
  const [now,setNow]=useState(new Date());
  const [requestType,setRequestType]=useState<RequestKind|null>(null);
  const [quantity,setQuantity]=useState(1);
@@ -678,14 +680,17 @@ export const App:React.FC=()=>{
    if(fields.has('quantity'))payload.quantity=quantity;
    if(fields.has('preferred_time')&&requestTime)payload.preferred_time=requestTime;
    if(fields.has('party_size')&&partySize)payload.party_size=Number(partySize);
-   const proposal=await api.prepare(requestType,selectedLanguage,details,draftNonce.current||(draftNonce.current=uuid()),payload);
+   if(serverConfig?.data_consent_required&&!dataConsent){showToast(({vi:'Vui lòng đồng ý chính sách dữ liệu.',en:'Please agree to the data notice.',zh:'请同意数据说明。',ko:'데이터 안내에 동의해 주세요.'} as Record<LanguageCode,string>)[selectedLanguage]);return;}
+   const proposal=await api.prepare(requestType,selectedLanguage,details,draftNonce.current||(draftNonce.current=uuid()),payload,dataConsent);
    if(epoch!==sessionEpoch.current)return;setPendingProposal(proposal);setPriceAcknowledged(false);showToast(t(selectedLanguage,'reviewRequest'));
   }catch(err){expireIfAuth(err);showToast(!navigator.onLine?t(langRef.current,'networkLost'):err instanceof api.RequestTimeoutError?t(langRef.current,'requestPending'):err instanceof api.ApiError&&[401,403].includes(err.status)?t(langRef.current,'sessionExpired'):t(langRef.current,'prepareError'));}finally{setSubmitting(false);}};
  const handleConfirmRequest=async(confirmedVerification?:api.GuestVerificationInput)=>{if(!pendingProposal||submitting)return;if(pendingProposal.price_disclosure_required&&!priceAcknowledged){showToast(t(langRef.current,'priceDisclosureAcknowledgement'));return;}if(confirmedVerification===undefined&&pendingProposal.staff_verification_required&&roomNumber.trim()){setVerificationModalOpen(true);return;}setSubmitting(true);
   try{const epoch=sessionEpoch.current;let verification:api.GuestVerificationInput|undefined=confirmedVerification;
    const result=await api.confirm(pendingProposal.proposal_id,verification,priceAcknowledged);
    if(epoch!==sessionEpoch.current)return;setPendingProposal(null);setPriceAcknowledged(false);setSuggestedDetails(null);draftNonce.current=null;setNote('');setRoomNumber('');setQuantity(1);setRequestTime('');setPartySize('');setSuggestedDetails(null);setIsEditModalOpen(false);
-   await refreshRequests();showToast(`${t(langRef.current,'bookingDisclaimer')} ${result.request_id}`);
+   await refreshRequests();setDataConsent(false);
+   if(result.confirmation_code&&result.status_url){setLatestStatus({code:result.confirmation_code,url:result.status_url,qr:result.status_url.replace('/status/','/api/status/')+'/qr.svg'});}
+   showToast(`${t(langRef.current,'bookingDisclaimer')} ${result.confirmation_code||''}`);
   }catch(err){if(!expireIfAuth(err))void refreshRequests();showToast(err instanceof api.ApiError&&[401,403].includes(err.status)?t(langRef.current,'sessionExpired'):t(langRef.current,'confirmError'));}
   finally{setSubmitting(false);}};
  const handleCancelProposal=async()=>{if(!pendingProposal)return;setSubmitting(true);
@@ -711,7 +716,7 @@ export const App:React.FC=()=>{
     activeFields.has('room_number')&&roomNumber.trim()?`${t(selectedLanguage,'room')}: ${roomNumber.trim()}`:'',
     activeFields.has('quantity')?`${t(selectedLanguage,'quantity')}: ${quantity}`:'',activeFields.has('preferred_time')&&requestTime?`${t(selectedLanguage,'preferredTime')}: ${requestTime}`:'',
     activeFields.has('party_size')&&partySize?`${t(selectedLanguage,'partySize')}: ${partySize}`:'',note.trim()].filter(Boolean).join('\n'):null);
-  const handleSaveEdit=(values:{kind:RequestKind;room:string;quantity:number;time:string;party:string;note:string})=>{
+  const handleSaveEdit=(values:{kind:RequestKind;room:string;quantity:number;time:string;party:string;note:string;dataConsent:boolean})=>{
     if(changeTargetId){
       const target=changeTargetId;
       const payload:api.ServicePayload={};
@@ -729,7 +734,7 @@ export const App:React.FC=()=>{
       return;
     }
     if(!draftChanged())return;
-    setRequestType(values.kind);setRoomNumber(values.room);setQuantity(values.quantity);
+    setRequestType(values.kind);setRoomNumber(values.room);setQuantity(values.quantity);setDataConsent(values.dataConsent);
     setRequestTime(values.time);setPartySize(values.party);setNote(values.note);
     setIsEditModalOpen(false);
   };
@@ -770,6 +775,10 @@ export const App:React.FC=()=>{
   const voiceAvailable=Boolean(sessionReady&&serverConfig?.voice_available&&serverConfig.tts_languages.includes(selectedLanguage));
   return <div className="h-screen h-[100dvh] overflow-hidden flex flex-col selection:bg-[#8C6D3E] selection:text-white bg-[#F3EFE6]">
     {toastMessage&&<div role="status" className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-[#142742] text-white px-5 py-2.5 rounded-lg shadow-xl text-xs border border-amber-500/40 max-w-[90vw]">{toastMessage}</div>}
+    {latestStatus&&<div className="fixed top-36 left-1/2 -translate-x-1/2 z-40 bg-white border border-[#D8E6F5] rounded-xl shadow-xl p-3 text-xs flex gap-3 items-center max-w-[90vw]">
+      <img src={latestStatus.qr} alt="QR status link" className="w-20 h-20 bg-white" onError={event=>{event.currentTarget.hidden=true;}} />
+      <div><p className="font-semibold text-brand-navy">{latestStatus.code}</p><a className="underline text-[#73532C]" href={latestStatus.url} target="_blank" rel="noreferrer">{latestStatus.url}</a><button className="block mt-1 text-gray-500 underline" onClick={()=>setLatestStatus(null)}>×</button></div>
+    </div>}
     <button type="button" disabled={!sessionReady||isThinking}
       aria-label={t(selectedLanguage,'sosEmergency')} title={t(selectedLanguage,'sosEmergency')}
       onClick={()=>void handleSendMessage('SOS',undefined,undefined,undefined,undefined,'sos_button')}
@@ -802,7 +811,7 @@ export const App:React.FC=()=>{
       </aside>
     </main>
     {requestType&&<EditRequestModal isOpen={isEditModalOpen} kind={requestType} requestTypes={(changeTargetId?uiContract?.request_types.filter(item=>item.kind===requestType):uiContract?.request_types.filter(item=>item.actions.includes('create_request')))||[]} room={roomNumber} quantity={quantity}
-      time={requestTime} party={partySize} note={note} language={selectedLanguage}
+      time={requestTime} party={partySize} note={note} dataConsent={dataConsent} showConsent={!Boolean(changeTargetId)} language={selectedLanguage}
       onClose={()=>{setIsEditModalOpen(false);setChangeTargetId(null);}} onSave={handleSaveEdit}/>}
     <VerificationModal isOpen={verificationModalOpen} language={selectedLanguage} room={roomNumber}
       onClose={()=>setVerificationModalOpen(false)}

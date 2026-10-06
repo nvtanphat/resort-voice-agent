@@ -1,5 +1,5 @@
 /* source-sha256:bad5dda176a89846a8af4acff80d8f73715ce9264b81749d080919b99e1799e4 */
-/* Concierge Kiosk guest UI. */
+/* Concierge Kiosk staff UI. */
 (function(){
 'use strict';
 const modules={0:[function(module,exports,require,process){
@@ -50113,8 +50113,181 @@ const VerificationModal = ({ isOpen, language, room, onClose, onSubmit }) => {
 };
 exports.VerificationModal = VerificationModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":88}]};const cache={};const process={env:{NODE_ENV:'production'}};
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":88}],
+91:[function(module,exports,require,process){
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const jsx_runtime_1 = require("react/jsx-runtime");
+const react_1 = __importStar(require("react"));
+const client_1 = require("react-dom/client");
+require("../index.css");
+const copy = {
+    vi: { title: 'Bàn điều phối nhân viên', subtitle: 'HITL · Hàng đợi dịch vụ · Audit', token: 'Staff bearer token', signIn: 'Đăng nhập', signOut: 'Đăng xuất', queue: 'Hàng đợi', emergencies: 'Khẩn cấp', metrics: 'KPI', refresh: 'Làm mới', pending: 'Chờ duyệt', active: 'Đang xử lý', emergency: 'Khẩn cấp', all: 'Tất cả', details: 'Chi tiết yêu cầu', note: 'Ghi chú bắt buộc', assignee: 'Người phụ trách', approve: 'Duyệt', reject: 'Từ chối', start: 'Nhận việc', pause: 'Tạm dừng', resume: 'Tiếp tục', complete: 'Hoàn tất', verify: 'Tôi đã kiểm tra độc lập', audit: 'Lịch sử audit', noItems: 'Không có yêu cầu phù hợp.', invalid: 'Token không hợp lệ hoặc không được cấp quyền.', actionError: 'Thao tác chưa được ghi nhận; hãy kiểm tra lại trạng thái.', synthetic: 'Dữ liệu mô phỏng', load: 'Đang tải…', signInHint: 'Token chỉ được giữ trong phiên trình duyệt này.' },
+    en: { title: 'Staff operations desk', subtitle: 'HITL · Service queue · Audit', token: 'Staff bearer token', signIn: 'Sign in', signOut: 'Sign out', queue: 'Queue', emergencies: 'Emergencies', metrics: 'KPI', refresh: 'Refresh', pending: 'Pending review', active: 'In progress', emergency: 'Emergency', all: 'All', details: 'Request details', note: 'Required review note', assignee: 'Assignee', approve: 'Approve', reject: 'Reject', start: 'Take work', pause: 'Pause', resume: 'Resume', complete: 'Complete', verify: 'I independently verified the details', audit: 'Audit history', noItems: 'No matching requests.', invalid: 'Invalid or unauthorized token.', actionError: 'Action was not recorded; re-check the current state.', synthetic: 'Synthetic data', load: 'Loading…', signInHint: 'The token stays only in this browser session.' },
+    zh: { title: '员工运营台', subtitle: '人工审核 · 服务队列 · 审计', token: '员工令牌', signIn: '登录', signOut: '退出', queue: '队列', emergencies: '紧急事件', metrics: '指标', refresh: '刷新', pending: '待审核', active: '处理中', emergency: '紧急', all: '全部', details: '请求详情', note: '审核备注', assignee: '负责人', approve: '批准', reject: '拒绝', start: '开始处理', pause: '暂停', resume: '继续', complete: '完成', verify: '我已独立核实详情', audit: '审计记录', noItems: '没有匹配请求。', invalid: '令牌无效或无权限。', actionError: '操作未记录，请重新检查状态。', synthetic: '模拟数据', load: '加载中…', signInHint: '令牌只保留在本浏览器会话中。' },
+    ko: { title: '직원 운영 데스크', subtitle: '사람 검토 · 서비스 대기열 · 감사', token: '직원 bearer 토큰', signIn: '로그인', signOut: '로그아웃', queue: '대기열', emergencies: '긴급', metrics: '지표', refresh: '새로고침', pending: '검토 대기', active: '처리 중', emergency: '긴급', all: '전체', details: '요청 상세', note: '필수 검토 메모', assignee: '담당자', approve: '승인', reject: '거절', start: '작업 시작', pause: '일시 중지', resume: '재개', complete: '완료', verify: '세부 내용을 독립적으로 확인했습니다', audit: '감사 기록', noItems: '일치하는 요청이 없습니다.', invalid: '토큰이 유효하지 않거나 권한이 없습니다.', actionError: '작업이 기록되지 않았습니다. 상태를 다시 확인하세요.', synthetic: '시뮬레이션 데이터', load: '로드 중…', signInHint: '토큰은 이 브라우저 세션에만 보관됩니다.' },
+};
+function text(lang, key) { return copy[lang][key] || copy.en[key] || key; }
+function idempotencyKey() { return crypto.randomUUID().replace(/-/g, ''); }
+function dateTime(value, lang) {
+    return typeof value === 'number' ? new Date(value * 1000).toLocaleString(lang === 'vi' ? 'vi-VN' : lang === 'zh' ? 'zh-CN' : lang === 'ko' ? 'ko-KR' : 'en-GB') : '—';
+}
+async function apiCall(token, path, init = {}) {
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${token}`);
+    headers.set('Accept', 'application/json');
+    if (init.body)
+        headers.set('Content-Type', 'application/json');
+    const response = await fetch(path, { ...init, headers });
+    if (!response.ok)
+        throw new Error(`${response.status}:${await response.text()}`);
+    return response.status === 204 ? undefined : await response.json();
+}
+function StaffApp() {
+    const [lang, setLang] = (0, react_1.useState)('vi');
+    const [token, setToken] = (0, react_1.useState)('');
+    const [draftToken, setDraftToken] = (0, react_1.useState)('');
+    const [requests, setRequests] = (0, react_1.useState)([]);
+    const [summary, setSummary] = (0, react_1.useState)(null);
+    const [emergencies, setEmergencies] = (0, react_1.useState)([]);
+    const [selected, setSelected] = (0, react_1.useState)(null);
+    const [audit, setAudit] = (0, react_1.useState)([]);
+    const [filter, setFilter] = (0, react_1.useState)('pending_staff');
+    const [note, setNote] = (0, react_1.useState)('');
+    const [assignee, setAssignee] = (0, react_1.useState)('');
+    const [verified, setVerified] = (0, react_1.useState)(false);
+    const [busy, setBusy] = (0, react_1.useState)(false);
+    const [loading, setLoading] = (0, react_1.useState)(false);
+    const [error, setError] = (0, react_1.useState)('');
+    const [tab, setTab] = (0, react_1.useState)('queue');
+    const tr = (key) => text(lang, key);
+    const statusLabel = (status) => ({ pending_staff: tr('pending'), approved: tr('approve'), in_progress: tr('active'), paused: tr('pause'), rejected: tr('reject'), completed: tr('complete') }[status]);
+    const load = (0, react_1.useCallback)(async () => {
+        if (!token)
+            return;
+        setLoading(true);
+        setError('');
+        try {
+            const status = filter === 'all' ? '' : `&status=${encodeURIComponent(filter)}`;
+            const [page, nextSummary, nextEmergencies] = await Promise.all([
+                apiCall(token, `/staff/requests/page?limit=100${status}`),
+                apiCall(token, '/staff/queue/summary'),
+                apiCall(token, '/staff/emergencies?limit=50'),
+            ]);
+            setRequests(page.items);
+            setSummary(nextSummary);
+            setEmergencies(nextEmergencies);
+            if (selected) {
+                const fresh = page.items.find(item => item.id === selected.id);
+                if (fresh)
+                    setSelected(fresh);
+            }
+        }
+        catch {
+            setError(tr('invalid'));
+        }
+        finally {
+            setLoading(false);
+        }
+    }, [filter, selected, token]);
+    (0, react_1.useEffect)(() => { void load(); }, [load]);
+    (0, react_1.useEffect)(() => { if (!token)
+        return undefined; const timer = window.setInterval(() => void load(), 8000); return () => window.clearInterval(timer); }, [load, token]);
+    (0, react_1.useEffect)(() => {
+        if (!token || !selected) {
+            setAudit([]);
+            return;
+        }
+        void apiCall(token, `/staff/requests/${selected.id}/audit?limit=100`).then(setAudit).catch(() => setAudit([]));
+    }, [selected, token]);
+    const doTransition = async (action) => {
+        if (!selected || busy)
+            return;
+        if ((action === 'approve' || action === 'reject') && note.trim().length < 8) {
+            setError(tr('note'));
+            return;
+        }
+        if (action === 'approve' && !verified) {
+            setError(tr('verify'));
+            return;
+        }
+        setBusy(true);
+        setError('');
+        try {
+            await apiCall(token, `/staff/requests/${selected.id}/transition`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey() }, body: JSON.stringify({ action, verified, note: note.trim(), assignee: assignee.trim() }) });
+            setNote('');
+            setVerified(false);
+            setAssignee('');
+            await load();
+        }
+        catch {
+            setError(tr('actionError'));
+        }
+        finally {
+            setBusy(false);
+        }
+    };
+    const transitionEmergency = async (item, action) => {
+        try {
+            await apiCall(token, `/staff/emergencies/${item.id}/transition`, { method: 'POST', body: JSON.stringify({ action, note: note.trim() }) });
+            await load();
+        }
+        catch {
+            setError(tr('actionError'));
+        }
+    };
+    const filteredRequests = (0, react_1.useMemo)(() => requests, [requests]);
+    if (!token)
+        return (0, jsx_runtime_1.jsx)("main", { className: "min-h-screen bg-[#f3efe6] p-6 text-[#1c2430] sm:p-12", children: (0, jsx_runtime_1.jsxs)("section", { className: "mx-auto mt-16 max-w-md rounded-3xl bg-white p-8 shadow-xl", children: [(0, jsx_runtime_1.jsx)("p", { className: "text-xs font-bold uppercase tracking-[.2em] text-[#8c6d3e]", children: "Concierge Kiosk \u00B7 Staff" }), (0, jsx_runtime_1.jsx)("h1", { className: "mt-3 text-3xl font-semibold", children: tr('title') }), (0, jsx_runtime_1.jsx)("p", { className: "mt-2 text-sm text-gray-500", children: tr('signInHint') }), (0, jsx_runtime_1.jsxs)("label", { className: "mt-8 block text-sm font-semibold", children: [tr('token'), (0, jsx_runtime_1.jsx)("input", { value: draftToken, onChange: event => setDraftToken(event.target.value), type: "password", autoComplete: "off", className: "mt-2 w-full rounded-xl border border-[#d8d0c2] p-3 outline-none focus:border-[#8c6d3e]" })] }), error && (0, jsx_runtime_1.jsx)("p", { className: "mt-3 text-sm text-red-700", children: error }), (0, jsx_runtime_1.jsx)("button", { onClick: () => { setError(''); setToken(draftToken.trim()); }, disabled: !draftToken.trim(), className: "mt-6 w-full rounded-xl bg-[#142742] px-4 py-3 font-semibold text-white disabled:opacity-50", children: tr('signIn') }), (0, jsx_runtime_1.jsxs)("div", { className: "mt-5 flex justify-end gap-2 text-xs", children: [(0, jsx_runtime_1.jsx)("span", { children: "VI" }), ['en', 'zh', 'ko'].map(code => (0, jsx_runtime_1.jsx)("button", { onClick: () => setLang(code), className: "text-[#8c6d3e]", children: code.toUpperCase() }, code))] })] }) });
+    return (0, jsx_runtime_1.jsxs)("main", { className: "min-h-screen bg-[#f3efe6] text-[#1c2430]", children: [(0, jsx_runtime_1.jsx)("header", { className: "border-b border-[#e8e2d5] bg-[#142742] px-5 py-4 text-white sm:px-8", children: (0, jsx_runtime_1.jsxs)("div", { className: "mx-auto flex max-w-[1500px] items-center justify-between gap-4", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("p", { className: "text-xs font-bold uppercase tracking-[.2em] text-[#d8c29d]", children: "Concierge Kiosk" }), (0, jsx_runtime_1.jsx)("h1", { className: "text-xl font-semibold sm:text-2xl", children: tr('title') }), (0, jsx_runtime_1.jsx)("p", { className: "text-xs text-blue-100", children: tr('subtitle') })] }), (0, jsx_runtime_1.jsxs)("div", { className: "flex items-center gap-3", children: [(0, jsx_runtime_1.jsxs)("select", { value: lang, onChange: event => setLang(event.target.value), className: "rounded-lg bg-white/10 px-2 py-2 text-sm", children: [(0, jsx_runtime_1.jsx)("option", { value: "vi", children: "VI" }), (0, jsx_runtime_1.jsx)("option", { value: "en", children: "EN" }), (0, jsx_runtime_1.jsx)("option", { value: "zh", children: "\u4E2D\u6587" }), (0, jsx_runtime_1.jsx)("option", { value: "ko", children: "\uD55C\uAD6D\uC5B4" })] }), (0, jsx_runtime_1.jsx)("button", { onClick: () => { setToken(''); setDraftToken(''); }, className: "rounded-lg border border-white/30 px-3 py-2 text-sm", children: tr('signOut') })] })] }) }), (0, jsx_runtime_1.jsxs)("div", { className: "mx-auto max-w-[1500px] p-4 sm:p-8", children: [(0, jsx_runtime_1.jsxs)("div", { className: "grid gap-3 sm:grid-cols-3", children: [(0, jsx_runtime_1.jsx)(Stat, { label: tr('pending'), value: summary?.pending_count ?? '—', tone: "amber" }), (0, jsx_runtime_1.jsx)(Stat, { label: tr('active'), value: summary?.approved_count ?? '—', tone: "blue" }), (0, jsx_runtime_1.jsx)(Stat, { label: tr('emergency'), value: summary?.emergency_count ?? '—', tone: "red" })] }), (0, jsx_runtime_1.jsxs)("nav", { className: "mt-6 flex flex-wrap items-center gap-2", children: [(0, jsx_runtime_1.jsx)(NavButton, { active: tab === 'queue', onClick: () => setTab('queue'), children: tr('queue') }), (0, jsx_runtime_1.jsxs)(NavButton, { active: tab === 'emergencies', onClick: () => setTab('emergencies'), children: [tr('emergencies'), " ", summary?.emergency_count ? `(${summary.emergency_count})` : ''] }), (0, jsx_runtime_1.jsx)(NavButton, { active: tab === 'metrics', onClick: () => setTab('metrics'), children: tr('metrics') }), (0, jsx_runtime_1.jsx)("button", { onClick: () => void load(), className: "ml-auto rounded-xl border border-[#d8d0c2] bg-white px-4 py-2 text-sm font-semibold", children: loading ? tr('load') : tr('refresh') })] }), error && (0, jsx_runtime_1.jsx)("div", { className: "mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800", children: error }), tab === 'queue' && (0, jsx_runtime_1.jsxs)("div", { className: "mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,440px)]", children: [(0, jsx_runtime_1.jsxs)("section", { className: "rounded-2xl border border-[#e8e2d5] bg-white p-4 shadow-sm", children: [(0, jsx_runtime_1.jsx)("div", { className: "mb-4 flex flex-wrap gap-2", children: ['pending_staff', 'approved', 'in_progress', 'paused', 'rejected', 'completed', 'all'].map(value => (0, jsx_runtime_1.jsx)("button", { onClick: () => setFilter(value), className: `rounded-full px-3 py-1.5 text-xs font-semibold ${filter === value ? 'bg-[#142742] text-white' : 'bg-[#f3efe6] text-gray-600'}`, children: value === 'all' ? tr('all') : statusLabel(value) }, value)) }), (0, jsx_runtime_1.jsxs)("div", { className: "overflow-x-auto", children: [(0, jsx_runtime_1.jsxs)("table", { className: "w-full text-left text-sm", children: [(0, jsx_runtime_1.jsx)("thead", { className: "border-b text-xs uppercase tracking-wide text-gray-500", children: (0, jsx_runtime_1.jsxs)("tr", { children: [(0, jsx_runtime_1.jsx)("th", { className: "px-2 py-3", children: "ID" }), (0, jsx_runtime_1.jsx)("th", { className: "px-2 py-3", children: tr('details') }), (0, jsx_runtime_1.jsx)("th", { className: "px-2 py-3", children: "Status" }), (0, jsx_runtime_1.jsx)("th", { className: "px-2 py-3", children: "SLA" })] }) }), (0, jsx_runtime_1.jsx)("tbody", { children: filteredRequests.map(item => (0, jsx_runtime_1.jsxs)("tr", { onClick: () => setSelected(item), className: `cursor-pointer border-b last:border-0 hover:bg-[#fbf8f2] ${selected?.id === item.id ? 'bg-[#fbf8f2]' : ''}`, children: [(0, jsx_runtime_1.jsx)("td", { className: "whitespace-nowrap px-2 py-3 font-mono text-xs", children: item.id.slice(0, 8) }), (0, jsx_runtime_1.jsxs)("td", { className: "max-w-[460px] px-2 py-3", children: [(0, jsx_runtime_1.jsx)("div", { className: "font-semibold", children: item.kind }), (0, jsx_runtime_1.jsx)("div", { className: "truncate text-gray-600", children: item.details || '—' }), (0, jsx_runtime_1.jsxs)("div", { className: "mt-1 text-xs text-gray-400", children: [dateTime(item.created_at, lang), " \u00B7 ", item.language] })] }), (0, jsx_runtime_1.jsx)("td", { className: "whitespace-nowrap px-2 py-3", children: (0, jsx_runtime_1.jsx)("span", { className: `rounded-full px-2 py-1 text-xs font-semibold ${item.status === 'pending_staff' ? 'bg-amber-100 text-amber-800' : item.status === 'completed' ? 'bg-green-100 text-green-800' : item.status === 'rejected' ? 'bg-gray-100 text-gray-700' : 'bg-blue-100 text-blue-800'}`, children: statusLabel(item.status) }) }), (0, jsx_runtime_1.jsx)("td", { className: "px-2 py-3 text-xs", children: item.overdue || item.ack_overdue ? (0, jsx_runtime_1.jsx)("span", { className: "font-bold text-red-700", children: "OVERDUE" }) : '—' })] }, item.id)) })] }), !filteredRequests.length && (0, jsx_runtime_1.jsx)("p", { className: "p-8 text-center text-sm text-gray-500", children: tr('noItems') })] })] }), (0, jsx_runtime_1.jsx)(DetailPanel, { item: selected, lang: lang, note: note, setNote: setNote, assignee: assignee, setAssignee: setAssignee, verified: verified, setVerified: setVerified, audit: audit, busy: busy, onAction: doTransition, tr: tr })] }), tab === 'emergencies' && (0, jsx_runtime_1.jsx)(EmergencyPanel, { items: emergencies, lang: lang, onTransition: transitionEmergency, tr: tr }), tab === 'metrics' && (0, jsx_runtime_1.jsx)(MetricsPanel, { token: token, lang: lang, tr: tr })] })] });
+}
+function Stat({ label, value, tone }) { return (0, jsx_runtime_1.jsxs)("div", { className: `rounded-2xl border bg-white p-5 shadow-sm ${tone === 'red' ? 'border-red-100' : tone === 'amber' ? 'border-amber-100' : 'border-blue-100'}`, children: [(0, jsx_runtime_1.jsx)("p", { className: "text-sm text-gray-500", children: label }), (0, jsx_runtime_1.jsx)("p", { className: "mt-2 text-3xl font-semibold", children: value })] }); }
+function NavButton({ active, onClick, children }) { return (0, jsx_runtime_1.jsx)("button", { onClick: onClick, className: `rounded-xl px-4 py-2 text-sm font-semibold ${active ? 'bg-[#142742] text-white' : 'border border-[#d8d0c2] bg-white'}`, children: children }); }
+function DetailPanel({ item, lang, note, setNote, assignee, setAssignee, verified, setVerified, audit, busy, onAction, tr }) {
+    if (!item)
+        return (0, jsx_runtime_1.jsx)("aside", { className: "rounded-2xl border border-dashed border-[#d8d0c2] p-8 text-sm text-gray-500", children: tr('details') });
+    const actions = item.status === 'pending_staff' ? ['approve', 'reject'] : item.status === 'approved' ? ['start', 'complete'] : item.status === 'in_progress' ? ['pause', 'complete'] : item.status === 'paused' ? ['resume'] : [];
+    return (0, jsx_runtime_1.jsxs)("aside", { className: "rounded-2xl border border-[#e8e2d5] bg-white p-5 shadow-sm", children: [(0, jsx_runtime_1.jsxs)("div", { className: "flex items-start justify-between gap-3", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("p", { className: "font-mono text-xs text-gray-500", children: item.id }), (0, jsx_runtime_1.jsx)("h2", { className: "mt-1 text-xl font-semibold", children: item.kind })] }), (0, jsx_runtime_1.jsx)("span", { className: "rounded-full bg-[#f3efe6] px-3 py-1 text-xs font-semibold", children: item.language })] }), (0, jsx_runtime_1.jsxs)("dl", { className: "mt-5 space-y-3 text-sm", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("dt", { className: "text-xs uppercase text-gray-500", children: tr('details') }), (0, jsx_runtime_1.jsx)("dd", { className: "mt-1 whitespace-pre-wrap", children: item.details || '—' })] }), (0, jsx_runtime_1.jsxs)("div", { className: "grid grid-cols-2 gap-3", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("dt", { className: "text-xs text-gray-500", children: "Status" }), (0, jsx_runtime_1.jsx)("dd", { className: "font-semibold", children: item.status })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("dt", { className: "text-xs text-gray-500", children: tr('assignee') }), (0, jsx_runtime_1.jsx)("dd", { children: item.assignee || '—' })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "grid grid-cols-2 gap-3", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("dt", { className: "text-xs text-gray-500", children: "Created" }), (0, jsx_runtime_1.jsx)("dd", { children: dateTime(item.created_at, lang) })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("dt", { className: "text-xs text-gray-500", children: "Verification" }), (0, jsx_runtime_1.jsx)("dd", { children: item.guest_verification_state || 'staff_required' })] })] }), item.external_dispatch_state && item.external_dispatch_state !== 'not_requested' && (0, jsx_runtime_1.jsxs)("div", { className: `rounded-xl p-3 text-xs ${item.external_dispatch_state === 'pending_sync' ? 'bg-amber-50 text-amber-900' : 'bg-[#f8f5ee]'}`, children: [(0, jsx_runtime_1.jsxs)("strong", { children: ["External dispatch: ", item.external_dispatch_state] }), item.external_reference && (0, jsx_runtime_1.jsxs)("span", { children: [" \u00B7 ", item.external_reference] }), (0, jsx_runtime_1.jsx)("br", {}), item.external_dispatch_state === 'pending_sync' ? 'Upstream unavailable; local request is retained and not claimed as fulfilled.' : ''] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "mt-5 border-t pt-4", children: [(0, jsx_runtime_1.jsxs)("label", { className: "block text-sm font-semibold", children: [tr('note'), (0, jsx_runtime_1.jsx)("textarea", { value: note, onChange: event => setNote(event.target.value), maxLength: 300, rows: 3, className: "mt-2 w-full rounded-xl border border-[#d8d0c2] p-3 text-sm" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "mt-3 block text-sm font-semibold", children: [tr('assignee'), (0, jsx_runtime_1.jsx)("input", { value: assignee, onChange: event => setAssignee(event.target.value), maxLength: 80, className: "mt-2 w-full rounded-xl border border-[#d8d0c2] p-3 text-sm" })] }), item.status === 'pending_staff' && (0, jsx_runtime_1.jsxs)("label", { className: "mt-3 flex gap-2 text-sm", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: verified, onChange: event => setVerified(event.target.checked) }), tr('verify')] }), (0, jsx_runtime_1.jsx)("div", { className: "mt-4 flex flex-wrap gap-2", children: actions.map(action => (0, jsx_runtime_1.jsx)("button", { disabled: busy, onClick: () => onAction(action), className: `rounded-xl px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 ${action === 'reject' ? 'bg-gray-600' : action === 'complete' ? 'bg-green-700' : 'bg-[#142742]'}`, children: tr(action) }, action)) })] }), (0, jsx_runtime_1.jsxs)("details", { className: "mt-5 border-t pt-4", children: [(0, jsx_runtime_1.jsx)("summary", { className: "cursor-pointer text-sm font-semibold", children: tr('audit') }), (0, jsx_runtime_1.jsx)("div", { className: "mt-3 max-h-52 space-y-2 overflow-auto text-xs", children: audit.map((event, index) => (0, jsx_runtime_1.jsxs)("div", { className: "rounded-lg bg-[#f8f5ee] p-2", children: [(0, jsx_runtime_1.jsx)("span", { className: "font-semibold", children: String(event.action || 'event') }), " \u00B7 ", String(event.actor || 'system'), (0, jsx_runtime_1.jsx)("br", {}), String(event.note || '')] }, index)) })] })] });
+}
+function EmergencyPanel({ items, lang, onTransition, tr }) { return (0, jsx_runtime_1.jsxs)("section", { className: "mt-4 grid gap-4 md:grid-cols-2", children: [items.map(item => (0, jsx_runtime_1.jsxs)("article", { className: `rounded-2xl border bg-white p-5 shadow-sm ${item.status !== 'resolved' ? 'border-red-200' : 'border-[#e8e2d5]'}`, children: [(0, jsx_runtime_1.jsxs)("div", { className: "flex justify-between", children: [(0, jsx_runtime_1.jsx)("span", { className: "font-mono text-xs", children: item.id.slice(0, 8) }), (0, jsx_runtime_1.jsx)("span", { className: "font-semibold text-red-700", children: item.status })] }), (0, jsx_runtime_1.jsx)("p", { className: "mt-4 whitespace-pre-wrap text-sm", children: String(item.details || tr('emergency')) }), (0, jsx_runtime_1.jsxs)("p", { className: "mt-3 text-xs text-gray-500", children: [dateTime(item.created_at, lang), " \u00B7 ", item.language] }), (0, jsx_runtime_1.jsxs)("div", { className: "mt-4 flex gap-2", children: [item.status === 'open' && (0, jsx_runtime_1.jsx)("button", { onClick: () => onTransition(item, 'acknowledge'), className: "rounded-xl bg-red-700 px-3 py-2 text-sm font-semibold text-white", children: tr('start') }), item.status !== 'resolved' && (0, jsx_runtime_1.jsx)("button", { onClick: () => onTransition(item, 'resolve'), className: "rounded-xl border px-3 py-2 text-sm font-semibold", children: tr('complete') })] })] }, item.id)), !items.length && (0, jsx_runtime_1.jsx)("p", { className: "rounded-2xl bg-white p-8 text-center text-sm text-gray-500", children: tr('noItems') })] }); }
+function MetricsPanel({ token, tr }) { const [data, setData] = (0, react_1.useState)(null); (0, react_1.useEffect)(() => { void apiCall(token, '/staff/metrics').then(setData).catch(() => setData(null)); }, [token]); const k = data?.kpi; const pct = (value) => value == null ? '—' : `${Math.round(value * 100)}%`; return (0, jsx_runtime_1.jsxs)("section", { className: "mt-4 rounded-2xl border border-[#e8e2d5] bg-white p-5 shadow-sm", children: [(0, jsx_runtime_1.jsx)("h2", { className: "text-xl font-semibold", children: tr('metrics') }), (0, jsx_runtime_1.jsx)("p", { className: "mt-2 text-sm text-gray-500", children: data?.note || tr('load') }), k && (0, jsx_runtime_1.jsxs)("div", { className: "mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4", children: [(0, jsx_runtime_1.jsx)(Stat, { label: "Grounded answers", value: `${pct(k.grounded_answer_rate)} · ${k.grounded_answer_count}/${k.ask_total}`, tone: "blue" }), (0, jsx_runtime_1.jsx)(Stat, { label: "Abstentions", value: k.no_evidence_abstention_count, tone: "amber" }), (0, jsx_runtime_1.jsx)(Stat, { label: "Request completion", value: `${pct(k.request_completion_rate)} · ${k.request_completed_count}/${k.request_confirmed_count}`, tone: "blue" }), (0, jsx_runtime_1.jsx)(Stat, { label: "Emergency events", value: k.emergency_alert_count, tone: "red" })] }), (0, jsx_runtime_1.jsxs)("details", { className: "mt-5", children: [(0, jsx_runtime_1.jsx)("summary", { className: "cursor-pointer text-sm font-semibold", children: "Raw counters" }), (0, jsx_runtime_1.jsx)("pre", { className: "mt-3 max-h-[420px] overflow-auto rounded-xl bg-[#142742] p-4 text-xs text-blue-50", children: JSON.stringify(data?.counters || [], null, 2) })] })] }); }
+(0, client_1.createRoot)(document.getElementById('root')).render((0, jsx_runtime_1.jsx)(StaffApp, {}));
+
+},{"react/jsx-runtime":1,"react":3,"react-dom/client":7,"../index.css":null}]};const cache={};const process={env:{NODE_ENV:'production'}};
 function load(id){if(cache[id])return cache[id].exports;const row=modules[id];if(!row)throw Error('Unknown frontend module '+id);
 const module={exports:{}};cache[id]=module;
 row[0](module,module.exports,function(spec){const dep=row[1][spec];if(dep===null)return {};if(dep===undefined)throw Error('Unbundled '+spec);return load(dep);},process);return module.exports;}
-load(0);})();
+load(91);})();
