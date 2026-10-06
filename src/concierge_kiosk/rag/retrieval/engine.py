@@ -20,6 +20,7 @@ from concierge_kiosk.core.domain_profile import rag_policy as domain_rag_policy
 from .policy import (RAGPolicy, Retrieval, abstention_answer, _bounded_query_embedding,
                      _bounded_rerank, _fuse_rerank, _policy_conflict, _deadline_ns, _remaining_ms,
                      _clock_ns, explain_requested)
+from concierge_kiosk.rag.vectorstore import VectorStore, VectorStoreError
 LOGGER = logging.getLogger(__name__)
 
 
@@ -55,6 +56,7 @@ def _record_metric(store, metric: str, language: str) -> None:
 
 def retrieve(store: Store, *, property_id: str, language: str, query: str,
              embedder: Embedder | None = None, reranker: LocalReranker | None = None,
+             vector_store: VectorStore | None = None,
              effective_date: str | None = None, today: str | None = None, top_k: int = 3,
              policy: RAGPolicy | None = None,
              expand_parent: bool = False,
@@ -136,7 +138,71 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                        not unsafe_knowledge_text(row['body'])]
             rankings.append([r["id"] for r in lexical])
             candidates.update({r["id"]: dict(r) for r in lexical})
-        if embedder is not None and mode != 'lexical' and not structured_succeeded:
+        dense_index_succeeded = False
+        if vector_store is not None and embedder is not None and mode != 'lexical' and not structured_succeeded:
+            # The external index is an acceleration layer only.  It returns
+            # document ids/metadata; this SQL query re-authorizes every row
+            # before content can enter RRF or the citation path.
+            try:
+                dense_deadline = _deadline_ns(policy.dense_budget_ms)
+                remaining_ms = _remaining_ms(dense_deadline)
+                if remaining_ms <= 0:
+                    raise TimeoutError('Dense retrieval budget exhausted before embedding')
+                vector = _bounded_query_embedding(embedder, query, remaining_ms)
+                filters = {
+                    'property_id': property_id, 'language': language,
+                    'classification': 'public', 'active': 1,
+                    'embedding_model': embedder.model_name, 'effective_on': today,
+                }
+                matches = vector_store.query(vector, k=policy.dense_top_k, filters=filters)
+                if (not matches and _allow_language_fallback and _clock_ns() < shared_deadline_ns):
+                    fallback_order = policy.cross_language_fallback_order or tuple(
+                        domain_rag_policy().cross_language_fallback_order)
+                    filters['language'] = tuple(dict.fromkeys(
+                        [language, *[item for item in fallback_order if item in LANGUAGES]]))
+                    matches = vector_store.query(vector, k=policy.dense_top_k, filters=filters)
+                    cross_language_dense = bool(matches)
+                match_rows = []
+                for match in matches:
+                    doc_id = str(match.metadata.get('doc_id') or '')
+                    revision = str(match.metadata.get('revision') or '')
+                    if not doc_id or not revision:
+                        continue
+                    row = con.execute(
+                        f"SELECT k.* FROM knowledge k WHERE {where} AND k.id=? AND k.revision=? "  # nosec B608  # where is assembled from fixed clauses; all values are bound
+                        "AND k.embedding_model=? AND k.embedding IS NOT NULL",
+                        (*params, doc_id, revision, embedder.model_name),
+                    ).fetchone()
+                    if row is None or unsafe_knowledge_text(row['body']):
+                        continue
+                    score = max(-1.0, min(1.0, 1.0 - float(match.distance)))
+                    match_rows.append((score, row))
+                learned_dense = bool(getattr(embedder, "is_learned", False))
+                dense_threshold = policy.min_dense_similarity if learned_dense else 0.0
+                dense = [(score, row) for score, row in match_rows
+                         if score > 0 and score >= dense_threshold]
+                for score, row in dense:
+                    if evidence_relevant(query, language, row['body'], row['title'], row['heading'],
+                                         threshold=policy.lexical_coverage):
+                        conflict_candidates[row['id']] = dict(row)
+                valid_dense = [(score, row) for score, row in dense
+                               if concrete_facets_supported(query, row['body'], row['title'], row['heading'])]
+                dense_candidates = []
+                for score, row in valid_dense:
+                    candidate = dict(row)
+                    candidate['_dense_similarity'] = float(score)
+                    dense_candidates.append((score, candidate))
+                valid_dense = dense_candidates
+                if learned_dense:
+                    semantic_candidate_ids.update(row['id'] for score, row in valid_dense)
+                rankings.append([row['id'] for score, row in valid_dense])
+                candidates.update({row['id']: dict(row) for score, row in valid_dense})
+                dense_succeeded = bool(valid_dense)
+                dense_index_succeeded = bool(matches)
+            except (RuntimeError, OSError, ValueError, TypeError, TimeoutError, VectorStoreError) as exc:
+                LOGGER.warning('External dense index unavailable: %s', type(exc).__name__)
+        if (not dense_index_succeeded and embedder is not None and mode != 'lexical'
+                and not structured_succeeded):
             # Every candidate is scoped in SQL *before* Python sees its vector.
             try:
                 dense_deadline = _deadline_ns(policy.dense_budget_ms)
