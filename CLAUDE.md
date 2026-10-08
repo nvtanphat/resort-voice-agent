@@ -14,6 +14,8 @@ python -m pytest -q                        # all tests (pytest config adds src/ 
 python -m pytest -q tests/agent/test_agent_runtime.py -k <name>   # one test
 ```
 
+Tests that read the shipped knowledge DB must use `tests/shipped_db.py` (`shipped_store()` / the `shipped_db` fixture): opening the tracked `data/concierge.sqlite3` directly rewrites it. Behaviour removed with the keyword logic that returns with a rebuild step is listed as strict `xfail` in `tests/rebuild_pending.py` (an XPASS fails the run until the entry is deleted). A clean-checkout check of the CI steps needs `models/embeddings/*.ollama.manifest.json` and the `hash-multilingual` stub, which are tracked on purpose.
+
 Open the UI at exactly `CONCIERGE_PUBLIC_ORIGIN` (default `http://localhost:8000`). Origin is enforced: `127.0.0.1:8000` gets 403 on `/api/session` and the voice WebSocket is rejected. The running server does not reload code or config; restart it after changes.
 
 CI (`.github/workflows/ci.yml`) runs these; they should pass before finishing a change:
@@ -96,14 +98,14 @@ Large modules have been split into packages that re-export their old public API:
      - The server re-validates every command against the registry. A slot whose text is not verbatim guest text, or that the service does not accept, is dropped (never trusted) and the goal is kept, so the agent asks for it. Commands never authorize a write.
      - Validated commands override the route (`engine.py::_decision_from_commands`) and drive goal construction (`agent/runtime/state.py::build_initial_state`) and the loop (`loop_semantics._command_action`).
      - If the SLM is unavailable, times out or proposes nothing valid, `ServiceSelector.fallback_goal` picks a service by the nearest reviewed training turn (no model, no keyword list). It answers only above `nlu.service_selector.fallback_min_score`/`fallback_min_margin` (calibrated on the train split by `tools/nlu/calibrate_service_fallback.py`, leave-one-situation-out) and never for turns the generic question grammar marks as information questions (`intent.py::is_information_question`); otherwise the turn stays a knowledge read.
-     - There is no keyword service routing anywhere: `classify_dialogue` only decides emergency, language switch, greeting, confirmation, request change/status, availability, planning and navigation grammar. `agent-domain.json` holds no service names (`action_phrases`/`action_patterns` keep only `directions`).
+     - There is no keyword service routing anywhere: `classify_dialogue` only decides emergency; every other turn is a knowledge read until the embedding router, the validated SLM commands or the reviewed-example fallback says otherwise. `agent-domain.json` holds no service names and no intent phrase lists (greeting, thanks, cancel, confirmation, follow-up and preference wording were removed; the model proposes `ChitChat`, `Cancel`, `SetPreference`, … and the server validates them).
      - The understood service code travels end to end: `suggested_action.service` → `/api/requests/prepare` `service` → proposal payload `_service_code` → `service_requests.service_code`. The workflow never re-derives a service from free-text details; without one it uses the kind's default.
      - The selector indexes (catalog + about 600 examples, ~25 s) are built at startup in the background. A guest turn never builds them (`runtime/local_http.py::in_guest_turn`); before they are ready the model sees the full registry and no few-shots.
      - Measure understanding with `tools/evaluation/evaluate_command_understanding.py` (selector recall, command accuracy; `--fallback-only` for the model-free fallback).
      - Business-flow tests script understanding with the `understand` fixture in `tests/conftest.py`; the test profile has no SLM and `features.semantic_understanding=false`, so tests stay hermetic.
   3. The agent runs bounded tools, and every result passes `agent/core/tool_contracts.py` (`authorized_tool_result` / `validate_tool_result`).
      - A non-emergency contract mismatch fails closed. The payload is discarded and the guest gets the fixed abstention (`contract_failure_result`, HTTP 200, logged as `tool_contract_failed`). Emergency keeps its own deterministic fallback.
-     - Contracts are checked against `execution_query` (the guest text plus any resolved anchor title), not the bare query.
+     - Contracts are checked against `execution_query` (the guest text; follow-up anchor resolution is not rebuilt yet), not a model-supplied query.
      - Tool exceptions inside the loop never reach HTTP: `agent/runtime/runtime.py::_execute` turns them into `unavailable` observations with a `failure_class`.
 - **Tools and policy**:
   - Typed tool specs live in `agent/tools/registry.py`: Pydantic params/results for `hotel_info_search`, `hotel_hours_get`, `hotel_route_get`, `service_request_create|confirm|update|cancel|status`, `staff_handoff`, `itinerary_plan`, ….
@@ -121,7 +123,7 @@ Large modules have been split into packages that re-export their old public API:
   - Request lifecycle, ack/SLA clocks and two-level escalation live in `domain/requests/`.
 - **Two state stores**: business requests live in the main SQLite DB (`data/concierge.sqlite3`); LangGraph checkpoints live in a separate `<db-stem>-graph.sqlite3`. `tools/maintenance/reconcile_graph.py` reconciles the two (see `test_langgraph_durable_restart.py`).
 - **Memory** (`agent/memory/`):
-  - `conversation.py` resolves follow-ups to stored evidence anchors. Anchors keep the evidence row's own language.
+  - `conversation.py` still stores evidence anchors, but `snapshot()` returns no anchor: follow-up resolution ("where is it?") was removed with the keyword heuristics and is pending the rebuild (plan.md "Hỏi tiếp"; the matching tests are strict xfails in `tests/rebuild_pending.py`). Pending slots, confirmations and workflow state still carry context.
   - Topic state is committed with compare-and-swap in `application/turn_lifecycle.py::TurnFinalizer`; a concurrent change returns 409.
   - Map-only answers anchor the place via `answers.place_anchor_sources`.
   - Pending service tasks and voice proposals live in `task_memory.py`; session preferences in `preferences.py`.
@@ -155,7 +157,7 @@ Large modules have been split into packages that re-export their old public API:
   - Edit `config/runtime-profiles/src/base.json` and the per-profile overlays, then run `python tools/config/build_runtime_profiles.py` (deep-merge, schema validation, repin).
   - Never edit `config/runtime-profiles/*.json` directly; `--check` detects drift.
   - A new key also needs `config/runtime-profile.schema.json` and wiring in `core/settings.py`. RAG keys additionally need `RAGPolicy` in `rag/retrieval/policy.py` and `bootstrap.py`.
-  - **Multilingual language rules live in `config/agent-domain.json`**: NLU frames and regexes, greeting/courtesy/cancel terms, numeral and clock grammar, normalization, emergency patterns and contacts, voice rendering, tool descriptions, `nlu.service_selector` mode and thresholds. Read them through the accessors in `agent/understanding/domain_nlu.py` and `core/domain_profile/` (`supported_languages()`, `nlu_policy()`, `rag_policy()`, …).
+  - **Multilingual language rules live in `config/agent-domain.json`**: NLU frames and regexes for slots, numeral and clock grammar, time expressions, negation grammar, normalization, emergency patterns and contacts, voice rendering, tool descriptions, the `rag.facet_fact_types` facet table, `nlu.service_selector` mode and thresholds. Read them through the accessors in `agent/understanding/domain_nlu.py` and `core/domain_profile/` (`supported_languages()`, `nlu_policy()`, `rag_policy()`, …).
   - A new key needs `config/agent-domain.schema.json` and validation in `core/domain_profile/validate/`. Per-language keys also need the `_clone_language` helper in `tests/agent/test_nlu_memory.py`.
   - **Do not put hotel entity or service names in it.** Those come from `datasets/` (aliases, `names_by_locale`, `tools/knowledge/build_domain_vocab.py`).
   - **Do not copy phrases from `datasets/evaluation/` into it.** When a natural phrasing is missed, add it to the router training examples, not to a phrase list.
