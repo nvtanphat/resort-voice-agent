@@ -39,6 +39,5 @@ frontend/dist/
 .cache/
 scratch/
 scratch_*.txt
-frontend/verify_bundle.cjs
 .pytest_cache/
 edge_test-graph.sqlite3
