@@ -124,7 +124,7 @@ def test_versioned_tool_observation_and_action_contracts_are_closed():
     assert card.synthetic_label_required is True
 
 
-def test_schedule_route_fails_closed_when_semantic_availability_selector_is_unavailable(
+def test_named_availability_service_reads_labelled_synthetic_data_without_selector(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, understand):
     monkeypatch.setattr(
         "concierge_kiosk.core.clock.property_today",
@@ -155,6 +155,9 @@ def test_schedule_route_fails_closed_when_semantic_availability_selector_is_unav
         )
     body = response.json()
     assert response.status_code == 200
-    assert body["retrieval_mode"] == "approved_schedule"
-    assert body["schedule_result"]["availability_checked"] is False
+    # The validated command names the service, so no embedding selector is
+    # needed to pick it; the observation stays labelled demo-only and writes nothing.
+    assert body["retrieval_mode"] == "synthetic_operations"
+    assert body["synthetic_source"]["synthetic"] is True
+    assert body["synthetic_source"]["guest_answer_policy"] == "demo_only_staff_confirmation"
     assert body["review_state"]["business_writes"] == 0
