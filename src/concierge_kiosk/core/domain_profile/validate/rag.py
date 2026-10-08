@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .common import compile_regex, validate_language_keys
+from .common import validate_language_keys
 
 
 def validate_rag(payload: dict[str, Any], languages: set[str]) -> None:
@@ -11,7 +11,6 @@ def validate_rag(payload: dict[str, Any], languages: set[str]) -> None:
     fallback_order = rag["cross_language_fallback_order"]
     if len(fallback_order) != len(set(fallback_order)) or not set(fallback_order).issubset(languages):
         raise ValueError("RAG cross-language fallback order contains unsupported or duplicate languages")
-    compile_regex(rag["opening_hours"]["time_range_pattern"], label="rag.opening_hours.time_range_pattern")
     seen: dict[str, str] = {}
     for facet, fact_types in rag["facet_fact_types"].items():
         for fact_type in fact_types:
@@ -44,10 +43,6 @@ def validate_rag(payload: dict[str, Any], languages: set[str]) -> None:
     budgets = rag["grounding_budgets"]
     if budgets["min_quote_chars"] > budgets["max_quote_chars"]:
         raise ValueError("RAG grounding quote bounds are inverted")
-    if budgets["short_context_chars"] > budgets["medium_context_chars"]:
-        raise ValueError("RAG grounding context tiers are inverted")
-    if budgets["medium_context_chars"] > budgets["max_evidence_context_chars"]:
-        raise ValueError("RAG grounding medium context exceeds maximum")
     if set(budgets["evidence_budget_chars"]) != set(budgets["output_budget_tokens"]):
         raise ValueError("RAG grounding evidence/output budget types must match")
     if budgets["semantic_claim_text_min_chars"] > budgets["semantic_claim_text_max_chars"]:

@@ -108,7 +108,6 @@ class Settings(BaseSettings):
     stt_timeout_seconds: float = 35.0
     tts_timeout_seconds: float = 25.0
     max_audio_seconds: float = 25.0
-    voice_tts_first_audio_ms: int = 1200
     voice_speech_plan: Mapping[str, int] = Field(default_factory=lambda: {
         "max_chars": 750, "first_chunk_max_chars": 120, "clause_split_min_chars": 220,
     })
@@ -668,7 +667,6 @@ def load_settings() -> Settings:
         "piper_models_dir": str(voice_defaults["piper_models_dir"]),
         "piper_executable": str(voice_defaults["piper_executable"]),
         "voice_tts": voice_defaults.get("tts", {}),
-        "voice_tts_first_audio_ms": int(voice_budget_defaults.get("tts_first_audio_ms", 1200)),
         "voice_speech_plan": dict(voice_budget_defaults.get("speech_plan", {
             "max_chars": 750, "first_chunk_max_chars": 120, "clause_split_min_chars": 220,
         })),

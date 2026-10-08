@@ -74,18 +74,13 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for language, patterns in intent["emergency_event_patterns"].items():
         for pattern in patterns:
             compile_regex(pattern, label=f"nlu.intent.emergency_event_patterns.{language}")
-    validate_language_keys(intent["completion_claims"], languages,
-                            label="nlu.intent.completion_claims", require_all=False)
-    for language, patterns in intent["completion_claims"].items():
-        for pattern in patterns:
-            compile_regex(pattern, label=f"nlu.intent.completion_claims.{language}")
     for key in ("negation_patterns",):
         for language, pattern in intent[key].items():
             compile_regex(pattern, label=f"nlu.intent.{key}.{language}")
 
 
     routing = nlu["routing"]
-    for key in ('confirmation_terms', 'affirm_terms', 'deny_terms'):
+    for key in ('affirm_terms', 'deny_terms'):
         validate_language_keys(routing[key], languages, label=f'nlu.routing.{key}', require_all=True)
     for category, values in routing["static_text"].items():
         validate_language_keys(values, languages, label=f"nlu.routing.static_text.{category}", require_all=True)

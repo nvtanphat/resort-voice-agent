@@ -706,20 +706,6 @@
       }
     },
     "intent": {
-      "completion_claims": {
-        "en": [
-          "\\b(?:booked|reserved|confirmed|sent|dispatched|arranged|guaranteed)\\b"
-        ],
-        "vi": [
-          "(?:đã\\s+(?:đặt|gửi|xác\\s*nhận)|đã\\s+sắp\\s+xếp)"
-        ],
-        "zh": [
-          "(?:已(?:预订|預訂|预约|預約|发送|發送|确认|確認)|已经(?:安排|安排好了))"
-        ],
-        "ko": [
-          "(?:예약했|예약되었|확인했|전송했|처리했)"
-        ]
-      },
       "emergency_event_patterns": {
         "en": [
           "\\b(?:medical emergency|this is an emergency)\\b",
@@ -812,28 +798,6 @@
       }
     },
     "routing": {
-      "confirmation_terms": {
-        "vi": [
-          "tôi đồng ý gửi yêu cầu",
-          "tôi xác nhận gửi yêu cầu",
-          "xác nhận gửi yêu cầu"
-        ],
-        "en": [
-          "i confirm the request",
-          "i agree to send the request",
-          "confirm the request"
-        ],
-        "zh": [
-          "我确认发送请求",
-          "我同意发送请求",
-          "确认发送请求"
-        ],
-        "ko": [
-          "요청 전송을 확인합니다",
-          "요청을 보내는 데 동의합니다",
-          "요청 확인"
-        ]
-      },
       "affirm_terms": {
         "vi": [
           "đúng",
@@ -1293,7 +1257,10 @@
     "service_selector": {
       "top_k": 5,
       "example_k": 2,
-      "example_statuses": ["GOLD", "CANDIDATE"],
+      "example_statuses": [
+        "GOLD",
+        "CANDIDATE"
+      ],
       "fallback_min_score": 0.88,
       "fallback_min_margin": 0.13,
       "router_min_score": 0.87,
@@ -1309,9 +1276,7 @@
     "task_ttl_seconds": 600,
     "max_topics": 12,
     "max_sessions": 1000,
-    "max_turns": 6,
-    "short_turn_max_chars": 180,
-    "pending_answer_max_words": 24
+    "max_turns": 6
   },
   "planning": {
     "default_max_activities_per_day": 3,
@@ -1345,21 +1310,49 @@
     }
   },
   "rag": {
-    "opening_hours": {
-      "time_range_pattern": "(?<!\\d)(?:[01]?\\d|2[0-3]):[0-5]\\d\\s*(?:[–—-]|to|至|到|~)\\s*(?:[01]?\\d|2[0-3]):[0-5]\\d(?!\\d)"
-    },
     "document_domains": {
       "default": "general"
     },
     "facet_fact_types": {
-      "hours": ["opening_hours", "activity_schedule", "service_window"],
-      "price": ["price_vnd"],
-      "contact": ["phone", "extension", "email"],
-      "location": ["address", "travel_time_min", "distance_km"],
-      "capacity": ["capacity", "room_count", "villa_count"],
-      "size": ["area_sqm", "balcony_area_sqm", "height_m"],
-      "policy": ["policy_rule"],
-      "feature": ["service_feature", "amenity_feature", "bed_type", "cuisine_type", "electricity_frequency", "electricity_voltage"]
+      "hours": [
+        "opening_hours",
+        "activity_schedule",
+        "service_window"
+      ],
+      "price": [
+        "price_vnd"
+      ],
+      "contact": [
+        "phone",
+        "extension",
+        "email"
+      ],
+      "location": [
+        "address",
+        "travel_time_min",
+        "distance_km"
+      ],
+      "capacity": [
+        "capacity",
+        "room_count",
+        "villa_count"
+      ],
+      "size": [
+        "area_sqm",
+        "balcony_area_sqm",
+        "height_m"
+      ],
+      "policy": [
+        "policy_rule"
+      ],
+      "feature": [
+        "service_feature",
+        "amenity_feature",
+        "bed_type",
+        "cuisine_type",
+        "electricity_frequency",
+        "electricity_voltage"
+      ]
     },
     "token_stopwords": [
       "co",
@@ -1470,13 +1463,6 @@
       }
     },
     "grounding_budgets": {
-      "short_question_chars": 75,
-      "short_question_words": 14,
-      "short_context_chars": 750,
-      "short_output_tokens": 64,
-      "medium_question_chars": 180,
-      "medium_question_words": 36,
-      "medium_context_chars": 1200,
       "medium_output_tokens": 96,
       "max_evidence_context_chars": 1800,
       "max_evidence_sources": 3,
@@ -1488,14 +1474,10 @@
       "max_model_question_chars": 500,
       "composite_output_tokens": 180,
       "evidence_budget_chars": {
-        "fact": 750,
-        "explain": 1800,
-        "compare": 1200
+        "fact": 750
       },
       "output_budget_tokens": {
-        "fact": 64,
-        "explain": 120,
-        "compare": 96
+        "fact": 64
       },
       "semantic_json_chars": 1700,
       "semantic_max_claims": 3,

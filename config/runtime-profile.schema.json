@@ -427,7 +427,6 @@
             "max_previews",
             "max_audio_seconds",
             "max_audio_bytes",
-            "tts_first_audio_ms",
             "speech_plan",
             "language_switch_min_probability",
             "slm_caps",
@@ -455,11 +454,6 @@
               "type": "integer",
               "minimum": 1024,
               "maximum": 20000000
-            },
-            "tts_first_audio_ms": {
-              "type": "integer",
-              "minimum": 100,
-              "maximum": 30000
             },
             "speech_plan": {
               "type": "object",

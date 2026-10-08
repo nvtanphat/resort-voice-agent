@@ -565,9 +565,7 @@
         "task_ttl_seconds",
         "max_topics",
         "max_sessions",
-        "max_turns",
-        "short_turn_max_chars",
-        "pending_answer_max_words"
+        "max_turns"
       ],
       "properties": {
         "conversation_ttl_seconds": {
@@ -599,16 +597,6 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 32
-        },
-        "short_turn_max_chars": {
-          "type": "integer",
-          "minimum": 32,
-          "maximum": 2000
-        },
-        "pending_answer_max_words": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 128
         }
       }
     },
@@ -770,30 +758,11 @@
           "additionalProperties": false,
           "required": [
             "emergency_event_patterns",
-            "completion_claims",
             "negation_patterns",
             "emergency_text",
             "emergency_contacts"
           ],
           "properties": {
-            "completion_claims": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 32,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                }
-              }
-            },
             "emergency_event_patterns": {
               "type": "object",
               "maxProperties": 16,
@@ -870,29 +839,11 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "confirmation_terms",
             "affirm_terms",
             "deny_terms",
             "static_text"
           ],
           "properties": {
-            "confirmation_terms": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "array",
-                "maxItems": 128,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                }
-              }
-            },
             "affirm_terms": {
               "type": "object",
               "maxProperties": 16,
@@ -1392,7 +1343,6 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "opening_hours",
         "document_domains",
         "facet_fact_types",
         "token_stopwords",
@@ -1401,20 +1351,6 @@
         "grounding_budgets"
       ],
       "properties": {
-        "opening_hours": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "time_range_pattern"
-          ],
-          "properties": {
-            "time_range_pattern": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 1000
-            }
-          }
-        },
         "document_domains": {
           "type": "object",
           "additionalProperties": false,
@@ -1575,13 +1511,6 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "short_question_chars",
-            "short_question_words",
-            "short_context_chars",
-            "short_output_tokens",
-            "medium_question_chars",
-            "medium_question_words",
-            "medium_context_chars",
             "medium_output_tokens",
             "max_evidence_context_chars",
             "max_evidence_sources",
@@ -1606,41 +1535,6 @@
             "semantic_verifier_tokens"
           ],
           "properties": {
-            "short_question_chars": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 4000
-            },
-            "short_question_words": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1000
-            },
-            "short_context_chars": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100000
-            },
-            "short_output_tokens": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 4096
-            },
-            "medium_question_chars": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 4000
-            },
-            "medium_question_words": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1000
-            },
-            "medium_context_chars": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100000
-            },
             "medium_output_tokens": {
               "type": "integer",
               "minimum": 1,

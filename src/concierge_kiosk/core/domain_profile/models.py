@@ -32,8 +32,6 @@ class MemoryPolicy:
     max_topics: int
     max_sessions: int
     max_turns: int
-    short_turn_max_chars: int
-    pending_answer_max_words: int
 
 
 @dataclass(frozen=True)
@@ -64,7 +62,6 @@ class SecurityPolicy:
 
 @dataclass(frozen=True)
 class RagPolicy:
-    opening_hours: Mapping[str, Any]
     document_domains: Mapping[str, Any]
     # Closed facet name -> fact types it covers (names the command model may emit).
     facet_fact_types: Mapping[str, tuple[str, ...]]

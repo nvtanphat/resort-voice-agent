@@ -103,7 +103,6 @@
       "max_previews": 2,
       "max_audio_seconds": 25.0,
       "max_audio_bytes": 6000000,
-      "tts_first_audio_ms": 1200,
       "speech_plan": {
         "max_chars": 750,
         "first_chunk_max_chars": 120,
