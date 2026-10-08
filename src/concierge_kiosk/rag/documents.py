@@ -2,23 +2,25 @@
 from __future__ import annotations
 import hashlib
 import json
+import re
 from concierge_kiosk.core.domain_profile import rag_policy, supported_languages
 
 LANGUAGES = set(supported_languages())
 _DOMAIN_POLICY = rag_policy().document_domains
 _DEFAULT_DOMAIN = _DOMAIN_POLICY['default']
+# The editorial `domain` is data; the profile owns no list of domain names.  Only
+# the identifier shape (the same one the profile schema enforces) is checked.
+_DOMAIN_ID = re.compile(r'^[a-z][a-z0-9_]{0,47}$')
 
 
 def document_domain(meta: dict) -> str:
-    """Prefer the editorial domain; legacy manuals get a deterministic label."""
-    if 'domain' in meta:
-        domain = meta['domain']
-        if domain in DOMAINS:
-            return domain
-        normalized = domain.replace('-', '_').strip()
-        if normalized in DOMAINS:
+    """Use the editorial domain when it is a well-formed identifier, else the profile default."""
+    domain = meta.get('domain')
+    if isinstance(domain, str):
+        normalized = domain.strip().replace('-', '_')
+        if _DOMAIN_ID.fullmatch(normalized):
             return normalized
-        return _DEFAULT_DOMAIN
+    return _DEFAULT_DOMAIN
 
 
 def semantic_parent_id(property_id: str, language: str, source_id: str,

@@ -16,7 +16,6 @@ from concierge_kiosk.agent.understanding.semantic import semantic_grounded_respo
 from concierge_kiosk.agent.tools.planning import draft_plan
 from concierge_kiosk.agent.tools.scheduling import approved_schedule, ScheduleUnavailable
 from concierge_kiosk.domain.entity_resolver import record_alias_matches
-from concierge_kiosk.domain.entity_resolver import property_entity_matches
 from concierge_kiosk.core.structured_loader import load_structured_dataset
 from concierge_kiosk.agent.core.tool_contracts import no_evidence_handoff_details
 from concierge_kiosk.core.domain_profile import ui_policy
@@ -24,7 +23,7 @@ from concierge_kiosk.core.context_labels import context_terms
 from concierge_kiosk.rag.grounding.citations import bind_citations, retain_live_semantic_claims
 from concierge_kiosk.rag.grounding.claims import extract_claims
 from concierge_kiosk.rag.retrieval import (
-    Retrieval, abstention_answer, retrieve, retrieve_context, retrieve_localized_anchor,
+    abstention_answer, retrieve, retrieve_context, retrieve_localized_anchor,
 )
 
 from concierge_kiosk.rag.grounding.relevance import answerable
@@ -260,38 +259,14 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         anchor, context_mode = memory_snapshot.anchor, memory_snapshot.context_mode
         search_query = memory_snapshot.retrieval_query
         query_rewritten = memory_snapshot.query_rewritten
-        if structured_entities and structured_fact_types:
-            record_metric('rag.structured_lookup_candidate', language)
+        # Facets and structured selectors are rebuilt from the validated AskInfo/Navigate
+        # command (plan.md "Facet"); until then retrieval is FTS + dense + rerank.
+        keys = {'facets': (), 'fact_types': (), 'contexts': _mentioned_contexts(q, language)}
+        structured_entities: tuple[str, ...] = ()
+        structured_fact_types: tuple[str, ...] = ()
         contextual = False
         retrieval_started = time.monotonic()
-        compound_queries = (q,)
-        if len(compound_queries) > 1 and anchor is None:
-            pieces = []
-            for part in compound_queries:
-                pieces.append(retrieve(
-                    store, property_id=cfg.property_id, language=language, query=part,
-                    embedder=embedder, reranker=reranker, vector_store=vector_store,
-                    effective_date=effective_date, policy=rag_policy, expand_parent=True,
-                    entity_ids=part_entities, fact_types=part_fact_types,
-                    fact_context=structured_context_selector(part, language)))
-            sources = []
-            answers = []
-            seen = set()
-            for piece in pieces:
-                if piece.answer and piece.answer not in answers:
-                    answers.append(piece.answer)
-                for source in piece.sources:
-                    key = (source.get('chunk_id'), source.get('source_id'), source.get('revision'))
-                    if key not in seen:
-                        seen.add(key)
-                        sources.append(source)
-            result = Retrieval(
-                'multi_question', sources,
-                '\n'.join(f'{index}. {answer}' for index, answer in enumerate(answers, 1))
-                if answers else abstention_answer(language))
-            revoked_anchor = None
-            contextual = False
-        elif anchor is not None:
+        if anchor is not None:
             if anchor.language != language:
                 result = retrieve_localized_anchor(
                     store, property_id=cfg.property_id, language=language, query=search_query,
@@ -322,7 +297,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         answerability_failure = None
         # Context is part of a fact's identity. If the guest names one, do not
         # compose a list from sibling contexts such as banquet + classroom.
-        if len(compound_queries) == 1 and result.sources:
+        if result.sources:
             filtered_sources, mentioned_contexts = _filter_context_sources(
                 result.sources, q, language)
             if mentioned_contexts:
@@ -547,12 +522,16 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                         "_memory_version": memory_snapshot.version}
 
     def planning_answer(query: str, language: str, session: str, *, effective_date: str,
-                        preferences: dict | None = None) -> dict:
+                        preferences: dict | None = None, topics: tuple[str, ...] = ()) -> dict:
         """At most three serial source-backed specialist lookups, no tool writes.
 
         For speech, do not add an unsupported conversational preamble or schedule.
         The response metadata labels the result as advisory for the UI; every
         spoken claim must be an exact current citation in the business DB.
+
+        ``topics`` are the planning categories taken from the validated ``Plan``
+        command (plan.md, section "Ke hoach"); the guest's words are never scanned for
+        them, so an empty list is an unavailable plan, not a guess.
         """
         if not topics:
             raise RuntimeError('Planning route requires an explicit multi-domain request')
@@ -590,8 +569,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                     continue
             # Use the extractive retrieval specialist, not three serial local
             # SLM generations. This keeps the Edge planning branch bounded.
-            if additions:
-                search_query = ' '.join((search_query, *additions))
+            search_query = topic
             retrieved = retrieve(store, property_id=cfg.property_id, language=language,
                                  query=search_query,
                                  embedder=embedder, reranker=reranker, vector_store=vector_store,

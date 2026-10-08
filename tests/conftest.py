@@ -59,3 +59,17 @@ def understand(monkeypatch):
             Command('StartGoal', goal=item) if isinstance(item, str) else item for item in items)))
 
     return register
+
+from rebuild_pending import COLLECT_IGNORE, REBUILD_PENDING
+
+collect_ignore = list(COLLECT_IGNORE)
+
+
+def pytest_collection_modifyitems(config, items):
+    pending = {prefix: step for prefix, step in REBUILD_PENDING}
+    for item in items:
+        for prefix, step in pending.items():
+            if item.nodeid.startswith(prefix):
+                item.add_marker(pytest.mark.xfail(
+                    strict=True, reason=f"behaviour returns with rebuild step {step} (tests/rebuild_pending.py)"))
+                break

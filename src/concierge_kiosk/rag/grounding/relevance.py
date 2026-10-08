@@ -7,7 +7,6 @@ into cited evidence. Returning no evidence is preferable to false attribution.
 """
 from __future__ import annotations
 
-import re
 import unicodedata
 from ..text.normalize import fold_accents
 from ..text.tokenization import compatibility_terms, tokens
@@ -183,6 +182,7 @@ def candidate_relevant(query: str, language: str, search_text: str, body: str, t
     if len(asked) == 1:
         direct_words = _text_terms(f'{title} {heading} {body}', language)
         return bool(_term_intersection(asked, direct_words))
+    searchable_words = _text_terms(search_text, language)
     if _overlap_sufficient(asked, searchable_words, threshold):
         return True
     if any(' ' in term for term in asked):

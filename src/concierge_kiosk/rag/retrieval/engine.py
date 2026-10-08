@@ -10,7 +10,7 @@ from concierge_kiosk.persistence.sqlite_store import Store
 from concierge_kiosk.rag.documents import LANGUAGES
 from concierge_kiosk.rag.embedding.base import Embedder
 from concierge_kiosk.rag.rerank.local import LocalReranker
-from concierge_kiosk.rag.retrieval.evidence import evidence_passage, retrieve_parent_context
+from concierge_kiosk.rag.retrieval.evidence import evidence_passage
 from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
 from concierge_kiosk.rag.text.tokenization import tokens
 from concierge_kiosk.rag.grounding.relevance import candidate_relevant, evidence_relevant, fts_query, query_terms as meaningful_query_terms
@@ -159,7 +159,7 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                     match_language = str(match.metadata.get('language') or '')
                     if not doc_id or not revision or match_language not in allowed_dense_languages:
                         continue
-                    row = con.execute(f'SELECT k.* FROM knowledge k WHERE {where} AND k.id=? AND k.revision=? AND k.embedding_model=? AND k.embedding IS NOT NULL', (property_id, match_language, today, today, doc_id, revision, embedder.model_name)).fetchone()
+                    row = con.execute(f'SELECT k.* FROM knowledge k WHERE {where} AND k.id=? AND k.revision=? AND k.embedding_model=? AND k.embedding IS NOT NULL', (property_id, match_language, today, today, doc_id, revision, embedder.model_name)).fetchone()  # nosec B608  # where is assembled from fixed clauses; all values are bound
                     if row is None or unsafe_knowledge_text(row['body']):
                         continue
                     score = max(-1.0, min(1.0, 1.0 - float(match.distance)))
@@ -170,6 +170,7 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                 for score, row in dense:
                     if evidence_relevant(query, language, row['body'], row['title'], row['heading'], threshold=policy.lexical_coverage):
                         conflict_candidates[row['id']] = dict(row)
+                valid_dense = dense
                 dense_candidates = []
                 for score, row in valid_dense:
                     candidate = dict(row)

@@ -468,6 +468,9 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                 candidates = []
         service_deps = [() for _ in candidates]
 
+    # Constraints come only from stored session preferences; the guest's words
+    # are never scanned for them (see the Plan command slots in plan.md).
+    constraints: list[GoalConstraint] = []
     clean_preferences: dict[str, str | int] = {}
     if isinstance(preferences, dict):
         for key in ('dietary', 'party_size', 'children', 'mobility', 'quiet'):

@@ -41,7 +41,6 @@ from concierge_kiosk.agent.runtime.presentation.turn import (
     apply_verified_map_answer, project_read_workflow,
 )
 from concierge_kiosk.agent.runtime.persistence import checkpoint_projection, semantic_memory_projection
-from concierge_kiosk.agent.memory.reference_resolver import model_reference_choice
 from concierge_kiosk.api.shared.contracts import Ask
 from concierge_kiosk.application.service_actions import ServiceActionService
 from concierge_kiosk.application import KnowledgeService, TurnCoordinator, CoordinatedTurn
@@ -561,6 +560,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         result = _turn_grounded_answer(request.query, request.language, request.session,
                                        effective_date=request.effective_date,
                                        question_type=request.decision.question_type)
+        map_query = request.query
         map_query = localized_map_query(
             store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256,
             property_id=cfg.property_id, query=map_query, language=request.language,
@@ -597,6 +597,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         result = _turn_grounded_answer(request.query, request.language, request.session,
                                        effective_date=request.effective_date,
                                        question_type=request.decision.question_type)
+        map_query = request.query
         try:
             map_query = localized_map_query(store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256, property_id=cfg.property_id, query=map_query, language=request.language, anchor=conversations.resolve(request.session, request.query, request.language), as_of=request.effective_date)
             result['map_guidance'] = map_guidance(store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256, property_id=cfg.property_id, query=map_query, language=request.language, start_id=request.start_location, as_of=request.effective_date)
@@ -860,6 +861,9 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             checkpoint = agent_checkpoints.load(session, body.language)
             pending_question = (checkpoint.get('pending_question')
                                 if isinstance(checkpoint, dict) else None)
+            # Resume stored state only while the server is waiting for an answer: the
+            # decision comes from stored state, never from matching the guest's words.
+            resume_projection = checkpoint if pending_question else None
             memory_facts = agent_memory.load(session, body.language)
             voice_token = voice_input_context.set(voice_input)
             try:

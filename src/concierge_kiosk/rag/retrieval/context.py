@@ -171,13 +171,6 @@ def retrieve_localized_anchor(store: Store, *, property_id: str, language: str,
     # scoped search, not cite restaurant information just because IDs match.
     terms = {unicodedata.normalize('NFC', term) for term in tokens(query, language=language, limit=None, stem=True)}
     def target_row_matches(candidate) -> bool:
-        # Query rewrites deliberately normalize multilingual clock questions to
-        # the shared ``operating hours`` facet.  The target-language sibling is
-        # already bound to the reviewed anchor's source and section, so an
-        # opening-hours fact is the uniquely safe match even when the Chinese
-        # or Korean surface tokens do not overlap the translated body.
-        if opening_hours_request:
-            return True
         if terms:
             supported = {unicodedata.normalize('NFC', term)
                          for term in tokens(f"{candidate['title']} {candidate['heading']} {candidate['context_text']} {candidate['body']}",
@@ -209,6 +202,7 @@ def retrieve_localized_anchor(store: Store, *, property_id: str, language: str,
             limit=None, stem=True)}
         return len(terms & supported)
     row = sorted(matching_rows, key=lambda candidate: (-overlap(candidate), candidate['id']))[0]
+    passage_query = query
     content = evidence_passage(row['body'], passage_query, language=language,
                                max_chars=policy.max_evidence_chars)
     if not content:

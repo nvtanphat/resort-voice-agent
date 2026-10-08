@@ -6,9 +6,9 @@ import hashlib
 from collections import OrderedDict, deque
 from contextlib import contextmanager
 from typing import Iterator
+from concierge_kiosk.domain.service_registry import ACTION_REQUEST_KINDS  # noqa: F401  (re-exported; checked by test_domain_profile)
 from .models import (CONTEXT_TTL_SECONDS, MAX_TOPICS, MAX_SESSIONS, MAX_TURNS,
                      ConversationSnapshot, EvidenceAnchor, SessionTopics, _SessionGate)
-from concierge_kiosk.domain.service_registry import ACTION_REQUEST_KINDS
 
 class ConversationMemory:
     """Short-lived, per-session public source references only; no guest text."""
@@ -85,9 +85,11 @@ class ConversationMemory:
     def snapshot(self, session: str, query: str, language: str) -> ConversationSnapshot:
         """Capture all read-only conversation inputs atomically, then unlock."""
         with self._lock:
-            current = self._active(session, language, time.monotonic())
-            return ConversationSnapshot(self._version_locked(session), anchor, mode,
-                                        retrieval_query, rewritten)
+            self._active(session, language, time.monotonic())
+            # Until follow-up resolution is rebuilt from conversation state in the
+            # command prompt (plan.md "Hỏi tiếp"), no turn inherits an anchor or a
+            # rewritten query: every question is a fresh topic.
+            return ConversationSnapshot(self._version_locked(session), None, "none", query, False)
 
     def resolve_with_mode(self, session: str, query: str,
                           language: str) -> tuple[EvidenceAnchor | None, str]:

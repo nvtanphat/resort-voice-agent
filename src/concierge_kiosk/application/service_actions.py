@@ -17,6 +17,7 @@ from typing import Callable
 
 from ..agent.core.concierge import AgentToolRequest
 from ..agent.understanding.intent import normalize_intent_text
+from ..domain.authority import evaluate_service_authority
 from ..agent.understanding.routing import RouteDecision, fast_response
 from ..agent.understanding.domain_nlu import AFFIRM_TERMS, DENY_TERMS, ROUTING_STATIC_TEXT, SLOT_LABELS
 from ..agent.tools.service_slots import (assess_service, clarification_text, ready_text,
@@ -375,7 +376,8 @@ class ServiceActionService:
                 'service': pending.mode,
             }
             base['requires_staff_review'] = True
-            base['agent_action'] = {'service_kind': pending.kind, 'service_mode': pending.mode, 'collected_slots': dict(pending.slots), 'missing_slots': [], 'action_ready': True, 'resumed': True, 'business_writes': 0, 'status': 'confirmation_required'}
+            authority = evaluate_service_authority(mode=pending.mode)
+            base['agent_action'] = {'service_kind': pending.kind, 'service_mode': pending.mode, 'collected_slots': dict(pending.slots), 'missing_slots': [], 'action_ready': True, 'resumed': True, 'business_writes': 0, 'status': 'confirmation_required', 'authority': authority.public()}
             base['_voice_proposal'] = {'action': 'clear'}
             base['_expected_reply'] = {'action': 'clear'}
             return base
@@ -409,7 +411,8 @@ class ServiceActionService:
             base['suggested_action'] = {'kind': pending.kind, 'details': reviewed,
                                         'service': pending.mode}
             base['requires_staff_review'] = True
-            base['agent_action'] = {'service_kind': pending.kind, 'service_mode': pending.mode, 'collected_slots': dict(updated_slots), 'missing_slots': [], 'action_ready': True, 'resumed': True, 'business_writes': 0, 'status': 'confirmation_required'}
+            authority = evaluate_service_authority(mode=pending.mode)
+            base['agent_action'] = {'service_kind': pending.kind, 'service_mode': pending.mode, 'collected_slots': dict(updated_slots), 'missing_slots': [], 'action_ready': True, 'resumed': True, 'business_writes': 0, 'status': 'confirmation_required', 'authority': authority.public()}
             base['_voice_proposal'] = {
                 'action': 'save', 'kind': pending.kind, 'language': request.language,
                 'mode': pending.mode, 'details': revised_details, 'slots': updated_slots,
@@ -532,21 +535,29 @@ class ServiceActionService:
         voice_numeric_confirmation = bool(
             request.voice_input and
             any(name in assessment.slots for name in VOICE_NUMERIC_SLOTS))
-        reviewed = _canonical_service_review(mode=assessment.mode, language=request.language, slots=assessment.slots, fallback_details=details, cfg=self._cfg)
-        if voice_numeric_confirmation:
-            screen_gate = _voice_screen_gate(mode=assessment.mode, low_risk_requires_verified_room=self._low_risk_requires_verified_room, verification=request.verification)
-            result['answer'] = i18n_text('service.voice_staff_confirmation' if screen_gate else 'service.voice_numeric_confirmation', request.language, details=_voice_numeric_review(reviewed, assessment.slots, request.language))
+        authority = evaluate_service_authority(mode=assessment.mode)
+        action_state['authority'] = authority.public()
+        if authority.outcome == 'deny':
+            result['suggested_action'] = None
+            result['requires_staff_review'] = False
+            result['answer'] = i18n_text('service.denied', request.language)
+            action_state['status'] = 'denied'
         else:
-            result['answer'] = ready_text(request.language)
-        result['requires_staff_review'] = True
-        action_state['status'] = 'confirmation_required'
-        if context is not None or voice_numeric_confirmation:
-            result['suggested_action'] = {'kind': kind, 'details': reviewed, 'service': assessment.mode}
-        if voice_numeric_confirmation:
-            result['_voice_proposal'] = {'action': 'save', 'kind': kind, 'language': request.language, 'mode': assessment.mode, 'details': details, 'slots': dict(assessment.slots)}
-            result['_expected_reply'] = {'action': 'save', 'value': 'confirm'}
-        elif resumed and isinstance(result.get('suggested_action'), dict):
-            result['suggested_action'] = {**result['suggested_action'], 'details': reviewed}
+            reviewed = _canonical_service_review(mode=assessment.mode, language=request.language, slots=assessment.slots, fallback_details=details, cfg=self._cfg)
+            if voice_numeric_confirmation:
+                screen_gate = _voice_screen_gate(mode=assessment.mode, low_risk_requires_verified_room=self._low_risk_requires_verified_room, verification=request.verification)
+                result['answer'] = i18n_text('service.voice_staff_confirmation' if screen_gate else 'service.voice_numeric_confirmation', request.language, details=_voice_numeric_review(reviewed, assessment.slots, request.language))
+            else:
+                result['answer'] = ready_text(request.language)
+            result['requires_staff_review'] = True
+            action_state['status'] = 'confirmation_required'
+            if context is not None or voice_numeric_confirmation:
+                result['suggested_action'] = {'kind': kind, 'details': reviewed, 'service': assessment.mode}
+            if voice_numeric_confirmation:
+                result['_voice_proposal'] = {'action': 'save', 'kind': kind, 'language': request.language, 'mode': assessment.mode, 'details': details, 'slots': dict(assessment.slots)}
+                result['_expected_reply'] = {'action': 'save', 'value': 'confirm'}
+            elif resumed and isinstance(result.get('suggested_action'), dict):
+                result['suggested_action'] = {**result['suggested_action'], 'details': reviewed}
         result['agent_action'] = action_state
         return result
 
