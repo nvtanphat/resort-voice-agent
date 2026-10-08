@@ -281,6 +281,10 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                          and _text(slot.text, 120) and _verbatim(query, slot.text))
             if kept != command.slots:
                 command = replace(command, slots=kept)
+            if command.conditional and definition.availability_source is None:
+                # "If available" cannot be checked for a service without an
+                # availability source; the proposal still needs guest consent.
+                command = replace(command, conditional=False)
             signature = (command.goal, tuple((s.name, s.text) for s in command.slots),
                          command.conditional, command.refers_to_context)
             if signature in started:

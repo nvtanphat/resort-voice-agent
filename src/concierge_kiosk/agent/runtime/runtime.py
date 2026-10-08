@@ -182,7 +182,9 @@ class AutonomousConciergeRuntime:
                     'mode': candidate.service_code,
                     'details': candidate.guest_text,
                     'slots': dict(candidate.existing_slots),
-                    'persist_pending': state.route_hint != 'multi_task',
+                    # One service draft per session: a turn with a single
+                    # service keeps it editable even beside reads.
+                    'persist_pending': len(state.service_candidates) == 1,
                     'task_id': step_id,
                     'slot_source_query': slot_source,
                     # This marker is server-created after candidate and policy

@@ -133,3 +133,14 @@ def test_single_navigate_keeps_the_question_type():
     fallback = RouteDecision("knowledge", False, None, "location")
     decision = _decision_from_commands((Command("Navigate", query="spa"),), fallback)
     assert (decision.branch, decision.question_type) == ("navigation", "location")
+
+
+def test_condition_is_dropped_for_a_service_without_availability():
+    # "If available" means nothing where availability cannot be read; the
+    # request is still only a proposal awaiting the guest's confirmation.
+    kept = validate_commands([Command("StartGoal", goal="amenity_delivery", conditional=True)],
+                             query="2 towels please", enabled_request_kinds=KINDS)
+    assert [(c.goal, c.conditional) for c in kept] == [("amenity_delivery", False)]
+    booked = validate_commands([Command("StartGoal", goal="dining_reservation", conditional=True)],
+                               query="if a table is free, book it", enabled_request_kinds=KINDS)
+    assert booked[0].conditional is True
