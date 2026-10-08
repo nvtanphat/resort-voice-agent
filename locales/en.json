@@ -16,6 +16,7 @@
   "backend.request.status_prefix": "Current request status:",
   "backend.request.status_line": "{code}: {status} — waiting {minutes} min",
   "backend.request.overdue": "SLA is overdue.",
+  "backend.request.merged_with_existing": "This service is already queued for the same room, so no second request was sent. The reference shown is the existing request's.",
   "backend.request.escalated": "I sent one reminder to the assigned department.",
   "backend.request.change.none": "I could not find an active request in this kiosk session to change.",
   "backend.request.change.need_details": "What would you like to change? Please state the new room, quantity, time, or party size.",

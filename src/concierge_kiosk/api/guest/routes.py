@@ -324,6 +324,14 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
             record_metric('request.confirmed', row['language'])
         if row.get("orchestration_sync") == "deferred":
             record_metric('orchestration.sync_deferred', row['language'])
+        if row.get('shared_with_existing'):
+            # Merged into a request another session queued for the same room:
+            # no status link or request id for someone else's request.
+            response.status_code = 202
+            return {"request_id": "", "status": status,
+                    "orchestration_sync": row.get("orchestration_sync", "ok"),
+                    "confirmation_code": row["confirmation_code"],
+                    "message": i18n_text('request.merged_with_existing', row["language"])}
         status_token, status_token_expires_at = status_tokens.issue(
             property_id=cfg.property_id, request_id=row['id'])
         if status in {'pending_staff', 'approved', 'in_progress', 'paused'}:

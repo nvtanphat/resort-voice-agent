@@ -16,6 +16,7 @@
   "backend.request.status_prefix": "当前请求状态：",
   "backend.request.status_line": "{code}: {status} — 已等待 {minutes} 分钟",
   "backend.request.overdue": "该请求已超过 SLA。",
+  "backend.request.merged_with_existing": "同一房间已有相同的服务请求在处理中，因此未重复提交。显示的参考编号为现有请求的编号。",
   "backend.request.escalated": "我已向负责部门发送一次提醒。",
   "backend.request.change.none": "当前 kiosk 会话中没有可更改的活动请求。",
   "backend.request.change.need_details": "您想修改哪项信息？请说明新的房号、数量、时间或人数。",

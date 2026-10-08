@@ -16,6 +16,7 @@
   "backend.request.status_prefix": "Trạng thái yêu cầu hiện tại:",
   "backend.request.status_line": "{code}: {status} — đã chờ {minutes} phút",
   "backend.request.overdue": "Yêu cầu đã quá SLA.",
+  "backend.request.merged_with_existing": "Dịch vụ này đã được ghi nhận cho cùng phòng nên không gửi thêm yêu cầu thứ hai. Mã tham chiếu hiển thị là của yêu cầu hiện có.",
   "backend.request.escalated": "Tôi đã gửi một lần nhắc đến bộ phận phụ trách.",
   "backend.request.change.none": "Tôi không tìm thấy yêu cầu đang hoạt động nào trong phiên kiosk này để thay đổi.",
   "backend.request.change.need_details": "Bạn muốn sửa thông tin nào của yêu cầu đó? Hãy nêu rõ số phòng, số lượng, thời gian hoặc số khách mới.",

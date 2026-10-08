@@ -81,9 +81,11 @@ class SubmissionWorkflowMixin:
         if not room or window_minutes <= 0:
             return None
         rows = con.execute(
-            "SELECT * FROM service_requests WHERE property_id=? AND kind=? "
-            "AND status IN ('pending_staff','approved','in_progress','paused') AND created_at>=? "
-            "ORDER BY created_at DESC LIMIT 25",
+            "SELECT r.*, p.session_id AS owner_session_id FROM service_requests r "
+            "JOIN proposals p ON p.id=r.proposal_id "
+            "WHERE r.property_id=? AND r.kind=? "
+            "AND r.status IN ('pending_staff','approved','in_progress','paused') AND r.created_at>=? "
+            "ORDER BY r.created_at DESC LIMIT 25",
             (property_id, kind, now - window_minutes * 60),
         ).fetchall()
         for row in rows:
@@ -324,15 +326,31 @@ class SubmissionWorkflowMixin:
             window_payload = proposal_payload.get('_service_window')
             next_open_at = window_payload.get('next_open_at') if isinstance(window_payload, dict) else None
             ack_base = int(next_open_at) if isinstance(next_open_at, int) and next_open_at > now else now
-            duplicate = self._request_duplicate(
+            # An expired or withdrawn proposal is never confirmable, not even by
+            # merging it into an existing request.  A proposal that is already
+            # 'confirmed' without its own row was merged earlier; its replay
+            # resolves through the same dedupe lookup below.
+            withdrawn = (row["status"] in {"cancelled", "expired"}
+                         or (row["status"] == "awaiting_confirmation" and row["expires_at"] <= now))
+            duplicate = None if withdrawn else self._request_duplicate(
                 con, property_id=self.property_id, kind=row['kind'], service_code=service_code,
                 payload=proposal_payload, now=now,
                 window_minutes=policy.dedupe_window_minutes if policy else 0)
             if duplicate is not None:
                 con.execute("UPDATE proposals SET status='confirmed' WHERE id=? AND status='awaiting_confirmation'",
                             (proposal_id,))
-                return {**dict(duplicate), 'idempotent_replay': True, 'deduplicated': True,
-                        'proposal_id': proposal_id, 'service_code': service_code}
+                if duplicate['owner_session_id'] == session_id:
+                    merged = {key: duplicate[key] for key in duplicate.keys() if key != 'owner_session_id'}
+                    return {**merged, 'idempotent_replay': True, 'deduplicated': True,
+                            'proposal_id': proposal_id, 'service_code': service_code}
+                # Another guest session already queued this service for the same
+                # room.  Nothing new is written, and nothing from that request
+                # beyond its public reference and state leaves this boundary.
+                return {'id': '', 'proposal_id': proposal_id, 'kind': row['kind'],
+                        'language': row['language'], 'status': duplicate['status'],
+                        'confirmation_code': duplicate['confirmation_code'] or public_reference(duplicate['id']),
+                        'service_code': service_code, 'idempotent_replay': True,
+                        'deduplicated': True, 'shared_with_existing': True}
             if row["status"] != "awaiting_confirmation" or row["expires_at"] <= now:
                 con.execute("UPDATE proposals SET status='expired' WHERE id=? AND status='awaiting_confirmation'",
                             (proposal_id,))
