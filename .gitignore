@@ -6,6 +6,8 @@ __pycache__/
 !.env.example
 /models/
 *.sqlite3*
+!/data/concierge.sqlite3
+!/data/concierge-graph.sqlite3
 *.wav
 *.webm
 reports/
@@ -21,6 +23,9 @@ frontend/dist/
 # Runtime state and real property data stay local/private by default.
 /data/*
 !/data/.gitkeep
+!/data/concierge.sqlite3
+!/data/concierge-graph.sqlite3
+!/data/vectors/
 /config/property-profile.json
 /config/*.sig
 /config/*.pem
@@ -31,3 +36,5 @@ frontend/dist/
 scratch/
 scratch_*.txt
 frontend/verify_bundle.cjs
+.pytest_cache/
+edge_test-graph.sqlite3
