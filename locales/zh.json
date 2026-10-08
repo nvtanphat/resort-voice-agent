@@ -202,5 +202,7 @@
   "backend.clarification.meal_preference": "您想吃哪种餐食？",
   "backend.clarification.time_window": "哪个时间段最适合您？",
   "backend.clarification.room_number": "请问您的房间号是多少？",
-  "backend.preference.saved": "已记下，本次会话中推荐或准备请求时会考虑这个偏好。"
+  "backend.preference.saved": "已记下，本次会话中推荐或准备请求时会考虑这个偏好。",
+  "backend.service.ready": "信息已足够准备此请求。请在确认前检查内容。",
+  "backend.service.need_slots": "我可以继续准备此请求，但还需要：{names}。目前尚未提交任何请求。"
 }

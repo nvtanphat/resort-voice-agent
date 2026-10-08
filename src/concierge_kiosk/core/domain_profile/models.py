@@ -14,7 +14,6 @@ class PreferenceField:
     minimum: int | None = None
     maximum: int | None = None
     applies_to_slot: str | None = None
-    recognition: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)

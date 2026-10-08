@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from concierge_kiosk.agent.memory.conversation import ConversationMemory
-from concierge_kiosk.agent.memory.preferences import (SessionPreferenceMemoryStore, explicit_preferences)
+from concierge_kiosk.agent.memory.preferences import SessionPreferenceMemoryStore
 from concierge_kiosk.agent.memory.reference_resolver import parse_reference_choice
 from concierge_kiosk.agent.memory.task_memory import AgentTaskMemory
 from concierge_kiosk.agent.runtime.persistence import AgentCheckpointStore, SessionSemanticMemoryStore
@@ -98,12 +98,8 @@ class UserJourneyTests(unittest.TestCase):
         self.assertEqual(self.workflows.request_detail(row['id'])['status'], 'pending_staff')
 
     def test_session_preferences_are_explicit_bounded_and_feed_agent_constraints(self):
-        parsed = explicit_preferences(
-            'Tôi ăn chay, đi với 3 người, có 1 trẻ em và không muốn đi bộ nhiều.', 'vi')
-        self.assertEqual(parsed['dietary'], 'vegetarian')
-        self.assertEqual(parsed['party_size'], 3)
-        self.assertEqual(parsed['children'], 1)
-        self.assertEqual(parsed['mobility'], 'minimal_walking')
+        # Preferences reach memory only as validated SetPreference commands.
+        parsed = {'dietary': 'vegetarian', 'party_size': 3, 'children': 1, 'mobility': 'minimal_walking'}
         memory = SessionPreferenceMemoryStore(self.store, 'FURAMA_DANANG', 900)
         self.assertEqual(memory.merge(self.session, parsed), parsed)
         state = build_initial_state(

@@ -340,89 +340,6 @@
                   },
                   "applies_to_slot": {
                     "$ref": "#/$defs/identifier"
-                  },
-                  "recognition": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "enum_terms": {
-                        "type": "object",
-                        "maxProperties": 64,
-                        "propertyNames": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64
-                        },
-                        "additionalProperties": {
-                          "type": "object",
-                          "maxProperties": 16,
-                          "propertyNames": {
-                            "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-                          },
-                          "additionalProperties": {
-                            "type": "array",
-                            "maxItems": 128,
-                            "uniqueItems": true,
-                            "items": {
-                              "type": "string",
-                              "minLength": 1,
-                              "maxLength": 512
-                            }
-                          }
-                        }
-                      },
-                      "integer_patterns": {
-                        "type": "object",
-                        "maxProperties": 16,
-                        "propertyNames": {
-                          "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-                        },
-                        "additionalProperties": {
-                          "type": "array",
-                          "maxItems": 128,
-                          "uniqueItems": true,
-                          "items": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 512
-                          }
-                        }
-                      },
-                      "default_value_patterns": {
-                        "type": "array",
-                        "maxItems": 16,
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "value",
-                            "patterns"
-                          ],
-                          "properties": {
-                            "value": {
-                              "type": "integer"
-                            },
-                            "patterns": {
-                              "type": "object",
-                              "maxProperties": 16,
-                              "propertyNames": {
-                                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-                              },
-                              "additionalProperties": {
-                                "type": "array",
-                                "maxItems": 32,
-                                "uniqueItems": true,
-                                "items": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 2048
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
                   }
                 }
               },
@@ -450,89 +367,6 @@
                   },
                   "applies_to_slot": {
                     "$ref": "#/$defs/identifier"
-                  },
-                  "recognition": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "enum_terms": {
-                        "type": "object",
-                        "maxProperties": 64,
-                        "propertyNames": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64
-                        },
-                        "additionalProperties": {
-                          "type": "object",
-                          "maxProperties": 16,
-                          "propertyNames": {
-                            "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-                          },
-                          "additionalProperties": {
-                            "type": "array",
-                            "maxItems": 128,
-                            "uniqueItems": true,
-                            "items": {
-                              "type": "string",
-                              "minLength": 1,
-                              "maxLength": 512
-                            }
-                          }
-                        }
-                      },
-                      "integer_patterns": {
-                        "type": "object",
-                        "maxProperties": 16,
-                        "propertyNames": {
-                          "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-                        },
-                        "additionalProperties": {
-                          "type": "array",
-                          "maxItems": 128,
-                          "uniqueItems": true,
-                          "items": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 512
-                          }
-                        }
-                      },
-                      "default_value_patterns": {
-                        "type": "array",
-                        "maxItems": 16,
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "value",
-                            "patterns"
-                          ],
-                          "properties": {
-                            "value": {
-                              "type": "integer"
-                            },
-                            "patterns": {
-                              "type": "object",
-                              "maxProperties": 16,
-                              "propertyNames": {
-                                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-                              },
-                              "additionalProperties": {
-                                "type": "array",
-                                "maxItems": 32,
-                                "uniqueItems": true,
-                                "items": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 2048
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
                   }
                 }
               }
@@ -915,9 +749,7 @@
             "clock_dayparts",
             "short_time_markers",
             "clock_daypart_patterns",
-            "slot_labels",
-            "clarification_text",
-            "ready_text"
+            "slot_labels"
           ],
           "properties": {
             "number_words": {
@@ -1118,30 +950,6 @@
                   "minLength": 1,
                   "maxLength": 128
                 }
-              }
-            },
-            "clarification_text": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1200
-              }
-            },
-            "ready_text": {
-              "type": "object",
-              "maxProperties": 16,
-              "propertyNames": {
-                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
-              },
-              "additionalProperties": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1200
               }
             }
           }

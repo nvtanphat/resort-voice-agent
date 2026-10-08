@@ -60,8 +60,6 @@ CLOCK_DAYPARTS = {language: dict(values) for language, values in SLOTS["clock_da
 CLOCK_DAYPART_PATTERNS = _patterns(SLOTS["clock_daypart_patterns"])
 SHORT_TIME_MARKERS = _terms(SLOTS["short_time_markers"])
 SLOT_LABELS = {language: dict(values) for language, values in SLOTS["slot_labels"].items()}
-CLARIFICATION_TEXT = dict(SLOTS["clarification_text"])
-READY_TEXT = dict(SLOTS["ready_text"])
 
 
 QUALIFIER_PATTERNS = _patterns(_POLICY.qualifier_patterns)

@@ -44,11 +44,6 @@ def test_new_preference_is_a_config_only_extension(tmp_path: Path):
     payload["preferences"]["fields"]["ambience"] = {
         "type": "enum",
         "values": ["romantic"],
-        "recognition": {
-            "enum_terms": {
-                "romantic": {"en": ["romantic setting"]}
-            }
-        },
     }
 
     target = tmp_path / "agent-domain.json"

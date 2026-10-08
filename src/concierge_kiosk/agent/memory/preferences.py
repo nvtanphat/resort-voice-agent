@@ -8,9 +8,7 @@ session rotation/end.
 from __future__ import annotations
 
 import json
-import re
 import time
-import unicodedata
 from dataclasses import dataclass, field
 
 from concierge_kiosk.core.domain_profile import preference_policy
@@ -24,69 +22,6 @@ class SessionPreferences:
 
     def public(self) -> dict:
         return _validate_preferences(dict(self.values))
-
-
-def _surface(text: str) -> str:
-    return unicodedata.normalize('NFC', text).casefold()
-
-
-def explicit_preferences(text: str, language: str) -> dict:
-    """Extract only preferences explicitly present in the current guest turn.
-
-    Recognition is data-driven by the pinned preference schema. Adding an enum
-    or bounded-integer preference with configured recognition rules does not
-    require a new Python branch.
-    """
-    if not isinstance(text, str) or not text.strip() or len(text) > 600:
-        return {}
-    surface = _surface(text)
-    out: dict[str, str | int] = {}
-
-    for name, spec in _PREFERENCE_POLICY.fields.items():
-        recognition = spec.recognition or {}
-        if spec.kind == 'enum':
-            enum_terms = recognition.get('enum_terms', {})
-            matches = []
-            for value, by_language in enum_terms.items():
-                if value not in spec.values:
-                    continue
-                terms = by_language.get(language, ())
-                if any(term.casefold() in surface for term in terms):
-                    matches.append(value)
-            # Ambiguous preference turns do not create memory.
-            if len(matches) == 1:
-                out[name] = matches[0]
-            continue
-
-        if spec.kind != 'integer' or spec.minimum is None or spec.maximum is None:
-            continue
-        value: int | None = None
-        for pattern in recognition.get('integer_patterns', {}).get(language, ()):
-            match = re.search(pattern, surface, flags=re.IGNORECASE)
-            if match is None:
-                continue
-            try:
-                candidate = int(match.group(1))
-            except (IndexError, TypeError, ValueError):
-                continue
-            if spec.minimum <= candidate <= spec.maximum:
-                value = candidate
-                break
-        if value is None:
-            defaults = []
-            for item in recognition.get('default_value_patterns', ()):
-                candidate = item.get('value')
-                if type(candidate) is not int or not spec.minimum <= candidate <= spec.maximum:
-                    continue
-                patterns = item.get('patterns', {}).get(language, ())
-                if any(re.search(pattern, surface, flags=re.IGNORECASE) for pattern in patterns):
-                    defaults.append(candidate)
-            if len(set(defaults)) == 1:
-                value = defaults[0]
-        if value is not None:
-            out[name] = value
-
-    return out
 
 
 def _validate_preferences(value: dict) -> dict:
@@ -181,4 +116,4 @@ class SessionPreferenceMemoryStore:
                         (session, self.property_id))
 
 
-__all__ = ['SessionPreferences', 'SessionPreferenceMemoryStore', 'explicit_preferences']
+__all__ = ['SessionPreferences', 'SessionPreferenceMemoryStore']

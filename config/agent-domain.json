@@ -392,192 +392,31 @@
         "values": [
           "vegetarian",
           "vegan"
-        ],
-        "recognition": {
-          "enum_terms": {
-            "vegan": {
-              "en": [
-                "vegan"
-              ],
-              "vi": [
-                "thuần chay"
-              ],
-              "zh": [
-                "纯素",
-                "全素"
-              ],
-              "ko": [
-                "비건"
-              ]
-            },
-            "vegetarian": {
-              "en": [
-                "vegetarian",
-                "meat-free"
-              ],
-              "vi": [
-                "ăn chay",
-                "món chay"
-              ],
-              "zh": [
-                "素食"
-              ],
-              "ko": [
-                "채식"
-              ]
-            }
-          }
-        }
+        ]
       },
       "party_size": {
         "type": "integer",
         "minimum": 1,
         "maximum": 20,
-        "applies_to_slot": "party_size",
-        "recognition": {
-          "integer_patterns": {
-            "en": [
-              "\\b(?:for\\s+)?(\\d{1,2})\\s*(?:people|persons|guests|adults)\\b"
-            ],
-            "vi": [
-              "\\b(?:cho\\s+)?(\\d{1,2})\\s*(?:người|nguoi)\\b"
-            ],
-            "zh": [
-              "(\\d{1,2})\\s*(?:位|人)"
-            ],
-            "ko": [
-              "(\\d{1,2})\\s*(?:명|분)"
-            ]
-          }
-        }
+        "applies_to_slot": "party_size"
       },
       "children": {
         "type": "integer",
         "minimum": 0,
-        "maximum": 10,
-        "recognition": {
-          "integer_patterns": {
-            "en": [
-              "\\b(\\d{1,2})\\s*(?:children|kids)\\b"
-            ],
-            "vi": [
-              "\\b(\\d{1,2})\\s*(?:trẻ em|trẻ|tre em|tre|con(?:\\s+nhỏ)?)\\b"
-            ],
-            "zh": [
-              "(\\d{1,2})\\s*(?:个)?(?:孩子|儿童)"
-            ],
-            "ko": [
-              "(\\d{1,2})\\s*(?:명)?(?:아이|어린이)"
-            ]
-          },
-          "default_value_patterns": [
-            {
-              "value": 1,
-              "patterns": {
-                "en": [
-                  "\\b(?:my|a)\\s+(?:child|kid)\\b"
-                ],
-                "vi": [
-                  "\\b(?:con|bé|be)\\s+(?:tôi|toi)?\\b"
-                ],
-                "zh": [
-                  "(?:孩子|儿童)"
-                ],
-                "ko": [
-                  "(?:아이|어린이)"
-                ]
-              }
-            }
-          ]
-        }
+        "maximum": 10
       },
       "mobility": {
         "type": "enum",
         "values": [
           "minimal_walking",
           "wheelchair_access"
-        ],
-        "recognition": {
-          "enum_terms": {
-            "minimal_walking": {
-              "en": [
-                "minimal walking",
-                "walk as little as possible",
-                "avoid walking",
-                "less walking",
-                "don't want to walk much"
-              ],
-              "vi": [
-                "không muốn đi bộ nhiều",
-                "không muốn đi nhiều",
-                "ít đi bộ",
-                "đi bộ ít",
-                "đi ít nhất có thể"
-              ],
-              "zh": [
-                "少走路",
-                "尽量少走",
-                "不想走太多"
-              ],
-              "ko": [
-                "적게 걷",
-                "걷는 것을 최소",
-                "많이 걷고 싶지"
-              ]
-            },
-            "wheelchair_access": {
-              "en": [
-                "wheelchair",
-                "wheelchair access",
-                "accessible for wheelchair"
-              ],
-              "vi": [
-                "xe lăn",
-                "xe lan",
-                "tiếp cận xe lăn"
-              ],
-              "zh": [
-                "轮椅",
-                "轮椅通行"
-              ],
-              "ko": [
-                "휠체어",
-                "휠체어 접근"
-              ]
-            }
-          }
-        }
+        ]
       },
       "quiet": {
         "type": "enum",
         "values": [
           "quiet"
-        ],
-        "recognition": {
-          "enum_terms": {
-            "quiet": {
-              "en": [
-                "quiet place",
-                "somewhere quiet",
-                "prefer quiet"
-              ],
-              "vi": [
-                "chỗ yên tĩnh",
-                "nơi yên tĩnh",
-                "thích yên tĩnh"
-              ],
-              "zh": [
-                "安静的地方",
-                "喜欢安静"
-              ],
-              "ko": [
-                "조용한 곳",
-                "조용한 장소",
-                "조용한 곳을 선호"
-              ]
-            }
-          }
-        }
+        ]
       }
     }
   },
@@ -1195,18 +1034,6 @@
           "issue": "문제",
           "note": "메모"
         }
-      },
-      "clarification_text": {
-        "en": "I can continue this request, but I still need: {names}. Nothing has been submitted yet.",
-        "vi": "Tôi có thể tiếp tục yêu cầu này, nhưng vẫn cần: {names}. Chưa có yêu cầu nào được gửi.",
-        "zh": "我可以继续准备此请求，但还需要：{names}。目前尚未提交任何请求。",
-        "ko": "이 요청을 계속 준비하려면 다음 정보가 더 필요합니다: {names}. 아직 요청은 전송되지 않았습니다."
-      },
-      "ready_text": {
-        "en": "I have enough information to prepare this request. Please review it before confirming.",
-        "vi": "Tôi đã có đủ thông tin để chuẩn bị yêu cầu. Vui lòng kiểm tra trước khi xác nhận.",
-        "zh": "信息已足够准备此请求。请在确认前检查内容。",
-        "ko": "요청을 준비할 정보가 충분합니다. 확인하기 전에 내용을 검토해 주세요."
       }
     },
     "time_expressions": {

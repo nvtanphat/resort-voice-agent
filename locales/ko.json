@@ -203,5 +203,7 @@
   "backend.clarification.meal_preference": "어떤 식사를 원하시나요?",
   "backend.clarification.time_window": "어느 시간대가 좋으신가요?",
   "backend.clarification.room_number": "객실 번호가 어떻게 되시나요?",
-  "backend.preference.saved": "알겠습니다. 이번 세션에서 추천하거나 요청을 준비할 때 이 선호 사항을 반영할게요."
+  "backend.preference.saved": "알겠습니다. 이번 세션에서 추천하거나 요청을 준비할 때 이 선호 사항을 반영할게요.",
+  "backend.service.ready": "요청을 준비할 정보가 충분합니다. 확인하기 전에 내용을 검토해 주세요.",
+  "backend.service.need_slots": "이 요청을 계속 준비하려면 다음 정보가 더 필요합니다: {names}. 아직 요청은 전송되지 않았습니다."
 }

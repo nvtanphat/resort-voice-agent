@@ -113,28 +113,3 @@ def semantic_validate(payload: dict[str, Any]) -> None:
                 raise ValueError(f"Preference {name} references unknown service slot")
         if spec["type"] == "integer" and spec["minimum"] > spec["maximum"]:
             raise ValueError(f"Invalid integer preference bounds for {name}")
-        recognition = spec.get("recognition", {})
-        if spec["type"] == "enum":
-            if set(recognition) - {"enum_terms"}:
-                raise ValueError(f"Invalid enum preference recognition for {name}")
-            enum_terms = recognition.get("enum_terms", {})
-            if set(enum_terms) - set(spec["values"]):
-                raise ValueError(f"Preference recognition references unknown enum value for {name}")
-            for value, terms in enum_terms.items():
-                validate_language_keys(terms, language_set, label=f"preferences.{name}.{value}")
-        else:
-            if set(recognition) - {"integer_patterns", "default_value_patterns"}:
-                raise ValueError(f"Invalid integer preference recognition for {name}")
-            for language, patterns in recognition.get("integer_patterns", {}).items():
-                if language not in language_set:
-                    raise ValueError(f"Preference {name} recognition uses unsupported language")
-                for pattern in patterns:
-                    compile_regex(pattern, label=f"preferences.{name}.integer_patterns.{language}")
-            for default in recognition.get("default_value_patterns", []):
-                value = default["value"]
-                if not spec["minimum"] <= value <= spec["maximum"]:
-                    raise ValueError(f"Preference {name} default recognition value is out of bounds")
-                validate_language_keys(default["patterns"], language_set, label=f"preferences.{name}.default_value_patterns")
-                for language, patterns in default["patterns"].items():
-                    for pattern in patterns:
-                        compile_regex(pattern, label=f"preferences.{name}.default_value_patterns.{language}")

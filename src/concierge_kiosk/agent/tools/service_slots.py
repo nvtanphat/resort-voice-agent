@@ -16,7 +16,8 @@ import re
 from typing import Mapping
 
 from concierge_kiosk.agent.understanding.intent import normalize_intent_text
-from concierge_kiosk.agent.understanding.domain_nlu import CLARIFICATION_TEXT as _CLARIFICATION_TEXT, NUMBER_WORDS as _NUMBER_WORDS, PARTY_SIZE_FULL_PATTERNS as _PARTY_SIZE_FULL_PATTERNS, PARTY_SIZE_PATTERNS as _PARTY_SIZE_PATTERNS, QUANTITY_NOUNS as _QUANTITY_NOUNS, ROOM_PATTERNS as _ROOM_PATTERNS, READY_TEXT as _READY_TEXT, SLOT_LABELS as _SLOT_LABELS
+from concierge_kiosk.i18n import text as i18n_text
+from concierge_kiosk.agent.understanding.domain_nlu import NUMBER_WORDS as _NUMBER_WORDS, PARTY_SIZE_FULL_PATTERNS as _PARTY_SIZE_FULL_PATTERNS, PARTY_SIZE_PATTERNS as _PARTY_SIZE_PATTERNS, QUANTITY_NOUNS as _QUANTITY_NOUNS, ROOM_PATTERNS as _ROOM_PATTERNS, SLOT_LABELS as _SLOT_LABELS
 from concierge_kiosk.agent.tools.numerals import normalize_number_words, preferred_time
 from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVICE_SLOTS, accepted_slots,
                                                      required_slots, service_definition)
@@ -142,10 +143,10 @@ def assess_service(query: str, language: str, kind: str, *, mode: str,
 def clarification_text(language: str, missing: tuple[str, ...]) -> str:
     labels = _SLOT_LABELS[language]
     names = ', '.join(labels[name] for name in missing)
-    return _CLARIFICATION_TEXT[language].format(names=names)
+    return i18n_text('service.need_slots', language, names=names)
 
 
 def ready_text(language: str) -> str:
-    return _READY_TEXT[language]
+    return i18n_text('service.ready', language)
 
 

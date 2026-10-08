@@ -59,13 +59,11 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
         if spec["type"] == "enum":
             preference_fields[name] = PreferenceField(
                 kind="enum", values=tuple(spec["values"]),
-                applies_to_slot=spec.get("applies_to_slot"),
-                recognition=spec.get("recognition", {}))
+                applies_to_slot=spec.get("applies_to_slot"))
         else:
             preference_fields[name] = PreferenceField(
                 kind="integer", minimum=spec["minimum"], maximum=spec["maximum"],
-                applies_to_slot=spec.get("applies_to_slot"),
-                recognition=spec.get("recognition", {}))
+                applies_to_slot=spec.get("applies_to_slot"))
 
     return DomainProfile(
         schema_version=payload["schema_version"],

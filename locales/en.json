@@ -202,5 +202,7 @@
   "backend.clarification.meal_preference": "What kind of meal would you prefer?",
   "backend.clarification.time_window": "What time window works best for you?",
   "backend.clarification.room_number": "What is your room number?",
-  "backend.preference.saved": "Noted. I will keep this preference for this session when suggesting options or preparing requests."
+  "backend.preference.saved": "Noted. I will keep this preference for this session when suggesting options or preparing requests.",
+  "backend.service.ready": "I have enough information to prepare this request. Please review it before confirming.",
+  "backend.service.need_slots": "I can continue this request, but I still need: {names}. Nothing has been submitted yet."
 }
