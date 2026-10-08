@@ -57,7 +57,9 @@ def _violations() -> dict[tuple[str, int], set[str]]:
                     for item in node.elts
                     if isinstance(item, ast.Constant) and isinstance(item.value, str)
                 }
-                if SUPPORTED_LANGUAGE_CODES.issubset(values):
+                # Any literal group of two or more language codes is a language
+                # policy decision that belongs in config, not only the full set.
+                if len(SUPPORTED_LANGUAGE_CODES & values) >= 2:
                     kinds.add("hard-coded language set")
             if kinds:
                 violations.setdefault((relative_path, node.lineno), set()).update(kinds)
