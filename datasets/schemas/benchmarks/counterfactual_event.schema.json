@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Counterfactual simulation event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "regime",
+    "service_code",
+    "language",
+    "approval",
+    "occupancy_pct",
+    "arrival_at",
+    "manual",
+    "agent",
+    "truth_status"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "regime": {
+      "type": "string"
+    },
+    "service_code": {
+      "enum": [
+        "amenity_delivery",
+        "housekeeping",
+        "maintenance",
+        "human_assistance",
+        "spa_reservation",
+        "dining_reservation",
+        "food_order",
+        "tour_reservation",
+        "facility_request",
+        "dining_request",
+        "tour_request",
+        "transport_request",
+        "late_checkout"
+      ]
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "approval": {
+      "enum": [
+        "none",
+        "staff"
+      ]
+    },
+    "occupancy_pct": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "arrival_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "manual": {
+      "type": "object"
+    },
+    "agent": {
+      "type": "object"
+    },
+    "truth_status": {
+      "const": "synthetic_counterfactual_simulation"
+    }
+  }
+}

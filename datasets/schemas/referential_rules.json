@@ -1,0 +1,98 @@
+{
+  "rules_version": 1,
+  "rules": [
+    {
+      "id": "fact_entity_fk",
+      "from": "knowledge/canonical/facts.jsonl:entity_id",
+      "to": "knowledge/canonical/entities.jsonl:entity_id"
+    },
+    {
+      "id": "service_entity_fk",
+      "from": "knowledge/canonical/service_catalog.json[*]:entity_id",
+      "to": "knowledge/canonical/entities.jsonl:entity_id"
+    },
+    {
+      "id": "service_department_fk",
+      "from": "knowledge/canonical/service_catalog.json[*]:department_id",
+      "to": "knowledge/canonical/departments.json[*]:department_id"
+    },
+    {
+      "id": "relation_source_union",
+      "from": "knowledge/canonical/entity_relations.jsonl:source_id",
+      "to_any": [
+        "knowledge/canonical/entities.jsonl:entity_id",
+        "knowledge/canonical/service_catalog.json[*]:service_id"
+      ]
+    },
+    {
+      "id": "pms_unit_fk",
+      "from": "synthetic/operations/pms/stays.jsonl:unit_ref",
+      "to": "synthetic/operations/rooms/inventory.jsonl:unit_ref"
+    },
+    {
+      "id": "history_unit_fk",
+      "from": "synthetic/operations/history/requests.jsonl:unit_ref",
+      "to": "synthetic/operations/rooms/inventory.jsonl:unit_ref"
+    },
+    {
+      "id": "history_service_policy_fk",
+      "from": "synthetic/operations/history/requests.jsonl:service_code",
+      "to": "synthetic/operations/policies/service_policies.json:services[*].service_code"
+    },
+    {
+      "id": "history_department_matches_policy",
+      "from": "synthetic/operations/history/requests.jsonl:(service_code,department_id)",
+      "to": "synthetic/operations/policies/service_policies.json:services[*].(service_code,department_id)"
+    },
+    {
+      "id": "grounded_fact_fk",
+      "from": "evaluation/retrieval/grounded.jsonl:expected_fact_id",
+      "to": "knowledge/canonical/facts.jsonl:canonical_fact_id"
+    },
+    {
+      "id": "grounded_acceptable_fact_ids_fk",
+      "constraint": "all fact(acceptable_fact_ids) resolve to knowledge/canonical/facts.jsonl:canonical_fact_id when acceptable_fact_ids is present"
+    },
+    {
+      "id": "grounded_entity_fk",
+      "from": "evaluation/retrieval/grounded.jsonl:expected_entity_id",
+      "to": "knowledge/canonical/entities.jsonl:entity_id"
+    },
+    {
+      "id": "grounded_fact_entity_consistency",
+      "constraint": "fact(expected_fact_id).entity_id == expected_entity_id"
+    },
+    {
+      "id": "compositional_fact_entity_consistency",
+      "constraint": "all fact(expected_fact_ids).entity_id == expected_entity_id"
+    },
+    {
+      "id": "service_action_catalog_fk",
+      "from": "evaluation/end_to_end/service_actions.jsonl:expected_service_id",
+      "to": "knowledge/canonical/service_catalog.json[*].service_id"
+    },
+    {
+      "id": "holdout_catalog_fk",
+      "from": "evaluation/holdout/service_workflow.jsonl:expected_service_id",
+      "to": "knowledge/canonical/service_catalog.json[*].service_id"
+    },
+    {
+      "id": "simulation_event_stay_fk",
+      "from": "evaluation/end_to_end/simulation/hospitality_events.jsonl:stay_id",
+      "to": "evaluation/end_to_end/simulation/stay_episodes.jsonl:stay_id"
+    },
+    {
+      "id": "simulation_event_unit_fk",
+      "from": "evaluation/end_to_end/simulation/hospitality_events.jsonl:unit_id",
+      "to": "synthetic/operations/rooms/inventory.jsonl:unit_ref"
+    },
+    {
+      "id": "simulation_event_policy_mapping",
+      "constraint": "knowledge_only => department_id null; otherwise department_id == service_policy[service_code].department_id"
+    }
+  ],
+  "freshness_rules": {
+    "freshness_fact_fk": "knowledge/canonical/freshness.jsonl.canonical_fact_id must resolve to knowledge/canonical/facts.jsonl.canonical_fact_id",
+    "one_freshness_row_per_fact": true
+  }
+}

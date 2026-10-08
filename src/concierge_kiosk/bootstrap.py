@@ -52,7 +52,8 @@ def prepare_runtime(settings: Settings | None, embedder, reranker):
         except (OSError, ValueError, RuntimeError) as exc:
             raise RuntimeError('Configured final Piper voices failed synthesis readiness') from exc
         try:
-            embedder = LocalEmbedder(cfg.embedding_model_path, cfg.embedding_manifest_path)
+            embedder = LocalEmbedder(cfg.embedding_model_path, cfg.embedding_manifest_path,
+                                     num_gpu=cfg.slm_num_gpu)
             reranker = LocalReranker(cfg.rerank_model_path, cfg.rerank_manifest_path)
         except (ImportError, OSError, ValueError, RuntimeError) as exc:
             raise RuntimeError('Local embedding/reranking models cannot be loaded') from exc
@@ -84,7 +85,8 @@ def prepare_runtime(settings: Settings | None, embedder, reranker):
                           room_validator=room_validator, cfg=cfg)
     # Models are optional; a model loading failure must not silently claim hybrid retrieval.
     if embedder is None and cfg.embedding_model_path:
-        embedder = LocalEmbedder(cfg.embedding_model_path, cfg.embedding_manifest_path)
+        embedder = LocalEmbedder(cfg.embedding_model_path, cfg.embedding_manifest_path,
+                                 num_gpu=cfg.slm_num_gpu)
     if reranker is None and cfg.rerank_model_path:
         reranker = LocalReranker(cfg.rerank_model_path, cfg.rerank_manifest_path)
 

@@ -42,6 +42,9 @@ class AgentToolRequest:
     task_context: dict | None = None
     # Bounded session preferences are explicit guest choices, not model inferences.
     session_preferences: dict[str, str | int] | None = None
+    # Server-validated command semantics for an existing request. Natural
+    # language detection remains only a fail-closed compatibility fallback.
+    change_action: str | None = None
     verification: dict[str, str] | None = None
     voice_input: bool = False
 

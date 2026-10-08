@@ -110,4 +110,5 @@ def test_command_start_goal_builds_candidate_without_service_route_projection():
 
     assert state.route_hint == 'knowledge'
     assert [item.service_code for item in state.service_candidates] == ['amenity_delivery']
+    assert state.service_candidates[0].existing_slots['quantity'] == 2
     assert state.goal_contract.requirements[0].outcome == 'service:amenity_delivery'

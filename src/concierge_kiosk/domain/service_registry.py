@@ -31,6 +31,8 @@ class ServiceDefinition:
     default_for_kind: bool = False
     escalate_without_evidence: bool = False
     availability_source: Mapping[str, str] | None = None
+    venue_slot: Mapping[str, str] | None = None
+    description: str = ''
 
     @property
     def risk_tier(self) -> int:
@@ -100,6 +102,9 @@ class ServiceRegistry:
                 availability_source=(MappingProxyType(dict(item.availability_source))
                                      if item.availability_source is not None else None),
                 escalate_without_evidence=item.escalate_without_evidence,
+                venue_slot=(MappingProxyType(dict(item.venue_slot))
+                            if item.venue_slot is not None else None),
+                description=item.description,
             )
             for item in profile.services
         }, profile.request_kind_routes)
@@ -138,6 +143,17 @@ VERIFICATION_KINDS = frozenset(
 )
 PUBLIC_CATALOG_KINDS = dict(_DOMAIN.public_catalog_kinds)
 SERVICE_SLOTS = _DOMAIN.service_slots
+# Public structured request fields are declared once here.  The Pydantic
+# contract mirrors these names for OpenAPI, while workflow validation and
+# continuation logic consume this registry-owned set instead of copying a
+# second list in each layer.
+SERVICE_PAYLOAD_SLOTS = frozenset({
+    'room_number', 'quantity', 'preferred_time', 'party_size',
+    'restaurant_name', 'note', 'price_acknowledged',
+})
+SERVICE_PAYLOAD_TEXT_SLOTS = ('room_number', 'preferred_time', 'restaurant_name', 'note')
+SLOT_REPLY_SLOTS = ('quantity', 'preferred_time', 'party_size')
+VOICE_NUMERIC_SLOTS = frozenset({'room_number', 'quantity'})
 DOMAIN_PROFILE_ID = _DOMAIN.profile_id
 DOMAIN_PROFILE_SHA256 = _DOMAIN.sha256
 
@@ -220,6 +236,8 @@ __all__ = [
     'DOMAIN_PROFILE_ID', 'DOMAIN_PROFILE_SHA256', 'LANGUAGES', 'PUBLIC_CATALOG_KINDS',
     'REQUEST_KINDS', 'SERVICE_DEFINITIONS', 'SERVICE_REGISTRY',
     'SERVICE_SLOTS', 'SERVICE_TOOLS', 'ServiceDefinition', 'ServiceRegistry', 'VERIFICATION_KINDS',
+    'SERVICE_PAYLOAD_SLOTS', 'SERVICE_PAYLOAD_TEXT_SLOTS', 'SLOT_REPLY_SLOTS',
+    'VOICE_NUMERIC_SLOTS',
     'accepted_slots', 'autonomous_required_slots', 'default_service_for', 'request_kind_for',
     'route_branch_for_request_kind',
     'required_slots', 'service_confirmation_boundary',

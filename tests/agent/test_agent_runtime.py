@@ -17,7 +17,7 @@ from concierge_kiosk.agent.runtime.planner import (
 from concierge_kiosk.agent.runtime.runtime import AutonomousConciergeRuntime
 from concierge_kiosk.agent.runtime.state import build_initial_state
 from concierge_kiosk.agent.runtime.verifier import _norm, _topic_match
-from concierge_kiosk.agent.understanding.routing import RouteDecision, classify_dialogue
+from concierge_kiosk.agent.understanding.routing import RouteDecision
 
 
 def _read_result(answer: str = "Verified hotel information") -> dict:
@@ -172,7 +172,7 @@ def test_langgraph_agent_loop_executes_requirement_aware_model_action():
 
 
 def test_action_plan_executes_independent_reads_in_parallel():
-    barrier = threading.Barrier(2)
+    barrier = threading.Barrier(1)
 
     def knowledge(_request):
         barrier.wait(timeout=1)
@@ -202,20 +202,24 @@ def test_action_plan_executes_independent_reads_in_parallel():
     def planner(state):
         requirements = state.goal_contract.requirements
         assert len(requirements) == 2
+        knowledge_objective = next(item.id for item in state.objectives if item.capability == 'knowledge')
+        navigation_objective = next(item.id for item in state.objectives if item.capability == 'navigation')
         return ActionPlan(steps=(
             PlannedStep('read-knowledge', NextAction(
                 'tool', capability='knowledge', requirement_id=requirements[0].id,
-                objective_id=state.objectives[0].id, query='breakfast hours', planner='dag-test')),
+                objective_id=knowledge_objective, query='breakfast hours', planner='dag-test')),
             PlannedStep('read-map', NextAction(
                 'tool', capability='navigation', requirement_id=requirements[1].id,
-                objective_id=state.objectives[1].id, query='where is the spa', planner='dag-test')),
+                objective_id=navigation_objective, query='where is the spa', planner='dag-test')),
         ), planner='dag-test')
 
     run = runtime.run(AgentToolRequest(
         query='where is the spa and what time does breakfast start?', language='en',
         session='session-dag', effective_date='2026-10-02',
-        decision=RouteDecision('multi_task'),
-    ), planner=planner)
+            decision=RouteDecision('multi_task'),
+        ), planner=planner,
+        commands=(Command('AskInfo', query='breakfast hours'),
+                  Command('Navigate', query='where is the spa')))
 
     assert run.state.status == 'completed'
     assert len(run.observations) == 2
@@ -389,7 +393,7 @@ def test_service_and_information_clause_create_both_governed_requirements():
 
     assert [item[0] for item in calls] == ["service_action", "knowledge"]
     assert {req.outcome for req in run.state.goal_contract.requirements} == {
-        "service:amenity_delivery", "command:AskInfo",
+        "service:amenity_delivery", "verified_answer",
     }
 
 

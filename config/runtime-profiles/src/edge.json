@@ -3,7 +3,8 @@
   "models": {
     "slm": {
       "primary_model": "qwen2.5:1.5b",
-      "fallback_model": ""
+      "fallback_model": "",
+      "num_gpu": 0
     },
     "embedding": {
       "candidates": [

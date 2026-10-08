@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical entity relation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_id",
+    "relation_type",
+    "target_id",
+    "source_type",
+    "evidence"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "relation_type": {
+      "enum": [
+        "has_capacity_limit",
+        "located_in_zone",
+        "has_floor_area",
+        "has_opening_hours",
+        "managed_by_department",
+        "associated_entity",
+        "offers_menu_price"
+      ]
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "source_type": {
+      "const": "factual"
+    },
+    "evidence": {
+      "type": "string",
+      "minLength": 1
+    },
+    "value": {
+      "type": [
+        "string",
+        "number",
+        "integer",
+        "object",
+        "array"
+      ]
+    },
+    "context": {
+      "type": "string"
+    },
+    "unit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

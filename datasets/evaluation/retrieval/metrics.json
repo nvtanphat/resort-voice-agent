@@ -1,0 +1,31 @@
+{
+  "primary_suites": {
+    "entity_heldout": "evaluation/retrieval/grounded.jsonl",
+    "fact_heldout": "evaluation/retrieval/grounded_fact_holdout.jsonl",
+    "compositional": "evaluation/retrieval/compositional.jsonl"
+  },
+  "diagnostic_suites": {
+    "seen_fact": "evaluation/retrieval/grounded_seen.jsonl"
+  },
+  "reporting": {
+    "retrieval_metrics": [
+      "Recall@1",
+      "Recall@3",
+      "Recall@5",
+      "MRR"
+    ],
+    "answer_metrics": [
+      "exact_or_normalized_match",
+      "grounded_answer_accuracy"
+    ],
+    "macro_dimensions": [
+      "fact_type",
+      "entity_type",
+      "entity_domain",
+      "language"
+    ],
+    "do_not_use_seen_fact_as_primary_score": true,
+    "compositional_language_diversity_check": true
+  },
+  "notes": "Primary score must macro-average across fact/entity categories so high-volume capacity facts do not dominate. Vietnamese compositional queries use varied surface forms and should be audited separately from structural coverage."
+}

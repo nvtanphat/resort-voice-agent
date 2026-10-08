@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "service_date_model": "daily_prototype_timetable",
+  "currency": "VND",
+  "routes": [
+    {
+      "route_id": "SYN-SHUTTLE-HOI-AN",
+      "name": "Furama Resort ↔ Hoi An Ancient Town",
+      "days": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+      ],
+      "vehicle": "14-seat shuttle",
+      "seat_capacity": 14,
+      "departures": [
+        {
+          "direction": "FURAMA_TO_HOI_AN",
+          "depart": "09:30",
+          "arrive_est": "10:15"
+        },
+        {
+          "direction": "FURAMA_TO_HOI_AN",
+          "depart": "15:00",
+          "arrive_est": "15:45"
+        },
+        {
+          "direction": "HOI_AN_TO_FURAMA",
+          "depart": "13:30",
+          "arrive_est": "14:15"
+        },
+        {
+          "direction": "HOI_AN_TO_FURAMA",
+          "depart": "20:30",
+          "arrive_est": "21:15"
+        }
+      ],
+      "pickup_furama": "main lobby / porte-cochere",
+      "pickup_hoi_an": "central Hoi An meeting point assigned on booking",
+      "synthetic_fare_one_way_vnd": 180000,
+      "synthetic_fare_round_trip_vnd": 320000,
+      "booking_cutoff_min": 60,
+      "minimum_departure_load": 2,
+      "luggage": "1 cabin-size bag per guest; larger luggage by confirmation",
+      "cancellation_demo": {
+        "more_than_4h": "no_charge",
+        "1_to_4h": "50_percent",
+        "under_1h_or_no_show": "100_percent"
+      },
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_fixed_shuttle_demo"
+      ]
+    }
+  ],
+  "demo_booking_mode": "auto_confirm_when_seat_inventory_available",
+  "truth_note": "Product-authored deterministic timetable for prototype workflow testing; not a current official Furama timetable."
+}

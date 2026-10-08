@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "End-to-end benchmark record",
+  "oneOf": [
+    {
+      "$ref": "benchmarks/scenario_hospitality.schema.json"
+    },
+    {
+      "$ref": "benchmarks/scenario_production.schema.json"
+    },
+    {
+      "$ref": "benchmarks/edge_case.schema.json"
+    },
+    {
+      "$ref": "benchmarks/service_action.schema.json"
+    },
+    {
+      "$ref": "benchmarks/journey.schema.json"
+    }
+  ]
+}

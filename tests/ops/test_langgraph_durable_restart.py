@@ -111,3 +111,45 @@ def test_durable_graph_recovers_commit_before_checkpoint_resume(tmp_path: Path):
             (proposal["id"], PROPERTY),
         ).fetchone()[0] == 1
     restarted.close()
+
+
+def test_deduplicated_proposal_confirmation_replay_is_idempotent(tmp_path: Path):
+    store = Store(tmp_path / "business.sqlite3")
+    workflows = Workflows(store, PROPERTY)
+    session_id, _token, _csrf = workflows.new_session()
+    first_proposal = workflows.prepare(
+        session_id,
+        "facilities",
+        "en",
+        "Fresh bath towels for room 1203.",
+        "towels-request-001",
+        {"room_number": "1203", "quantity": 2},
+        service_code="amenity_delivery",
+    )
+    checkpoint = tmp_path / "workflow-deduplicated-replay.sqlite3"
+    graph = ConciergeGraph(workflows, checkpoint)
+    graph.begin(session_id, first_proposal["id"])
+    first = graph.confirm(session_id, first_proposal["id"], True)
+
+    duplicate = workflows.prepare(
+        session_id,
+        "facilities",
+        "en",
+        "Fresh bath towels for room 1203.",
+        "towels-request-002",
+        {"room_number": "1203", "quantity": 2},
+        service_code="amenity_delivery",
+    )
+    graph.begin(session_id, duplicate["id"])
+    deduplicated = graph.confirm(session_id, duplicate["id"], True)
+    replay = graph.confirm(session_id, duplicate["id"], True)
+
+    assert deduplicated["id"] == first["id"]
+    assert replay["id"] == first["id"]
+    assert replay.get("idempotent_replay") is True
+    with store.connection() as con:
+        assert con.execute(
+            "SELECT COUNT(*) FROM service_requests WHERE property_id=?",
+            (PROPERTY,),
+        ).fetchone()[0] == 1
+    graph.close()

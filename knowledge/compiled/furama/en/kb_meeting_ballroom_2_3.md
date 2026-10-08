@@ -1,0 +1,41 @@
+---
+property_id: FURAMA_DANANG
+document_id: kb_meeting_ballroom_2_3
+entity_id: meeting.ballroom_2_3
+domain: meetings
+language: en
+title: Danang Ballroom 2&3
+classification: public
+effective_from: '2026-01-01'
+source_document_ids: []
+source_fact_ids:
+- cfact_7d27b4ef1c8d061d84852ae2
+- cfact_60591b768a2891b2d40e6ad3
+- cfact_266d1d334426099f3593fe77
+- cfact_387c97ead20be215a4f7d201
+- cfact_34056150b8ba43a9a1706773
+- cfact_88fa3ba4fd0386962d762a18
+- cfact_79569e09cade7c3a8eb6cb4b
+- cfact_0d8b7e19cdcda632b9e651c8
+- cfact_686a884e52d55977cb0dface
+- cfact_9a5c1a416bf55fdf8b37eb2e
+entity_type: meeting_room
+entity_type_label: meeting room
+entity_domain_label: meetings
+entity_card: false
+search_aliases:
+- danang ballroom 2&3
+---
+# Danang Ballroom 2&3 {#entity-title}
+
+## Verified facts {#verified-facts}
+<!-- fact_metadata: {"canonical_fact_id":"cfact_7d27b4ef1c8d061d84852ae2","entity_id":"meeting.ballroom_2_3","fact_type":"area_sqm","context":"floor_area","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Area: 516 m²","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Area**: 516 m²
+<!-- fact_metadata: {"canonical_fact_id":"cfact_60591b768a2891b2d40e6ad3","entity_id":"meeting.ballroom_2_3","fact_type":"capacity","context":"banquet","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Capacity: 350 guests (banquet)","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Capacity**: 350 guests (banquet)
+<!-- fact_metadata: {"canonical_fact_id":"cfact_266d1d334426099f3593fe77","entity_id":"meeting.ballroom_2_3","fact_type":"capacity","context":"classroom","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Capacity: 300 guests (classroom)","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Capacity**: 300 guests (classroom)
+<!-- fact_metadata: {"canonical_fact_id":"cfact_387c97ead20be215a4f7d201","entity_id":"meeting.ballroom_2_3","fact_type":"capacity","context":"cocktail","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Capacity: 700 guests (cocktail)","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Capacity**: 700 guests (cocktail)
+<!-- fact_metadata: {"canonical_fact_id":"cfact_34056150b8ba43a9a1706773","entity_id":"meeting.ballroom_2_3","fact_type":"capacity","context":"hollow_square_double_triple","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Capacity: 200 guests (Hollow Square Double Triple)","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Capacity**: 200 guests (Hollow Square Double Triple)
+<!-- fact_metadata: {"canonical_fact_id":"cfact_88fa3ba4fd0386962d762a18","entity_id":"meeting.ballroom_2_3","fact_type":"capacity","context":"hollow_square_single","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Capacity: 120 guests (Hollow Square Single)","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Capacity**: 120 guests (Hollow Square Single)
+<!-- fact_metadata: {"canonical_fact_id":"cfact_79569e09cade7c3a8eb6cb4b","entity_id":"meeting.ballroom_2_3","fact_type":"capacity","context":"theatre","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Capacity: 700 guests (theatre)","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Capacity**: 700 guests (theatre)
+<!-- fact_metadata: {"canonical_fact_id":"cfact_0d8b7e19cdcda632b9e651c8","entity_id":"meeting.ballroom_2_3","fact_type":"capacity","context":"u_shape_double_triple","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Capacity: 170 guests (U-shape double/triple)","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Capacity**: 170 guests (U-shape double/triple)
+<!-- fact_metadata: {"canonical_fact_id":"cfact_686a884e52d55977cb0dface","entity_id":"meeting.ballroom_2_3","fact_type":"capacity","context":"u_shape_single","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Capacity: 100 guests (U-shape single)","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Capacity**: 100 guests (U-shape single)
+<!-- fact_metadata: {"canonical_fact_id":"cfact_9a5c1a416bf55fdf8b37eb2e","entity_id":"meeting.ballroom_2_3","fact_type":"height_m","context":"ceiling_height","effective_from":"2026-01-01","effective_to":null,"context_text":"Danang Ballroom 2&3 · meetings · Ceiling height: 5.5 m","domain_review":{"required":false,"status":"not_required","required_role":null,"approved_by_role":null,"reviewed_at":null,"review_version":null,"runtime_gate":"none"}} --> - **Danang Ballroom 2&3 — Ceiling height**: 5.5 m

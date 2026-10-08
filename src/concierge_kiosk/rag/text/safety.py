@@ -3,15 +3,21 @@ from __future__ import annotations
 
 import re
 
+from concierge_kiosk.core.domain_profile import security_policy
 
-PROMPT_INJECTION_PATTERN = re.compile(
-    r"ignore\s+(?:all\s+|the\s+)?(?:previous|system|developer)\s+(?:instructions|prompts)|"
-    r"\b(?:system\s+prompt|developer\s+message|reveal\s+(?:your\s+)?(?:secret|password|api\s+key)|"
-    r"send\s+(?:the\s+)?(?:secret|password|api\s+key)\s+to|exfiltrat(?:e|ion))\b|"
-    r"bỏ qua\s+(?:mọi\s+|tất cả\s+)?(?:chỉ dẫn|hướng dẫn)\s+(?:trước|hệ thống)|"
-    r"忽略(?:之前|系统)指令|이전\s+(?:지시|명령)을\s+무시",
-    re.IGNORECASE,
-)
+
+def _prompt_injection_pattern() -> re.Pattern[str]:
+    configured = security_policy().prompt_injection_patterns
+    patterns = [pattern for values in configured.values() for pattern in values]
+    if not patterns:
+        # The signed profile validator requires at least one pattern. This
+        # fallback keeps import-time failure explicit if a legacy profile is
+        # loaded by an isolated caller.
+        raise RuntimeError('Prompt-injection patterns are not configured')
+    return re.compile('|'.join(f'(?:{pattern})' for pattern in patterns), re.IGNORECASE)
+
+
+PROMPT_INJECTION_PATTERN = _prompt_injection_pattern()
 
 
 def unsafe_knowledge_text(text: str) -> bool:

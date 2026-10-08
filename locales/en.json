@@ -3,6 +3,7 @@
   "backend.out_of_scope.reply": "That is outside my hotel concierge scope, but I can help with hotel information, directions, or guest services.",
   "backend.emergency.alert_queued": " A high-priority alert has been placed in the staff queue; this does not confirm that emergency responders were dispatched.",
   "backend.emergency.alert_unconfirmed": " The kiosk could not confirm an internal staff alert; contact staff or the emergency numbers above directly.",
+  "backend.emergency.confirm_question": "Are you in an emergency situation and need immediate assistance?",
   "backend.knowledge.revoked": "The previous topic no longer has verified information. Please rephrase or contact reception.",
   "backend.knowledge.abstain": "I could not find verified information for this question.",
   "backend.knowledge.staff_confirmation_required": "This fact is awaiting staff confirmation. Please ask hotel staff to confirm it before relying on it.",
@@ -191,14 +192,15 @@
   "backend.knowledge.fact.capacity": "{entity} capacity: {value}.",
   "backend.knowledge.fact.address": "{entity} address: {value}.",
   "backend.knowledge.fact.default": "{entity}: {value}.",
-  "backend.navigation.choose_destination": "I found several possible destinations: {options}. Please choose one."
-  ,"backend.clarification.preferred_time": "What time would you prefer?"
-  ,"backend.clarification.party_size": "How many guests should I plan for?"
-  ,"backend.clarification.preference": "What would you prefer?"
-  ,"backend.clarification.restaurant_style": "What kind of dining experience would you prefer?"
-  ,"backend.clarification.destination": "Which destination do you mean?"
-  ,"backend.clarification.activity_preference": "What kind of activity would you prefer?"
-  ,"backend.clarification.meal_preference": "What kind of meal would you prefer?"
-  ,"backend.clarification.time_window": "What time window works best for you?"
-  ,"backend.clarification.room_number": "What is your room number?"
+  "backend.navigation.choose_destination": "I found several possible destinations: {options}. Please choose one.",
+  "backend.clarification.preferred_time": "What time would you prefer?",
+  "backend.clarification.party_size": "How many guests should I plan for?",
+  "backend.clarification.preference": "What would you prefer?",
+  "backend.clarification.restaurant_style": "What kind of dining experience would you prefer?",
+  "backend.clarification.destination": "Which destination do you mean?",
+  "backend.clarification.activity_preference": "What kind of activity would you prefer?",
+  "backend.clarification.meal_preference": "What kind of meal would you prefer?",
+  "backend.clarification.time_window": "What time window works best for you?",
+  "backend.clarification.room_number": "What is your room number?",
+  "backend.preference.saved": "Noted. I will keep this preference for this session when suggesting options or preparing requests."
 }

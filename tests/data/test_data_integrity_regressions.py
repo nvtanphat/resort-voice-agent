@@ -13,7 +13,6 @@ from concierge_kiosk.core.dataset_layout import (
     KNOWLEDGE_MANIFEST,
     PROPERTY,
     RELATIONS,
-    QUARANTINE_FACTS,
     dataset_path,
 )
 

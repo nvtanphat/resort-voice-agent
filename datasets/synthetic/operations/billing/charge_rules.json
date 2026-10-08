@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "currency": "VND",
+  "demo_pricing_model": {
+    "service_charge_percent": 5.0,
+    "vat_percent": 8.0,
+    "rounding_vnd": 1000,
+    "prices_in_catalog": "before_demo_service_charge_and_vat"
+  },
+  "charge_codes": [
+    {
+      "code": "IRD",
+      "name": "In-Room Dining",
+      "post_to_room": true
+    },
+    {
+      "code": "MINIBAR",
+      "name": "Minibar",
+      "post_to_room": true
+    },
+    {
+      "code": "SPA",
+      "name": "Spa",
+      "post_to_room": true
+    },
+    {
+      "code": "TOUR",
+      "name": "Tour Desk",
+      "post_to_room": true
+    },
+    {
+      "code": "TRANS",
+      "name": "Transport",
+      "post_to_room": true
+    },
+    {
+      "code": "LATECO",
+      "name": "Late Checkout",
+      "post_to_room": true
+    },
+    {
+      "code": "RECOVERY",
+      "name": "Service Recovery Credit",
+      "post_to_room": true,
+      "negative_charge": true
+    }
+  ],
+  "payment_methods_demo": [
+    "room_charge",
+    "cash_vnd",
+    "visa",
+    "mastercard",
+    "amex"
+  ],
+  "posting_rules": {
+    "room_charge_requires_in_house_stay": true,
+    "non_room_guest_requires_direct_payment": true,
+    "void_window_min": 15,
+    "supervisor_review_over_vnd": 5000000
+  },
+  "truth_status": "synthetic_property_assumption",
+  "assumption_refs": [
+    "asm_demo_billing_rules"
+  ]
+}

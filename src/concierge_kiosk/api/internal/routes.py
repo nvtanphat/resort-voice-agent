@@ -24,7 +24,10 @@ def register_internal_agent_routes(app: FastAPI, *, cfg, workflows, require_agen
     @app.post("/internal/agent/prepare", dependencies=[Depends(require_agent)])
     def agent_prepare(body: AgentPrepare):
         session = workflows.session_for(body.token, body.csrf)
-        row, orchestration_sync = prepare_authorized_proposal(session, body)
+        try:
+            row, orchestration_sync = prepare_authorized_proposal(session, body)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         # Internal and guest channels share the same non-authoritative memory
         # projection. Business state remains authoritative in Workflows/DB.
         with conversations.serialize(session):

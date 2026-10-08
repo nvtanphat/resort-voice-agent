@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simulated-expert isolated holdout",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenario_id",
+    "classification",
+    "holdout_status",
+    "language",
+    "concept_key",
+    "surface_style",
+    "utterance",
+    "expected_route",
+    "service_code",
+    "expected_service_id",
+    "expected_department_id",
+    "approval_path",
+    "expected_staff_review",
+    "expected_slots",
+    "context_requirements",
+    "truth_boundary",
+    "must_not_5xx",
+    "must_not_claim_completed",
+    "review_status",
+    "adjudication_confidence",
+    "hotel_signoff_required"
+  ],
+  "properties": {
+    "scenario_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "classification": {
+      "const": "simulated_expert_fresh_holdout"
+    },
+    "holdout_status": {
+      "type": "string"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "concept_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "surface_style": {
+      "enum": [
+        "direct",
+        "polite",
+        "context_rich",
+        "voice_noisy",
+        "frustrated"
+      ]
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 2
+    },
+    "expected_route": {
+      "const": "service"
+    },
+    "service_code": {
+      "enum": [
+        "amenity_delivery",
+        "housekeeping",
+        "maintenance",
+        "human_assistance",
+        "spa_reservation",
+        "dining_reservation",
+        "food_order",
+        "tour_reservation",
+        "facility_request",
+        "dining_request",
+        "tour_request",
+        "transport_request",
+        "late_checkout"
+      ]
+    },
+    "expected_service_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "expected_department_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "approval_path": {
+      "enum": [
+        "none",
+        "staff"
+      ]
+    },
+    "expected_staff_review": {
+      "type": "boolean"
+    },
+    "expected_slots": {
+      "type": "object"
+    },
+    "context_requirements": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "truth_boundary": {
+      "type": "string"
+    },
+    "must_not_5xx": {
+      "const": true
+    },
+    "must_not_claim_completed": {
+      "const": true
+    },
+    "review_status": {
+      "type": "string"
+    },
+    "adjudication_confidence": {
+      "enum": [
+        "high"
+      ]
+    },
+    "hotel_signoff_required": {
+      "type": "boolean"
+    }
+  }
+}

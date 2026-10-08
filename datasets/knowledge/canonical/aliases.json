@@ -1,0 +1,2701 @@
+{
+  "property_id": "FURAMA_DANANG",
+  "aliases_by_entity": {
+    "property.furama_resort_danang": {
+      "en": [
+        "furama resort danang",
+        "wifi",
+        "wi-fi",
+        "minibar",
+        "late checkout",
+        "check out late",
+        "checkout time",
+        "room amenities",
+        "laundry service",
+        "dry cleaning",
+        "laundry",
+        "hotel laundry"
+      ],
+      "vi": [
+        "khu nghỉ dưỡng furama đà nẵng",
+        "wifi",
+        "wi-fi",
+        "minibar",
+        "trả phòng muộn",
+        "giờ trả phòng",
+        "tiện nghi phòng",
+        "giặt đồ",
+        "giặt ủi",
+        "dịch vụ giặt ủi",
+        "giặt khô",
+        "giặt quần áo"
+      ],
+      "ko": [
+        "푸라마 리조트 다낭",
+        "와이파이",
+        "미니바",
+        "레이트 체크아웃",
+        "체크아웃 시간",
+        "객실 편의시설",
+        "세탁",
+        "세탁 서비스",
+        "드라이클리닝"
+      ],
+      "zh": [
+        "岘港富丽华度假村",
+        "无线网络",
+        "迷你吧",
+        "延迟退房",
+        "退房时间",
+        "客房设施",
+        "洗衣",
+        "洗衣服务",
+        "干洗"
+      ]
+    },
+    "room.garden_superior": {
+      "en": [
+        "garden superior"
+      ],
+      "vi": [
+        "phòng garden superior"
+      ],
+      "ko": [
+        "가든 수페리어"
+      ],
+      "zh": [
+        "花园高级房"
+      ]
+    },
+    "room.garden_deluxe": {
+      "en": [
+        "garden deluxe"
+      ],
+      "vi": [
+        "phòng garden deluxe"
+      ],
+      "ko": [
+        "가든 디럭스"
+      ],
+      "zh": [
+        "花园豪华房"
+      ]
+    },
+    "room.lagoon_superior": {
+      "en": [
+        "lagoon superior"
+      ],
+      "vi": [
+        "phòng lagoon superior"
+      ],
+      "ko": [
+        "라군 수페리어"
+      ],
+      "zh": [
+        "环礁湖高级房"
+      ]
+    },
+    "room.ocean_deluxe": {
+      "en": [
+        "ocean deluxe"
+      ],
+      "vi": [
+        "phòng ocean deluxe"
+      ],
+      "ko": [
+        "오션 디럭스"
+      ],
+      "zh": [
+        "海景豪华房"
+      ]
+    },
+    "room.ocean_studio_suite": {
+      "en": [
+        "ocean studio suite"
+      ],
+      "vi": [
+        "phòng ocean studio suite"
+      ],
+      "ko": [
+        "오션 스튜디오 스위트"
+      ],
+      "zh": [
+        "海景单间套房"
+      ]
+    },
+    "room.ocean_suite": {
+      "en": [
+        "ocean suite"
+      ],
+      "vi": [
+        "phòng ocean suite"
+      ],
+      "ko": [
+        "오션 스위트"
+      ],
+      "zh": [
+        "海景套房"
+      ]
+    },
+    "room.presidential_suite": {
+      "en": [
+        "presidential suite"
+      ],
+      "vi": [
+        "phòng tổng thống"
+      ],
+      "ko": [
+        "프레지덴셜 스위트"
+      ],
+      "zh": [
+        "总统套房"
+      ]
+    },
+    "room.beach_front_villas": {
+      "en": [
+        "beachfront villas"
+      ],
+      "vi": [
+        "biệt thự trước biển"
+      ],
+      "ko": [
+        "비치프론트 빌라"
+      ],
+      "zh": [
+        "海滨别墅"
+      ]
+    },
+    "room.pool_villas": {
+      "en": [
+        "pool villas"
+      ],
+      "vi": [
+        "biệt thự có hồ bơi"
+      ],
+      "ko": [
+        "풀 빌라"
+      ],
+      "zh": [
+        "泳池别墅"
+      ]
+    },
+    "restaurant.cafe_indochine": {
+      "en": [
+        "café indochine",
+        "cafe indochine",
+        "indochine restaurant",
+        "breakfast restaurant",
+        "buffet restaurant"
+      ],
+      "vi": [
+        "nhà hàng café indochine",
+        "café indochine",
+        "nhà hàng cafe indochine",
+        "nhà hàng buffet sáng",
+        "buffet sáng",
+        "ăn sáng buffet",
+        "buffet hải sản"
+      ],
+      "ko": [
+        "카페 인도차이나",
+        "인도차이나 레스토랑",
+        "조식 뷔페"
+      ],
+      "zh": [
+        "印度支那咖啡厅",
+        "印度支那餐厅",
+        "早餐餐厅",
+        "海鲜自助餐"
+      ]
+    },
+    "restaurant.don_cipriani": {
+      "en": [
+        "don cipriani's",
+        "don cipriani",
+        "italian restaurant",
+        "pizza",
+        "pasta",
+        "italian cuisine",
+        "italian food"
+      ],
+      "vi": [
+        "nhà hàng ý don cipriani",
+        "don cipriani",
+        "nhà hàng ý",
+        "nhà hàng don cipriani",
+        "bánh pizza",
+        "ẩm thực ý",
+        "món ý",
+        "pasta",
+        "pizza"
+      ],
+      "ko": [
+        "돈 치프리아니",
+        "이탈리안 레스토랑",
+        "피자",
+        "파스타",
+        "이탈리아 요리"
+      ],
+      "zh": [
+        "唐·奇普里亚尼意大利餐厅",
+        "唐奇普里亚尼",
+        "意大利餐厅",
+        "披萨",
+        "意面",
+        "意大利菜"
+      ]
+    },
+    "restaurant.danaksara": {
+      "en": [
+        "danaksara"
+      ],
+      "vi": [
+        "nhà hàng danaksara"
+      ],
+      "ko": [
+        "다낙사라"
+      ],
+      "zh": [
+        "达纳克萨拉餐厅"
+      ]
+    },
+    "restaurant.the_fan_steakhouse": {
+      "en": [
+        "the fan steakhouse"
+      ],
+      "vi": [
+        "nhà hàng the fan"
+      ],
+      "ko": [
+        "더 팬 스테이크하우스"
+      ],
+      "zh": [
+        "the fan牛排餐厅"
+      ]
+    },
+    "restaurant.taya_house": {
+      "en": [
+        "tàya house"
+      ],
+      "vi": [
+        "nhà hàng tàya house"
+      ],
+      "ko": [
+        "타야 하우스"
+      ],
+      "zh": [
+        "塔亚之家"
+      ]
+    },
+    "bar.hai_van_lounge": {
+      "en": [
+        "hải vân lounge"
+      ],
+      "vi": [
+        "hải vân lounge"
+      ],
+      "ko": [
+        "하이반 라운지"
+      ],
+      "zh": [
+        "海云酒廊"
+      ]
+    },
+    "bar.lagoon_bar": {
+      "en": [
+        "lagoon bar"
+      ],
+      "vi": [
+        "quầy bar lagoon"
+      ],
+      "ko": [
+        "라군 바"
+      ],
+      "zh": [
+        "环礁湖酒吧"
+      ]
+    },
+    "meeting.international_convention_palace": {
+      "en": [
+        "international convention palace (icp)"
+      ],
+      "vi": [
+        "cung hội nghị quốc tế furama (icp)"
+      ],
+      "ko": [
+        "국제 컨벤션 팰리스 (icp)"
+      ],
+      "zh": [
+        "国际会议宫 (icp)"
+      ]
+    },
+    "meeting.danang_grand_ballroom": {
+      "en": [
+        "danang grand ballroom",
+        "grand ballroom",
+        "danang ballroom",
+        "conference hall",
+        "meeting hall",
+        "icp ballroom"
+      ],
+      "vi": [
+        "đà nẵng grand ballroom",
+        "hội trường grand ballroom",
+        "sảnh tiệc",
+        "phòng hội nghị lớn"
+      ],
+      "ko": [
+        "다낭 그랜드 볼룸",
+        "그랜드 볼룸",
+        "대연회장",
+        "컨벤션 홀"
+      ],
+      "zh": [
+        "岘港大宴会厅",
+        "大宴会厅",
+        "会议大厅"
+      ]
+    },
+    "meeting.ballroom_1": {
+      "en": [
+        "danang ballroom 1"
+      ],
+      "vi": [
+        "đà nẵng ballroom 1"
+      ],
+      "ko": [
+        "다낭 볼룸 1"
+      ],
+      "zh": [
+        "岘港宴会厅 1"
+      ]
+    },
+    "meeting.ballroom_2": {
+      "en": [
+        "danang ballroom 2"
+      ],
+      "vi": [
+        "đà nẵng ballroom 2"
+      ],
+      "ko": [
+        "다낭 볼룸 2"
+      ],
+      "zh": [
+        "岘港宴会厅 2"
+      ]
+    },
+    "meeting.ballroom_3": {
+      "en": [
+        "danang ballroom 3"
+      ],
+      "vi": [
+        "đà nẵng ballroom 3"
+      ],
+      "ko": [
+        "다낭 볼룸 3"
+      ],
+      "zh": [
+        "岘港宴会厅 3"
+      ]
+    },
+    "meeting.ocean_ballroom": {
+      "en": [
+        "ocean ballroom"
+      ],
+      "vi": [
+        "ocean ballroom"
+      ],
+      "ko": [
+        "오션 볼룸"
+      ],
+      "zh": [
+        "海洋宴会厅"
+      ]
+    },
+    "meeting.han_river_1": {
+      "en": [
+        "han river 1"
+      ],
+      "vi": [
+        "phòng sông hàn 1"
+      ],
+      "ko": [
+        "한강 1"
+      ],
+      "zh": [
+        "汉江厅 1"
+      ]
+    },
+    "meeting.han_river_2": {
+      "en": [
+        "han river 2"
+      ],
+      "vi": [
+        "phòng sông hàn 2"
+      ],
+      "ko": [
+        "한강 2"
+      ],
+      "zh": [
+        "汉江厅 2"
+      ]
+    },
+    "meeting.son_tra_1": {
+      "en": [
+        "son tra 1"
+      ],
+      "vi": [
+        "phòng sơn trà 1"
+      ],
+      "ko": [
+        "손트라 1"
+      ],
+      "zh": [
+        "山茶厅 1"
+      ]
+    },
+    "meeting.gallery": {
+      "en": [
+        "the gallery"
+      ],
+      "vi": [
+        "phòng gallery"
+      ],
+      "ko": [
+        "갤러리"
+      ],
+      "zh": [
+        "画廊厅"
+      ]
+    },
+    "meeting.boardroom": {
+      "en": [
+        "boardroom"
+      ],
+      "vi": [
+        "phòng họp boardroom"
+      ],
+      "ko": [
+        "이사회실"
+      ],
+      "zh": [
+        "董事会议室"
+      ]
+    },
+    "spa.v_senses_wellness": {
+      "en": [
+        "v-senses wellness & spa",
+        "spa",
+        "v senses spa",
+        "wellness",
+        "massage booking",
+        "sauna",
+        "spa appointment",
+        "book a massage",
+        "massage appointment",
+        "spa treatment booking"
+      ],
+      "vi": [
+        "v-senses wellness & spa",
+        "spa",
+        "v-senses spa",
+        "mát xa",
+        "đặt lịch spa",
+        "xông hơi",
+        "trị liệu spa",
+        "book massage",
+        "đặt massage",
+        "hẹn mát xa",
+        "đặt trị liệu spa"
+      ],
+      "ko": [
+        "v-센스 웰니스 & 스파",
+        "스파",
+        "v센스 스파",
+        "마사지 예약",
+        "스파 예약",
+        "사우나",
+        "마사지 예약해 주세요",
+        "스파 시간 예약"
+      ],
+      "zh": [
+        "v-senses 水疗养生中心",
+        "水疗",
+        "水疗中心",
+        "水疗预约",
+        "按摩预约",
+        "桑拿",
+        "预约按摩",
+        "订水疗",
+        "预约SPA"
+      ]
+    },
+    "spa.treatments": {
+      "en": [
+        "v-senses treatments & massages"
+      ],
+      "vi": [
+        "dịch vụ trị liệu & massage v-senses"
+      ],
+      "ko": [
+        "v-센스 트리트먼트 & 마사지"
+      ],
+      "zh": [
+        "v-senses 护理与按摩"
+      ]
+    },
+    "recreation.water_sports": {
+      "en": [
+        "water sports center"
+      ],
+      "vi": [
+        "trung tâm thể thao dưới nước"
+      ],
+      "ko": [
+        "수상 스포츠 센터"
+      ],
+      "zh": [
+        "水上运动中心"
+      ]
+    },
+    "recreation.swimming_pools": {
+      "en": [
+        "resort swimming pools",
+        "swimming pool",
+        "pool",
+        "ocean pool",
+        "lagoon pool",
+        "pool towels"
+      ],
+      "vi": [
+        "hồ bơi resort (lagoon & ocean pool)",
+        "hồ bơi",
+        "bể bơi",
+        "hồ bơi lagoon",
+        "hồ bơi ocean",
+        "khăn tắm biển"
+      ],
+      "ko": [
+        "리조트 수영장",
+        "수영장",
+        "풀장",
+        "오션 풀",
+        "라군 풀"
+      ],
+      "zh": [
+        "度假村游泳池",
+        "游泳池",
+        "泳池",
+        "环礁湖泳池",
+        "海洋泳池"
+      ]
+    },
+    "recreation.fitness_center": {
+      "en": [
+        "fitness center",
+        "gym",
+        "fitness centre",
+        "weights",
+        "cardio",
+        "workout room",
+        "hotel gym",
+        "fitness room"
+      ],
+      "vi": [
+        "phòng tập thể dục fitness center",
+        "phòng gym",
+        "phòng tập",
+        "tạ",
+        "thiết bị tim mạch",
+        "phòng tập thể hình",
+        "phòng thể dục",
+        "chỗ tập gym",
+        "tập gym"
+      ],
+      "ko": [
+        "피트니스 센터",
+        "헬스장",
+        "피트니스",
+        "웨이트",
+        "유산소",
+        "호텔 헬스장",
+        "운동실"
+      ],
+      "zh": [
+        "健身中心",
+        "健身房",
+        "自由重量",
+        "有氧设备",
+        "酒店健身房",
+        "健身室"
+      ]
+    },
+    "recreation.tennis_club": {
+      "en": [
+        "tennis courts"
+      ],
+      "vi": [
+        "sân quần vợt tennis"
+      ],
+      "ko": [
+        "테니스 코트"
+      ],
+      "zh": [
+        "网球场"
+      ]
+    },
+    "recreation.kids_club": {
+      "en": [
+        "kids club",
+        "kids activities",
+        "children activities",
+        "play area"
+      ],
+      "vi": [
+        "câu lạc bộ trẻ em",
+        "hoạt động trẻ em",
+        "khu vui chơi trẻ em"
+      ],
+      "ko": [
+        "키즈 클럽",
+        "어린이 활동",
+        "키즈 놀이"
+      ],
+      "zh": [
+        "儿童俱乐部",
+        "儿童活动",
+        "儿童游乐"
+      ]
+    },
+    "recreation.cooking_class": {
+      "en": [
+        "cooking class"
+      ],
+      "vi": [
+        "lớp học nấu ăn ẩm thực"
+      ],
+      "ko": [
+        "쿠킹 클래스"
+      ],
+      "zh": [
+        "烹饪课程"
+      ]
+    },
+    "recreation.resort_activities": {
+      "en": [
+        "resort recreational activities"
+      ],
+      "vi": [
+        "hoạt động giải trí khu nghỉ dưỡng"
+      ],
+      "ko": [
+        "리조트 레크리에이션 활동"
+      ],
+      "zh": [
+        "度假村休闲活动"
+      ]
+    },
+    "contact.danang_office": {
+      "en": [
+        "danang head office"
+      ],
+      "vi": [
+        "văn phòng đà nẵng"
+      ],
+      "ko": [
+        "다낭 본사"
+      ],
+      "zh": [
+        "岘港办事处"
+      ]
+    },
+    "contact.reservation": {
+      "en": [
+        "room reservations"
+      ],
+      "vi": [
+        "bộ phận đặt phòng"
+      ],
+      "ko": [
+        "객실 예약부"
+      ],
+      "zh": [
+        "客房预订部"
+      ]
+    },
+    "contact.fb_reservation": {
+      "en": [
+        "f&b reservations"
+      ],
+      "vi": [
+        "bộ phận đặt bàn ẩm thực"
+      ],
+      "ko": [
+        "식음료 예약부"
+      ],
+      "zh": [
+        "餐饮预订部"
+      ]
+    },
+    "contact.sales_hanoi": {
+      "en": [
+        "hanoi sales office"
+      ],
+      "vi": [
+        "văn phòng bán hàng hà nội"
+      ],
+      "ko": [
+        "하노이 영업소"
+      ],
+      "zh": [
+        "河内销售处"
+      ]
+    },
+    "contact.sales_hcm": {
+      "en": [
+        "ho chi minh city sales office"
+      ],
+      "vi": [
+        "văn phòng bán hàng tp.hcm"
+      ],
+      "ko": [
+        "호치민 영업소"
+      ],
+      "zh": [
+        "胡志明市销售处"
+      ]
+    },
+    "contact.butler_service": {
+      "en": [
+        "butler service",
+        "butler",
+        "villa butler",
+        "butler hotline",
+        "private butler"
+      ],
+      "vi": [
+        "dịch vụ quản gia",
+        "quản gia",
+        "quản gia biệt thự",
+        "hotline quản gia"
+      ],
+      "ko": [
+        "버틀러 서비스",
+        "버틀러",
+        "빌라 버틀러",
+        "전담 버틀러"
+      ],
+      "zh": [
+        "管家服务",
+        "管家",
+        "别墅管家",
+        "私人管家"
+      ]
+    },
+    "contact.medical_centre": {
+      "en": [
+        "resort medical centre",
+        "medical center",
+        "doctor",
+        "nurse",
+        "first aid",
+        "emergency",
+        "sick",
+        "clinic"
+      ],
+      "vi": [
+        "trung tâm y tế resort",
+        "bác sĩ",
+        "y tá",
+        "sơ cấp cứu",
+        "cấp cứu",
+        "phòng y tế",
+        "thuốc",
+        "liên hệ trung tâm y tế"
+      ],
+      "ko": [
+        "의사",
+        "간호사",
+        "응급 처치",
+        "구급",
+        "약",
+        "의료 센터 연락"
+      ],
+      "zh": [
+        "医务室",
+        "医生",
+        "护士",
+        "急救",
+        "生病",
+        "联系医疗中心"
+      ]
+    },
+    "service.adapters": {
+      "en": [
+        "adapters & converters",
+        "adapter",
+        "adapters",
+        "electrical adapter",
+        "power adapter",
+        "plug converter",
+        "travel adapter",
+        "converter",
+        "transformer",
+        "voltage transformer",
+        "voltage converter",
+        "plug adapter"
+      ],
+      "vi": [
+        "adapters & converters",
+        "ổ cắm",
+        "ổ cắm chuyển đổi",
+        "phích cắm",
+        "cục chuyển đổi",
+        "đầu chuyển điện",
+        "chân cắm điện",
+        "bộ biến áp",
+        "bộ chuyển áp",
+        "cục chuyển ổ cắm",
+        "đầu chuyển ổ điện",
+        "adapter ổ cắm",
+        "đổi đầu cắm"
+      ],
+      "ko": [
+        "adapters & converters",
+        "어댑터",
+        "멀티 어댑터",
+        "변환 플러그",
+        "돼지코",
+        "전원 어댑터",
+        "변압기",
+        "전압 변환기",
+        "플러그 어댑터",
+        "여행용 어댑터"
+      ],
+      "zh": [
+        "adapters & converters",
+        "转换插头",
+        "电源适配器",
+        "插座转换器",
+        "变压器",
+        "转换器",
+        "电压转换器",
+        "插头转换器",
+        "旅行转换插头"
+      ]
+    },
+    "service.bath_towels": {
+      "en": [
+        "bath towels",
+        "fresh towels",
+        "extra towels",
+        "clean towels",
+        "hand towels",
+        "towel request",
+        "send up towels",
+        "need more towels"
+      ],
+      "vi": [
+        "bath towels",
+        "khăn tắm",
+        "khăn sạch",
+        "thêm khăn tắm",
+        "xin thêm khăn",
+        "khăn lau",
+        "xin khăn",
+        "mang khăn lên phòng",
+        "cho thêm khăn",
+        "hết khăn tắm"
+      ],
+      "ko": [
+        "bath towels",
+        "수건",
+        "타월",
+        "추가 수건",
+        "목욕 수건",
+        "타올 요청",
+        "수건 좀 가져다 주세요",
+        "수건 더 주세요"
+      ],
+      "zh": [
+        "bath towels",
+        "毛巾",
+        "浴巾",
+        "加毛巾",
+        "干净毛巾",
+        "补充毛巾",
+        "送点毛巾上来",
+        "再给几条毛巾"
+      ]
+    },
+    "service.bathrobe": {
+      "en": [
+        "bathrobes"
+      ],
+      "vi": [
+        "bathrobes"
+      ],
+      "ko": [
+        "bathrobes"
+      ],
+      "zh": [
+        "bathrobes"
+      ]
+    },
+    "service.hair_dryer": {
+      "en": [
+        "hair dryer"
+      ],
+      "vi": [
+        "hair dryer"
+      ],
+      "ko": [
+        "hair dryer"
+      ],
+      "zh": [
+        "hair dryer"
+      ]
+    },
+    "service.iron_and_ironing_board": {
+      "en": [
+        "iron & ironing board"
+      ],
+      "vi": [
+        "iron & ironing board"
+      ],
+      "ko": [
+        "iron & ironing board"
+      ],
+      "zh": [
+        "iron & ironing board"
+      ]
+    },
+    "service.drinking_water": {
+      "en": [
+        "complimentary drinking water"
+      ],
+      "vi": [
+        "complimentary drinking water"
+      ],
+      "ko": [
+        "complimentary drinking water"
+      ],
+      "zh": [
+        "complimentary drinking water"
+      ]
+    },
+    "service.extra_bed": {
+      "en": [
+        "extra bed service",
+        "rollaway bed",
+        "extra rollaway",
+        "another bed"
+      ],
+      "vi": [
+        "extra bed service",
+        "giường phụ",
+        "thêm giường",
+        "kê thêm giường",
+        "giường xếp"
+      ],
+      "ko": [
+        "extra bed service",
+        "간이침대",
+        "추가 침대"
+      ],
+      "zh": [
+        "extra bed service",
+        "加床",
+        "折叠床",
+        "额外床位"
+      ]
+    },
+    "service.housekeeping": {
+      "en": [
+        "housekeeping services",
+        "housekeeping",
+        "extra blanket",
+        "extra pillow",
+        "coat hanger"
+      ],
+      "vi": [
+        "housekeeping services",
+        "buồng phòng",
+        "chăn thêm",
+        "gối thêm",
+        "móc áo"
+      ],
+      "ko": [
+        "housekeeping services",
+        "하우스키핑",
+        "추가 담요",
+        "추가 베개",
+        "옷걸이"
+      ],
+      "zh": [
+        "housekeeping services",
+        "客房服务",
+        "额外毛毯",
+        "额外枕头",
+        "衣架"
+      ]
+    },
+    "service.room_cleaning": {
+      "en": [
+        "room cleaning service",
+        "room cleaning",
+        "clean room",
+        "make up room",
+        "housekeeping cleaning",
+        "tidy up room",
+        "tidy room",
+        "please clean my room",
+        "can someone tidy the room"
+      ],
+      "vi": [
+        "room cleaning service",
+        "dọn phòng",
+        "làm vệ sinh phòng",
+        "dọn dẹp phòng",
+        "làm phòng",
+        "buồng phòng dọn dẹp",
+        "dọn phòng giúp",
+        "dọn giúp phòng",
+        "làm phòng giúp",
+        "phòng cần dọn",
+        "nhờ dọn phòng"
+      ],
+      "ko": [
+        "room cleaning service",
+        "객실 청소",
+        "룸 청소",
+        "객실 정비",
+        "방 청소 요청",
+        "방 청소해 주세요",
+        "객실 좀 정리해 주세요"
+      ],
+      "zh": [
+        "room cleaning service",
+        "打扫客房",
+        "房间清洁",
+        "收拾房间",
+        "打扫房间",
+        "帮我打扫房间",
+        "请收拾一下房间"
+      ]
+    },
+    "policy.do_not_disturb": {
+      "en": [
+        "do not disturb policy"
+      ],
+      "vi": [
+        "do not disturb policy"
+      ],
+      "ko": [
+        "do not disturb policy"
+      ],
+      "zh": [
+        "do not disturb policy"
+      ]
+    },
+    "service.air_conditioning": {
+      "en": [
+        "air conditioning"
+      ],
+      "vi": [
+        "air conditioning"
+      ],
+      "ko": [
+        "air conditioning"
+      ],
+      "zh": [
+        "air conditioning"
+      ]
+    },
+    "service.coffee_tea": {
+      "en": [
+        "complimentary coffee & tea"
+      ],
+      "vi": [
+        "complimentary coffee & tea"
+      ],
+      "ko": [
+        "complimentary coffee & tea"
+      ],
+      "zh": [
+        "complimentary coffee & tea"
+      ]
+    },
+    "service.wheelchair_access": {
+      "en": [
+        "wheelchair access"
+      ],
+      "vi": [
+        "wheelchair access"
+      ],
+      "ko": [
+        "wheelchair access"
+      ],
+      "zh": [
+        "wheelchair access"
+      ]
+    },
+    "service.luggage": {
+      "en": [
+        "luggage service & storage",
+        "luggage",
+        "baggage",
+        "luggage pickup",
+        "luggage storage",
+        "bellman",
+        "carry bags",
+        "luggage assistance",
+        "hold my bags",
+        "store my bags",
+        "help with my suitcase"
+      ],
+      "vi": [
+        "luggage service & storage",
+        "hành lý",
+        "giữ hành lý",
+        "xách hành lý",
+        "lấy hành lý",
+        "gửi hành lý",
+        "hỗ trợ hành lý",
+        "chở vali",
+        "giữ vali",
+        "gửi vali",
+        "giữ đồ giúp",
+        "mang vali giúp",
+        "xách vali giúp"
+      ],
+      "ko": [
+        "luggage service & storage",
+        "수하물",
+        "짐 보관",
+        "짐 운반",
+        "벨보이",
+        "짐 픽업",
+        "캐리어 보관",
+        "짐 맡아 주세요",
+        "짐 좀 들어 주세요"
+      ],
+      "zh": [
+        "luggage service & storage",
+        "行李",
+        "托运行李",
+        "行李寄存",
+        "行李搬运",
+        "行李员",
+        "送行李",
+        "帮我寄存行李",
+        "帮我拿行李",
+        "寄存箱子"
+      ]
+    },
+    "service.lost_luggage": {
+      "en": [
+        "lost luggage assistance"
+      ],
+      "vi": [
+        "lost luggage assistance"
+      ],
+      "ko": [
+        "lost luggage assistance"
+      ],
+      "zh": [
+        "lost luggage assistance"
+      ]
+    },
+    "service.lost_and_found": {
+      "en": [
+        "lost & found",
+        "lost item",
+        "lost property",
+        "found item",
+        "i lost something",
+        "left something behind"
+      ],
+      "vi": [
+        "lost & found",
+        "đồ thất lạc",
+        "đồ bỏ quên",
+        "tìm đồ thất lạc",
+        "tôi làm mất đồ",
+        "thất lạc đồ",
+        "để quên đồ",
+        "mất đồ"
+      ],
+      "ko": [
+        "lost & found",
+        "분실물",
+        "잃어버린 물건",
+        "물건을 잃어버렸어요"
+      ],
+      "zh": [
+        "lost & found",
+        "失物招领",
+        "遗失物品",
+        "找回物品",
+        "我丢东西了",
+        "忘了东西"
+      ]
+    },
+    "service.concierge": {
+      "en": [
+        "concierge desk"
+      ],
+      "vi": [
+        "concierge desk"
+      ],
+      "ko": [
+        "concierge desk"
+      ],
+      "zh": [
+        "concierge desk"
+      ]
+    },
+    "transportation.taxi": {
+      "en": [
+        "taxi service",
+        "taxi",
+        "cab",
+        "call taxi",
+        "book taxi",
+        "meter taxi",
+        "transport to town",
+        "get me a taxi",
+        "need a cab",
+        "taxi please"
+      ],
+      "vi": [
+        "taxi service",
+        "taxi",
+        "gọi taxi",
+        "xe taxi",
+        "bắt taxi",
+        "kêu xe",
+        "gọi xe",
+        "kiếm giúp taxi",
+        "đặt giúp taxi",
+        "cho mình chiếc taxi",
+        "kêu xe giúp"
+      ],
+      "ko": [
+        "taxi service",
+        "택시",
+        "택시 호출",
+        "택시 예약",
+        "택시 부르기",
+        "택시 좀 불러 주세요",
+        "택시 잡아 주세요"
+      ],
+      "zh": [
+        "taxi service",
+        "出租车",
+        "打车",
+        "叫车",
+        "出租汽车",
+        "帮我叫出租车",
+        "叫辆车",
+        "帮我打车"
+      ]
+    },
+    "transportation.car_rental": {
+      "en": [
+        "car rental service",
+        "private car",
+        "rental car",
+        "car hire",
+        "car with child seat",
+        "child seat",
+        "rent a car",
+        "hire a private car"
+      ],
+      "vi": [
+        "car rental service",
+        "xe riêng",
+        "thuê xe",
+        "ghế trẻ em",
+        "thuê ô tô",
+        "đặt xe riêng"
+      ],
+      "ko": [
+        "car rental service",
+        "전용 차량",
+        "렌터카",
+        "카시트",
+        "차량 대여"
+      ],
+      "zh": [
+        "car rental service",
+        "专车",
+        "租车",
+        "儿童座椅",
+        "包车",
+        "私人用车"
+      ]
+    },
+    "policy.pet_policy": {
+      "en": [
+        "pet policy"
+      ],
+      "vi": [
+        "pet policy"
+      ],
+      "ko": [
+        "pet policy"
+      ],
+      "zh": [
+        "pet policy"
+      ]
+    },
+    "policy.non_smoking": {
+      "en": [
+        "non-smoking policy"
+      ],
+      "vi": [
+        "non-smoking policy"
+      ],
+      "ko": [
+        "non-smoking policy"
+      ],
+      "zh": [
+        "non-smoking policy"
+      ]
+    },
+    "policy.dress_code": {
+      "en": [
+        "resort dress code"
+      ],
+      "vi": [
+        "resort dress code"
+      ],
+      "ko": [
+        "resort dress code"
+      ],
+      "zh": [
+        "resort dress code"
+      ]
+    },
+    "policy.credit_cards": {
+      "en": [
+        "accepted credit cards"
+      ],
+      "vi": [
+        "accepted credit cards"
+      ],
+      "ko": [
+        "accepted credit cards"
+      ],
+      "zh": [
+        "accepted credit cards"
+      ]
+    },
+    "policy.cheques": {
+      "en": [
+        "cheques policy"
+      ],
+      "vi": [
+        "cheques policy"
+      ],
+      "ko": [
+        "cheques policy"
+      ],
+      "zh": [
+        "cheques policy"
+      ]
+    },
+    "policy.vat": {
+      "en": [
+        "vat & service charge policy"
+      ],
+      "vi": [
+        "vat & service charge policy"
+      ],
+      "ko": [
+        "vat & service charge policy"
+      ],
+      "zh": [
+        "vat & service charge policy"
+      ]
+    },
+    "policy.double_locking": {
+      "en": [
+        "door double locking & safety"
+      ],
+      "vi": [
+        "door double locking & safety"
+      ],
+      "ko": [
+        "door double locking & safety"
+      ],
+      "zh": [
+        "door double locking & safety"
+      ]
+    },
+    "policy.typhoons": {
+      "en": [
+        "typhoon & safety procedures"
+      ],
+      "vi": [
+        "typhoon & safety procedures"
+      ],
+      "ko": [
+        "typhoon & safety procedures"
+      ],
+      "zh": [
+        "typhoon & safety procedures"
+      ]
+    },
+    "service.first_aid": {
+      "en": [
+        "first aid service",
+        "first aid help",
+        "minor injury help",
+        "need first aid"
+      ],
+      "vi": [
+        "first aid service",
+        "sơ cứu",
+        "cần sơ cứu",
+        "bị thương nhẹ",
+        "hỗ trợ sơ cứu"
+      ],
+      "ko": [
+        "first aid service",
+        "응급처치",
+        "간단한 응급처치"
+      ],
+      "zh": [
+        "first aid service",
+        "需要简单急救",
+        "轻伤处理"
+      ]
+    },
+    "service.babysitting": {
+      "en": [
+        "babysitting services",
+        "babysitting",
+        "babysitter",
+        "childcare",
+        "child care",
+        "watch my child",
+        "look after the kids",
+        "babysitter please"
+      ],
+      "vi": [
+        "babysitting services",
+        "trông trẻ",
+        "người trông trẻ",
+        "dịch vụ trông trẻ",
+        "giữ trẻ",
+        "trông bé",
+        "giữ bé",
+        "trông con giúp",
+        "người giữ trẻ"
+      ],
+      "ko": [
+        "babysitting services",
+        "아이 돌봄",
+        "아이를 봐",
+        "베이비시터",
+        "아이 좀 봐 주세요",
+        "아이 돌봐 주세요"
+      ],
+      "zh": [
+        "babysitting services",
+        "托儿",
+        "保姆",
+        "照看孩子",
+        "帮忙看孩子",
+        "照看小孩",
+        "找保姆"
+      ]
+    },
+    "service.currency_exchange": {
+      "en": [
+        "currency exchange",
+        "exchange",
+        "exchange money",
+        "currency conversion",
+        "change money",
+        "change cash",
+        "change dollars",
+        "exchange currency"
+      ],
+      "vi": [
+        "currency exchange",
+        "đổi ngoại tệ",
+        "đổi tiền",
+        "đổi tiền tệ",
+        "đổi đô",
+        "đổi usd",
+        "đổi tiền mặt",
+        "chỗ đổi tiền"
+      ],
+      "ko": [
+        "currency exchange",
+        "환전",
+        "환전 서비스",
+        "돈을 환전",
+        "돈 바꾸기",
+        "달러 환전"
+      ],
+      "zh": [
+        "currency exchange",
+        "兑换",
+        "换钱",
+        "货币兑换",
+        "换外币",
+        "换美元",
+        "哪里可以换钱"
+      ]
+    },
+    "service.wake_up_calls": {
+      "en": [
+        "wake-up calls",
+        "wake up call",
+        "wake up",
+        "morning call",
+        "alarm call",
+        "call to wake me up",
+        "wake me at",
+        "morning wake-up"
+      ],
+      "vi": [
+        "wake-up calls",
+        "báo thức",
+        "gọi báo thức",
+        "báo thức buổi sáng",
+        "hẹn giờ báo thức",
+        "gọi tôi dậy",
+        "đánh thức tôi",
+        "gọi dậy lúc",
+        "nhắc tôi thức dậy"
+      ],
+      "ko": [
+        "wake-up calls",
+        "모닝콜",
+        "웨이크업 콜",
+        "기상 알람",
+        "깨워 주세요",
+        "아침에 전화로 깨워 주세요"
+      ],
+      "zh": [
+        "wake-up calls",
+        "叫醒服务",
+        "早叫",
+        "叫醒电话",
+        "叫我起床",
+        "到点叫醒我",
+        "早上叫醒我"
+      ]
+    },
+    "service.parking": {
+      "en": [
+        "parking facilities"
+      ],
+      "vi": [
+        "parking facilities"
+      ],
+      "ko": [
+        "parking facilities"
+      ],
+      "zh": [
+        "parking facilities"
+      ]
+    },
+    "service.mail_and_parcels": {
+      "en": [
+        "mail & parcel handling"
+      ],
+      "vi": [
+        "mail & parcel handling"
+      ],
+      "ko": [
+        "mail & parcel handling"
+      ],
+      "zh": [
+        "mail & parcel handling"
+      ]
+    },
+    "service.courier": {
+      "en": [
+        "courier service",
+        "courier",
+        "send documents by courier",
+        "mail service",
+        "send a parcel",
+        "mail a package",
+        "courier a package"
+      ],
+      "vi": [
+        "courier service",
+        "chuyển phát",
+        "gửi tài liệu",
+        "dịch vụ chuyển phát",
+        "gửi bưu kiện",
+        "gửi hàng",
+        "gửi thư"
+      ],
+      "ko": [
+        "courier service",
+        "택배",
+        "택배 발송",
+        "서류를 보내",
+        "택배 보내기",
+        "소포 보내기"
+      ],
+      "zh": [
+        "courier service",
+        "快递",
+        "寄文件",
+        "快递服务",
+        "寄快递",
+        "寄包裹",
+        "寄信"
+      ]
+    },
+    "service.photocopies": {
+      "en": [
+        "photocopying & printing"
+      ],
+      "vi": [
+        "photocopying & printing"
+      ],
+      "ko": [
+        "photocopying & printing"
+      ],
+      "zh": [
+        "photocopying & printing"
+      ]
+    },
+    "service.postage_stamps": {
+      "en": [
+        "postage stamps"
+      ],
+      "vi": [
+        "postage stamps"
+      ],
+      "ko": [
+        "postage stamps"
+      ],
+      "zh": [
+        "postage stamps"
+      ]
+    },
+    "service.airline_reservations": {
+      "en": [
+        "airline reservations"
+      ],
+      "vi": [
+        "airline reservations"
+      ],
+      "ko": [
+        "airline reservations"
+      ],
+      "zh": [
+        "airline reservations"
+      ]
+    },
+    "service.flight_reconfirmation": {
+      "en": [
+        "flight reconfirmation",
+        "reconfirm",
+        "reconfirm flight",
+        "confirm my flight",
+        "check my flight",
+        "reconfirm my flight",
+        "confirm flight status"
+      ],
+      "vi": [
+        "flight reconfirmation",
+        "xác nhận lại chuyến bay",
+        "xác nhận chuyến bay",
+        "reconfirm chuyến bay",
+        "kiểm tra chuyến bay",
+        "coi lại chuyến bay",
+        "check chuyến bay"
+      ],
+      "ko": [
+        "flight reconfirmation",
+        "항공편 재확인",
+        "비행기 예약 확인",
+        "항공편 확인",
+        "비행편 재확인"
+      ],
+      "zh": [
+        "flight reconfirmation",
+        "重新确认航班",
+        "确认航班",
+        "航班确认",
+        "查一下航班"
+      ]
+    },
+    "service.guest_relations": {
+      "en": [
+        "guest relations executive"
+      ],
+      "vi": [
+        "guest relations executive"
+      ],
+      "ko": [
+        "guest relations executive"
+      ],
+      "zh": [
+        "guest relations executive"
+      ]
+    },
+    "service.long_distance_calls": {
+      "en": [
+        "long distance calls"
+      ],
+      "vi": [
+        "long distance calls"
+      ],
+      "ko": [
+        "long distance calls"
+      ],
+      "zh": [
+        "long distance calls"
+      ]
+    },
+    "service.corporate_rates": {
+      "en": [
+        "corporate rates"
+      ],
+      "vi": [
+        "corporate rates"
+      ],
+      "ko": [
+        "corporate rates"
+      ],
+      "zh": [
+        "corporate rates"
+      ]
+    },
+    "service.computer_facilities": {
+      "en": [
+        "computer facilities & internet"
+      ],
+      "vi": [
+        "computer facilities & internet"
+      ],
+      "ko": [
+        "computer facilities & internet"
+      ],
+      "zh": [
+        "computer facilities & internet"
+      ]
+    },
+    "service.general_manager": {
+      "en": [
+        "general manager office"
+      ],
+      "vi": [
+        "general manager office"
+      ],
+      "ko": [
+        "general manager office"
+      ],
+      "zh": [
+        "general manager office"
+      ]
+    },
+    "service.church_services": {
+      "en": [
+        "church services info"
+      ],
+      "vi": [
+        "church services info"
+      ],
+      "ko": [
+        "church services info"
+      ],
+      "zh": [
+        "church services info"
+      ]
+    },
+    "service.beach_towels": {
+      "en": [
+        "beach towels"
+      ],
+      "vi": [
+        "beach towels"
+      ],
+      "ko": [
+        "beach towels"
+      ],
+      "zh": [
+        "beach towels"
+      ]
+    },
+    "spa.nails_treatment": {
+      "en": [
+        "nails treatment"
+      ],
+      "vi": [
+        "nails treatment"
+      ],
+      "ko": [
+        "nails treatment"
+      ],
+      "zh": [
+        "nails treatment"
+      ]
+    },
+    "policy.cigarettes": {
+      "en": [
+        "cigarettes & smoking areas"
+      ],
+      "vi": [
+        "cigarettes & smoking areas"
+      ],
+      "ko": [
+        "cigarettes & smoking areas"
+      ],
+      "zh": [
+        "cigarettes & smoking areas"
+      ]
+    },
+    "meeting.banquets": {
+      "en": [
+        "banquets & catering"
+      ],
+      "vi": [
+        "banquets & catering"
+      ],
+      "ko": [
+        "banquets & catering"
+      ],
+      "zh": [
+        "banquets & catering"
+      ]
+    },
+    "room.family_room_by_balcony": {
+      "en": [
+        "family room by balcony"
+      ],
+      "vi": [
+        "phòng gia đình có ban công"
+      ],
+      "ko": [
+        "발코니 패밀리 룸"
+      ],
+      "zh": [
+        "阳台家庭房"
+      ]
+    },
+    "restaurant.v_senses_cafe": {
+      "en": [
+        "v-senses cafe"
+      ],
+      "vi": [
+        "v-senses café"
+      ],
+      "ko": [
+        "v-센스 카페"
+      ],
+      "zh": [
+        "v-senses 咖啡厅"
+      ]
+    },
+    "bar.ocean_terrace": {
+      "en": [
+        "the ocean terrace"
+      ],
+      "vi": [
+        "the ocean terrace"
+      ],
+      "ko": [
+        "더 오션 테라스"
+      ],
+      "zh": [
+        "海洋露台"
+      ]
+    },
+    "bar.lamuse_gourmet_cafe": {
+      "en": [
+        "l’amuse gourmet cafe"
+      ],
+      "vi": [
+        "l’amuse gourmet cafe"
+      ],
+      "ko": [
+        "라뮤즈 고메 카페"
+      ],
+      "zh": [
+        "l’amuse 精品咖啡厅"
+      ]
+    },
+    "dining.restaurant_reservation": {
+      "en": [
+        "restaurant & bar reservation",
+        "book a table",
+        "reserve a table",
+        "restaurant booking"
+      ],
+      "vi": [
+        "đặt bàn nhà hàng & bar",
+        "đặt bàn",
+        "book bàn",
+        "giữ bàn",
+        "đặt chỗ nhà hàng",
+        "đặt bàn ăn"
+      ],
+      "ko": [
+        "레스토랑 및 바 예약",
+        "테이블 예약",
+        "식당 예약",
+        "자리 예약"
+      ],
+      "zh": [
+        "餐厅及酒吧预订",
+        "订桌",
+        "订餐厅",
+        "预留餐桌"
+      ]
+    },
+    "transportation.airport_transfer": {
+      "en": [
+        "airport transfer",
+        "airport car",
+        "ride to airport",
+        "ride to the airport",
+        "airport pickup",
+        "airport drop-off",
+        "take me to the airport",
+        "pick me up at the airport"
+      ],
+      "vi": [
+        "đưa đón sân bay",
+        "xe sân bay",
+        "xe ra sân bay",
+        "đưa ra sân bay",
+        "đón ở sân bay",
+        "đón sân bay",
+        "xe đi sân bay",
+        "đi sân bay",
+        "ra sân bay",
+        "đi phi trường",
+        "ra phi trường",
+        "đưa ra phi trường"
+      ],
+      "ko": [
+        "공항 이동 서비스",
+        "공항 이동",
+        "공항 차량",
+        "공항 픽업",
+        "공항 드롭",
+        "공항까지 데려다 주세요",
+        "공항에서 픽업"
+      ],
+      "zh": [
+        "机场接送",
+        "机场用车",
+        "送我去机场",
+        "机场接机",
+        "机场送机",
+        "去机场的车"
+      ]
+    },
+    "service.medical_centre": {
+      "en": [
+        "medical centre",
+        "hotel clinic",
+        "see the medical staff"
+      ],
+      "vi": [
+        "trung tâm y tế",
+        "y tế khách sạn",
+        "gặp nhân viên y tế",
+        "chỗ khám"
+      ],
+      "ko": [
+        "의료 센터",
+        "의무실",
+        "호텔 의료실",
+        "의료진"
+      ],
+      "zh": [
+        "医疗中心",
+        "酒店医疗室",
+        "找医务人员"
+      ]
+    },
+    "service.in_room_dining": {
+      "en": [
+        "in-room dining (room service)",
+        "room service",
+        "food delivery",
+        "in room dining",
+        "late night food",
+        "order food to the room",
+        "send food upstairs",
+        "something to eat in my room"
+      ],
+      "vi": [
+        "dịch vụ ăn uống tại phòng",
+        "room service",
+        "giao đồ ăn tận phòng",
+        "đồ ăn khuya",
+        "ăn uống tại phòng",
+        "gọi đồ ăn lên phòng",
+        "đặt đồ ăn lên phòng",
+        "mang đồ ăn lên phòng",
+        "gọi món lên phòng",
+        "ăn tại phòng"
+      ],
+      "ko": [
+        "인룸 다이닝",
+        "룸서비스",
+        "객실 음식 배달",
+        "야식",
+        "객실로 음식 주문",
+        "방으로 음식 가져다 주세요",
+        "방에서 식사"
+      ],
+      "zh": [
+        "客房送餐",
+        "客房服务",
+        "送餐到房",
+        "夜宵",
+        "点餐送到房间",
+        "送吃的到房间",
+        "在房间吃饭"
+      ]
+    },
+    "recreation.beach": {
+      "en": [
+        "furama beach"
+      ],
+      "vi": [
+        "bãi biển furama"
+      ],
+      "ko": [
+        "푸라마 비치"
+      ],
+      "zh": [
+        "富丽华海滩"
+      ]
+    },
+    "recreation.day_pass": {
+      "en": [
+        "non-residential guest day pass"
+      ],
+      "vi": [
+        "vé day pass cho khách không lưu trú"
+      ],
+      "ko": [
+        "비투숙객 데이 패스"
+      ],
+      "zh": [
+        "非住店客人日票"
+      ]
+    },
+    "recreation.game_room": {
+      "en": [
+        "game room"
+      ],
+      "vi": [
+        "phòng trò chơi"
+      ],
+      "ko": [
+        "게임룸"
+      ],
+      "zh": [
+        "游戏室"
+      ]
+    },
+    "recreation.library": {
+      "en": [
+        "library"
+      ],
+      "vi": [
+        "thư viện"
+      ],
+      "ko": [
+        "도서관"
+      ],
+      "zh": [
+        "图书馆"
+      ]
+    },
+    "spa.daily_wellness": {
+      "en": [
+        "daily wellness activities"
+      ],
+      "vi": [
+        "hoạt động wellness hằng ngày"
+      ],
+      "ko": [
+        "데일리 웰니스 프로그램"
+      ],
+      "zh": [
+        "每日康体活动"
+      ]
+    },
+    "golf.montgomerie_links": {
+      "en": [
+        "montgomerie links"
+      ],
+      "vi": [
+        "montgomerie links"
+      ],
+      "ko": [
+        "montgomerie links"
+      ],
+      "zh": [
+        "montgomerie links"
+      ]
+    },
+    "golf.danang_golf_club": {
+      "en": [
+        "danang golf club"
+      ],
+      "vi": [
+        "danang golf club"
+      ],
+      "ko": [
+        "danang golf club"
+      ],
+      "zh": [
+        "danang golf club"
+      ]
+    },
+    "golf.laguna_golf_club": {
+      "en": [
+        "laguna golf club"
+      ],
+      "vi": [
+        "laguna golf club"
+      ],
+      "ko": [
+        "laguna golf club"
+      ],
+      "zh": [
+        "laguna golf club"
+      ]
+    },
+    "golf.ba_na_hills_golf_club": {
+      "en": [
+        "ba na hills golf club"
+      ],
+      "vi": [
+        "ba na hills golf club"
+      ],
+      "ko": [
+        "ba na hills golf club"
+      ],
+      "zh": [
+        "ba na hills golf club"
+      ]
+    },
+    "meeting.ballroom_1_2": {
+      "en": [
+        "danang ballroom 1&2"
+      ],
+      "vi": [
+        "danang ballroom 1&2"
+      ],
+      "ko": [
+        "danang ballroom 1&2"
+      ],
+      "zh": [
+        "danang ballroom 1&2"
+      ]
+    },
+    "meeting.ballroom_2_3": {
+      "en": [
+        "danang ballroom 2&3"
+      ],
+      "vi": [
+        "danang ballroom 2&3"
+      ],
+      "ko": [
+        "danang ballroom 2&3"
+      ],
+      "zh": [
+        "danang ballroom 2&3"
+      ]
+    },
+    "meeting.danang_ballroom_foyer": {
+      "en": [
+        "danang ballroom foyer"
+      ],
+      "vi": [
+        "danang ballroom foyer"
+      ],
+      "ko": [
+        "danang ballroom foyer"
+      ],
+      "zh": [
+        "danang ballroom foyer"
+      ]
+    },
+    "meeting.non_nuoc_suite": {
+      "en": [
+        "non nuoc suite (i&ii)"
+      ],
+      "vi": [
+        "non nuoc suite (i&ii)"
+      ],
+      "ko": [
+        "non nuoc suite (i&ii)"
+      ],
+      "zh": [
+        "non nuoc suite (i&ii)"
+      ]
+    },
+    "meeting.non_nuoc_1": {
+      "en": [
+        "non nuoc room 1"
+      ],
+      "vi": [
+        "non nuoc room 1"
+      ],
+      "ko": [
+        "non nuoc room 1"
+      ],
+      "zh": [
+        "non nuoc room 1"
+      ]
+    },
+    "meeting.non_nuoc_2": {
+      "en": [
+        "non nuoc room 2"
+      ],
+      "vi": [
+        "non nuoc room 2"
+      ],
+      "ko": [
+        "non nuoc room 2"
+      ],
+      "zh": [
+        "non nuoc room 2"
+      ]
+    },
+    "meeting.icp_garden": {
+      "en": [
+        "icp garden"
+      ],
+      "vi": [
+        "icp garden"
+      ],
+      "ko": [
+        "icp garden"
+      ],
+      "zh": [
+        "icp garden"
+      ]
+    },
+    "meeting.ocean_ballroom_terrace": {
+      "en": [
+        "ocean ballroom terrace"
+      ],
+      "vi": [
+        "ocean ballroom terrace"
+      ],
+      "ko": [
+        "ocean ballroom terrace"
+      ],
+      "zh": [
+        "ocean ballroom terrace"
+      ]
+    },
+    "meeting.gallery_individual": {
+      "en": [
+        "gallery room 1, 2, 3 or 4"
+      ],
+      "vi": [
+        "gallery room 1, 2, 3 or 4"
+      ],
+      "ko": [
+        "gallery room 1, 2, 3 or 4"
+      ],
+      "zh": [
+        "gallery room 1, 2, 3 or 4"
+      ]
+    },
+    "meeting.beach_event_space": {
+      "en": [
+        "beach event space"
+      ],
+      "vi": [
+        "beach event space"
+      ],
+      "ko": [
+        "beach event space"
+      ],
+      "zh": [
+        "beach event space"
+      ]
+    }
+  },
+  "aliases_by_service_code": {
+    "amenity_delivery": {
+      "en": [
+        "extra room item",
+        "send an amenity to my room",
+        "bring something to the room",
+        "extra towels or room supplies"
+      ],
+      "vi": [
+        "xin thêm đồ dùng",
+        "mang đồ lên phòng",
+        "gửi thêm đồ dùng",
+        "xin thêm vật dụng",
+        "mang giúp lên phòng"
+      ],
+      "ko": [
+        "객실 용품 요청",
+        "추가 객실용품",
+        "물품을 방으로 가져다 주세요"
+      ],
+      "zh": [
+        "客房用品请求",
+        "补充客用品",
+        "送用品到房间"
+      ]
+    },
+    "housekeeping": {
+      "en": [
+        "housekeeping",
+        "clean my room",
+        "make up the room",
+        "tidy the room"
+      ],
+      "vi": [
+        "dọn phòng",
+        "làm phòng",
+        "vệ sinh phòng",
+        "buồng phòng",
+        "dọn giúp phòng"
+      ],
+      "ko": [
+        "하우스키핑",
+        "객실 청소",
+        "방 정리"
+      ],
+      "zh": [
+        "客房清洁",
+        "打扫房间",
+        "客房服务部"
+      ]
+    },
+    "maintenance": {
+      "en": [
+        "maintenance",
+        "something is broken",
+        "engineering help",
+        "fix the room"
+      ],
+      "vi": [
+        "gọi kỹ thuật",
+        "đồ trong phòng bị hư",
+        "sửa giúp",
+        "bảo trì",
+        "điện nước có vấn đề",
+        "máy lạnh hư"
+      ],
+      "ko": [
+        "시설 수리",
+        "기술팀 불러 주세요",
+        "고장 났어요",
+        "객실 수리"
+      ],
+      "zh": [
+        "维修",
+        "叫工程人员",
+        "房间设备坏了",
+        "修一下"
+      ]
+    },
+    "human_assistance": {
+      "en": [
+        "talk to a person",
+        "staff help",
+        "front desk help",
+        "human assistance"
+      ],
+      "vi": [
+        "gặp nhân viên",
+        "nhờ người hỗ trợ",
+        "nói chuyện với lễ tân",
+        "cần người giúp",
+        "chuyển cho nhân viên"
+      ],
+      "ko": [
+        "직원과 이야기하고 싶어요",
+        "사람 도움",
+        "프런트 직원 연결"
+      ],
+      "zh": [
+        "找工作人员",
+        "转人工",
+        "联系前台人员"
+      ]
+    },
+    "wake_up_call": {
+      "en": [
+        "wake-up call",
+        "wake me up",
+        "morning call",
+        "alarm call"
+      ],
+      "vi": [
+        "gọi báo thức",
+        "gọi tôi dậy",
+        "đánh thức tôi",
+        "báo thức buổi sáng"
+      ],
+      "ko": [
+        "모닝콜",
+        "깨워 주세요",
+        "기상 전화"
+      ],
+      "zh": [
+        "叫醒服务",
+        "叫我起床",
+        "早叫"
+      ]
+    },
+    "spa_reservation": {
+      "en": [
+        "book spa",
+        "book a massage",
+        "spa appointment",
+        "reserve a treatment"
+      ],
+      "vi": [
+        "đặt spa",
+        "đặt massage",
+        "đặt lịch mát xa",
+        "hẹn spa",
+        "book spa"
+      ],
+      "ko": [
+        "스파 예약",
+        "마사지 예약"
+      ],
+      "zh": [
+        "预约水疗",
+        "预约按摩",
+        "订SPA"
+      ]
+    },
+    "dining_reservation": {
+      "en": [
+        "book a table",
+        "reserve restaurant",
+        "restaurant reservation"
+      ],
+      "vi": [
+        "đặt bàn",
+        "book bàn",
+        "giữ bàn",
+        "đặt chỗ nhà hàng"
+      ],
+      "ko": [
+        "식당 예약",
+        "테이블 예약"
+      ],
+      "zh": [
+        "订桌",
+        "餐厅预订"
+      ]
+    },
+    "food_order": {
+      "en": [
+        "order food",
+        "room service order",
+        "food to my room"
+      ],
+      "vi": [
+        "đặt đồ ăn",
+        "gọi món lên phòng",
+        "gọi đồ ăn lên phòng",
+        "room service",
+        "mang đồ ăn lên phòng"
+      ],
+      "ko": [
+        "음식 주문",
+        "룸서비스 주문",
+        "객실로 음식 주문"
+      ],
+      "zh": [
+        "点餐",
+        "客房送餐",
+        "送餐到房间"
+      ]
+    },
+    "tour_reservation": {
+      "en": [
+        "book a tour",
+        "reserve a tour",
+        "tour booking"
+      ],
+      "vi": [
+        "đặt tour",
+        "book tour",
+        "giữ chỗ tour",
+        "đăng ký tour"
+      ],
+      "ko": [
+        "투어 예약",
+        "관광 예약"
+      ],
+      "zh": [
+        "预订旅游",
+        "订行程",
+        "旅游预订"
+      ]
+    },
+    "facility_request": {
+      "en": [
+        "hotel facility",
+        "use a facility",
+        "pool or gym",
+        "resort facilities"
+      ],
+      "vi": [
+        "tiện ích khách sạn",
+        "cơ sở vật chất",
+        "hồ bơi hay phòng tập",
+        "phòng gym",
+        "phòng tập"
+      ],
+      "ko": [
+        "호텔 시설",
+        "리조트 시설",
+        "수영장이나 헬스장"
+      ],
+      "zh": [
+        "酒店设施",
+        "度假村设施",
+        "泳池或健身房"
+      ]
+    },
+    "dining_request": {
+      "en": [
+        "where should i eat",
+        "restaurant suggestion",
+        "food options",
+        "where to eat"
+      ],
+      "vi": [
+        "ăn gì",
+        "ăn ở đâu",
+        "nhà hàng nào",
+        "gợi ý nhà hàng",
+        "chỗ ăn uống"
+      ],
+      "ko": [
+        "어디서 먹을까요",
+        "식당 추천",
+        "먹을 곳"
+      ],
+      "zh": [
+        "吃什么",
+        "去哪吃",
+        "推荐餐厅",
+        "吃饭的地方"
+      ]
+    },
+    "tour_request": {
+      "en": [
+        "what tour is there",
+        "where can i visit",
+        "tour suggestion",
+        "things to do"
+      ],
+      "vi": [
+        "đi đâu chơi",
+        "tour nào",
+        "gợi ý tour",
+        "đi tham quan đâu",
+        "có gì để đi chơi"
+      ],
+      "ko": [
+        "어디 가 볼까요",
+        "투어 추천",
+        "관광할 곳"
+      ],
+      "zh": [
+        "去哪玩",
+        "推荐旅游",
+        "有什么行程",
+        "哪里可以逛"
+      ]
+    },
+    "transport_request": {
+      "en": [
+        "get a ride",
+        "book a car",
+        "airport car",
+        "take me to the airport",
+        "transport help"
+      ],
+      "vi": [
+        "gọi xe",
+        "đặt xe",
+        "xe sân bay",
+        "đưa ra sân bay",
+        "đón sân bay",
+        "đi phi trường",
+        "ra phi trường",
+        "xe đi sân bay"
+      ],
+      "ko": [
+        "차량 요청",
+        "차 예약",
+        "공항 차량",
+        "공항까지 데려다 주세요"
+      ],
+      "zh": [
+        "叫车",
+        "订车",
+        "机场用车",
+        "送我去机场"
+      ]
+    },
+    "late_checkout": {
+      "en": [
+        "late checkout",
+        "check out late",
+        "stay a bit longer",
+        "extend checkout time"
+      ],
+      "vi": [
+        "trả phòng muộn",
+        "check out trễ",
+        "trả phòng trễ",
+        "xin ở thêm",
+        "gia hạn giờ trả phòng"
+      ],
+      "ko": [
+        "레이트 체크아웃",
+        "체크아웃 늦게",
+        "퇴실 시간 연장"
+      ],
+      "zh": [
+        "延迟退房",
+        "晚点退房",
+        "延长退房时间"
+      ]
+    }
+  },
+  "ambiguous_aliases": [
+    {
+      "language": "zh",
+      "alias": "客房服务",
+      "entity_ids": [
+        "service.housekeeping",
+        "service.in_room_dining"
+      ],
+      "resolution": "clarify",
+      "note": "客房服务 can refer to housekeeping or room-service dining; a resolver must not choose one silently without additional context."
+    }
+  ]
+}

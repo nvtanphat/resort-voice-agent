@@ -88,6 +88,7 @@ def test_load_settings_uses_profile_then_env_overrides_in_fresh_process():
         "CONCIERGE_AGENT_MAX_PLANNER_CALLS": "4",
         "CONCIERGE_AGENT_MAX_READ_CALLS": "5",
         "CONCIERGE_AGENT_PLANNER_ENABLED": "false",
+        "CONCIERGE_STATUS_TOKEN_SECRET": "",
     })
     code = """
 import json
@@ -102,6 +103,7 @@ print(json.dumps({
   'read_calls': cfg.agent_max_read_calls,
   'planner_enabled': cfg.agent_planner_enabled,
   'planner_timeout': cfg.agent_planner_timeout_seconds,
+  'status_secret_len': len(cfg.status_token_secret),
 }))
 """
     result = subprocess.run(
@@ -118,6 +120,7 @@ print(json.dumps({
         "read_calls": 5,
         "planner_enabled": False,
         "planner_timeout": 5.0,
+        "status_secret_len": 42,
     }
 
 

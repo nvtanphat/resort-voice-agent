@@ -1,0 +1,129 @@
+[
+  {
+    "department_id": "FO_CONCIERGE",
+    "fallback_contact_id": "contact.danang_office",
+    "name": "Front Desk & Concierge Desk",
+    "code": "FO",
+    "internal_extension": null,
+    "operator_extension": "0",
+    "operating_hours": null,
+    "responsibilities": [
+      "Guest check-in & check-out",
+      "Luggage assistance & storage",
+      "Taxi & transportation arrangements",
+      "Currency exchange cashier",
+      "Wake-up calls dispatch",
+      "General guest inquiries & lost and found"
+    ],
+    "internal_extension_status": "not_currently_verified",
+    "operator_extension_status": "officially_verified_via_medical_service_page",
+    "operating_hours_status": "desk_hours_not_publicly_verified; taxi availability is separately verified 24/7"
+  },
+  {
+    "department_id": "HOUSEKEEPING",
+    "fallback_contact_id": null,
+    "name": "Housekeeping & Room Amenities",
+    "code": "HK",
+    "internal_extension": "13",
+    "operating_hours": null,
+    "responsibilities": [
+      "Room cleaning & turn-down service",
+      "Replenishment of fresh bath & beach towels",
+      "Multi-plug electrical adapters & transformers",
+      "Extra rollaway beds & baby cribs",
+      "Iron & ironing board delivery",
+      "Complimentary drinking water & bathroom toiletries"
+    ],
+    "internal_extension_status": "officially_verified_from_adapters_page_title",
+    "operating_hours_status": "not_publicly_verified"
+  },
+  {
+    "department_id": "FNB_ROOM_SERVICE",
+    "fallback_contact_id": "contact.fb_reservation",
+    "name": "Food & Beverage / In-Room Dining",
+    "code": "FNB",
+    "internal_extension": null,
+    "operating_hours": null,
+    "contact_email": "fb@furamavietnam.com",
+    "responsibilities": [
+      "In-Room Dining food & beverage orders (Room Service)",
+      "Special dietary requests delivery",
+      "Private villa dining & BBQ arrangements",
+      "Restaurant & bar table reservations"
+    ],
+    "service_contacts": {
+      "restaurant_bar_reservations": {
+        "extension": "12",
+        "window": "06:00-00:00",
+        "status": "officially_verified"
+      },
+      "in_room_dining": {
+        "extension": "10",
+        "contact_role": "Front Desk",
+        "window": "06:30-00:00",
+        "late_night_dishes": "22:30-06:00",
+        "status": "officially_verified"
+      }
+    },
+    "operating_hours_status": "service_specific; see service_contacts"
+  },
+  {
+    "department_id": "SPA_WELLNESS",
+    "fallback_contact_id": null,
+    "name": "V-Senses Wellness & Spa",
+    "code": "SPA",
+    "internal_extension": "16",
+    "operating_hours": "09:00 - 22:00",
+    "responsibilities": [
+      "Holistic spa treatments & aromatherapy massage bookings",
+      "Facial & body scrub therapies",
+      "Nail grooming & salon treatments",
+      "Wellness consultation & sauna / steam facilities"
+    ],
+    "operating_hours_status": "officially_verified"
+  },
+  {
+    "department_id": "BUTLER_SERVICE",
+    "fallback_contact_id": "contact.butler_service",
+    "name": "Villa Butler Service",
+    "code": "BUTLER",
+    "internal_extension": "7303/7304",
+    "direct_phone": "+84 911 301 020",
+    "operating_hours": "06:00 - 00:00",
+    "responsibilities": [
+      "Personalized butler assistance for Villa guests",
+      "Guest assistance and coordination during published butler hours"
+    ],
+    "operating_hours_status": "officially_verified; villa_guests_only"
+  },
+  {
+    "department_id": "MEDICAL_CENTRE",
+    "fallback_contact_id": "contact.medical_centre",
+    "name": "Resort Medical Centre & First Aid",
+    "code": "MED",
+    "internal_extension": "3420",
+    "operating_hours": "08:00 - 17:00; except Saturday afternoon and Sunday",
+    "responsibilities": [
+      "Medical Centre consultation and in-room doctor assistance during published staffed hours",
+      "First-aid/medical guidance via Ext 3420 or Operator 0",
+      "Escalation to external emergency services when required"
+    ],
+    "operating_hours_status": "officially_verified",
+    "after_hours_contact": "Operator Ext 0"
+  },
+  {
+    "department_id": "RESERVATIONS",
+    "fallback_contact_id": "contact.reservation",
+    "name": "Room Sales & Reservations Office",
+    "code": "RES",
+    "direct_phone": "+84 236 3847 333",
+    "email": "reservation@furamavietnam.com",
+    "operating_hours": null,
+    "responsibilities": [
+      "Room & suite reservations",
+      "Corporate rate agreements",
+      "Package bookings & group reservations"
+    ],
+    "operating_hours_status": "not_publicly_verified_for_room_reservations_office"
+  }
+]

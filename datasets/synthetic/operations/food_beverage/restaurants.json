@@ -1,0 +1,395 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "venues": [
+    {
+      "entity_id": "restaurant.cafe_indochine",
+      "name": "Café Indochine",
+      "synthetic_seating_capacity": 170,
+      "standard_table_turn_min": 90,
+      "large_party_threshold": 8,
+      "large_party_deposit_demo_vnd": 1000000,
+      "same_day_booking_cutoff_min": 45,
+      "waitlist_enabled": true,
+      "slots": [
+        {
+          "date": "2026-10-03",
+          "time": "18:00",
+          "covers_capacity": 90,
+          "covers_booked": 81,
+          "covers_remaining": 9,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "18:30",
+          "covers_capacity": 85,
+          "covers_booked": 66,
+          "covers_remaining": 19,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:00",
+          "covers_capacity": 80,
+          "covers_booked": 69,
+          "covers_remaining": 11,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:30",
+          "covers_capacity": 75,
+          "covers_booked": 61,
+          "covers_remaining": 14,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:00",
+          "covers_capacity": 70,
+          "covers_booked": 61,
+          "covers_remaining": 9,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:30",
+          "covers_capacity": 65,
+          "covers_booked": 56,
+          "covers_remaining": 9,
+          "status": "available"
+        }
+      ],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_restaurant_capacity"
+      ]
+    },
+    {
+      "entity_id": "restaurant.don_cipriani",
+      "name": "Don Cipriani's",
+      "synthetic_seating_capacity": 92,
+      "standard_table_turn_min": 90,
+      "large_party_threshold": 8,
+      "large_party_deposit_demo_vnd": 1000000,
+      "same_day_booking_cutoff_min": 45,
+      "waitlist_enabled": true,
+      "slots": [
+        {
+          "date": "2026-10-03",
+          "time": "18:00",
+          "covers_capacity": 52,
+          "covers_booked": 48,
+          "covers_remaining": 4,
+          "status": "limited"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "18:30",
+          "covers_capacity": 47,
+          "covers_booked": 32,
+          "covers_remaining": 15,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:00",
+          "covers_capacity": 42,
+          "covers_booked": 28,
+          "covers_remaining": 14,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:30",
+          "covers_capacity": 37,
+          "covers_booked": 23,
+          "covers_remaining": 14,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:00",
+          "covers_capacity": 32,
+          "covers_booked": 24,
+          "covers_remaining": 8,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:30",
+          "covers_capacity": 55,
+          "covers_booked": 36,
+          "covers_remaining": 19,
+          "status": "available"
+        }
+      ],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_restaurant_capacity"
+      ]
+    },
+    {
+      "entity_id": "restaurant.danaksara",
+      "name": "Danaksara",
+      "synthetic_seating_capacity": 76,
+      "standard_table_turn_min": 90,
+      "large_party_threshold": 8,
+      "large_party_deposit_demo_vnd": 1000000,
+      "same_day_booking_cutoff_min": 45,
+      "waitlist_enabled": true,
+      "slots": [
+        {
+          "date": "2026-10-03",
+          "time": "18:00",
+          "covers_capacity": 40,
+          "covers_booked": 21,
+          "covers_remaining": 19,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "18:30",
+          "covers_capacity": 35,
+          "covers_booked": 23,
+          "covers_remaining": 12,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:00",
+          "covers_capacity": 30,
+          "covers_booked": 20,
+          "covers_remaining": 10,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:30",
+          "covers_capacity": 25,
+          "covers_booked": 16,
+          "covers_remaining": 9,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:00",
+          "covers_capacity": 20,
+          "covers_booked": 6,
+          "covers_remaining": 14,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:30",
+          "covers_capacity": 43,
+          "covers_booked": 30,
+          "covers_remaining": 13,
+          "status": "available"
+        }
+      ],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_restaurant_capacity"
+      ]
+    },
+    {
+      "entity_id": "restaurant.the_fan_steakhouse",
+      "name": "The Fan Steakhouse",
+      "synthetic_seating_capacity": 70,
+      "standard_table_turn_min": 90,
+      "large_party_threshold": 8,
+      "large_party_deposit_demo_vnd": 1000000,
+      "same_day_booking_cutoff_min": 45,
+      "waitlist_enabled": true,
+      "slots": [
+        {
+          "date": "2026-10-03",
+          "time": "18:00",
+          "covers_capacity": 33,
+          "covers_booked": 23,
+          "covers_remaining": 10,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "18:30",
+          "covers_capacity": 28,
+          "covers_booked": 13,
+          "covers_remaining": 15,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:00",
+          "covers_capacity": 23,
+          "covers_booked": 6,
+          "covers_remaining": 17,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:30",
+          "covers_capacity": 18,
+          "covers_booked": 15,
+          "covers_remaining": 3,
+          "status": "limited"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:00",
+          "covers_capacity": 41,
+          "covers_booked": 26,
+          "covers_remaining": 15,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:30",
+          "covers_capacity": 36,
+          "covers_booked": 27,
+          "covers_remaining": 9,
+          "status": "available"
+        }
+      ],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_restaurant_capacity"
+      ]
+    },
+    {
+      "entity_id": "restaurant.taya_house",
+      "name": "Tàya House",
+      "synthetic_seating_capacity": 54,
+      "standard_table_turn_min": 90,
+      "large_party_threshold": 8,
+      "large_party_deposit_demo_vnd": 1000000,
+      "same_day_booking_cutoff_min": 45,
+      "waitlist_enabled": true,
+      "slots": [
+        {
+          "date": "2026-10-03",
+          "time": "18:00",
+          "covers_capacity": 20,
+          "covers_booked": 15,
+          "covers_remaining": 5,
+          "status": "limited"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "18:30",
+          "covers_capacity": 15,
+          "covers_booked": 4,
+          "covers_remaining": 11,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:00",
+          "covers_capacity": 10,
+          "covers_booked": 2,
+          "covers_remaining": 8,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:30",
+          "covers_capacity": 5,
+          "covers_booked": 0,
+          "covers_remaining": 5,
+          "status": "limited"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:00",
+          "covers_capacity": 28,
+          "covers_booked": 11,
+          "covers_remaining": 17,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:30",
+          "covers_capacity": 23,
+          "covers_booked": 10,
+          "covers_remaining": 13,
+          "status": "available"
+        }
+      ],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_restaurant_capacity"
+      ]
+    },
+    {
+      "entity_id": "restaurant.v_senses_cafe",
+      "name": "V-Senses Cafe",
+      "synthetic_seating_capacity": 36,
+      "standard_table_turn_min": 90,
+      "large_party_threshold": 8,
+      "large_party_deposit_demo_vnd": 1000000,
+      "same_day_booking_cutoff_min": 45,
+      "waitlist_enabled": true,
+      "slots": [
+        {
+          "date": "2026-10-03",
+          "time": "18:00",
+          "covers_capacity": 9,
+          "covers_booked": 0,
+          "covers_remaining": 9,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "18:30",
+          "covers_capacity": 4,
+          "covers_booked": 1,
+          "covers_remaining": 3,
+          "status": "limited"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:00",
+          "covers_capacity": 4,
+          "covers_booked": 0,
+          "covers_remaining": 4,
+          "status": "limited"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "19:30",
+          "covers_capacity": 22,
+          "covers_booked": 6,
+          "covers_remaining": 16,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:00",
+          "covers_capacity": 17,
+          "covers_booked": 5,
+          "covers_remaining": 12,
+          "status": "available"
+        },
+        {
+          "date": "2026-10-03",
+          "time": "20:30",
+          "covers_capacity": 12,
+          "covers_booked": 4,
+          "covers_remaining": 8,
+          "status": "available"
+        }
+      ],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_restaurant_capacity"
+      ]
+    }
+  ],
+  "assumption_refs": [
+    "asm_demo_restaurant_capacity"
+  ]
+}

@@ -10,17 +10,17 @@ from .onnx_e5 import OnnxE5Model
 class LocalEmbedder:
     PROFILE_FORMAT = "concierge-embedding-profile"
 
-    def __new__(cls, path: str, manifest_path: str = ''):
+    def __new__(cls, path: str, manifest_path: str = '', *, num_gpu: int = -1):
         # Keep the existing constructor used by bootstrap/ingestion while
         # allowing an operator-pinned loopback Ollama model.  The returned
         # object is a real OllamaEmbedder, so callers retain the normal
         # ``encode_query``/``encode_passage`` contract.
         if cls is LocalEmbedder and path.startswith('ollama://'):
             model = path.removeprefix('ollama://').strip('/')
-            return OllamaEmbedder(model=model, manifest_path=manifest_path)
+            return OllamaEmbedder(model=model, manifest_path=manifest_path, num_gpu=num_gpu)
         return super().__new__(cls)
 
-    def __init__(self, path: str, manifest_path: str = '') -> None:
+    def __init__(self, path: str, manifest_path: str = '', *, num_gpu: int = -1) -> None:
         if path.startswith('ollama://'):
             return
         root = Path(path)

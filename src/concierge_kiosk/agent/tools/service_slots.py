@@ -17,7 +17,6 @@ from typing import Mapping
 
 from concierge_kiosk.agent.understanding.intent import normalize_intent_text
 from concierge_kiosk.agent.understanding.domain_nlu import (
-    CANCEL_TERMS as _CANCEL_TERMS,
     COURTESY_PARTICLES as _COURTESY_PARTICLES,
     CLARIFICATION_TEXT as _CLARIFICATION_TEXT,
     NUMBER_WORDS as _NUMBER_WORDS,
@@ -72,6 +71,9 @@ def _room_number(text: str, language: str) -> str | None:
     # Slot-only continuation after the agent explicitly requested a room.
     if re.fullmatch(r'[A-Za-z]?\d{2,5}', surface):
         return surface.upper()
+    compact = re.sub(r'(?<=\d)\s+(?=\d)', '', surface)
+    if re.fullmatch(r'[A-Za-z]?\d{2,5}', compact):
+        return compact.upper()
     return None
 
 
@@ -155,67 +157,5 @@ def clarification_text(language: str, missing: tuple[str, ...]) -> str:
 
 def ready_text(language: str) -> str:
     return _READY_TEXT[language]
-
-
-def _strip_courtesy_tokens(text: str, language: str) -> str:
-    """Remove leading/trailing politeness words so "please cancel" == "cancel"."""
-    particles = sorted((normalize_intent_text(item) for item in _COURTESY_PARTICLES.get(language, ())),
-                       key=len, reverse=True)
-    value = text
-    changed = True
-    while changed and value:
-        changed = False
-        for particle in particles:
-            latin = all(ord(char) < 0x2E80 for char in particle)
-            if latin:
-                if value.startswith(particle + ' '):
-                    value, changed = value[len(particle) + 1:].strip(), True
-                elif value.endswith(' ' + particle):
-                    value, changed = value[:-len(particle) - 1].strip(), True
-            elif value != particle and (value.startswith(particle) or value.endswith(particle)):
-                value = (value[len(particle):] if value.startswith(particle)
-                         else value[:-len(particle)]).strip()
-                changed = True
-            if changed:
-                break
-    return value
-
-
-def is_cancel_pending(query: str, language: str) -> bool:
-    """A cancel command is the WHOLE utterance, not a word inside a question.
-
-    "cancel" and "please cancel" cancel a pending draft; "what is the
-    cancellation policy?" or "can I cancel my booking tomorrow?" do not.
-    """
-    normalized = normalize_intent_text(query, language)
-    if '?' in normalized or '？' in normalized:
-        return False
-    normalized = _strip_courtesy_tokens(normalized.strip(' .!~,。！'), language)
-    terms = {normalize_intent_text(term, language) for term in _CANCEL_TERMS.get(language, ())}
-    return normalized in terms
-
-
-def looks_like_slot_reply(query: str, language: str, missing: tuple[str, ...]) -> bool:
-    """High-precision continuation detector so unrelated questions are not hijacked."""
-    text = query.strip()
-    if not text or len(text) > 120:
-        return False
-    normalized = normalize_number_words(text, language)
-    probes = {
-        'room_number': _room_number(text, language) is not None,
-        'quantity': bool(re.search(r'(?<!\d)\d{1,2}(?!\d)', normalized)) or any(
-            re.search(rf'\b{re.escape(word)}\b', normalized)
-            for word in _NUMBER_WORDS.get(language, {})),
-        'party_size': _party_size(text, language) is not None,
-        'preferred_time': _preferred_time(text, language) is not None,
-    }
-    if any(probes.get(slot, False) for slot in missing):
-        return True
-    # "2 cái" while the room is still missing adds a slot the guest had not
-    # given yet. Accept such a bare fragment (no question, few words) instead
-    # of dropping the pending task into knowledge search.
-    if '?' in text or '？' in text or len(text.split()) > 4:
-        return False
-    return probes['quantity'] or probes['preferred_time']
 
 

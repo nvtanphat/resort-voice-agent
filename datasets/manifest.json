@@ -1,0 +1,795 @@
+{
+  "dataset_id": "furama-concierge-dataset",
+  "version": "1.0.3-data-consistency-fix",
+  "primary_language": "vi",
+  "property_id": "FURAMA_DANANG",
+  "release_status": "dataset_valid_runtime_contract_blocked",
+  "artifact_policy": "data_and_release_metadata",
+  "file_count": 149,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 4469,
+      "sha256": "13131a0ff55a032ae8d7223b57a2fd132ac6e39926b3d567a2d241dd2702f94d"
+    },
+    {
+      "path": "evaluation/agent/index.json",
+      "bytes": 4042,
+      "sha256": "33e18659bb47ddbe667a6bcec9eab6f9768c2ecc31cae0323c9b760c51aa12e5"
+    },
+    {
+      "path": "evaluation/audit/final_release_audit.json",
+      "bytes": 3802,
+      "sha256": "456741263db997f12b2c0ab8f28c5904eb5959a0961233aa0ee9807e25201dc3"
+    },
+    {
+      "path": "evaluation/audit/production_hardening_audit.json",
+      "bytes": 835,
+      "sha256": "4c106cc41700c9f37b4b9cab00e2f0105a47719471da944ec6dad9ef289019c9"
+    },
+    {
+      "path": "evaluation/audit/quality_summary.json",
+      "bytes": 5329,
+      "sha256": "ef3e4b4da1add9e88e7c39423628f205e058bb9ae7c67432314b62eed4a0ff54"
+    },
+    {
+      "path": "evaluation/challenges/natural.jsonl",
+      "bytes": 280247,
+      "sha256": "1e5f75c37e44815c69d7f50798d23a7a704fcfa09ce0bd7ac3b8851137b87fd4",
+      "records": 595
+    },
+    {
+      "path": "evaluation/backend_plan/turn_cases.jsonl",
+      "bytes": 27029,
+      "sha256": "fd7ec0a083772686d37b101c0120623371350ccb282a5fbde0ba34dacc73b33e",
+      "records": 118
+    },
+    {
+      "path": "evaluation/config/diversity_policy.json",
+      "bytes": 654,
+      "sha256": "7c525b12bdfbce627c20086124f8ae857502c8e150f46a3074fc2c36a8c050cc"
+    },
+    {
+      "path": "evaluation/config/generation_policy.json",
+      "bytes": 1344,
+      "sha256": "c013c685f11fb2f3df45eb5fd879ba8e5c18e225f8eb8edfe287c9df04035f37"
+    },
+    {
+      "path": "evaluation/config/promotion_policy.json",
+      "bytes": 613,
+      "sha256": "05fc5be4180b13f808623b1b03522890eac2788b85ca99b9b4404391e9f544c7"
+    },
+    {
+      "path": "evaluation/end_to_end/edge_cases.jsonl",
+      "bytes": 42315,
+      "sha256": "2c2774affe60ad4e7bb8c0664e4bc57f63df2ea4cdefa9e6443f2b95c521bfc7",
+      "records": 108
+    },
+    {
+      "path": "evaluation/end_to_end/failures/production.json",
+      "bytes": 3999,
+      "sha256": "dcd990bd568810f5df881e9d0c82d065bdecea559927023e69d3327636df427b"
+    },
+    {
+      "path": "evaluation/end_to_end/journeys/production.jsonl",
+      "bytes": 14745,
+      "sha256": "e7ae31ad6222fb05e40b7d6c83be65339e343e0b261459ab5b3c4029fffe4743",
+      "records": 32
+    },
+    {
+      "path": "evaluation/end_to_end/journeys/vi_multi_turn.jsonl",
+      "bytes": 111168,
+      "sha256": "104b58e0bce4c1ed960f482fc2bc7e516248da0a854e460a7e8efc85462f9875",
+      "records": 123
+    },
+    {
+      "path": "evaluation/end_to_end/scenarios/production.jsonl",
+      "bytes": 175810,
+      "sha256": "8ebd2510275c069d82308c966fca5fec2e1e31e20ba296ee2de34fba7ba108e7",
+      "records": 270
+    },
+    {
+      "path": "evaluation/end_to_end/service_actions.jsonl",
+      "bytes": 174543,
+      "sha256": "9dc0af1e228618f706bcb4a88ac411c5588b9a7006ca19f9c0b0b187559c2214",
+      "records": 240
+    },
+    {
+      "path": "evaluation/end_to_end/simulation/counterfactual_events.jsonl",
+      "bytes": 5005693,
+      "sha256": "534eb4418b24fe5d5fa32549282558a939434136066b9c5685b4c7eff5936cef",
+      "records": 8068
+    },
+    {
+      "path": "evaluation/end_to_end/simulation/counterfactual_summary.json",
+      "bytes": 1200,
+      "sha256": "d68ab9fb2f76bb7c7ef7ccb3e0fed4193c5a49cf037f12de3d3550c698092d59"
+    },
+    {
+      "path": "evaluation/end_to_end/simulation/guest_archetypes.json",
+      "bytes": 13995,
+      "sha256": "5f46b2f7ac18c25d56f554dfc3fc464e6f8a46a99b2e0a238c35ac5f0ac599aa"
+    },
+    {
+      "path": "evaluation/end_to_end/simulation/hospitality_events.jsonl",
+      "bytes": 44590997,
+      "sha256": "e4d6f90c1899ef33a235316cfece6623ee3d9c456811e2f17a5ea5dc99c51947",
+      "records": 50000
+    },
+    {
+      "path": "evaluation/end_to_end/simulation/hospitality_summary.json",
+      "bytes": 1021,
+      "sha256": "8246afcd6cbdd8028b0db7058b00d3e117f4c8d73aa4a4e054aeb67bf62f31e0"
+    },
+    {
+      "path": "evaluation/end_to_end/simulation/production_config.json",
+      "bytes": 2607,
+      "sha256": "2ead50fd17674791cba15a8d89cde8576efabd86e6bf855a94fe9f8e8500edba"
+    },
+    {
+      "path": "evaluation/end_to_end/simulation/stay_episodes.jsonl",
+      "bytes": 4711501,
+      "sha256": "b4f536fd44870495d2de632ff5420637be5482263ffe8ac492b84ba06b2974c5",
+      "records": 12000
+    },
+    {
+      "path": "evaluation/frames/semantic_frames.jsonl",
+      "bytes": 41032,
+      "sha256": "89e0523f72d94eba1b1f57bc8221832389e25dcae311f2b9fae915abc9b9e9d2",
+      "records": 63
+    },
+    {
+      "path": "evaluation/frames/split.json",
+      "bytes": 462,
+      "sha256": "e36d58251937c3acc0a8cbc79cc221a3b0e396c528871bb27b714833985b180b"
+    },
+    {
+      "path": "evaluation/gold/vi_core.jsonl",
+      "bytes": 161857,
+      "sha256": "c76552597caab350cee71e7a638f163066bd3d40eb4b855599c265a4a09c839b",
+      "records": 280
+    },
+    {
+      "path": "evaluation/gold/vi_dev.jsonl",
+      "bytes": 36229,
+      "sha256": "17f271ba1fb50c9afcec8ad8d1e94b500f47bc9acb2e82c6e4e540e33a2ef72f",
+      "records": 60
+    },
+    {
+      "path": "evaluation/gold/vi_hard_negatives.jsonl",
+      "bytes": 52912,
+      "sha256": "0466134463318f3cf32031f5c3e82b32cd93cfb9629879cf9fb0a96c5c421fbe",
+      "records": 80
+    },
+    {
+      "path": "evaluation/gold/vi_test.jsonl",
+      "bytes": 48686,
+      "sha256": "dd53870d82299e11798da90af1ad94d9cf8e4ec6b76975668adb01178df331ac",
+      "records": 80
+    },
+    {
+      "path": "evaluation/holdout/service_workflow.jsonl",
+      "bytes": 169622,
+      "sha256": "cb205edcd53e0fb04dcbb25c83809f1aaf250670e4647c4d5de74079a94ce82c",
+      "records": 200
+    },
+    {
+      "path": "evaluation/retrieval/compositional.jsonl",
+      "bytes": 415075,
+      "sha256": "75dcd9f162dde710225e6ac8dee67a87650a57a440f160e6e299c46ecb6d91f7",
+      "records": 576
+    },
+    {
+      "path": "evaluation/retrieval/grounded.jsonl",
+      "bytes": 145854,
+      "sha256": "ff405c6cdf347388f1c3b6360e48073d4ad05d0b815f7facc83555068435f96d",
+      "records": 220
+    },
+    {
+      "path": "evaluation/retrieval/grounded_fact_holdout.jsonl",
+      "bytes": 57568,
+      "sha256": "2d5ec728af856a33adb1755be48dc09f1c22c800a8117665449c8a5c7d63bb39",
+      "records": 88
+    },
+    {
+      "path": "evaluation/retrieval/grounded_seen.jsonl",
+      "bytes": 753066,
+      "sha256": "b4fcc66ac732a1e6ca895b78d502cf1906bbe53aa2b096a76d4584552a92979b",
+      "records": 1156
+    },
+    {
+      "path": "evaluation/retrieval/metrics.json",
+      "bytes": 1023,
+      "sha256": "c1ab880e6e9c27666e6bb2656fe092d5a791d916ddabe017c3993050f74ffe36"
+    },
+    {
+      "path": "evaluation/retrieval/natural_queries.json",
+      "bytes": 4192,
+      "sha256": "6298b9290a02f882fe7474bbd338a65494eddfac1d310013232a6f0d4738f940"
+    },
+    {
+      "path": "evaluation/retrieval/split.json",
+      "bytes": 3279,
+      "sha256": "bd34b0cf3248240e922eb5953f65e86fcf2c476a557ef64e2623fd0bd9ff68a2"
+    },
+    {
+      "path": "evaluation/schemas/agent_gold.schema.json",
+      "bytes": 1479,
+      "sha256": "9ab5b91ecb01ebcf0564ea79218d04506d45bdd8ce9b62c166146fb5ca287201"
+    },
+    {
+      "path": "evaluation/schemas/semantic_frame.schema.json",
+      "bytes": 1372,
+      "sha256": "58cb6dbeed1b145b404228687113551c5c7757d439fdb55c2d498a01426e4880"
+    },
+    {
+      "path": "evaluation/voice_text/index.json",
+      "bytes": 1087,
+      "sha256": "d8c60483300e2efc6a78a74d0bbaea245b9f80aeeea8a1222bf435b99d0d546f"
+    },
+    {
+      "path": "evaluation/voice_text/vi_asr_robustness.jsonl",
+      "bytes": 190653,
+      "sha256": "874b5c8e2987b8cebc24c091d99de3c151443270cdafd83e69d4161363d9afaa",
+      "records": 350
+    },
+    {
+      "path": "knowledge/canonical/aliases.json",
+      "bytes": 57308,
+      "sha256": "68bd1862eceb10a06f46f38a1f07a7db700dbe7cfd012e49f2d437db3aa0eb54"
+    },
+    {
+      "path": "knowledge/canonical/contacts.json",
+      "bytes": 4723,
+      "sha256": "377fd55edf4f08165a78463a20c0a162873817e1691f14fd79ac9afba0b167ae"
+    },
+    {
+      "path": "knowledge/canonical/departments.json",
+      "bytes": 4691,
+      "sha256": "2ef1246ebf69269e83686e6045115496f8b6bfed5c9111d42ad6150b62641ac4"
+    },
+    {
+      "path": "knowledge/canonical/domain_review_queue.json",
+      "bytes": 25998,
+      "sha256": "32faea8e72b913e056af7f691231efeb6084db2dd16d406637ab97b97c9aeae4"
+    },
+    {
+      "path": "knowledge/canonical/entities.jsonl",
+      "bytes": 55984,
+      "sha256": "370f28001ffc4235e07fd47f9ee3f4de75135322bb17bb3c85ac2289b93b0bd0",
+      "records": 119
+    },
+    {
+      "path": "knowledge/canonical/entity_relations.jsonl",
+      "bytes": 98687,
+      "sha256": "32344c4f36f7913493f56a2714b3f673c2943440f9d048f166ff90450cf629a5",
+      "records": 273
+    },
+    {
+      "path": "knowledge/canonical/facts.jsonl",
+      "bytes": 470126,
+      "sha256": "38e2c3e5f77ead2f6c571f2b2e15eb1909362f56df89e736f31553ccbad0febe",
+      "records": 366
+    },
+    {
+      "path": "knowledge/canonical/freshness.jsonl",
+      "bytes": 114263,
+      "sha256": "4c230e6007444999ca185fb80b595bed7935e7f30c832c8aa88bd48f91b09507",
+      "records": 366
+    },
+    {
+      "path": "knowledge/canonical/map.json",
+      "bytes": 8411,
+      "sha256": "3f6ba254d05d3c36a22dcee8007c24257672029dd607bb040afaf6bdc682021d"
+    },
+    {
+      "path": "knowledge/canonical/map_paths.json",
+      "bytes": 42320,
+      "sha256": "3ff42039848a878da79b96d5f5dc648a0cfb07440334da2640a58b1731111ccb"
+    },
+    {
+      "path": "knowledge/canonical/planning.json",
+      "bytes": 3859,
+      "sha256": "3a8a2ffe6b6f213dbff32662f9b8ff40d78faaecc01c4e5facb4d44e5fdda10e"
+    },
+    {
+      "path": "knowledge/canonical/property_profile.json",
+      "bytes": 2110,
+      "sha256": "8067b6f1cf4d42c41d79c41267cfd8a87d47b9d8429d533933e5b8605b9a6eca"
+    },
+    {
+      "path": "knowledge/canonical/service_catalog.json",
+      "bytes": 19761,
+      "sha256": "46300dc2000ae05112b2247e9c997137d74987339d2249b32a71f32b825b205f"
+    },
+    {
+      "path": "knowledge/documents/manifest.json",
+      "bytes": 426,
+      "sha256": "da38225e8cc4a34e72c05c858a3c5a2abdd889685e39e9b452840ffe0201e913"
+    },
+    {
+      "path": "knowledge/manifest.json",
+      "bytes": 3969,
+      "sha256": "dfed8b491846150583957f92adaf6bd15fc8c61f6d1789e4c1205b2b66ad9820"
+    },
+    {
+      "path": "knowledge/sources/verification_snapshots.jsonl",
+      "bytes": 81633,
+      "sha256": "035c4fcece02c7d197efa780493d4c54db810cdcdfba949b004d87d41cf4732e",
+      "records": 83
+    },
+    {
+      "path": "knowledge/sources/verified_sources.jsonl",
+      "bytes": 72654,
+      "sha256": "6b3cf9929db60f3ea02a0fd3989bb0e7822a2cde559b010e8e4bbb3abc8d70fe",
+      "records": 83
+    },
+    {
+      "path": "quarantine/facts.jsonl",
+      "bytes": 480219,
+      "sha256": "ce8f5543ee5a2b58749a940d44fbf97d3f4f0fbecbc93f5c173482f76ba0fda8",
+      "records": 400
+    },
+    {
+      "path": "quarantine/manifest.json",
+      "bytes": 726,
+      "sha256": "8137e5b7fe40d74963d98a537615352105df81ab76e4f961dbfdafc122ee7a64"
+    },
+    {
+      "path": "quarantine/source_candidates.jsonl",
+      "bytes": 52273,
+      "sha256": "78dee06a86b534872abe488c98a0f7d5d63c6e5be4e005b845f77a01fb02a287",
+      "records": 79
+    },
+    {
+      "path": "release.json",
+      "bytes": 1412,
+      "sha256": "31dfde1725218a707b2d556fd72eefce29ebfca7fc219a908f10a12be09a80ed"
+    },
+    {
+      "path": "schemas/benchmarks/counterfactual_event.schema.json",
+      "bytes": 1517,
+      "sha256": "ae38f81915a0012acc24399849fe291fceeee0258d857cf542001a4772c79cd4"
+    },
+    {
+      "path": "schemas/benchmarks/edge_case.schema.json",
+      "bytes": 2049,
+      "sha256": "756699115d48a90a024854a0ebf67d05fd6f13915bc6350b7c3c6812ce090467"
+    },
+    {
+      "path": "schemas/benchmarks/journey.schema.json",
+      "bytes": 1680,
+      "sha256": "1c8b142b4179a97bc13e50070a856d9ed0ac85fd5fb2de419f7286d8bd3244a9"
+    },
+    {
+      "path": "schemas/benchmarks/natural_challenge.schema.json",
+      "bytes": 1670,
+      "sha256": "632f8b7dfe1b661a80db84e4cc6d9594c278de450ed174037e3c5b403c4fcd6e"
+    },
+    {
+      "path": "schemas/benchmarks/retrieval_compositional.schema.json",
+      "bytes": 2102,
+      "sha256": "ff4b2f72c8c078b9aa5d3a0d4d513a6262415ebcf4583fcaa59ca5678fb9e4fd"
+    },
+    {
+      "path": "schemas/benchmarks/retrieval_grounded.schema.json",
+      "bytes": 2241,
+      "sha256": "c0578e003985803e32205566a50fb0843a4ffc736221aefae3a12bc2620f74c4"
+    },
+    {
+      "path": "schemas/benchmarks/scenario_hospitality.schema.json",
+      "bytes": 4111,
+      "sha256": "5759772d30c3b9f295e35056d6eb7216d9e6c9aac6f33d6390b0931b068cadae"
+    },
+    {
+      "path": "schemas/benchmarks/scenario_production.schema.json",
+      "bytes": 2961,
+      "sha256": "fa135a426b8de9d891902beed4cbf5f0d28515a31b834a7b91e3cfa324e0215f"
+    },
+    {
+      "path": "schemas/benchmarks/service_action.schema.json",
+      "bytes": 3952,
+      "sha256": "5dda08cedd8d755905f1aa5ed1532bfc53526c80c09ba99a6a71c3428158852d"
+    },
+    {
+      "path": "schemas/benchmarks/simulation_event.schema.json",
+      "bytes": 5095,
+      "sha256": "f1ec07090d39642b39568ff5df1f1cce2239aa37c5b806a70e9209e4b885e77f"
+    },
+    {
+      "path": "schemas/benchmarks/stay_episode.schema.json",
+      "bytes": 1427,
+      "sha256": "6c60c82def94df384d63cf6b4b0c42da3124a118342e87bf51796ec75b98c7f5"
+    },
+    {
+      "path": "schemas/contracts.json",
+      "bytes": 42938,
+      "sha256": "4f2a79e284188c3155c6e59b5f1c4aeef1e357cf8268135f363d699ebdfcbae4"
+    },
+    {
+      "path": "schemas/end_to_end.schema.json",
+      "bytes": 478,
+      "sha256": "82471019c95830ff8d852c5b682d20ba1d6df9bee365d4fd8d40be5b780d8c2b"
+    },
+    {
+      "path": "schemas/holdout.schema.json",
+      "bytes": 2881,
+      "sha256": "e3d328948ee8de093b8733f2d0f51c4230d20c51f3ce8b5c78199837a5de9084"
+    },
+    {
+      "path": "schemas/knowledge/entity.schema.json",
+      "bytes": 1704,
+      "sha256": "1583df138e17a88aaabf585ba11c4578a6cf59e8157fb8469b0cc85627da5132"
+    },
+    {
+      "path": "schemas/knowledge/fact.schema.json",
+      "bytes": 6669,
+      "sha256": "4637813b41b93665a9a0414cf504c8a027d1a6ff688e3229b8aa8809c7686494"
+    },
+    {
+      "path": "schemas/knowledge/freshness.schema.json",
+      "bytes": 1312,
+      "sha256": "ecaef661a9fe6af8dbf9f318036a886018d1671abbbe69e24b9639e8d4541cde"
+    },
+    {
+      "path": "schemas/knowledge/map.schema.json",
+      "bytes": 2235,
+      "sha256": "81d3cabf90a247fb85837e999c3c5febb1ea10b437bb2be667e7c5425777da1c"
+    },
+    {
+      "path": "schemas/knowledge/planning.schema.json",
+      "bytes": 2339,
+      "sha256": "bfab222a9cdffaeb596b9bd63ec883b31e9df1c1742b29fd0dc9d2771294631a"
+    },
+    {
+      "path": "schemas/knowledge/relation.schema.json",
+      "bytes": 1179,
+      "sha256": "054a7ee77bc98f1bf7bee914be6490bd9d27c731f8c1213f908b6e35b454f6a1"
+    },
+    {
+      "path": "schemas/knowledge/service_catalog.schema.json",
+      "bytes": 2585,
+      "sha256": "d9cfb50d54139097f377a75930e1bd674005e2dc620d5d978b240bfd57c78c99"
+    },
+    {
+      "path": "schemas/knowledge/source_artifact.schema.json",
+      "bytes": 3563,
+      "sha256": "cba5ec6c877c28e5bede2b998955ff29353a8e775e6a7c7045bd73d6c5a5bd89"
+    },
+    {
+      "path": "schemas/knowledge/verification_snapshot.schema.json",
+      "bytes": 2022,
+      "sha256": "e2bb82b7b0975abf5d40d1b916ee25458d29d9ae9f813dfabbdff89f3033f0b4"
+    },
+    {
+      "path": "schemas/manifest.json",
+      "bytes": 7268,
+      "sha256": "aa487726d9b7ea65dbf8d3fda66c8c046d919e1a3eac82fa213b1972affb3411"
+    },
+    {
+      "path": "schemas/quarantine/fact.schema.json",
+      "bytes": 3548,
+      "sha256": "66011a8adaad3d75887a6fd5a0eb81208a08538f9343e4b351fc68e7251b5ac4"
+    },
+    {
+      "path": "schemas/referential_rules.json",
+      "bytes": 3833,
+      "sha256": "e04279a1abf7a4c5cb320b76e6c60311a2df26d24b4b010202103b971ac8aac6"
+    },
+    {
+      "path": "schemas/retrieval.schema.json",
+      "bytes": 281,
+      "sha256": "4c901ed5b1aaa81f594816313113082739d695deed348ceb52b030594e97d2ff"
+    },
+    {
+      "path": "schemas/synthetic/engineering_workflow.schema.json",
+      "bytes": 2313,
+      "sha256": "1971c24611cf98e000e2ffd4b36338d7b0b4c0d9e3780f81559f4487f77560a6"
+    },
+    {
+      "path": "schemas/synthetic/guest_service_workflow.schema.json",
+      "bytes": 2134,
+      "sha256": "4950fe68d249cefd8ae14ee8361f548c2fa244c993dd66c84fbfcae842c7f615"
+    },
+    {
+      "path": "schemas/synthetic/pms_stay.schema.json",
+      "bytes": 3312,
+      "sha256": "f7abd79a3e78207647e001f5fc0e43f4a5aa836658354ad178c8d18db091954e"
+    },
+    {
+      "path": "schemas/synthetic/room_inventory.schema.json",
+      "bytes": 1592,
+      "sha256": "1903ae195d60c7d980af8911c35a4acad1a6ef0882ef8ba432ea565e4b97e0e2"
+    },
+    {
+      "path": "schemas/synthetic/service_policies.schema.json",
+      "bytes": 11718,
+      "sha256": "3fc3727a0e50e1c15069b0f5702dc050e8fe8474237b175e040e4c02794d0596"
+    },
+    {
+      "path": "schemas/synthetic/service_request_history.schema.json",
+      "bytes": 5723,
+      "sha256": "dee9c059541c62d7a7df6d3788705dfa0f0668306b98758e6557c29f6908b6f3"
+    },
+    {
+      "path": "schemas/training/agent_gold.schema.json",
+      "bytes": 1479,
+      "sha256": "9ab5b91ecb01ebcf0564ea79218d04506d45bdd8ce9b62c166146fb5ca287201"
+    },
+    {
+      "path": "schemas/training/rag_grounded.schema.json",
+      "bytes": 2037,
+      "sha256": "87876b6c1fba71e1853eef29c3359f6f195465f05715ba959c17fd6a3196bbfc"
+    },
+    {
+      "path": "schemas/training/source_registry.schema.json",
+      "bytes": 1307,
+      "sha256": "a2d8425f630f85b8bdeea22d76217897ff1390704d7a3e4563c7942a3190f168"
+    },
+    {
+      "path": "schemas/validate_contracts.py",
+      "bytes": 4307,
+      "sha256": "4ded6d00d2903ed48c0e3000ce6febb29400142ccd5be9ba591f72afa1cf7257"
+    },
+    {
+      "path": "schemas/voice/asr_text.schema.json",
+      "bytes": 1855,
+      "sha256": "69cb8b3de1f2e9c0d339c3a03c514c08f6376df7491db456d69c9514e7b722d0"
+    },
+    {
+      "path": "schemas/voice/joint_outcomes.schema.json",
+      "bytes": 1957,
+      "sha256": "ae391c8c0f6f26c7769a7ad22b7df8e74ab4e95a44de3da95c924b57e9a7770a"
+    },
+    {
+      "path": "schemas/voice/manifest.schema.json",
+      "bytes": 1094,
+      "sha256": "fc28fa3b908683c03796b9deddc11fa6185cf3b02338c0fc93f272177e75cda3"
+    },
+    {
+      "path": "schemas/voice/outcomes.schema.json",
+      "bytes": 1056,
+      "sha256": "004a2a2bfb877daf9ba7d210ab52f622be878e785eb50309645ec5c6cc07a032"
+    },
+    {
+      "path": "synthetic/manifest.json",
+      "bytes": 7168,
+      "sha256": "efd77854ab844587725171109ac5811893c98b26e516d3e0603e0a3e054e8d6e"
+    },
+    {
+      "path": "synthetic/operations/billing/charge_rules.json",
+      "bytes": 1524,
+      "sha256": "ad894f7429a0c7b0ee6099be4e633d5403573f0220ac86d533253e5dca2d8c7c"
+    },
+    {
+      "path": "synthetic/operations/billing/service_recovery.json",
+      "bytes": 1867,
+      "sha256": "d4694a969592d18aa2fae0bc85a3eb9802eafdd43316cd99b322b4e316ae0545"
+    },
+    {
+      "path": "synthetic/operations/engineering/maintenance_taxonomy.json",
+      "bytes": 5870,
+      "sha256": "6c69c6d3185d5f4ed053bdde9d53a10c25223723d4a43b5ce119865f3311dee6"
+    },
+    {
+      "path": "synthetic/operations/engineering/workflows.jsonl",
+      "bytes": 9336,
+      "sha256": "a46cd8bd49d334c649e0f109153ef12309e898fa94db43e5ead1a4c96b74f67f",
+      "records": 7
+    },
+    {
+      "path": "synthetic/operations/food_beverage/minibar.json",
+      "bytes": 6951,
+      "sha256": "a0c87640b39ff4b9a85c27177741e9de3d17f370a2ca8777696ef25aae547e3a"
+    },
+    {
+      "path": "synthetic/operations/food_beverage/restaurants.json",
+      "bytes": 10992,
+      "sha256": "41f20e3871b2b02a278e022854565eccd4d68ea16c51ccd10548ad85c94532e8"
+    },
+    {
+      "path": "synthetic/operations/food_beverage/room_service_menu.json",
+      "bytes": 5890,
+      "sha256": "18414d891041651a35de9a1eeada1dea48c2ac68872ca2fe4526d4d9b2de52b3"
+    },
+    {
+      "path": "synthetic/operations/history/metadata.json",
+      "bytes": 1720,
+      "sha256": "86d7d5aebb9979be92b6ad1ba2df66d3066c44c78a5cf66528f632ac3dce8b95"
+    },
+    {
+      "path": "synthetic/operations/history/requests.jsonl",
+      "bytes": 5857053,
+      "sha256": "652bdbeb7bc3f01f5e3498c47fb0778e03446421e6e8abe062e8ad273a9e05a5",
+      "records": 5000
+    },
+    {
+      "path": "synthetic/operations/history/summary.json",
+      "bytes": 1203,
+      "sha256": "1b4da3974da605e31f069b7a483e4241caa42a64ca711d96685535f338e79c11"
+    },
+    {
+      "path": "synthetic/operations/housekeeping/catalog.json",
+      "bytes": 7794,
+      "sha256": "a1e7bcc57f056a1c7f2358d8f421444e0d45d91047bb8f5adfa5838988762520"
+    },
+    {
+      "path": "synthetic/operations/inventory/commercial_snapshot.json",
+      "bytes": 9802,
+      "sha256": "8de9e58bf95696fb022cf45b325b3613f307b674a9eef443b69b298fc055d360"
+    },
+    {
+      "path": "synthetic/operations/metadata/assumptions.json",
+      "bytes": 34506,
+      "sha256": "f5be37673b3d2c8c3deb6b631bad8efabd9e383cb1d9f6e71eafcbdaf1d4a3b1"
+    },
+    {
+      "path": "synthetic/operations/metadata/coverage.json",
+      "bytes": 4225,
+      "sha256": "4407250f0929b461003fe6c2ea1a8c0238862b31f8d2765d23302c733c330a49"
+    },
+    {
+      "path": "synthetic/operations/metadata/demo_business_summary.json",
+      "bytes": 1473,
+      "sha256": "e67f95ef6d421d552568c53c39611b4288db5c26a2c924715020769941b9c371"
+    },
+    {
+      "path": "synthetic/operations/metadata/nonpublic_policy_registry.json",
+      "bytes": 8482,
+      "sha256": "5f4283cb1b1d4f09ee1216a7f72bfbc846e9e6ae87d5d0c18ee57194b0394e13"
+    },
+    {
+      "path": "synthetic/operations/metadata/property_simulation.json",
+      "bytes": 2511,
+      "sha256": "78e99d34c35f23ff6cd851778019b177916dfa05c77792fdc59de41ee2ec11f6"
+    },
+    {
+      "path": "synthetic/operations/metadata/realism_profile.json",
+      "bytes": 2027,
+      "sha256": "ce4908045c43dcbafda3f39f16a81244f53e041871814ee659a00e93dc524699"
+    },
+    {
+      "path": "synthetic/operations/metadata/sources.json",
+      "bytes": 20691,
+      "sha256": "e0a7424162bb87cc26f89fd8c1b7b02a7a3187bb1b81e89442337b879beb5cce"
+    },
+    {
+      "path": "synthetic/operations/pms/stays.jsonl",
+      "bytes": 152932,
+      "sha256": "d970f70385eb0b14379cdaacb41be9818482cfa63d54c1dba3285a3c28a7f9d0",
+      "records": 218
+    },
+    {
+      "path": "synthetic/operations/policies/constraints.json",
+      "bytes": 1871,
+      "sha256": "0b60e7b539faf3a4b5f599979d134cb87f794935af8e298b20b85e33d2085d66"
+    },
+    {
+      "path": "synthetic/operations/policies/dispatch_slas.json",
+      "bytes": 1585,
+      "sha256": "ec354b22a0ae0a3e1c4b82023ba90a9e4d365cdc80efafaccc45a6927808ac48"
+    },
+    {
+      "path": "synthetic/operations/policies/escalation_matrix.json",
+      "bytes": 5948,
+      "sha256": "60a909115e4f785ef417996cc87608cfeb560bc005f22d924a2bc61455e80be8"
+    },
+    {
+      "path": "synthetic/operations/policies/escalation_policy.json",
+      "bytes": 1459,
+      "sha256": "ce549089e51200d3c81058f4fdabb3e5f93215d7e94389fbdfa1b7c7242a154c"
+    },
+    {
+      "path": "synthetic/operations/policies/guest_overrides.json",
+      "bytes": 1647,
+      "sha256": "816ee8f310b39013067a493278697fc2b74ad76273ed9ab713ddcb5ec408bb2c"
+    },
+    {
+      "path": "synthetic/operations/policies/service_policies.json",
+      "bytes": 36754,
+      "sha256": "cc4757e7630b7411f9cf02eaba4d04310a23c6c8621a7def1242f91c9d06e207"
+    },
+    {
+      "path": "synthetic/operations/rooms/access_sop.json",
+      "bytes": 1619,
+      "sha256": "178a9a207de095dff6e19cc71895a91ce62a516800c9d5c9227158cb2eafab5a"
+    },
+    {
+      "path": "synthetic/operations/rooms/amenities.json",
+      "bytes": 2887,
+      "sha256": "8fa17083bfcb62b1ff2b36d32406730dda1dce3e5a8b731643902ee99dbc9bda"
+    },
+    {
+      "path": "synthetic/operations/rooms/inventory.jsonl",
+      "bytes": 98526,
+      "sha256": "0ffdc1080113548d793f0328f7a0667731f26d5df0c6b7e562d488f8f032a17f",
+      "records": 266
+    },
+    {
+      "path": "synthetic/operations/spa/operations.json",
+      "bytes": 7966,
+      "sha256": "b2b9da7feb7cb9af9fc702a51371ff238a0dfaced5e3baf3c9574cfb828962a5"
+    },
+    {
+      "path": "synthetic/operations/staffing/capacity.json",
+      "bytes": 7578,
+      "sha256": "f9627fd5b18b821d21b17a1023b432e639c8d1519baf8752f8268df1b00476f2"
+    },
+    {
+      "path": "synthetic/operations/staffing/departments.json",
+      "bytes": 10888,
+      "sha256": "b8b19efb59fb117c8c5d7311377496e707070b330b2cdeb193de878b29d8fc90"
+    },
+    {
+      "path": "synthetic/operations/suppliers/directory.json",
+      "bytes": 3506,
+      "sha256": "168b2b01e9b878f256b2ab38ee5ce2429da0b5f6415f03e11cf26ff8ada90af9"
+    },
+    {
+      "path": "synthetic/operations/tours/operations.json",
+      "bytes": 1917,
+      "sha256": "50564635bd69aa4ea4c9233ce512d5a49ebd7eb26c431f92f38ed09664a7daf2"
+    },
+    {
+      "path": "synthetic/operations/tours/products.json",
+      "bytes": 8329,
+      "sha256": "67f05b42230a8b11fbf134a2a2463469a686cfe72e256f0b414e25e4bc308faf"
+    },
+    {
+      "path": "synthetic/operations/transport/products.json",
+      "bytes": 5137,
+      "sha256": "a03f701d820605d889e98caf5d3787026b4c0e245ddb1a5cfaa756dcdad71b16"
+    },
+    {
+      "path": "synthetic/operations/transport/shuttle_schedule.json",
+      "bytes": 1974,
+      "sha256": "9d97eab07c954f80ebc5874e1c739847e441fbc587d083be420b31da833911cb"
+    },
+    {
+      "path": "synthetic/operations/workflows/channel_dispatch_rules.json",
+      "bytes": 866,
+      "sha256": "d5cb80d7aa020cf3b3bcb7ba240faede9acdd72a17c158de0da4f4a4c2e4caca"
+    },
+    {
+      "path": "synthetic/operations/workflows/guest_service_workflows.jsonl",
+      "bytes": 10332,
+      "sha256": "99596297fa018895c9eaed3ec0a3ce05a1e3fa9425772e1695da1a3b428ce131",
+      "records": 11
+    },
+    {
+      "path": "training/agent/multilingual_support.jsonl",
+      "bytes": 184947,
+      "sha256": "9aedf9ba1eda45f701994e9354598c27f12056c480624535b9f09bde747354c7",
+      "records": 281
+    },
+    {
+      "path": "training/agent/assistant_candidates.jsonl",
+      "bytes": 506101,
+      "sha256": "41b60b993566c465cb3ad6584d85954fd5ffed9acf860baa935d0dedc1ba12f2",
+      "records": 1069
+    },
+    {
+      "path": "training/agent/research/humanized_vi_web_2026_10.json",
+      "bytes": 3882,
+      "sha256": "bb1936ba565a5bf426a058ad3037b99900b50476923dcaa2cd382e8e6bcdab71"
+    },
+    {
+      "path": "training/agent/source_registry.jsonl",
+      "bytes": 247433,
+      "sha256": "061867d6abe3d51a4b64c67a5c9276c6366d14840c20a891f31934e0b17709f9",
+      "records": 512
+    },
+    {
+      "path": "training/agent/vi_gold.jsonl",
+      "bytes": 429683,
+      "sha256": "43f027382f4ec89b5b48d11068050ccacf3221341403a8f7e7cd8d330dd76af8",
+      "records": 705
+    },
+    {
+      "path": "training/rag/vi_grounded.jsonl",
+      "bytes": 379328,
+      "sha256": "fc799253948abee3021406adb7d4e25973de888a0d2940bdac1437ccf2b53046",
+      "records": 565
+    }
+  ]
+}

@@ -90,7 +90,7 @@ def parse_goal_interpretation(raw: str) -> GoalInterpretation | None:
 
 def model_goal_interpretation(*, state: AgentState, base_url: str, model: str,
                               should_cancel: Callable[[], bool] | None = None,
-                              timeout_seconds: float = 2.5) -> GoalInterpretation | None:
+                              timeout_seconds: float = 2.5, num_gpu: int = -1) -> GoalInterpretation | None:
     if not base_url or not model:
         return None
     payload = {
@@ -117,7 +117,8 @@ def model_goal_interpretation(*, state: AgentState, base_url: str, model: str,
                 'server_goal_contract': state.goal_contract.public(),
             }, ensure_ascii=False)},
         ],
-        'options': {'temperature': 0, 'num_predict': 260, 'num_ctx': SLM_NUM_CTX},
+        'options': {'temperature': 0, 'num_predict': 260, 'num_ctx': SLM_NUM_CTX,
+                    'num_gpu': num_gpu},
     }
     raw = _chat(base_url, payload, timeout_seconds, should_cancel)
     return parse_goal_interpretation(raw) if raw is not None else None

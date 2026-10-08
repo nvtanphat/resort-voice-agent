@@ -35,7 +35,7 @@ def parse_reference_choice(raw: str, candidate_count: int) -> int | None:
 def model_reference_choice(*, query: str, language: str, candidates: tuple[EvidenceAnchor, ...],
                            base_url: str, model: str,
                            should_cancel: Callable[[], bool] | None = None,
-                           timeout_seconds: float = 1.8) -> EvidenceAnchor | None:
+                           timeout_seconds: float = 1.8, num_gpu: int = -1) -> EvidenceAnchor | None:
     if not base_url or not model or not candidates or len(candidates) > 8:
         return None
     public_candidates = [
@@ -56,7 +56,8 @@ def model_reference_choice(*, query: str, language: str, candidates: tuple[Evide
                 'language': language, 'guest_turn': query[:240], 'candidates': public_candidates,
             }, ensure_ascii=False)},
         ],
-        'options': {'temperature': 0, 'num_predict': 40, 'num_ctx': SLM_NUM_CTX},
+        'options': {'temperature': 0, 'num_predict': 40, 'num_ctx': SLM_NUM_CTX,
+                    'num_gpu': num_gpu},
     }
     raw = _chat(base_url, payload, timeout_seconds, should_cancel)
     if raw is None:

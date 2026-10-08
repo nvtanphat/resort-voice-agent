@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Approved multilingual map release",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["approved", "property_id", "effective_from", "effective_to", "source_id", "source_revisions", "origin", "places", "paths"],
+  "properties": {
+    "approved": {"const": true},
+    "property_id": {"type": "string", "minLength": 1},
+    "effective_from": {"type": "string", "format": "date"},
+    "effective_to": {"type": "string", "format": "date"},
+    "source_id": {"type": "string", "minLength": 1},
+    "source_revisions": {"$ref": "#/$defs/localizedRevision"},
+    "origin": {"type": "string", "minLength": 1},
+    "places": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/place"}},
+    "paths": {"type": "array", "items": {"$ref": "#/$defs/path"}}
+  },
+  "$defs": {
+    "localizedRevision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["en", "vi", "ko", "zh"],
+      "properties": {"en": {"type": "string", "minLength": 1}, "vi": {"type": "string", "minLength": 1}, "ko": {"type": "string", "minLength": 1}, "zh": {"type": "string", "minLength": 1}}
+    },
+    "localizedText": {
+      "type": "object", "additionalProperties": false,
+      "required": ["en", "vi", "ko", "zh"],
+      "properties": {"en": {"type": "string", "minLength": 1}, "vi": {"type": "string", "minLength": 1}, "ko": {"type": "string", "minLength": 1}, "zh": {"type": "string", "minLength": 1}}
+    },
+    "place": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "place_type", "zone_hub_id", "aliases", "labels"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "place_type": {"type": "string", "enum": ["entity", "zone_hub"]},
+        "zone_hub_id": {"type": "string", "minLength": 1},
+        "aliases": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "labels": {"$ref": "#/$defs/localizedText"}
+      }
+    },
+    "path": {
+      "type": "object", "additionalProperties": false,
+      "required": ["from", "to", "precision", "instructions", "evidence"],
+      "properties": {
+        "from": {"type": "string", "minLength": 1}, "to": {"type": "string", "minLength": 1},
+        "precision": {"type": "string", "enum": ["floorplan", "zone"]},
+        "instructions": {"$ref": "#/$defs/localizedText"},
+        "evidence": {"type": "object", "additionalProperties": true}
+      }
+    }
+  }
+}

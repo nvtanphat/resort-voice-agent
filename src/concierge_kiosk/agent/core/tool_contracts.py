@@ -10,7 +10,7 @@ from typing import Any, Literal, Mapping
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from concierge_kiosk.agent.understanding.routing import RouteDecision, directions_request, fast_response
+from concierge_kiosk.agent.understanding.routing import RouteDecision, fast_response
 from concierge_kiosk.agent.understanding.intent import Suggestion
 from concierge_kiosk.rag.retrieval import abstention_answer
 from concierge_kiosk.domain.service_registry import (
@@ -31,7 +31,10 @@ class ToolObservation(_StrictToolContract):
 
     contract_version: Literal[1] = CONTRACT_VERSION
     tool_name: str = Field(min_length=1, max_length=96)
-    status: Literal['ok', 'unavailable', 'ambiguous', 'error']
+    status: Literal[
+        'ok', 'needs_slot', 'needs_confirmation', 'needs_verification',
+        'pending_staff', 'unavailable', 'denied', 'error',
+    ]
     request_id: str | None = Field(default=None, max_length=96)
     evidence_ids: tuple[str, ...] = ()
     missing_slots: tuple[str, ...] = ()
@@ -92,12 +95,25 @@ class AnswerCard(_StrictToolContract):
 def observation_contract(tool_name: str, result: Mapping[str, Any], *,
                          request_id: str | None = None) -> ToolObservation:
     """Project a legacy tool result into the closed observation envelope."""
+    action = result.get('agent_action') if isinstance(result.get('agent_action'), Mapping) else {}
+    action_status = action.get('status')
+    raw_status = result.get('status')
     grounding = result.get('grounding')
     evidence_status = str(result.get('evidence_status') or '').upper()
-    if grounding == 'no_evidence' or evidence_status in {'UNAVAILABLE', 'UNSUPPORTED'}:
-        status = 'unavailable'
+    if action_status in {'needs_user_input', 'needs_slot'}:
+        status = 'needs_slot'
+    elif action_status in {'confirmation_required', 'needs_confirmation'}:
+        status = 'needs_confirmation'
+    elif action_status in {'needs_verification', 'verification_required'}:
+        status = 'needs_verification'
+    elif action_status in {'pending_staff', 'queued'} or raw_status == 'pending_staff':
+        status = 'pending_staff'
+    elif action_status in {'denied', 'policy_denied'} or raw_status in {'denied', 'policy_denied'}:
+        status = 'denied'
     elif grounding == 'map_ambiguous' or evidence_status == 'AMBIGUOUS':
-        status = 'ambiguous'
+        status = 'needs_slot'
+    elif grounding == 'no_evidence' or evidence_status in {'UNAVAILABLE', 'UNSUPPORTED'}:
+        status = 'unavailable'
     elif isinstance(result.get('tool_error'), dict) or result.get('ok') is False:
         status = 'error'
     else:
@@ -115,6 +131,8 @@ def observation_contract(tool_name: str, result: Mapping[str, Any], *,
         status=status,
         request_id=request_id,
         evidence_ids=evidence_ids[:16],
+        missing_slots=tuple(str(item)[:64] for item in (action.get('missing_slots') or [])
+                            if isinstance(item, str))[:8],
         alternatives=tuple(item for item in alternatives[:8] if isinstance(item, dict)),
         retryable=status == 'error',
         safe_to_speak=isinstance(result.get('answer'), str) and bool(result['answer'].strip()),
@@ -184,7 +202,9 @@ def contract_failure_result(language: str) -> dict:
 
 
 def _navigation_suggestion(query: str, language: str) -> dict | None:
-    return directions_request(query, language)
+    del language
+    text = query.strip()
+    return {'kind': 'directions', 'details': text[:500]} if text else None
 
 
 def _service_suggestion(decision: RouteDecision, query: str, language: str):
@@ -284,6 +304,14 @@ def authorized_tool_result(decision: RouteDecision, query: str, language: str,
             clean['suggested_action'] = None
             clean['requires_staff_review'] = False
             return clean
+        if clean.get('grounding') == 'no_evidence':
+            clean['suggested_action'] = None
+            clean['requires_staff_review'] = False
+            # Keep the public policy signal explicit when a generic place has
+            # no signed map/evidence route and therefore cannot be handed off
+            # as a business action.
+            clean['property_policy'] = 'service_disabled'
+            return clean
         expected = _navigation_suggestion(query, language)
         if expected is None:
             raise RuntimeError('Invalid navigation intent')
@@ -340,7 +368,7 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
                     raise RuntimeError('Invalid suggested business tool')
                 if result.get('requires_staff_review') is not True:
                     raise RuntimeError('Business suggestion requires staff review')
-        elif decision.branch in {'greeting', 'language', 'confirmation', 'clarification'} and result.get('suggested_action') is not None:
+        elif decision.branch in {'greeting', 'language', 'confirmation', 'clarification', 'preference', 'emergency_check'} and result.get('suggested_action') is not None:
             raise RuntimeError('Non-business fast route suggested a business operation')
         elif decision.branch == 'emergency':
             if (result.get('suggested_action') is not None
@@ -403,9 +431,10 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
             expected_details = expected['details']
         if suggestion != {'kind': expected_kind, 'details': expected_details}:
             raise RuntimeError('Tool suggestion must preserve the exact guest request')
-    elif decision.branch == 'navigation' and result.get('grounding') != 'map_ambiguous':
+    elif (decision.branch == 'navigation' and result.get('grounding') not in
+          {'map_ambiguous', 'no_evidence'}):
         raise RuntimeError('Navigation needs an explicit consent-only action')
-    if decision.branch in {'knowledge', 'planning'} and suggestion is None and result.get('requires_staff_review') is True:
+    if decision.branch in {'knowledge', 'planning', 'check_schedule'} and suggestion is None and result.get('requires_staff_review') is True:
         raise RuntimeError('Knowledge route has inconsistent action status')
     if decision.branch == 'planning' and (result.get('plan_is_draft') is not True or
                                          result.get('request_completed') is not False):

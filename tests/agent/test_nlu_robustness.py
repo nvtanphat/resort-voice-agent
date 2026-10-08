@@ -5,7 +5,6 @@ from concierge_kiosk.agent.understanding.intent import (
     normalize_intent_text,
     normalize_intent_with_spans,
 )
-from concierge_kiosk.agent.understanding.routing import classify_dialogue
 from tools.nlu.perturb import generate_variants, perturb_utterance
 
 

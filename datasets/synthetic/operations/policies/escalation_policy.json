@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_operational",
+  "reviewed_at": "2026-10-03",
+  "policy": {
+    "max_automatic_escalations_per_request": 1,
+    "warning_threshold_ratio": 0.75,
+    "overdue_threshold_ratio": 1.0,
+    "overdue_action": "raise_ops_priority_and_create_idempotent_reminder",
+    "post_escalation_behavior": "Do not create a second automatic reminder. Keep the request visibly overdue until staff updates it.",
+    "completion_claim_rule": "Never tell the guest a physical service is completed until request status is completed.",
+    "guest_visibility_rule": "Guests may query only requests created by their own session.",
+    "priority_levels": {
+      "normal": 30,
+      "high": 60,
+      "urgent": 80,
+      "emergency_reserved": 100
+    },
+    "service_recovery_guidance": {
+      "maintenance_unresolved": "After the expected resolution window, route to staff review for repair plan or accommodation alternative; the kiosk cannot move rooms itself.",
+      "inventory_or_money_service": "Keep pending_staff until explicit staff confirmation.",
+      "delay_message": "Tell the guest the request is delayed and has been reminded/escalated; do not invent a new ETA."
+    },
+    "notes": "Priority 100 remains reserved for the deterministic emergency-alert path. Synthetic service escalation must never create, replace or downgrade an emergency alert."
+  }
+}

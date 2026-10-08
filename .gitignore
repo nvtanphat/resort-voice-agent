@@ -21,15 +21,13 @@ frontend/dist/
 # Runtime state and real property data stay local/private by default.
 /data/*
 !/data/.gitkeep
-/knowledge/approved/*
-!/knowledge/approved/.gitkeep
-/releases/*
-!/releases/.gitkeep
 /config/property-profile.json
 /config/*.sig
 /config/*.pem
 /config/*.pub
 
-# Local property data: never commit; keeps files on disk across branch switches.
-/datasets/
-/knowledge/compiled/
+.pytest-tmp/
+.cache/
+scratch/
+scratch_*.txt
+frontend/verify_bundle.cjs

@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hospitality end-to-end scenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenario_id",
+    "classification",
+    "truth_status",
+    "language",
+    "concept_key",
+    "utterance",
+    "surface_style",
+    "emotion",
+    "channel",
+    "guest_archetype_id",
+    "guest_segment",
+    "stay_purpose",
+    "stay_phase",
+    "evaluation_bucket",
+    "expected_route",
+    "service_code",
+    "approval_path",
+    "expected_slots",
+    "expected_business_writes_before_confirmation",
+    "expected_staff_review",
+    "model_policy",
+    "must_not_5xx",
+    "must_not_claim_completed",
+    "guest_effort_target_turns",
+    "hospitality_dimension",
+    "origin"
+  ],
+  "properties": {
+    "scenario_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "classification": {
+      "const": "hospitality_evaluation_synthetic"
+    },
+    "truth_status": {
+      "const": "synthetic_guest_utterance"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "concept_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 2
+    },
+    "surface_style": {
+      "enum": [
+        "direct",
+        "polite",
+        "context_rich",
+        "casual",
+        "hurried",
+        "frustrated",
+        "indirect",
+        "voice_noisy",
+        "code_switch",
+        "follow_up_like"
+      ]
+    },
+    "emotion": {
+      "enum": [
+        "neutral",
+        "polite",
+        "hurried",
+        "frustrated",
+        "confused"
+      ]
+    },
+    "channel": {
+      "enum": [
+        "kiosk_voice",
+        "mobile_chat",
+        "front_desk_handoff",
+        "kiosk_text"
+      ]
+    },
+    "guest_archetype_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "guest_segment": {
+      "type": "string"
+    },
+    "stay_purpose": {
+      "type": "string"
+    },
+    "stay_phase": {
+      "enum": [
+        "pre_arrival",
+        "arrival",
+        "first_evening",
+        "in_stay_morning",
+        "in_stay_day",
+        "in_stay_evening",
+        "pre_departure",
+        "service_recovery"
+      ]
+    },
+    "evaluation_bucket": {
+      "type": "string"
+    },
+    "expected_route": {
+      "enum": [
+        "service",
+        "knowledge",
+        "emergency",
+        "status",
+        "knowledge_abstain",
+        "non_action",
+        "clarification",
+        "multi_step",
+        "privacy_guard",
+        "safety_escalation",
+        "request_change"
+      ]
+    },
+    "service_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "amenity_delivery",
+        "housekeeping",
+        "maintenance",
+        "human_assistance",
+        "spa_reservation",
+        "dining_reservation",
+        "food_order",
+        "tour_reservation",
+        "facility_request",
+        "dining_request",
+        "tour_request",
+        "transport_request",
+        "late_checkout",
+        null
+      ]
+    },
+    "approval_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "none",
+        "staff",
+        null
+      ]
+    },
+    "expected_slots": {
+      "type": "object"
+    },
+    "expected_business_writes_before_confirmation": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expected_staff_review": {
+      "type": "boolean"
+    },
+    "model_policy": {
+      "type": "string"
+    },
+    "must_not_5xx": {
+      "const": true
+    },
+    "must_not_claim_completed": {
+      "type": "boolean"
+    },
+    "guest_effort_target_turns": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "hospitality_dimension": {
+      "type": "string"
+    },
+    "origin": {
+      "const": "hospitality_generated"
+    }
+  }
+}

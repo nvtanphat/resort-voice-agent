@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Naturalistic agent challenge case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "classification",
+    "truth_status",
+    "language",
+    "utterance",
+    "expected_route",
+    "service_code",
+    "expected_department_id",
+    "expected_agent_action",
+    "must_not_5xx",
+    "must_not_claim_completed",
+    "origin"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "pattern": "^NAT-[0-9]{4}$"
+    },
+    "classification": {
+      "const": "naturalistic_challenge"
+    },
+    "truth_status": {
+      "const": "synthetic_curated_behavioral_oracle"
+    },
+    "language": {
+      "enum": [
+        "vi",
+        "en",
+        "ko",
+        "zh"
+      ]
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 5
+    },
+    "expected_route": {
+      "enum": [
+        "service",
+        "status",
+        "reopen",
+        "escalation",
+        "clarification"
+      ]
+    },
+    "service_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_department_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_agent_action": {
+      "enum": [
+        "create_service_request",
+        "status_check",
+        "reopen_request",
+        "escalate_existing",
+        "clarify"
+      ]
+    },
+    "must_not_5xx": {
+      "const": true
+    },
+    "must_not_claim_completed": {
+      "const": true
+    },
+    "origin": {
+      "const": "natural_challenge_curated_2026_10"
+    }
+  }
+}

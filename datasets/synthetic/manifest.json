@@ -1,0 +1,180 @@
+{
+  "dataset_id": "furama-synthetic-operations",
+  "property_id": "FURAMA_DANANG",
+  "role": "production_prototype_operations_and_test_fixtures",
+  "truth_boundary": "Product-authored workflow policies and privacy-safe synthetic fixtures. They are not official Furama facts and must never enter canonical RAG truth.",
+  "metrics": {
+    "jsonl_records": 5502,
+    "jsonl_files": 5
+  },
+  "record_counts": {
+    "operations/engineering/workflows.jsonl": 7,
+    "operations/history/requests.jsonl": 5000,
+    "operations/pms/stays.jsonl": 218,
+    "operations/rooms/inventory.jsonl": 266,
+    "operations/workflows/guest_service_workflows.jsonl": 11
+  },
+  "artifacts": {
+    "operations/billing/charge_rules.json": {
+      "sha256": "d5df6f3f63d949d480a814675b55a070f2d54f04a235fbdd596d782ed3561243",
+      "bytes": 1456
+    },
+    "operations/billing/service_recovery.json": {
+      "sha256": "1de20ddae87a34d7489651442a34235fd6251646a0360738c85c761f103674ee",
+      "bytes": 1795
+    },
+    "operations/engineering/maintenance_taxonomy.json": {
+      "sha256": "ab8a4613305bd8af65d154f3ec237def3a8a8976a5922a857183c4997757dd4c",
+      "bytes": 5644
+    },
+    "operations/engineering/workflows.jsonl": {
+      "sha256": "21db92cf2a54964122b9ba3c17e4ce163981531d66ba7d8bb7324ec268345634",
+      "bytes": 9329,
+      "records": 7
+    },
+    "operations/food_beverage/minibar.json": {
+      "sha256": "fbaa9eb55343c4b4a9de16b8478a593db20ae8183631884a63cc77c381ed0497",
+      "bytes": 6709
+    },
+    "operations/food_beverage/restaurants.json": {
+      "sha256": "042e26ad92f30592e1eacd5467061515310025d82e9b9663293a6f0a588776eb",
+      "bytes": 10600
+    },
+    "operations/food_beverage/room_service_menu.json": {
+      "sha256": "e4b149dbb63f4aa328b9f5349d018570e855b9864684e106728fc06890c9971b",
+      "bytes": 5684
+    },
+    "operations/history/metadata.json": {
+      "sha256": "f6dbfe9a9dd3af8fa85a6625ebcf8d3b6dc9963317d6b5870652c979476dae8c",
+      "bytes": 1718
+    },
+    "operations/history/requests.jsonl": {
+      "sha256": "652bdbeb7bc3f01f5e3498c47fb0778e03446421e6e8abe062e8ad273a9e05a5",
+      "bytes": 5857053,
+      "records": 5000
+    },
+    "operations/history/summary.json": {
+      "sha256": "93149ce2e52d6c83d67b358409b6ea84b219fd0cc7ee43e6b0b5e4962a316ed5",
+      "bytes": 1159
+    },
+    "operations/housekeeping/catalog.json": {
+      "sha256": "d30651655e59eba5a7cbafc265f9371c796988aad59ba69bf3d6081ca74030c6",
+      "bytes": 7526
+    },
+    "operations/inventory/commercial_snapshot.json": {
+      "sha256": "6652c35fd97e7f82fa69f53253ee67a7600c506b8e99a6437918f160972a2140",
+      "bytes": 9437
+    },
+    "operations/metadata/assumptions.json": {
+      "sha256": "a4756353e4d12f0c2ce04cc2b469a2a557fda7106f8c4974fd04020bc85ccaae",
+      "bytes": 33787
+    },
+    "operations/metadata/coverage.json": {
+      "sha256": "2ffa1185fcaba8d49bb1f5e3aeb80699a6dcac4d0400f0bd0cffc2f9eb36bb5c",
+      "bytes": 4126
+    },
+    "operations/metadata/demo_business_summary.json": {
+      "sha256": "c30f4492fedf91ae9da57f53169cedc864ce810beb167fff01cbe770b795e2fb",
+      "bytes": 1421
+    },
+    "operations/metadata/nonpublic_policy_registry.json": {
+      "sha256": "6ab1e3c45fc7fa33d070d23db6adb9e3c4db7de00ebab4c74d7f2d855da8d9d6",
+      "bytes": 8353
+    },
+    "operations/metadata/property_simulation.json": {
+      "sha256": "ac527a8acca6d0a8033fc7565462146e871f80c7d61d717418b2c9d1b6eb466b",
+      "bytes": 2415
+    },
+    "operations/metadata/realism_profile.json": {
+      "sha256": "c41f755f6369a91da60fc92c2673bb73e201fce3edcfeae87c12a895edb63a1b",
+      "bytes": 1987
+    },
+    "operations/metadata/sources.json": {
+      "sha256": "a7a4fd53f78aef8fba4fad2448dca9867d73a3c3237288862789b4814212d82c",
+      "bytes": 20213
+    },
+    "operations/pms/stays.jsonl": {
+      "sha256": "ab6729b1073e878bd8c105be6ccc49c65fd8a6b7b01621f55cd51ec252ab3ad6",
+      "bytes": 152714,
+      "records": 218
+    },
+    "operations/policies/constraints.json": {
+      "sha256": "5bd6a52bb37a1b9c6a4ec7847b9fbe4af7d90dc4ecdb008ce3c0809bcb6dbd2e",
+      "bytes": 1835
+    },
+    "operations/policies/dispatch_slas.json": {
+      "sha256": "dba9b75b177e56d296562ae1527f8eb83f89fd11171e9edbb4fadc2768ed80e0",
+      "bytes": 1534
+    },
+    "operations/policies/escalation_matrix.json": {
+      "sha256": "108d54c49579fd38eaacf0d18570bc770a70b4580831833d2a5fcfd7bf03a398",
+      "bytes": 5768
+    },
+    "operations/policies/escalation_policy.json": {
+      "sha256": "0bd9629fd11925f6d21b6135b217cf4263f0cc2681a2e35ddd53d6510aed5c0e",
+      "bytes": 1432
+    },
+    "operations/policies/guest_overrides.json": {
+      "sha256": "fe72acba1d30e34c3b3436b7bdbad96d9315c4556bfb84213759551fafca6b94",
+      "bytes": 1609
+    },
+    "operations/policies/service_policies.json": {
+      "sha256": "296fc7450f5137f042973c85e8f993e02a81616fd76745427c8a40cbdda4564c",
+      "bytes": 35718
+    },
+    "operations/rooms/access_sop.json": {
+      "sha256": "4b01004ecbbfa59e288f37c622b4baeb52bcac18f08265ab8ebcae06b9854c31",
+      "bytes": 1574
+    },
+    "operations/rooms/amenities.json": {
+      "sha256": "4b81ad645db2abd385589cebb0cd13f324baea780067964a58e079da1e68b418",
+      "bytes": 2775
+    },
+    "operations/rooms/inventory.jsonl": {
+      "sha256": "d691b4d71688c1b6b464ef36e1fe67428dd5081f150717b6f692fed2bd2fe4ad",
+      "bytes": 98260,
+      "records": 266
+    },
+    "operations/spa/operations.json": {
+      "sha256": "151972660de75e4bb7a2e7d533d779b4aa92dfdb84591bca60a023f7a5014100",
+      "bytes": 7588
+    },
+    "operations/staffing/capacity.json": {
+      "sha256": "3ff8ddadd6921b447a74f3cac92eadaf198010724324ef191b5c834081c53fc7",
+      "bytes": 7292
+    },
+    "operations/staffing/departments.json": {
+      "sha256": "a673e1adfc111237b46abcfbf6ab17ca970db409f929e37d5db9df5ac15faa33",
+      "bytes": 10564
+    },
+    "operations/suppliers/directory.json": {
+      "sha256": "4fd59e2af14a30bf70bc9becd2741c045e6102a75fdc7cab5bf735c932a44628",
+      "bytes": 3385
+    },
+    "operations/tours/operations.json": {
+      "sha256": "5f9bf7e0195dc7c3adc855f5f3359b8cf0952990fee8d5380660844948d3647f",
+      "bytes": 1866
+    },
+    "operations/tours/products.json": {
+      "sha256": "6384945fe4ad48c8cffca0d83d3dc3c49fe1011e48a4b5a3129815763b69770e",
+      "bytes": 8092
+    },
+    "operations/transport/products.json": {
+      "sha256": "e36f9455ada18b1a896bf86604c04409ccb1629c81d6f250863e30a38547b5cf",
+      "bytes": 4985
+    },
+    "operations/transport/shuttle_schedule.json": {
+      "sha256": "72c114954a707d931dd1d0df828bb8098dab3219b56bfbd9a96c45ad65fad36f",
+      "bytes": 1909
+    },
+    "operations/workflows/channel_dispatch_rules.json": {
+      "sha256": "7eee54c33adfdc0d96a590de9f19594fe3f57ff6e39de0481eec73312b9d6f52",
+      "bytes": 837
+    },
+    "operations/workflows/guest_service_workflows.jsonl": {
+      "sha256": "aec08dcf48c3d2c26a9bea3d248da5325a42d6d19a766d1720214be6d522f23a",
+      "bytes": 10321,
+      "records": 11
+    }
+  }
+}

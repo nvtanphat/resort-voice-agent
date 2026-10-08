@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "languages": ["en", "vi", "ko", "zh"],
+  "entity_types": {
+    "bar": {"en": "bar", "vi": "quầy bar", "ko": "바", "zh": "酒吧"},
+    "contact": {"en": "contact", "vi": "liên hệ", "ko": "연락처", "zh": "联系人"},
+    "golf_course": {"en": "golf course", "vi": "sân golf", "ko": "골프 코스", "zh": "高尔夫球场"},
+    "meeting": {"en": "meeting", "vi": "sự kiện", "ko": "회의", "zh": "会议"},
+    "meeting_room": {"en": "meeting room", "vi": "phòng họp", "ko": "회의실", "zh": "会议室"},
+    "policy": {"en": "policy", "vi": "quy định", "ko": "정책", "zh": "政策"},
+    "property": {"en": "property", "vi": "khu nghỉ dưỡng", "ko": "리조트", "zh": "度假村"},
+    "recreation": {"en": "recreation", "vi": "giải trí", "ko": "레크리에이션", "zh": "休闲设施"},
+    "recreation_pass": {"en": "recreation pass", "vi": "vé vui chơi", "ko": "레크리에이션 패스", "zh": "休闲通行证"},
+    "restaurant": {"en": "restaurant", "vi": "nhà hàng", "ko": "레스토랑", "zh": "餐厅"},
+    "room": {"en": "room", "vi": "phòng", "ko": "객실", "zh": "客房"},
+    "service": {"en": "service", "vi": "dịch vụ", "ko": "서비스", "zh": "服务"},
+    "spa": {"en": "spa", "vi": "spa", "ko": "스파", "zh": "水疗"},
+    "transportation": {"en": "transportation", "vi": "di chuyển", "ko": "교통", "zh": "交通"},
+    "wellness_program": {"en": "wellness program", "vi": "chương trình chăm sóc sức khỏe", "ko": "웰니스 프로그램", "zh": "康体活动"}
+  },
+  "domains": {
+    "contact": {"en": "contact", "vi": "liên hệ", "ko": "연락처", "zh": "联系"},
+    "dining": {"en": "dining", "vi": "ẩm thực", "ko": "다이닝", "zh": "餐饮"},
+    "guest_services": {"en": "guest services", "vi": "dịch vụ khách", "ko": "게스트 서비스", "zh": "宾客服务"},
+    "meetings": {"en": "meetings", "vi": "hội họp", "ko": "미팅", "zh": "会议"},
+    "recreation": {"en": "recreation", "vi": "giải trí", "ko": "레크리에이션", "zh": "休闲"},
+    "rooms": {"en": "rooms", "vi": "phòng", "ko": "객실", "zh": "客房"},
+    "spa": {"en": "spa", "vi": "spa", "ko": "스파", "zh": "水疗"},
+    "transportation": {"en": "transportation", "vi": "di chuyển", "ko": "교통", "zh": "交通"}
+  },
+  "card_labels": {
+    "entity": {"en": "Entity", "vi": "Thực thể", "ko": "항목", "zh": "实体"},
+    "type": {"en": "Type", "vi": "Loại", "ko": "유형", "zh": "类型"},
+    "domain": {"en": "Group", "vi": "Nhóm", "ko": "그룹", "zh": "分组"},
+    "area": {"en": "Area", "vi": "Khu vực", "ko": "구역", "zh": "区域"},
+    "level": {"en": "Level", "vi": "Tầng/vị trí", "ko": "층/위치", "zh": "楼层/位置"},
+    "department": {"en": "Department", "vi": "Bộ phận", "ko": "부서", "zh": "部门"},
+    "extension": {"en": "Extension", "vi": "Số máy nhánh", "ko": "내선", "zh": "分机"},
+    "contact": {"en": "Contact", "vi": "Liên hệ", "ko": "연락처", "zh": "联系"},
+    "hours": {"en": "Hours", "vi": "Giờ phục vụ", "ko": "운영 시간", "zh": "服务时间"}
+  }
+}

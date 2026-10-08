@@ -365,7 +365,7 @@ def action_plan_schema() -> dict:
 
 def model_action_plan(*, state: AgentState, base_url: str, model: str,
                       should_cancel: Callable[[], bool] | None = None,
-                      timeout_seconds: float = 3.5) -> ActionPlan | None:
+                      timeout_seconds: float = 3.5, num_gpu: int = -1) -> ActionPlan | None:
     if not base_url or not model:
         return None
     recent = state.public()
@@ -391,7 +391,8 @@ def model_action_plan(*, state: AgentState, base_url: str, model: str,
                 'schema': action_plan_schema(),
             }, ensure_ascii=False)},
         ],
-        'options': {'temperature': 0, 'num_predict': 420, 'num_ctx': SLM_NUM_CTX},
+        'options': {'temperature': 0, 'num_predict': 420, 'num_ctx': SLM_NUM_CTX,
+                    'num_gpu': num_gpu},
     }
     raw = _chat(base_url, payload, timeout_seconds, should_cancel)
     return parse_model_action_plan(raw, state) if raw is not None else None
@@ -399,7 +400,7 @@ def model_action_plan(*, state: AgentState, base_url: str, model: str,
 
 def model_next_action(*, state: AgentState, base_url: str, model: str,
                       should_cancel: Callable[[], bool] | None = None,
-                      timeout_seconds: float = 3.5) -> NextAction | None:
+                      timeout_seconds: float = 3.5, num_gpu: int = -1) -> NextAction | None:
     if not base_url or not model:
         return None
     recent = state.public()
@@ -434,7 +435,8 @@ def model_next_action(*, state: AgentState, base_url: str, model: str,
                 'capability_catalog': public_catalog(state.service_candidates),
             }, ensure_ascii=False)},
         ],
-        'options': {'temperature': 0, 'num_predict': 180, 'num_ctx': SLM_NUM_CTX},
+        'options': {'temperature': 0, 'num_predict': 180, 'num_ctx': SLM_NUM_CTX,
+                    'num_gpu': num_gpu},
     }
     raw = _chat(base_url, payload, timeout_seconds, should_cancel)
     return parse_model_next_action(raw, state) if raw is not None else None

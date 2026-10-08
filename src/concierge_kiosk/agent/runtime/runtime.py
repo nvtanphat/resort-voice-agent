@@ -193,6 +193,22 @@ class AutonomousConciergeRuntime:
                 'staff_handoff', {'reason': reason, 'summary': request.query[:500]}).model_dump()
             child = replace(request, query=reason,
                             task_context={'runtime_handoff': True})
+        elif capability == 'check_schedule' and action.service_candidate_id:
+            candidate = state.candidate(action.service_candidate_id)
+            if candidate is not None:
+                definition = service_definition(candidate.service_code)
+                venue_slot = (definition.venue_slot.get('name')
+                              if definition is not None and definition.venue_slot is not None else None)
+                venue_value = (candidate.existing_slots.get(str(venue_slot))
+                               if venue_slot is not None else None)
+                child = replace(
+                    request,
+                    task_context={
+                        'availability_service_code': candidate.service_code,
+                        'availability_request_kind': candidate.request_kind,
+                        'availability_venue': venue_value,
+                        'availability_allow_any_venue': venue_slot is not None and venue_value is None,
+                    })
         elif isinstance(action.query, str) and action.query.strip():
             child = replace(request, query=action.query.strip()[:300])
 

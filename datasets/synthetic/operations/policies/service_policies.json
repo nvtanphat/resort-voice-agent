@@ -1,0 +1,1036 @@
+{
+  "schema_version": 6,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_operational",
+  "runtime_use": "offline_policy_migration_candidate_only",
+  "reviewed_at": "2026-10-05",
+  "production_status": "runtime_blocked_until_agent_domain_parity",
+  "sla_semantics": "sla_minutes is the runtime target to first staff response/attendance for an accepted request. It is never a guarantee of physical completion.",
+  "truth_boundary": "Official Furama sources determine property facts. Product-authored routing and SLA targets are internal workflow policy for the production prototype and must never be described as official Furama commitments. Current runtime policy authority remains config/agent-domain.json until an explicit migration validates exact service/slot/risk/authority parity.",
+  "services": [
+    {
+      "service_code": "amenity_delivery",
+      "department_id": "HOUSEKEEPING",
+      "sla_minutes": 15,
+      "escalation_after_minutes": 20,
+      "priority_on_escalation": "high",
+      "approval": "none",
+      "runtime_dispatch_enabled": true,
+      "routing_basis": "official_property_route_plus_industry_timing",
+      "sla_basis": "industry_benchmark_resort_item_delivery_target_not_furama_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_after_workflow_commit",
+        "first_staff_response_target_min": 3,
+        "first_attendance_target_min": 15,
+        "expected_resolution_window_min": [
+          10,
+          20
+        ],
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "door_delivery_or_guest_handoff",
+      "confidence": {
+        "routing": 1.0,
+        "timing": 0.82
+      },
+      "rationale": "Furama explicitly routes extra towels to Housekeeping. A 15-minute resort in-room item-delivery target is an industry benchmark, used here as a prototype target rather than an official Furama SLA.",
+      "source_refs": [
+        "furama_bath_towels",
+        "benchmark_lqa_resort_delivery"
+      ],
+      "public_anchors": [
+        "https://furamavietnam.com/furama-room-directory/room-directory/room-facilities-services/bath-towels/"
+      ],
+      "assumption_refs": [
+        "asm_amenity_delivery_timing"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": true,
+        "min_effective_sla_min": 11,
+        "max_effective_sla_min": 27
+      },
+      "operational_variants": {
+        "standard_item": {
+          "expected_resolution_window_min": [
+            10,
+            20
+          ],
+          "benchmark": "LQA resort in-house item target 15 min"
+        },
+        "special_setup": {
+          "expected_resolution_window_min": [
+            30,
+            60
+          ],
+          "examples": [
+            "extra bed",
+            "baby cot",
+            "special celebration amenity"
+          ]
+        }
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "00:00",
+          "end": "24:00",
+          "basis": "synthetic_night_runner_coverage"
+        }
+      ],
+      "sla_clock_basis": "wall_clock",
+      "required_slots": [
+        "room_number"
+      ],
+      "optional_slots": [
+        "quantity"
+      ],
+      "risk": "low",
+      "reversible": true,
+      "staff_verification_required": false,
+      "confirmation": "none",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "room_number",
+        "quantity"
+      ]
+    },
+    {
+      "service_code": "housekeeping",
+      "department_id": "HOUSEKEEPING",
+      "sla_minutes": 15,
+      "escalation_after_minutes": 25,
+      "priority_on_escalation": "high",
+      "approval": "none",
+      "runtime_dispatch_enabled": true,
+      "routing_basis": "official_property_department_plus_industry_timing",
+      "sla_basis": "industry_calibrated_first_attendance_target_not_cleaning_completion_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_after_workflow_commit",
+        "first_staff_response_target_min": 3,
+        "first_attendance_target_min": 15,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "room_entry_subject_to_dnd_and_guest_access",
+      "confidence": {
+        "routing": 1.0,
+        "timing": 0.68
+      },
+      "rationale": "Housekeeping is the verified department for room items. The runtime SLA is arrival/response, while cleaning duration is modeled separately using common stayover/check-out benchmarks.",
+      "source_refs": [
+        "furama_housekeeping",
+        "benchmark_housekeeping_cleaning"
+      ],
+      "public_anchors": [
+        "https://furamavietnam.com/room-directory/room-facilities-services/housekeeping/"
+      ],
+      "operational_variants": {
+        "stayover_room_makeup": {
+          "expected_completion_window_min": [
+            20,
+            30
+          ]
+        },
+        "departure_room_clean": {
+          "expected_completion_window_min": [
+            30,
+            45
+          ],
+          "runtime_guest_request_use": false
+        }
+      },
+      "assumption_refs": [
+        "asm_housekeeping_response_timing",
+        "asm_housekeeping_cleaning_duration"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": true,
+        "min_effective_sla_min": 11,
+        "max_effective_sla_min": 27
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "06:00",
+          "end": "22:00",
+          "basis": "synthetic_housekeeping_service_window"
+        }
+      ],
+      "sla_clock_basis": "business_hours",
+      "required_slots": [
+        "room_number"
+      ],
+      "optional_slots": [
+        "preferred_time"
+      ],
+      "risk": "low",
+      "reversible": true,
+      "staff_verification_required": false,
+      "confirmation": "none",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "room_number",
+        "preferred_time"
+      ]
+    },
+    {
+      "service_code": "maintenance",
+      "department_id": "ENGINEERING",
+      "sla_minutes": 15,
+      "escalation_after_minutes": 20,
+      "priority_on_escalation": "urgent",
+      "approval": "none",
+      "runtime_dispatch_enabled": true,
+      "routing_basis": "synthetic_department_routing_with_property_feature_anchor",
+      "sla_basis": "academic_case_calibrated_first_attendance_target_not_furama_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_after_workflow_commit",
+        "first_staff_response_target_min": 5,
+        "first_attendance_target_min": 15,
+        "expected_resolution_window_min": [
+          30,
+          60
+        ],
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "room_entry_subject_to_dnd_and_guest_access",
+      "confidence": {
+        "routing": 0.62,
+        "timing": 0.66
+      },
+      "rationale": "Furama verifies air conditioning as an in-room feature but does not publish its Engineering SOP. Engineering routing is a conventional hotel assumption. The 15-minute first-attendance target and 30–60 minute typical repair-planning range are conservative prototype values calibrated from hotel-engineering literature. Dataset contract alignment 2026-10-05: routine maintenance is classified low-risk for the existing reversible/no-approval prototype path; safety exclusions remain on the emergency path. This is product-authored policy, not an official Furama risk classification.",
+      "source_refs": [
+        "furama_room_features",
+        "benchmark_hotel_engineering_case"
+      ],
+      "public_anchors": [
+        "https://furamavietnam.com/vi/rooms/garden-superior/"
+      ],
+      "operational_variants": {
+        "air_conditioning": {
+          "expected_resolution_window_min": [
+            30,
+            60
+          ]
+        },
+        "minor_electrical": {
+          "expected_resolution_window_min": [
+            30,
+            60
+          ]
+        },
+        "minor_plumbing": {
+          "expected_resolution_window_min": [
+            30,
+            60
+          ]
+        },
+        "unresolved_after_60_min": {
+          "action": "staff_review_for_alternative_room_or_extended_repair",
+          "automatic_room_move": false
+        },
+        "priority_tiers": {
+          "P1_safety": "emergency path, not routine maintenance",
+          "P2_guest_comfort_high": {
+            "attendance_target_min": 15,
+            "resolution_window_min": [
+              30,
+              60
+            ]
+          },
+          "P3_minor": {
+            "attendance_target_min": 30,
+            "resolution_window_min": [
+              45,
+              120
+            ]
+          }
+        }
+      },
+      "safety_exclusions": [
+        "fire_or_smoke",
+        "burning_smell",
+        "sparking_or_exposed_live_wiring",
+        "major_flooding",
+        "person_collapsed_or_injured"
+      ],
+      "assumption_refs": [
+        "asm_engineering_route",
+        "asm_maintenance_response_timing",
+        "asm_maintenance_resolution_window"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": true,
+        "min_effective_sla_min": 11,
+        "max_effective_sla_min": 27
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "00:00",
+          "end": "24:00",
+          "basis": "synthetic_engineering_on_call_coverage"
+        }
+      ],
+      "sla_clock_basis": "wall_clock",
+      "required_slots": [
+        "room_number"
+      ],
+      "optional_slots": [],
+      "risk": "low",
+      "reversible": true,
+      "staff_verification_required": false,
+      "confirmation": "none",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "room_number"
+      ]
+    },
+    {
+      "service_code": "human_assistance",
+      "department_id": "FO_CONCIERGE",
+      "sla_minutes": 10,
+      "escalation_after_minutes": 15,
+      "priority_on_escalation": "normal",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "canonical_guest_service_route",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 10,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 0.85,
+        "timing": 0.35
+      },
+      "rationale": "Generic help should be clarified quickly and remain a staffed concierge/front-office interaction.",
+      "source_refs": [],
+      "public_anchors": [],
+      "assumption_refs": [
+        "asm_human_assistance_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": true,
+        "min_effective_sla_min": 7,
+        "max_effective_sla_min": 18
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "00:00",
+          "end": "24:00",
+          "basis": "synthetic_front_office_concierge_coverage"
+        }
+      ],
+      "sla_clock_basis": "wall_clock",
+      "required_slots": [],
+      "optional_slots": [
+        "room_number",
+        "preferred_time",
+        "destination",
+        "issue"
+      ],
+      "risk": "low",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "room_number",
+        "preferred_time",
+        "destination",
+        "issue"
+      ]
+    },
+    {
+      "service_code": "wake_up_call",
+      "department_id": "FO_CONCIERGE",
+      "sla_minutes": 10,
+      "escalation_after_minutes": 15,
+      "priority_on_escalation": "normal",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "canonical_guest_service_route",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 10,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 0.85,
+        "timing": 0.35
+      },
+      "rationale": "Wake-up calls are staff-confirmed front-office requests; the kiosk must not claim the call was placed before staff confirmation.",
+      "source_refs": [],
+      "public_anchors": [],
+      "assumption_refs": [
+        "asm_human_assistance_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": true,
+        "min_effective_sla_min": 7,
+        "max_effective_sla_min": 18
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "00:00",
+          "end": "24:00",
+          "basis": "synthetic_front_office_concierge_coverage"
+        }
+      ],
+      "sla_clock_basis": "wall_clock",
+      "required_slots": [
+        "preferred_time"
+      ],
+      "optional_slots": [
+        "room_number"
+      ],
+      "risk": "low",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "preferred_time",
+        "room_number"
+      ]
+    },
+    {
+      "service_code": "spa_reservation",
+      "department_id": "SPA_WELLNESS",
+      "sla_minutes": 15,
+      "escalation_after_minutes": 30,
+      "priority_on_escalation": "normal",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "official_property_route",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 15,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_spa_when_open"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 1.0,
+        "timing": 0.35
+      },
+      "rationale": "Furama publishes V-Senses Spa at Ext 16 and 09:00–22:00. Treatment inventory remains staff-confirmed.",
+      "source_refs": [
+        "furama_spa",
+        "furama_spa_booking_cutoff"
+      ],
+      "public_anchors": [
+        "https://furamavietnam.com/room-directory/v-senses-wellness-spa-services/the-v-senses-wellness-and-spa/"
+      ],
+      "operational_variants": {
+        "service_window": "09:00-22:00",
+        "booking_confirmation": "staff_only"
+      },
+      "assumption_refs": [
+        "asm_spa_reservation_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": false,
+        "min_effective_sla_min": 11,
+        "max_effective_sla_min": 27
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "09:00",
+          "end": "20:30",
+          "basis": "official_historical_booking_cutoff_in_curated_knowledge"
+        }
+      ],
+      "sla_clock_basis": "business_hours",
+      "required_slots": [
+        "preferred_time"
+      ],
+      "optional_slots": [],
+      "risk": "medium",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "preferred_time"
+      ]
+    },
+    {
+      "service_code": "dining_reservation",
+      "department_id": "FNB_ROOM_SERVICE",
+      "sla_minutes": 10,
+      "escalation_after_minutes": 20,
+      "priority_on_escalation": "normal",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "official_property_route",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 10,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_until_reservation_desk_window"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 1.0,
+        "timing": 0.35
+      },
+      "rationale": "Furama directs restaurant/bar reservations to Room Service Ext 12 from 06:00 to midnight. Table inventory remains staff-confirmed.",
+      "source_refs": [
+        "furama_restaurant_reservations"
+      ],
+      "public_anchors": [
+        "https://furamavietnam.com/room-directory/fb-services/restaurants-bars/"
+      ],
+      "operational_variants": {
+        "reservation_contact_window": "06:00-00:00"
+      },
+      "assumption_refs": [
+        "asm_dining_reservation_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": false,
+        "min_effective_sla_min": 7,
+        "max_effective_sla_min": 18
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "06:00",
+          "end": "24:00",
+          "basis": "official_public_contact_window"
+        }
+      ],
+      "sla_clock_basis": "business_hours",
+      "required_slots": [
+        "party_size",
+        "preferred_time"
+      ],
+      "optional_slots": [],
+      "risk": "medium",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "party_size",
+        "preferred_time"
+      ]
+    },
+    {
+      "service_code": "food_order",
+      "department_id": "FNB_ROOM_SERVICE",
+      "sla_minutes": 35,
+      "escalation_after_minutes": 50,
+      "priority_on_escalation": "high",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "official_property_service_plus_existing_operational_estimate",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 10,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": [
+          30,
+          45
+        ],
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "use_published_late_night_menu_window_or_staff_confirmation"
+      },
+      "access_model": "room_delivery",
+      "confidence": {
+        "routing": 1.0,
+        "timing": 0.35
+      },
+      "rationale": "Room Service is officially available 06:30–midnight, with late-night dishes 22:30–06:00 and Front Desk Ext 10 as contact. The 35-minute order estimate is prototype operational data, not an official delivery promise.",
+      "source_refs": [
+        "furama_room_service"
+      ],
+      "public_anchors": [
+        "https://furamavietnam.com/room-directory/room-facilities-services/room-service/"
+      ],
+      "operational_variants": {
+        "main_service_window": "06:30-00:00",
+        "late_night_dishes_window": "22:30-06:00",
+        "kitchen_to_door_target_min": [
+          30,
+          45
+        ],
+        "late_night_simple_menu_target_min": [
+          25,
+          40
+        ]
+      },
+      "assumption_refs": [
+        "asm_food_order_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": true,
+        "min_effective_sla_min": 26,
+        "max_effective_sla_min": 62
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "00:00",
+          "end": "06:00",
+          "basis": "official_public_late_night_dishes_window"
+        },
+        {
+          "start": "06:30",
+          "end": "24:00",
+          "basis": "official_public_room_service_window"
+        }
+      ],
+      "sla_clock_basis": "business_hours",
+      "required_slots": [
+        "room_number"
+      ],
+      "optional_slots": [],
+      "risk": "medium",
+      "reversible": false,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "room_number"
+      ]
+    },
+    {
+      "service_code": "tour_reservation",
+      "department_id": "TOUR_DESK",
+      "sla_minutes": 30,
+      "escalation_after_minutes": 45,
+      "priority_on_escalation": "normal",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "official_contact_name_plus_synthetic_scope",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 30,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 0.58,
+        "timing": 0.35
+      },
+      "rationale": "Tour products, price and supplier inventory are not published as a live catalog, so all commitments remain staff-confirmed.",
+      "source_refs": [
+        "furama_tour_desk_contact"
+      ],
+      "public_anchors": [],
+      "operational_variants": {
+        "price": "staff_confirmed",
+        "availability": "staff_confirmed"
+      },
+      "assumption_refs": [
+        "asm_tour_desk_routing",
+        "asm_tour_reservation_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": false,
+        "min_effective_sla_min": 22,
+        "max_effective_sla_min": 53
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "08:00",
+          "end": "20:00",
+          "basis": "synthetic_tour_desk_response_window"
+        }
+      ],
+      "sla_clock_basis": "business_hours",
+      "required_slots": [
+        "preferred_time"
+      ],
+      "optional_slots": [],
+      "risk": "medium",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "preferred_time"
+      ]
+    },
+    {
+      "service_code": "facility_request",
+      "department_id": "FO_CONCIERGE",
+      "sla_minutes": 10,
+      "escalation_after_minutes": 20,
+      "priority_on_escalation": "normal",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "synthetic_triage_default",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 10,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 0.65,
+        "timing": 0.35
+      },
+      "rationale": "Generic facility requests should be clarified before routing to a concrete service.",
+      "source_refs": [],
+      "public_anchors": [],
+      "assumption_refs": [
+        "asm_facility_request_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": false,
+        "min_effective_sla_min": 7,
+        "max_effective_sla_min": 18
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "00:00",
+          "end": "24:00",
+          "basis": "synthetic_concierge_triage_coverage"
+        }
+      ],
+      "sla_clock_basis": "wall_clock",
+      "required_slots": [],
+      "optional_slots": [
+        "preferred_time"
+      ],
+      "risk": "low",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "preferred_time"
+      ]
+    },
+    {
+      "service_code": "dining_request",
+      "department_id": "FNB_ROOM_SERVICE",
+      "sla_minutes": 10,
+      "escalation_after_minutes": 20,
+      "priority_on_escalation": "normal",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "official_department_route",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 10,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 0.9,
+        "timing": 0.35
+      },
+      "rationale": "Generic dining requests are triaged before a booking/order commitment.",
+      "source_refs": [
+        "furama_restaurant_reservations",
+        "furama_room_service"
+      ],
+      "public_anchors": [],
+      "assumption_refs": [
+        "asm_dining_request_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": false,
+        "min_effective_sla_min": 7,
+        "max_effective_sla_min": 18
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "06:00",
+          "end": "24:00",
+          "basis": "official_public_reservation_contact_window"
+        }
+      ],
+      "sla_clock_basis": "business_hours",
+      "required_slots": [],
+      "optional_slots": [
+        "party_size",
+        "preferred_time"
+      ],
+      "risk": "low",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "party_size",
+        "preferred_time"
+      ]
+    },
+    {
+      "service_code": "tour_request",
+      "department_id": "TOUR_DESK",
+      "sla_minutes": 15,
+      "escalation_after_minutes": 30,
+      "priority_on_escalation": "normal",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "official_contact_name_plus_synthetic_scope",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 15,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 0.58,
+        "timing": 0.35
+      },
+      "rationale": "Generic tour requests are clarified by the Tour Desk before supplier commitment.",
+      "source_refs": [
+        "furama_tour_desk_contact"
+      ],
+      "public_anchors": [],
+      "assumption_refs": [
+        "asm_tour_desk_routing",
+        "asm_tour_request_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": false,
+        "min_effective_sla_min": 11,
+        "max_effective_sla_min": 27
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "08:00",
+          "end": "20:00",
+          "basis": "synthetic_tour_desk_response_window"
+        }
+      ],
+      "sla_clock_basis": "business_hours",
+      "required_slots": [],
+      "optional_slots": [
+        "preferred_time"
+      ],
+      "risk": "low",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "preferred_time"
+      ]
+    },
+    {
+      "service_code": "transport_request",
+      "department_id": "FO_CONCIERGE",
+      "sla_minutes": 10,
+      "escalation_after_minutes": 15,
+      "priority_on_escalation": "high",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "official_property_route",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 10,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 0.9,
+        "timing": 0.35
+      },
+      "rationale": "Furama states taxis are available 24 hours at the resort front entrance and staff can arrange them. Airport/car commitments remain staff-approved.",
+      "source_refs": [
+        "furama_taxi",
+        "furama_airport_transfer"
+      ],
+      "public_anchors": [
+        "https://furamavietnam.com/vi/furama-room-directory/room-directory/dich-vu-hanh-ly-va-di-chuyen/taxi/"
+      ],
+      "operational_variants": {
+        "taxi": {
+          "availability": "24h_at_front_entrance",
+          "expected_arrangement_window_min": [
+            5,
+            15
+          ]
+        },
+        "airport_transfer": {
+          "availability": "staff_confirmed",
+          "price": "staff_confirmed"
+        }
+      },
+      "assumption_refs": [
+        "asm_transport_request_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": true,
+        "min_effective_sla_min": 7,
+        "max_effective_sla_min": 18
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "00:00",
+          "end": "24:00",
+          "basis": "official_public_taxi_availability_plus_synthetic_concierge_queue"
+        }
+      ],
+      "sla_clock_basis": "wall_clock",
+      "required_slots": [
+        "preferred_time"
+      ],
+      "optional_slots": [
+        "destination"
+      ],
+      "risk": "medium",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "preferred_time",
+        "destination"
+      ]
+    },
+    {
+      "service_code": "late_checkout",
+      "department_id": "FO_CONCIERGE",
+      "sla_minutes": 15,
+      "escalation_after_minutes": 30,
+      "priority_on_escalation": "high",
+      "approval": "staff",
+      "runtime_dispatch_enabled": false,
+      "routing_basis": "official_policy_route",
+      "sla_basis": "prototype_queue_target_not_official_sla",
+      "timing": {
+        "guest_acknowledgement": "immediate_request_received_not_confirmation",
+        "first_staff_response_target_min": 15,
+        "first_attendance_target_min": null,
+        "expected_resolution_window_min": null,
+        "runtime_sla_clock": "first_attendance_or_first_staff_response",
+        "completion_is_not_promised": true,
+        "after_hours_handling": "queue_for_staff_when_available"
+      },
+      "access_model": "none",
+      "confidence": {
+        "routing": 0.85,
+        "timing": 0.35
+      },
+      "rationale": "Late checkout is subject to availability and can create additional charges; the kiosk must only create a staff-reviewed request.",
+      "source_refs": [
+        "furama_checkout_policy"
+      ],
+      "public_anchors": [],
+      "operational_variants": {
+        "inventory_dependency": "room_availability",
+        "verified_public_pricing_policy": "read_from_canonical_facts_not_duplicated_here",
+        "final_charge_amount": "staff_confirmed_from_guest_rate_and_availability",
+        "commit_authority": "staff_only"
+      },
+      "assumption_refs": [
+        "asm_late_checkout_queue_target"
+      ],
+      "simulation_adjustments": {
+        "apply_occupancy_multiplier": true,
+        "apply_daypart_multiplier": false,
+        "min_effective_sla_min": 11,
+        "max_effective_sla_min": 27
+      },
+      "staff_response_windows_local": [
+        {
+          "start": "00:00",
+          "end": "24:00",
+          "basis": "synthetic_front_desk_queue_coverage"
+        }
+      ],
+      "sla_clock_basis": "wall_clock",
+      "required_slots": [
+        "room_number",
+        "preferred_time"
+      ],
+      "optional_slots": [],
+      "risk": "medium",
+      "reversible": true,
+      "staff_verification_required": true,
+      "confirmation": "staff_acknowledgement",
+      "dedupe_window_minutes": 15,
+      "modifiable_fields": [
+        "room_number",
+        "preferred_time"
+      ]
+    }
+  ],
+  "assumption_register": "datasets/synthetic/operations/metadata/assumptions.json",
+  "timing_model_id": "realism-2026-10-03",
+  "quality_rules": {
+    "official_property_fact": "May be guest-facing only when backed by official Furama data.",
+    "industry_calibrated_target": "Prototype operations target; never described as an official Furama SLA.",
+    "synthetic_internal_route": "Product-authored dispatch assumption; usable as workflow policy but never presented as an official Furama rule.",
+    "unknown": "Use a safe staff-confirmation gate; never fill a property fact from model inference.",
+    "runtime_domain_parity": "Do not load these migrated flow fields as runtime authority until they are reconciled exactly with the checksum-pinned config/agent-domain.json service registry and regression tests pass."
+  },
+  "simulation_policy": {
+    "dedupe_window_minutes": 15,
+    "occupancy_source": "datasets/synthetic/operations/metadata/property_simulation.json",
+    "staffing_source": "datasets/synthetic/operations/staffing/capacity.json",
+    "sla_runtime_default": "base sla_minutes remains unchanged for deterministic runtime; occupancy multipliers are simulation/evaluation only until explicitly wired.",
+    "truth_status": "synthetic_simulation"
+  }
+}

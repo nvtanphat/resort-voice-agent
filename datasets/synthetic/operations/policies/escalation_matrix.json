@@ -1,0 +1,180 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "matrix": [
+    {
+      "department_id": "HOUSEKEEPING",
+      "level1_role": "Housekeeping Supervisor",
+      "level2_role": "Assistant Executive Housekeeper / Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "ENGINEERING",
+      "level1_role": "Duty Engineer / Engineering Supervisor",
+      "level2_role": "Chief Engineer delegate / Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "FO_CONCIERGE",
+      "level1_role": "Concierge/Bell Captain",
+      "level2_role": "Front Office Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "FNB_ROOM_SERVICE",
+      "level1_role": "Room Service Supervisor",
+      "level2_role": "F&B Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 1.75,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "SPA_WELLNESS",
+      "level1_role": "Spa Reception/Supervisor",
+      "level2_role": "Spa Manager / Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "TOUR_DESK",
+      "level1_role": "Tour Desk Agent/Supervisor",
+      "level2_role": "Concierge / Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "FRONT_OFFICE",
+      "level1_role": "Front Office Supervisor",
+      "level2_role": "Front Office Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "TRANSPORT_DESK",
+      "level1_role": "Transport/Concierge Captain",
+      "level2_role": "Front Office Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "SECURITY",
+      "level1_role": "Security Shift Leader",
+      "level2_role": "Security Manager / Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "LAUNDRY",
+      "level1_role": "Laundry Supervisor",
+      "level2_role": "Executive Housekeeper delegate",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "KIDS_CLUB",
+      "level1_role": "Kids Club Supervisor",
+      "level2_role": "Recreation Manager / Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "RESERVATIONS",
+      "level1_role": "Reservations Supervisor",
+      "level2_role": "Director of Rooms delegate",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "BUTLER_SERVICE",
+      "level1_role": "Butler Captain",
+      "level2_role": "Villa/Front Office Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    },
+    {
+      "department_id": "MEDICAL_CENTRE",
+      "level1_role": "Medical Centre Lead",
+      "level2_role": "Duty Manager",
+      "level1_after_sla_ratio": 1.0,
+      "level2_after_sla_ratio": 2.0,
+      "automatic_notifications_max": 1,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_escalation_matrix"
+      ]
+    }
+  ],
+  "assumption_refs": [
+    "asm_escalation_matrix"
+  ],
+  "safety_boundary": "Emergency alert priority 100 is outside this matrix and cannot be downgraded or replaced."
+}

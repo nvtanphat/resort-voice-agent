@@ -1,0 +1,87 @@
+{
+  "approved": true,
+  "property_id": "FURAMA_DANANG",
+  "effective_from": "2026-01-01",
+  "effective_to": "2030-01-01",
+  "activities": [
+    {
+      "activity_id": "don_cipriani_dinner",
+      "topic": "dining",
+      "aliases": [
+        "Nhà hàng Ý Don Cipriani",
+        "Don Cipriani's",
+        "唐·奇普里亚尼意大利餐厅",
+        "돈 치프리아니"
+      ],
+      "source_id": "kb_restaurant_don_cipriani",
+      "source_revisions": {
+        "vi": "c704e53d9482c94128f4b5d3",
+        "en": "ed9f3ffa921f52a7e0e5d17c",
+        "zh": "1c38a8bcb7c6f03b49fd225c",
+        "ko": "3e7c939bb4dd685c6765a834"
+      },
+      "source_quote": {
+        "vi": "- **Nhà hàng Ý Don Cipriani — Giờ phục vụ**: 18:00–22:00 (Bữa tối hằng ngày)",
+        "en": "- **Don Cipriani's — Opening hours**: 18:00–22:00 (Daily Dinner)",
+        "zh": "- **唐·奇普里亚尼意大利餐厅 — 营业时间**: 18:00–22:00 (每日晚餐)",
+        "ko": "- **돈 치프리아니 — 운영 시간**: 18:00–22:00 (매일 저녁)"
+      },
+      "duration_minutes": 60,
+      "travel_buffer_minutes": 10,
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "windows": [
+        {
+          "start": "18:00",
+          "end": "22:00"
+        }
+      ]
+    },
+    {
+      "activity_id": "v_senses_spa",
+      "topic": "facilities",
+      "aliases": [
+        "V-Senses Wellness & Spa",
+        "V-Senses 水疗养生中心",
+        "V-센스 웰니스 & 스파"
+      ],
+      "source_id": "kb_spa_v_senses_wellness",
+      "source_revisions": {
+        "vi": "f6abde6ce95bfbf157954053",
+        "en": "b53bc0548a8f0b1382026180",
+        "zh": "b97c6d4fcbfba3732b8a361c",
+        "ko": "1b4d706659f6a94126387f20"
+      },
+      "source_quote": {
+        "vi": "- **V-Senses Wellness & Spa — Giờ phục vụ**: 09:00–22:00 (hằng ngày)",
+        "en": "- **V-Senses Wellness & Spa — Opening hours**: 09:00–22:00 (daily)",
+        "zh": "- **V-Senses 水疗养生中心 — 营业时间**: 09:00–22:00 (每日)",
+        "ko": "- **V-센스 웰니스 & 스파 — 운영 시간**: 09:00–22:00 (매일)"
+      },
+      "duration_minutes": 90,
+      "travel_buffer_minutes": 15,
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "windows": [
+        {
+          "start": "09:00",
+          "end": "22:00"
+        }
+      ]
+    }
+  ]
+}

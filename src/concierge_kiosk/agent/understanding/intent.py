@@ -12,11 +12,8 @@ import unicodedata
 from functools import lru_cache
 
 from concierge_kiosk.agent.understanding.domain_nlu import (
-    ACTION_PATTERNS as _ACTION_PATTERNS,
     EMERGENCY_EVENT_PATTERNS as _EMERGENCY_EVENT_PATTERNS,
     EMERGENCY_TEXT,
-    INFORMATION_FRAME_PATTERNS as _INFORMATION_FRAME,
-    INFORMATION_REQUEST_PATTERNS as _INFORMATION_REQUEST,
     FILLER_TERMS as _FILLER_TERMS,
     SELF_CORRECTION_MARKERS as _SELF_CORRECTION_MARKERS,
     NORMALIZATION,
@@ -174,54 +171,8 @@ def normalize_intent_with_spans(text: str, language: str | None = None):
     return normalize_with_spans(text, language)
 
 
-def _phrase_present(text: str, phrase: str) -> bool:
-    """Prevent embedded Latin word matches; allow CJK grammatical suffixes."""
-    if _uses_word_boundaries(phrase):
-        return bool(re.search(r'(?<!\w)' + re.escape(phrase) + r'(?!\w)', text))
-    return phrase in text
-
-
-def _uses_word_boundaries(value: str) -> bool:
-    """Return whether a profile phrase belongs to a whitespace-word script."""
-    script_markers = ("CJK", "HANGUL", "HIRAGANA", "KATAKANA")
-    return not any(any(marker in unicodedata.name(char, "") for marker in script_markers)
-                   for char in value)
-
-
-def _matched_action_pattern_kinds(text: str, language: str) -> set[str]:
-    return {
-        kind for kind, patterns in _ACTION_PATTERNS.get(language, {}).items()
-        if any(re.search(pattern, text) for pattern in patterns)
-    }
-
-
-def matches_action_pattern(query: str, language: str, kind: str) -> bool:
-    """Return whether a checksum-pinned action regex recognizes this utterance."""
-    return kind in _matched_action_pattern_kinds(normalize_intent_text(query, language), language)
-
-
-def is_information_question(query: str, language: str) -> bool:
-    """True when the turn explicitly asks for information.
-
-    Only the profile's explicit information-request and information-frame
-    patterns count ("tell me about...", "what are the hours..."). A question
-    mark, info-only markers or question openers are not used: polite service
-    requests carry them too (measured on the training split, they would block
-    4-24% of requests). It names no service, so it can gate the model-free
-    understanding fallback without a keyword list.
-    """
-    text = normalize_intent_text(query, language)
-    if not text:
-        return False
-    for patterns in (_INFORMATION_REQUEST, _INFORMATION_FRAME):
-        pattern = patterns.get(language)
-        if pattern is not None and pattern.search(text):
-            return True
-    return False
-
 
 # Regex/term matching mechanics remain in code; patterns and aliases are profile-owned.
 
 
 # Compound-clause vocabulary is profile-owned.
-

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-04",
+  "policies": {
+    "parking": {
+      "value": "complimentary valet parking for registered guests",
+      "truth_status": "external_corroborated",
+      "confidence": 0.82,
+      "source_refs": [
+        "external_expedia_furama_policy",
+        "external_hotels_furama_profile"
+      ],
+      "production_action": "reconfirm for large vehicles/events"
+    },
+    "ev_charging": {
+      "availability": "staff_confirmation_required",
+      "known_public_fact": false,
+      "truth_status": "nonpublic_dynamic_property_fact",
+      "assumption_refs": [
+        "asm_ev_charging"
+      ],
+      "production_action": "Route to Front Office/Engineering for confirmation; do not claim charger availability, connector, power or price from static data."
+    },
+    "wifi_demo": {
+      "credential_storage": "none",
+      "auth_details": "staff_or_authorized_property_channel_required",
+      "truth_status": "nonpublic_sensitive_property_fact",
+      "assumption_refs": [
+        "asm_wifi_guest_auth"
+      ],
+      "production_action": "Never invent or expose a static SSID/password/auth method. Use an authorized property channel or Front Desk handoff.",
+      "security_note": "No live Wi-Fi credential is stored in the dataset."
+    }
+  },
+  "guest_answer_policy": "Parking is non-canonical external corroboration only. EV charging and Wi-Fi details use safe staff-confirmation workflows; no unverified facility or credential details are exposed as Furama facts."
+}

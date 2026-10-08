@@ -3,6 +3,7 @@
   "backend.out_of_scope.reply": "이 질문은 호텔 컨시어지의 지원 범위를 벗어나지만, 호텔 정보와 길 안내 또는 투숙객 서비스를 도와드릴 수 있습니다.",
   "backend.emergency.alert_queued": " 직원 대기열에 최우선 긴급 경보를 등록했습니다. 이는 공공 긴급 구조대가 출동했다는 확인이 아닙니다.",
   "backend.emergency.alert_unconfirmed": " 내부 직원 경보 전송을 확인할 수 없습니다. 직원 또는 위 긴급 번호로 직접 연락하세요.",
+  "backend.emergency.confirm_question": "즉각적인 도움이 필요한 긴급 상황입니까?",
   "backend.knowledge.revoked": "이전 주제의 정보를 더 이상 확인할 수 없습니다. 다시 질문하거나 프런트에 문의하세요.",
   "backend.knowledge.abstain": "이 질문에 대해 확인된 정보를 찾지 못했습니다.",
   "backend.knowledge.staff_confirmation_required": "이 정보는 직원 확인을 기다리고 있습니다. 이용하기 전에 호텔 직원에게 확인해 주세요.",
@@ -201,5 +202,6 @@
   "backend.clarification.activity_preference": "어떤 활동을 원하시나요?",
   "backend.clarification.meal_preference": "어떤 식사를 원하시나요?",
   "backend.clarification.time_window": "어느 시간대가 좋으신가요?",
-  "backend.clarification.room_number": "객실 번호가 어떻게 되시나요?"
+  "backend.clarification.room_number": "객실 번호가 어떻게 되시나요?",
+  "backend.preference.saved": "알겠습니다. 이번 세션에서 추천하거나 요청을 준비할 때 이 선호 사항을 반영할게요."
 }

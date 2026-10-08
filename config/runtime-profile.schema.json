@@ -40,6 +40,7 @@
             "base_url",
             "primary_model",
             "fallback_model",
+            "num_gpu",
             "digest",
             "strict_mode"
           ],
@@ -55,6 +56,11 @@
             "fallback_model": {
               "type": "string",
               "maxLength": 128
+            },
+            "num_gpu": {
+              "type": "integer",
+              "minimum": -1,
+              "maximum": 64
             },
             "digest": {
               "type": "string",

@@ -12,21 +12,71 @@ from concierge_kiosk.i18n import text as i18n_text
 
 import logging
 import re
+from functools import lru_cache
 from typing import Callable
 
 from ..agent.understanding.authority import evaluate_service_authority
 from ..agent.core.concierge import AgentToolRequest
 from ..agent.understanding.intent import normalize_intent_text
-from ..agent.understanding.routing import RouteDecision, fast_response, request_change_intent
+from ..agent.understanding.routing import RouteDecision, fast_response
 from ..agent.understanding.domain_nlu import AFFIRM_TERMS, DENY_TERMS, ROUTING_STATIC_TEXT, SLOT_LABELS
 from ..agent.tools.service_slots import (assess_service, clarification_text, ready_text,
                                           extract_slots)
 
-from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, default_service_for,
-                                                     route_branch_for_request_kind, service_definition)
+from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVICE_DEFINITIONS,
+                                                     accepted_slots, default_service_for,
+                                                     route_branch_for_request_kind, service_definition,
+                                                     VOICE_NUMERIC_SLOTS)
 from concierge_kiosk.core.operational_policy import service_catalog_entry
+from concierge_kiosk.core.structured_loader import load_structured_dataset
+from concierge_kiosk.domain.entity_resolver import property_entity_matches
 
 _MAX_REQUEST_STATUS_ITEMS = int(ui_policy().presentation_limits["max_request_status_items"])
+
+
+@lru_cache(maxsize=4)
+def _structured_entity_data(dataset_dir: str):
+    dataset = load_structured_dataset(dataset_dir)
+    return dataset.aliases, dataset.entities
+
+
+def _configured_venue_slot(query: str, language: str, cfg, definition) -> tuple[str, str] | None:
+    """Resolve one explicitly named configured venue into its declared slot."""
+    venue_slot = definition.venue_slot if definition is not None else None
+    if not isinstance(venue_slot, dict) and not hasattr(venue_slot, 'get'):
+        return None
+    slot_name = venue_slot.get('name')
+    entity_type = venue_slot.get('entity_type')
+    if not isinstance(slot_name, str) or not slot_name or not isinstance(entity_type, str) or not entity_type:
+        return None
+    dataset_dir = str(getattr(cfg, 'structured_dataset_dir', '') or 'datasets')
+    try:
+        aliases, entities = _structured_entity_data(dataset_dir)
+        matches = property_entity_matches(query, language, aliases)
+    except (OSError, TypeError, ValueError):
+        return None
+    names: list[str] = []
+    for entity_id in matches:
+        entity = entities.get(entity_id)
+        if not isinstance(entity, dict) or entity.get('entity_type') != entity_type:
+            continue
+        localized = entity.get('names_by_locale')
+        name = localized.get(language) if isinstance(localized, dict) else None
+        name = name or entity.get('name')
+        if isinstance(name, str) and name.strip():
+            names.append(name.strip())
+    return (slot_name, names[0]) if len(names) == 1 else None
+
+
+def _configured_venue_name(query: str, language: str, cfg) -> str | None:
+    """Return the one configured venue named by the guest, if any."""
+    for definition in SERVICE_DEFINITIONS.values():
+        if definition.venue_slot is None:
+            continue
+        resolved = _configured_venue_slot(query, language, cfg, definition)
+        if resolved is not None:
+            return resolved[1]
+    return None
 
 
 def _voice_numeric_review(details: str, slots: dict, language: str) -> str:
@@ -80,7 +130,7 @@ def _canonical_service_review(*, mode: str, language: str,
 
     labels = SLOT_LABELS.get(language, {})
     lines = [name.strip()]
-    for key in ('room_number', 'quantity', 'preferred_time', 'party_size'):
+    for key in accepted_slots(mode):
         value = slots.get(key)
         if value in (None, ''):
             continue
@@ -119,7 +169,7 @@ def _voice_screen_gate(*, mode: str, low_risk_requires_verified_room: bool,
 def _replace_changed_slot_values(details: str, old_slots: dict,
                                  new_slots: dict) -> str:
     updated = details
-    for key in ('room_number', 'quantity', 'preferred_time', 'party_size'):
+    for key in dict.fromkeys((*old_slots, *new_slots)):
         old = old_slots.get(key)
         new = new_slots.get(key)
         if old in (None, '') or new in (None, '') or str(old) == str(new):
@@ -252,9 +302,14 @@ class ServiceActionService:
         fields. The kiosk never rewrites the staff ticket directly: it records a
         staff-reviewed change request against the session-owned ticket.
         """
-        intent = request_change_intent(request.query, request.language)
+        intent = request.change_action if request.change_action in {'cancel', 'modify'} else None
         if intent is None:
-            raise RuntimeError('Request change route requires an explicit change intent')
+            answer = i18n_text('request.change.need_details', request.language)
+            return {'answer': answer, 'sources': [], 'citations': [], 'suggested_action': None,
+                    'retrieval_mode': 'business_state', 'generation_mode': 'deterministic',
+                    'request_completed': False, 'grounding': 'business_state',
+                    'requires_staff_review': False, 'business_state_verified': True,
+                    'request_change': {'needs_details': True}}
         rows = self._workflows.list_guest_requests(request.session, limit=10)
         active = [row for row in rows
                   if row.get('status') in {'pending_staff', 'approved', 'in_progress', 'paused'}
@@ -460,6 +515,13 @@ class ServiceActionService:
             result['answer'] = i18n_text('service.disabled', request.language)
             return result
 
+        definition = service_definition(mode or '')
+        if self._cfg is not None and definition is not None:
+            venue = _configured_venue_slot(
+                slot_source_query, request.language, self._cfg, definition)
+            if venue is not None:
+                slot_name, venue_name = venue
+                existing = {**existing, slot_name: venue_name}
         assessment = assess_service(slot_source_query, request.language, kind, existing=existing, mode=mode)
         branch = route_branch_for_request_kind(kind)
         if branch not in {'service', 'handoff'}:
@@ -485,7 +547,16 @@ class ServiceActionService:
             query=details, language=request.language, mode=assessment.mode,
             slots=assessment.slots, stable_nonce=bool(request.action_nonce))
 
-        if persist_pending:
+        if persist_pending and context is not None:
+            # A reviewable text draft remains editable until the guest
+            # cancels it or the UI submits it.  Keeping the canonical mode and
+            # slots here prevents a later numeric correction from being
+            # reinterpreted as a different service by the SLM.
+            self._task_memory.save(
+                request.session, kind=kind, language=request.language,
+                mode=assessment.mode, details=details,
+                slots=assessment.slots, missing=tuple(assessment.missing))
+        elif persist_pending:
             self._task_memory.clear(request.session)
         result['_expected_reply'] = {'action': 'clear'}
         action_state['authority'] = authority.public()
@@ -493,7 +564,7 @@ class ServiceActionService:
 
         voice_numeric_confirmation = bool(
             request.voice_input and
-            any(name in assessment.slots for name in ('room_number', 'quantity')))
+            any(name in assessment.slots for name in VOICE_NUMERIC_SLOTS))
         if authority.outcome == 'deny':
             result['suggested_action'] = None
             result['requires_staff_review'] = False

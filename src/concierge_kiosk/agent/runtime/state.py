@@ -14,15 +14,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from concierge_kiosk.agent.tools.service_slots import extract_slots
-from concierge_kiosk.agent.understanding.routing import RouteDecision, directions_request
+from concierge_kiosk.agent.understanding.routing import RouteDecision
 from concierge_kiosk.agent.orchestration.composite_tasks import wants_knowledge_read
-from concierge_kiosk.domain.service_registry import (route_branch_for_request_kind, service_definition,
-                                                     service_tool)
+from concierge_kiosk.domain.service_registry import (accepted_slots, route_branch_for_request_kind,
+                                                     service_definition, service_tool)
 from .catalog import service_risk_tier
 from .world import VerifiedFact, AgentUnknown, AgentFailure
-from .model import constraint_specs, wants_navigation_goal
+from .model import constraint_specs
 from concierge_kiosk.agent.understanding.commands import Command
-from concierge_kiosk.core.domain_profile import ui_policy
+from concierge_kiosk.core.domain_profile import preference_policy, ui_policy
 
 _PRESENTATION_LIMITS = ui_policy().presentation_limits
 
@@ -35,6 +35,7 @@ class ServiceCandidate:
     guest_text: str
     slot_source_query: str
     risk_tier: int
+    conditional: bool = False
     # Server-owned continuation state. Never exposed to or authored by the model.
     existing_slots: dict[str, str | int] = field(default_factory=dict, repr=False, compare=False)
 
@@ -44,6 +45,7 @@ class ServiceCandidate:
             'service_code': self.service_code,
             'request_kind': self.request_kind,
             'risk_tier': self.risk_tier,
+            'conditional': self.conditional,
             # Deliberately bounded. This is current-turn state, not durable memory.
             'summary': self.guest_text[:180],
         }
@@ -244,10 +246,6 @@ class AgentState:
         }
 
 
-def _wants_navigation_goal(query: str, language: str) -> bool:
-    return wants_navigation_goal(query, language)
-
-
 def _constraint_models(query: str, language: str) -> tuple[GoalConstraint, ...]:
     return tuple(GoalConstraint(f'C{i+1}', kind, value, hard)
                  for i, (kind, value, hard) in enumerate(constraint_specs(query, language)))
@@ -272,12 +270,18 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
     for index, candidate in enumerate(candidates):
         # The validated StartGoal order is the source of semantic intent;
         # service dependencies are never reconstructed from connector words.
-        dep = (service_deps[index] if index < len(service_deps) else ())
+        dep = list(service_deps[index] if index < len(service_deps) else ())
         tool = service_tool(candidate.service_code)
         if tool is None:
             continue
+        if candidate.conditional:
+            add('availability_checked', ('check_schedule',), topic='conditional availability')
+            availability_id = next(req.id for req in reqs
+                                   if req.outcome == 'availability_checked'
+                                   and req.topic == 'conditional availability')
+            dep.insert(0, availability_id)
         add(f'service:{candidate.service_code}', (tool,),
-            candidate_id=candidate.id, depends_on=dep)
+            candidate_id=candidate.id, depends_on=tuple(dep))
 
     if commands is not None:
         # Each command remains an auditable semantic requirement.  StartGoal,
@@ -289,19 +293,26 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
                     continue
                 add(f'command:{command.type}', ('command_noop',))
             elif command.type == 'AskInfo':
-                add('command:AskInfo', ('knowledge',), topic=command.query or query[:80])
+                add('verified_answer', ('knowledge',), topic=command.query or query[:80])
+            elif command.type == 'CheckAvailability':
+                add('availability_checked', ('check_schedule',), topic=command.goal or 'schedule')
             elif command.type == 'Navigate':
-                add('command:Navigate', ('navigation', 'knowledge'),
+                add('verified_route_guidance', ('navigation', 'knowledge'),
                     topic=command.query or query[:80])
-            elif command.type == 'Cancel':
-                add('command:Cancel', ('manage_request',))
+            elif command.type in {'Cancel', 'Modify'}:
+                add(f'command:{command.type}', ('manage_request',))
             elif command.type == 'Handoff':
                 add('command:Handoff', ('handoff_staff',), topic=command.reason or '')
             elif command.type == 'ChitChat':
                 add('command:ChitChat', ('command_noop',))
+            elif command.type == 'Plan':
+                add('command:Plan', ('planning', 'knowledge'), topic=command.query or query[:80])
+            elif command.type == 'AskStatus':
+                add('command:AskStatus', ('request_status',), topic='current request status')
+            elif command.type in {'SwitchLanguage', 'SetPreference', 'Clarify'}:
+                add(f'command:{command.type}', ('command_noop',))
 
-    wants_navigation = (directions_request(query, language) is not None
-                        or _wants_navigation_goal(query, language))
+    wants_navigation = any(command.type == 'Navigate' for command in (commands or ()))
     if commands is not None:
         # Command mode must not derive a second goal from the deterministic
         # route.  The route remains attached to the request for safety checks.
@@ -312,7 +323,7 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
         add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
     elif decision.branch == 'planning':
         add('evidence_backed_itinerary', ('planning', 'knowledge'), topic='itinerary')
-        if wants_knowledge_read(query, language):
+        if wants_knowledge_read(commands):
             add('supporting_hotel_facts', ('knowledge',), topic='hotel facts')
         if wants_navigation:
             add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
@@ -335,7 +346,7 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
         if plan_questions:
             for question in plan_questions[:_PRESENTATION_LIMITS['max_plan_items']]:
                 add('verified_answer', ('knowledge',), topic=question[:80])
-        elif wants_knowledge_read(query, language):
+        elif wants_knowledge_read(commands):
             add('verified_answer', ('knowledge',), topic='guest question')
         if wants_navigation:
             add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
@@ -385,6 +396,20 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
     candidates: list[ServiceCandidate] = []
     service_deps: list[tuple[str, ...]] = []
 
+    def apply_preference_slots(slots: dict[str, str | int], mode: str) -> dict[str, str | int]:
+        """Use explicit session preferences as bounded service defaults."""
+        result = dict(slots)
+        if not isinstance(preferences, dict):
+            return result
+        accepted = frozenset(accepted_slots(mode))
+        for preference_name, value in preferences.items():
+            field = preference_policy().fields.get(preference_name)
+            target = field.applies_to_slot if field is not None else None
+            if (isinstance(target, str) and target in accepted and target not in result
+                    and value not in (None, '')):
+                result[target] = value
+        return result
+
     if commands is not None:
         for command in commands:
             if command.type != 'StartGoal':
@@ -395,13 +420,20 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                 continue
             kind = definition.request_kind
             code = command.goal or ''
-            slots = extract_slots(query, language, kind, mode=code)
+            slots = apply_preference_slots(extract_slots(query, language, kind, mode=code), code)
             for slot in command.slots:
-                slots[slot.name] = slot.text
+                # Keep the typed, deterministic extraction authoritative for
+                # numeric/time fields.  Model slot text is only a verbatim
+                # hint; replacing an extracted integer with values such as
+                # ``"2 towels"`` makes the later workflow payload lose the
+                # quantity or fail its contract.
+                if slot.name not in slots:
+                    slots[slot.name] = slot.text
             candidates.append(ServiceCandidate(
                 id=f'S{len(candidates)+1}', service_code=code,
                 request_kind=kind, guest_text=query[:500], slot_source_query=query,
-                risk_tier=service_risk_tier(code), existing_slots=slots))
+                risk_tier=service_risk_tier(code), conditional=command.conditional,
+                existing_slots=slots))
             service_deps.append(())
         if not candidates and isinstance(continuation_context, dict):
             code = continuation_context.get('mode')
@@ -436,8 +468,10 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
         if decision.semantic_service_code:
             definition = service_definition(decision.semantic_service_code)
             if definition is not None and route_branch_for_request_kind(definition.request_kind) in {'service', 'handoff'}:
-                slots = extract_slots(query, language, definition.request_kind,
-                                       mode=decision.semantic_service_code)
+                slots = apply_preference_slots(
+                    extract_slots(query, language, definition.request_kind,
+                                  mode=decision.semantic_service_code),
+                    decision.semantic_service_code)
                 candidates = [ServiceCandidate(
                     id='S1', service_code=decision.semantic_service_code,
                     request_kind=definition.request_kind, guest_text=query[:500],
@@ -458,6 +492,8 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
         preference_specs: list[tuple[str, str]] = []
         if clean_preferences.get('mobility') == 'minimal_walking':
             preference_specs.append(('minimal_travel', 'minimal_walking'))
+        if clean_preferences.get('mobility') == 'wheelchair_access':
+            preference_specs.append(('accessibility', 'wheelchair_access'))
         if clean_preferences.get('quiet') == 'quiet':
             preference_specs.append(('quiet_preference', 'quiet'))
         for key in ('dietary', 'party_size', 'children'):

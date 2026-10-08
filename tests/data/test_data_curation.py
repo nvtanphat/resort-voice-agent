@@ -3,7 +3,6 @@ import unittest
 from pathlib import Path
 
 from concierge_kiosk.core.dataset_layout import (
-    ALIASES,
     CONTACTS,
     ENTITIES,
     FACTS,

@@ -1,0 +1,255 @@
+{
+  "property_id": "FURAMA_DANANG",
+  "zones": [
+    {
+      "zone_id": "zone.main_lobby",
+      "name": "Main Building & Lobby",
+      "description": "Lobby arrival area, Reception, Concierge Desk, Hai Van Lounge, Boardroom, and Galleria shops",
+      "locations": [
+        {
+          "entity_id": "property.furama_resort_danang",
+          "name": "Front Desk & Cashier",
+          "level": "Lobby Level"
+        },
+        {
+          "entity_id": "service.concierge",
+          "name": "Concierge Desk",
+          "level": "Lobby Level"
+        },
+        {
+          "entity_id": "bar.hai_van_lounge",
+          "name": "Hải Vân Lounge",
+          "level": "Lobby Level"
+        },
+        {
+          "entity_id": "meeting.boardroom",
+          "name": "Boardroom",
+          "level": "2nd Floor"
+        },
+        {
+          "entity_id": "meeting.gallery",
+          "name": "The Gallery",
+          "level": "2nd Floor"
+        },
+        {
+          "entity_id": "meeting.ocean_ballroom",
+          "name": "Ocean Ballroom",
+          "level": "Upper level of main pavilion",
+          "source_url": "https://furamavietnam.com/meetings-events/meetings-conferences/",
+          "verification_status": "verified"
+        }
+      ]
+    },
+    {
+      "zone_id": "zone.ocean_wing",
+      "name": "Ocean Wing Guest Accommodations",
+      "description": "Multi-story guest room wings facing the East Sea coastline",
+      "locations": [
+        {
+          "entity_id": "room.ocean_deluxe",
+          "name": "Ocean Deluxe Rooms",
+          "level": "Floors 2-4"
+        },
+        {
+          "entity_id": "room.ocean_studio_suite",
+          "name": "Ocean Studio Suites",
+          "level": "Floors 3-4"
+        },
+        {
+          "entity_id": "room.ocean_suite",
+          "name": "Ocean Suites",
+          "level": "Floors 2-4"
+        },
+        {
+          "entity_id": "room.presidential_suite",
+          "name": "Presidential Suite",
+          "level": "Floor 4"
+        }
+      ]
+    },
+    {
+      "zone_id": "zone.garden_wing",
+      "name": "Garden & Lagoon Wing Guest Accommodations",
+      "description": "Accommodations set amidst lush tropical gardens and fresh water lagoon",
+      "locations": [
+        {
+          "entity_id": "room.garden_superior",
+          "name": "Garden Superior Rooms",
+          "level": "Floors 1-3"
+        },
+        {
+          "entity_id": "room.garden_deluxe",
+          "name": "Garden Deluxe Rooms",
+          "level": "Floors 1-3"
+        },
+        {
+          "entity_id": "room.lagoon_superior",
+          "name": "Lagoon Superior Rooms",
+          "level": "Floors 1-3"
+        }
+      ]
+    },
+    {
+      "zone_id": "zone.villas",
+      "name": "Furama Villas Enclave",
+      "description": "Private standalone luxury pool and beachfront villas",
+      "locations": [
+        {
+          "entity_id": "room.pool_villas",
+          "name": "Pool Villas",
+          "level": "Ground"
+        },
+        {
+          "entity_id": "room.beach_front_villas",
+          "name": "Beachfront Villas",
+          "level": "Direct Beachfront"
+        },
+        {
+          "entity_id": "contact.butler_service",
+          "name": "Villa Butler Desk",
+          "level": "Villa Club House"
+        }
+      ]
+    },
+    {
+      "zone_id": "zone.dining_hub",
+      "name": "Dining & Culinary Venues",
+      "description": "Fine dining, authentic Vietnamese, Italian, and beachfront grills",
+      "locations": [
+        {
+          "entity_id": "restaurant.cafe_indochine",
+          "name": "Café Indochine",
+          "level": "Ground Level"
+        },
+        {
+          "entity_id": "restaurant.don_cipriani",
+          "name": "Don Cipriani's Italian Restaurant",
+          "level": "Poolside"
+        },
+        {
+          "entity_id": "restaurant.danaksara",
+          "name": "Danaksara Central Vietnamese Cuisine",
+          "level": "Villa Enclave"
+        },
+        {
+          "entity_id": "restaurant.the_fan_steakhouse",
+          "name": "The Fan Beachfront Steakhouse",
+          "level": "Beachfront"
+        },
+        {
+          "entity_id": "restaurant.taya_house",
+          "name": "Tàya House",
+          "level": "Garden Area"
+        },
+        {
+          "entity_id": "bar.lagoon_bar",
+          "name": "Lagoon Bar",
+          "level": "Lagoon Pool"
+        }
+      ]
+    },
+    {
+      "zone_id": "zone.convention_centre",
+      "name": "International Convention Palace (ICP)",
+      "description": "Comprehensive conference, banquet, and meeting facilities",
+      "locations": [
+        {
+          "entity_id": "meeting.international_convention_palace",
+          "name": "ICP Grand Entrance",
+          "level": "Ground"
+        },
+        {
+          "entity_id": "meeting.danang_grand_ballroom",
+          "name": "Danang Grand Ballroom",
+          "level": "ICP Level 1",
+          "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+          "verification_status": "verified"
+        },
+        {
+          "entity_id": "meeting.ballroom_1",
+          "name": "Danang Ballroom 1",
+          "level": "ICP Level 1",
+          "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+          "verification_status": "verified"
+        },
+        {
+          "entity_id": "meeting.ballroom_2",
+          "name": "Danang Ballroom 2",
+          "level": "ICP Level 1",
+          "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+          "verification_status": "verified"
+        },
+        {
+          "entity_id": "meeting.ballroom_3",
+          "name": "Danang Ballroom 3",
+          "level": "ICP Level 1",
+          "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+          "verification_status": "verified"
+        },
+        {
+          "entity_id": "meeting.han_river_1",
+          "name": "Han River Room 1",
+          "level": "ICP Level 1",
+          "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+          "verification_status": "verified"
+        },
+        {
+          "entity_id": "meeting.han_river_2",
+          "name": "Han River Room 2",
+          "level": "ICP Level 1",
+          "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+          "verification_status": "verified"
+        },
+        {
+          "entity_id": "meeting.son_tra_1",
+          "name": "Son Tra Room",
+          "level": "ICP Level 2",
+          "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+          "verification_status": "verified"
+        }
+      ]
+    },
+    {
+      "zone_id": "zone.wellness_recreation",
+      "name": "Wellness, Pools & Recreation",
+      "description": "Spa sanctuary, medical centre, pools, and sports facilities",
+      "locations": [
+        {
+          "entity_id": "spa.v_senses_wellness",
+          "name": "V-Senses Wellness & Spa",
+          "level": "Spa Garden Sanctuary"
+        },
+        {
+          "entity_id": "contact.medical_centre",
+          "name": "Resort Medical Centre",
+          "level": "Ground - Near Health Club"
+        },
+        {
+          "entity_id": "recreation.fitness_center",
+          "name": "Fitness & Health Club",
+          "level": "Ground Floor"
+        },
+        {
+          "entity_id": "recreation.swimming_pools",
+          "name": "Ocean & Lagoon Swimming Pools",
+          "level": "Outdoor Grounds"
+        },
+        {
+          "entity_id": "recreation.water_sports",
+          "name": "Water Sports Centre",
+          "level": "Beachfront"
+        },
+        {
+          "entity_id": "recreation.tennis_club",
+          "name": "Tennis Courts",
+          "level": "North Grounds"
+        },
+        {
+          "entity_id": "recreation.kids_club",
+          "name": "Kids Club",
+          "level": "Ground Floor"
+        }
+      ]
+    }
+  ]
+}

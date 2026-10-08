@@ -14,10 +14,17 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
         value = selector.get(key)
         if not isinstance(value, int) or isinstance(value, bool) or not low <= value <= high:
             raise ValueError(f"nlu.service_selector.{key} must be an integer in [{low}, {high}]")
-    for key, low in (("fallback_min_score", -1.0), ("fallback_min_margin", 0.0)):
+    for key, low in (("fallback_min_score", -1.0), ("fallback_min_margin", 0.0),
+                     ("router_min_score", -1.0), ("router_min_margin", 0.0),
+                     ("emergency_min_prob", 0.0), ("emergency_review_prob", 0.0)):
         value = selector.get(key)
         if not isinstance(value, (int, float)) or isinstance(value, bool) or not low <= value <= 1.0:
             raise ValueError(f"nlu.service_selector.{key} must be a number in [{low}, 1]")
+    if selector["emergency_review_prob"] > selector["emergency_min_prob"]:
+        raise ValueError("nlu.service_selector.emergency_review_prob must not exceed emergency_min_prob")
+    l2 = selector.get("emergency_l2")
+    if not isinstance(l2, (int, float)) or isinstance(l2, bool) or not 0.0 < l2 <= 10.0:
+        raise ValueError("nlu.service_selector.emergency_l2 must be a number in (0, 10]")
     for key in ("numerals", "clock"):
         validate_language_keys(nlu[key], languages, label=f"nlu.{key}", require_all=True)
     for language, grammar in nlu["numerals"].items():
@@ -63,16 +70,8 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
         if missing:
             raise ValueError(f"nlu.intent.emergency_text.{language} omits emergency contact(s): "
                              + ", ".join(sorted(missing)))
-    for key in ("emergency_event_patterns", "action_phrases", "info_only", "negation_patterns",
-                "information_frame_patterns", "information_request_patterns",
-                "multi_connector_patterns"):
+    for key in ("emergency_event_patterns", "negation_patterns"):
         validate_language_keys(intent[key], languages, label=f"nlu.intent.{key}", require_all=True)
-    for key in ("action_phrases", "action_patterns"):
-        validate_language_keys(intent[key], languages, label=f"nlu.intent.{key}")
-        for language, kinds in intent[key].items():
-            unknown = set(kinds) - request_kinds
-            if unknown:
-                raise ValueError(f"nlu.intent.{key}.{language} references unknown request kind")
     for language, patterns in intent["emergency_event_patterns"].items():
         for pattern in patterns:
             compile_regex(pattern, label=f"nlu.intent.emergency_event_patterns.{language}")
@@ -81,14 +80,9 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for language, patterns in intent["completion_claims"].items():
         for pattern in patterns:
             compile_regex(pattern, label=f"nlu.intent.completion_claims.{language}")
-    for key in ("negation_patterns", "information_frame_patterns", "information_request_patterns",
-                "multi_connector_patterns"):
+    for key in ("negation_patterns",):
         for language, pattern in intent[key].items():
             compile_regex(pattern, label=f"nlu.intent.{key}.{language}")
-    for language, kinds in intent["action_patterns"].items():
-        for kind, patterns in kinds.items():
-            for pattern in patterns:
-                compile_regex(pattern, label=f"nlu.intent.action_patterns.{language}.{kind}")
 
     authority = nlu["authority"]
     for key in ("tentative_terms", "explicit_terms", "restricted_terms"):
@@ -98,28 +92,12 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
         compile_regex(pattern, label=f"nlu.authority.imperative_patterns.{language}")
 
     routing = nlu["routing"]
-    for key in ("greeting_terms", "courtesy_particles", "confirmation_terms", "affirm_terms", "deny_terms", "bare_topic_terms", "request_status_terms",
-                "request_change_terms", "language_switch_terms", "switch_command_patterns"):
+    for key in ("greeting_terms", "courtesy_particles", "confirmation_terms", "affirm_terms",
+                "deny_terms", "bare_topic_terms", "language_switch_terms",
+                "switch_command_patterns"):
         validate_language_keys(routing[key], languages, label=f"nlu.routing.{key}", require_all=True)
-    # Prior-request reference vocabulary is an optional refinement; generic
-    # change/cancel handling remains fail-closed when a new language omits it.
-    validate_language_keys(routing.get("request_change_reference_terms", {}), languages,
-                            label="nlu.routing.request_change_reference_terms")
     for category, values in routing["static_text"].items():
         validate_language_keys(values, languages, label=f"nlu.routing.static_text.{category}", require_all=True)
-    # Router precedence must not silently turn a configured action phrase into
-    # a knowledge-only bare topic. Exact collisions are contradictory domain data.
-    for language in languages:
-        bare_topics = {" ".join(term.casefold().split())
-                       for term in routing["bare_topic_terms"].get(language, ())}
-        action_terms = {" ".join(term.casefold().split())
-                        for terms in intent["action_phrases"].get(language, {}).values()
-                        for term in terms}
-        overlap = bare_topics & action_terms
-        if overlap:
-            raise ValueError(
-                f"NLU routing action/bare-topic collision for {language}: "
-                + ", ".join(sorted(overlap)))
     for language, pattern in routing["switch_command_patterns"].items():
         compile_regex(pattern, label=f"nlu.routing.switch_command_patterns.{language}")
     compile_regex(routing["korean_target_first_pattern"], label="nlu.routing.korean_target_first_pattern")
@@ -128,7 +106,7 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     slots = nlu["slots"]
     for key in ("number_words", "number_connectors", "room_patterns", "relative_time_terms", "quantity_nouns",
                 "party_size_patterns", "party_size_full_patterns", "clock_dayparts",
-                "short_time_markers", "cancel_terms"):
+                "short_time_markers"):
         validate_language_keys(slots[key], languages, label=f"nlu.slots.{key}")
     validate_language_keys(slots["room_patterns"], languages, label="nlu.slots.room_patterns", require_all=True)
     validate_language_keys(slots["relative_time_terms"], languages, label="nlu.slots.relative_time_terms", require_all=True)
@@ -163,17 +141,6 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for facet, terms in memory["facet_search"].items():
         validate_language_keys(terms, languages, label=f"nlu.memory_vocabulary.facet_search.{facet}", require_all=True)
 
-    read_intent = nlu["read_intent"]
-    for key in ("info_terms", "conjunction_patterns", "route_terms", "info_more_terms",
-                "composite_information_terms"):
-        validate_language_keys(read_intent[key], languages, label=f"nlu.read_intent.{key}", require_all=True)
-    if "availability_terms" in read_intent:
-        validate_language_keys(read_intent["availability_terms"], languages,
-                                label="nlu.read_intent.availability_terms")
-    for language, pattern in read_intent["conjunction_patterns"].items():
-        compile_regex(pattern, label=f"nlu.read_intent.conjunction_patterns.{language}")
-    compile_regex(read_intent["next_pattern"], label="nlu.read_intent.next_pattern")
-    compile_regex(read_intent["deny_pattern"], label="nlu.read_intent.deny_pattern")
     for key in ("time_expressions", "discourse_terms"):
         validate_language_keys(nlu[key], languages, label=f"nlu.{key}", require_all=True)
     for language, expressions in nlu["time_expressions"].items():

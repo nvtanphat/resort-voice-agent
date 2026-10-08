@@ -1,0 +1,20 @@
+{
+  "audit_id": "production-hardening-2026-10-05",
+  "release": "1.0.3-data-consistency-fix",
+  "status": "PASS_DATA_INTEGRITY_RUNTIME_CONTRACT_BLOCKED",
+  "checks": {
+    "map_schema_drift": "fixed",
+    "planning_schema_drift": "fixed",
+    "contract_coverage": "full_classification_required",
+    "source_snapshot_integrity": "sha256_bound_evidence_bundles",
+    "raw_historical_archive": "not_recoverable_without_fabrication",
+    "domain_review_pending_facts": 39,
+    "domain_review_runtime_gate": "staff_confirmation_required_until_approved",
+    "retrieval_canonical_fact_coverage": "366/366",
+    "service_action_cross_file_consistency": "policy_valid_preconditions_and_balanced_subtypes",
+    "runtime_contract_blockers": [
+      "service_policy_parity",
+      "route_command_ontology_parity"
+    ]
+  }
+}

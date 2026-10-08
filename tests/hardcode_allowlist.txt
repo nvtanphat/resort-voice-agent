@@ -5,4 +5,3 @@ src/concierge_kiosk/agent/understanding/semantic.py:39:protected numeric literal
 src/concierge_kiosk/rag/text/normalize.py:8:localized documentation
 src/concierge_kiosk/rag/text/normalize.py:14:diacritic translation table
 src/concierge_kiosk/rag/text/normalize.py:16:Unicode script mechanics
-src/concierge_kiosk/rag/text/safety.py:8:centralized prompt-injection pattern

@@ -1,0 +1,632 @@
+{
+  "property_id": "FURAMA_DANANG",
+  "generated_at": "2026-10-05",
+  "policy": "Never fabricate human approval. Pending facts require staff confirmation until an authorized domain owner approves them.",
+  "pending_count": 39,
+  "items": [
+    {
+      "canonical_fact_id": "cfact_0efdfe8d33daf376dbf6d90b",
+      "entity_id": "policy.do_not_disturb",
+      "fact_type": "policy_rule",
+      "context": "privacy_sign",
+      "raw_value": "Place the Privacy sign on the doorknob if you do not wish to be disturbed",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_1b66e520e77922bf7465cb58",
+          "source_url": "https://furamavietnam.com/room-directory/room-facilities-services/do-not-disturb/",
+          "evidence_sha256": "3721c83d57b6cfd7952155281a7e32bd8c83b5caf7a60994be2e60fabe70a2bb"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_12adc119b179b6367c084917",
+      "entity_id": "transportation.airport_transfer",
+      "fact_type": "policy_rule",
+      "context": "early_departure_booking_deadline",
+      "raw_value": "For early-morning departures, book airport transfer before 21:00 on the previous day",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_400e468bc94e03e8ac1b99d9",
+          "source_url": "https://furamavietnam.com/room-directory/baggage-service/airport-transfer/",
+          "evidence_sha256": "577293a1ff3ad06352b0b1dea26651083cf2f8a9563d93730fbdb2e8a0cba349"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_17ee15d7a8ef59bef4b5b57a",
+      "entity_id": "policy.double_locking",
+      "fact_type": "policy_rule",
+      "context": "room_double_lock_security",
+      "raw_value": "Use the double-lock facility inside the room for extra security",
+      "required_role": "Safety / Security Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_fcce96d0dc2731d3e8b8f76c",
+          "source_url": "https://furamavietnam.com/room-directory/security-safety/double-locking/",
+          "evidence_sha256": "36702a64499f6e3f9231729d3f60cbf40fe5a0de61e795be7207f37a9f9370d0"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_19c45401cdeb70adcfafd9fc",
+      "entity_id": "property.furama_resort_danang",
+      "fact_type": "policy_rule",
+      "context": "check_out_time",
+      "raw_value": "11:00",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_7acddbf6648b1e0ad227eb4e",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/check-out-time/",
+          "evidence_sha256": "5e8031bb721a0362fc962d64915949735ce2098144f3ea1348c20a63cbe864bb"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_1eae10a9ce1b95326b9d0f72",
+      "entity_id": "room.ocean_deluxe",
+      "fact_type": "policy_rule",
+      "context": "occupancy_policy",
+      "raw_value": "3 Adults or 2 Adults & 2 Children",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_85e8f204f9fc48054fb63ed5",
+          "source_url": "https://furamavietnam.com/room-suites/ocean-deluxe/",
+          "evidence_sha256": "ead9be627c543f7850cc77f3858137cbaacb0e887106894350bb7bd7cad45ea8"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_1f77b12d57c5329f9ccb2311",
+      "entity_id": "property.furama_resort_danang",
+      "fact_type": "policy_rule",
+      "context": "late_checkout_until_18",
+      "raw_value": "Late check-out until 18:00 is charged at 50% of the daily room rate and is subject to availability",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_7acddbf6648b1e0ad227eb4e",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/check-out-time/",
+          "evidence_sha256": "a01773b1903d548bb4380223149d048342239780827319c263a574d0453343c3"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_208011d2a60b93dd3f68419f",
+      "entity_id": "room.lagoon_superior",
+      "fact_type": "policy_rule",
+      "context": "occupancy_policy",
+      "raw_value": "3 Adults or 2 Adults & 2 Children",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_f64e77713f0f7d2c23766373",
+          "source_url": "https://furamavietnam.com/room-suites/lagoon-superior/",
+          "evidence_sha256": "e69543647666045d06b40eac716c74c5208808587b41f47267cf0058de7c57c3"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_2769c035b0532fa625d10803",
+      "entity_id": "policy.cheques",
+      "fact_type": "policy_rule",
+      "context": "personal_cheques_not_accepted",
+      "raw_value": "Personal cheques are not accepted around the resort",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_0b8ac27635f87f512a318001",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/cheques/",
+          "evidence_sha256": "ecc96a633db44f65dbfdb8445e71346c6c9bbe69c92b344dba42fc09ad66c734"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_32a60d9579ed5038d46c7dc0",
+      "entity_id": "policy.dress_code",
+      "fact_type": "policy_rule",
+      "context": "smart_casual_attire",
+      "raw_value": "Guests are requested to wear smart casual attire within the resort premises",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_c59b71762a8d2756c20691b7",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/dress-code/",
+          "evidence_sha256": "e80eddd036ad329d2a2550264c00954a206cff4afdae25d7680c643d5fa6f617"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_3728f513b9066c4c81dc5377",
+      "entity_id": "property.furama_resort_danang",
+      "fact_type": "policy_rule",
+      "context": "late_checkout_after_18",
+      "raw_value": "Departures after 18:00 are charged one night and are subject to availability",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_7acddbf6648b1e0ad227eb4e",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/check-out-time/",
+          "evidence_sha256": "bd7affaca15406bdd32b8919762acc127d888e62e3fc3c27ad42f88843f42eae"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_372933552b85b9a1f92e1cd8",
+      "entity_id": "policy.do_not_disturb",
+      "fact_type": "policy_rule",
+      "context": "incoming_calls_opt_out",
+      "raw_value": "Notify the Operator if you do not wish to receive incoming calls",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_1b66e520e77922bf7465cb58",
+          "source_url": "https://furamavietnam.com/room-directory/room-facilities-services/do-not-disturb/",
+          "evidence_sha256": "3721c83d57b6cfd7952155281a7e32bd8c83b5caf7a60994be2e60fabe70a2bb"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_3a2d5e63451435642aaa334d",
+      "entity_id": "property.furama_resort_danang",
+      "fact_type": "policy_rule",
+      "context": "check_in_time",
+      "raw_value": "14:00",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_6ecc81225b41720b9e2aa045",
+          "source_url": "https://furamavietnam.com/page/15/?l=en&p=gbook",
+          "evidence_sha256": "0ff6f406ea0025d34ef7b03d98e0aeb3a0b64422edc883a27ae5b1b2807be9c5"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_3f16d870e09d3494ce306c0b",
+      "entity_id": "spa.v_senses_wellness",
+      "fact_type": "policy_rule",
+      "context": "last_appointment",
+      "raw_value": "Last appointment 20:30",
+      "required_role": "Spa Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_9b451aae1a3c05e712c60e1b",
+          "source_url": "https://furamavietnam.com/page/14/?id=307&l=en&p=newsdetail",
+          "evidence_sha256": "fcfe32a713a914ac6c6d76d6872df531f05df25ed1941767e5e11fa1d073ab38"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_416aada61860bc80c6e5de2a",
+      "entity_id": "recreation.beach",
+      "fact_type": "policy_rule",
+      "context": "night_swimming",
+      "raw_value": "Night swimming is not permitted",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_c48203a42761e038aa00fe3d",
+          "source_url": "https://furamavietnam.com/room-directory/recreation/beach/",
+          "evidence_sha256": "7ab8e19887e804d04d3f3f53bfce413fcb203a27d94b2332865558dafd3b4a3d"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_45a73820861aeb02bf3bee8d",
+      "entity_id": "policy.non_smoking",
+      "fact_type": "policy_rule",
+      "context": "all_rooms_non_smoking",
+      "raw_value": "All rooms are non-smoking",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_bef66fda8522b0f4f4334836",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/non-smoking-rooms/",
+          "evidence_sha256": "8a901f51b375d0160ea837aae45c415fe829696ab8642170e15de1153f155745"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_4d4331ec91c71694f9c54164",
+      "entity_id": "service.lost_and_found",
+      "fact_type": "service_feature",
+      "context": "housekeeping_assistance",
+      "raw_value": "Contact Housekeeping for Lost & Found assistance",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_04e63f712fa42de612f46b86",
+          "source_url": "https://furamavietnam.com/room-directory/baggage-service/lost-found/",
+          "evidence_sha256": "22538392fcfe8c474e4c2505a577905907ec0ab1fc1810ea8e779e272f3e1ede"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_5cd076361f1746a3d281b370",
+      "entity_id": "service.first_aid",
+      "fact_type": "service_feature",
+      "context": "operator_contact",
+      "raw_value": "Contact the Operator for first aid",
+      "required_role": "Safety / Security Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_23cf335938ee7d449e6da7b3",
+          "source_url": "https://furamavietnam.com/room-directory/security-safety/first-aid/",
+          "evidence_sha256": "e2fdd9d40df8b2c6e6221d1f64897dd43a3c4d00d3eefc4eb4593b7bd18918ce"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_6d61c9f02fe6cb3f4d87eb01",
+      "entity_id": "spa.v_senses_wellness",
+      "fact_type": "policy_rule",
+      "context": "advance_booking_notice",
+      "raw_value": "Schedule treatments 24 hours in advance",
+      "required_role": "Spa Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_9b451aae1a3c05e712c60e1b",
+          "source_url": "https://furamavietnam.com/page/14/?id=307&l=en&p=newsdetail",
+          "evidence_sha256": "fcfe32a713a914ac6c6d76d6872df531f05df25ed1941767e5e11fa1d073ab38"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_74f0c36b30cbe90ee4f4c6c9",
+      "entity_id": "room.ocean_suite",
+      "fact_type": "policy_rule",
+      "context": "occupancy_policy",
+      "raw_value": "3 Adults or 2 Adults & 2 Children",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_7e09a580714010f40007eda2",
+          "source_url": "https://furamavietnam.com/room-suites/ocean-suite/",
+          "evidence_sha256": "56029663bfd1a0f78ce38c386c3206040419e75d6ea2bbdd0c7aa1e68d6edd3c"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_75cca9c9b5332d975949c421",
+      "entity_id": "property.furama_resort_danang",
+      "fact_type": "policy_rule",
+      "context": "late_checkout_policy",
+      "raw_value": "50% daily room rate until 18:00; one night after 18:00; subject to availability",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_7acddbf6648b1e0ad227eb4e",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/check-out-time/",
+          "evidence_sha256": "25a481102ba4ea05f3b88c38d049a2e17056fa4c03abff06bb15dcdea8d26882"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_774c2707efb2b7aeb79c1222",
+      "entity_id": "room.presidential_suite",
+      "fact_type": "policy_rule",
+      "context": "occupancy_policy",
+      "raw_value": "3 Adults or 2 Adults & 2 Children",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_7c4e4fb688c167b32b00ac15",
+          "source_url": "https://furamavietnam.com/room-suites/presidential-suite/",
+          "evidence_sha256": "8320247e8d0828ec254144be01609d8d9c006702e792e456d252060e84d123c9"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_781d4fc0834858e58fac826d",
+      "entity_id": "service.parking",
+      "fact_type": "policy_rule",
+      "context": "vehicle_item_liability",
+      "raw_value": "The hotel cannot be responsible for items left in vehicles on hotel property",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_62f105e200b65f9c7739a09b",
+          "source_url": "https://furamavietnam.com/room-directory/other-services/parking/",
+          "evidence_sha256": "f59d5d6bfff2e565231211cb563bac53dd0580321e15b3192bd04044a75b54da"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_8e2511766d92a3294d51481d",
+      "entity_id": "policy.pet_policy",
+      "fact_type": "policy_rule",
+      "context": "pet_prohibition",
+      "raw_value": "Pets are not permitted",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_86f2553dec044c1022e4a9c3",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/pet-policy/",
+          "evidence_sha256": "510ada219d11531423f22a2c5830c5eb8c0fdf9fa963ec935218743b1c326ab8"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_942d4ad5c5510a4b12101c9e",
+      "entity_id": "service.medical_centre",
+      "fact_type": "opening_hours",
+      "context": "staffed_hours",
+      "raw_value": "08:00 - 17:00",
+      "required_role": "Safety / Security Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_16a00e8a5c3f8dd0b9404d46",
+          "source_url": "https://furamavietnam.com/room-directory/security-safety/medical-service/",
+          "evidence_sha256": "7f517243ffedaaa70ac4bfe50a18b9c315a0beb7e14da7d2ab774e8a72ad32ed"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_a0bcdd26a732beef23242b6e",
+      "entity_id": "recreation.day_pass",
+      "fact_type": "policy_rule",
+      "context": "availability",
+      "raw_value": "Subject to availability",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_e8140e7131d622b6c0d9293f",
+          "source_url": "https://furamavietnam.com/recreations/non-residential-guests/",
+          "evidence_sha256": "7e6708a795d4eeca17f357f238bbb9349670d0f9952610387afbc9548256152e"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_ad259ebb1e6572e2f2430ffe",
+      "entity_id": "policy.credit_cards",
+      "fact_type": "policy_rule",
+      "context": "accepted_cards",
+      "raw_value": "American Express, JCB, Master, Visa/Diner’s Club and Union Pay are accepted",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_1320c82cbd1e3cee702045eb",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/credit-cards/",
+          "evidence_sha256": "71f2828b4e6cbf68d26242bfc50b1fe18e3af0aaa164b953c57876899973570c"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_bb541cb59d3391512d4dead8",
+      "entity_id": "service.medical_centre",
+      "fact_type": "policy_rule",
+      "context": "hours_exception",
+      "raw_value": "Except Saturday afternoon and Sunday",
+      "required_role": "Safety / Security Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_16a00e8a5c3f8dd0b9404d46",
+          "source_url": "https://furamavietnam.com/room-directory/security-safety/medical-service/",
+          "evidence_sha256": "7f517243ffedaaa70ac4bfe50a18b9c315a0beb7e14da7d2ab774e8a72ad32ed"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_c365a6082bdccd6ba58e1769",
+      "entity_id": "room.ocean_studio_suite",
+      "fact_type": "policy_rule",
+      "context": "occupancy_policy",
+      "raw_value": "3 Adults or 2 Adults & 2 Children",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_0d534497f4c1b63622c18170",
+          "source_url": "https://furamavietnam.com/room-suites/ocean-studio-suite/",
+          "evidence_sha256": "026ca735ee1baec18d0bbeddc91a4cfc090c9d845808ce2c2804113a7f011e87"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_cc0b46034042c1ca5ac4012d",
+      "entity_id": "policy.dress_code",
+      "fact_type": "policy_rule",
+      "context": "swimwear_areas",
+      "raw_value": "Bathing suits and trunks should only be worn on the beach and at the public swimming pool",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_c59b71762a8d2756c20691b7",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/dress-code/",
+          "evidence_sha256": "e80eddd036ad329d2a2550264c00954a206cff4afdae25d7680c643d5fa6f617"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_d6fbcecbe6d70bf4089fa424",
+      "entity_id": "service.in_room_dining",
+      "fact_type": "policy_rule",
+      "context": "outside_food_policy",
+      "raw_value": "Outside food/drinks and cooking in-room are not allowed for safety and hygiene reasons",
+      "required_role": "F&B Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_4412b6f6374bca43eaaf7f85",
+          "source_url": "https://furamavietnam.com/room-directory/room-facilities-services/room-service/",
+          "evidence_sha256": "afd2a468403b11fd684df65ef30fcefca46e48a564ecb04c4ea8f2188f9ca1e9"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_da1da8165b61bae8c4544891",
+      "entity_id": "room.garden_superior",
+      "fact_type": "policy_rule",
+      "context": "occupancy_policy",
+      "raw_value": "3 Adults or 2 Adults & 2 Children",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_3833990913958974bd32b210",
+          "source_url": "https://furamavietnam.com/room-suites/garden-superior/",
+          "evidence_sha256": "e69543647666045d06b40eac716c74c5208808587b41f47267cf0058de7c57c3"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_dde1fee26e1f5fc36abf2b16",
+      "entity_id": "service.long_distance_calls",
+      "fact_type": "policy_rule",
+      "context": "long_distance_call_charge",
+      "raw_value": "Long-distance telephone calls incur a charge",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_ec6bfb4da3cb28defaa4251b",
+          "source_url": "https://furamavietnam.com/room-directory/room-facilities-services/long-distance-telephone-calls/",
+          "evidence_sha256": "3ab1bed0a2932426cfcdd8633cc82d7447f7193ba2b71519b6d0f03a914b0bc9"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_e0e3ead2c16eaaac4542ad92",
+      "entity_id": "policy.typhoons",
+      "fact_type": "policy_rule",
+      "context": "heavy_typhoon_management_instructions",
+      "raw_value": "In a heavy typhoon, follow the instructions of management",
+      "required_role": "Safety / Security Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_30c29c830f93351b42f12d12",
+          "source_url": "https://furamavietnam.com/room-directory/security-safety/typhoons/",
+          "evidence_sha256": "a696900397ce9b262b490851c14886e1a5c17eedac908cb9e3351ece6d5854f1"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_f29c9a1a0fde7faa39c4f6bc",
+      "entity_id": "service.medical_centre",
+      "fact_type": "extension",
+      "context": "medical_or_operator",
+      "raw_value": "3420/0",
+      "required_role": "Safety / Security Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_16a00e8a5c3f8dd0b9404d46",
+          "source_url": "https://furamavietnam.com/room-directory/security-safety/medical-service/",
+          "evidence_sha256": "7c6cb8d764595a8907d2b442dd15c4421b4a84d05b4c0c0d0c69b1ec2e525ee9"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_f5a33699f05b6304f670ce94",
+      "entity_id": "policy.vat",
+      "fact_type": "policy_rule",
+      "context": "company_vat_invoice_details",
+      "raw_value": "Advise Front Desk before departure if company VAT details must appear on the final invoice",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_1f6a24f99d17bc7b1a07ad00",
+          "source_url": "https://furamavietnam.com/room-directory/resorts-policies/vat/",
+          "evidence_sha256": "b078283e47d1ed85168ba3153000582adbdfa1ea1821f33313ce3098fe948073"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_f5d77224f035818802cb1d2c",
+      "entity_id": "room.family_room_by_balcony",
+      "fact_type": "policy_rule",
+      "context": "occupancy_policy",
+      "raw_value": "8 guests or 4 Adults & 4 Children",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_1fc2d321b7e1dc4af533f7d6",
+          "source_url": "https://furamavietnam.com/room-suites/family-room-by-balcony/",
+          "evidence_sha256": "5b22cc6c94fb0fb6ad869d8d24a64ad6e2310d8d568b22f3732f7a2abed5883d"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_f872ab8fc6212380fcd6fbbf",
+      "entity_id": "room.garden_deluxe",
+      "fact_type": "policy_rule",
+      "context": "occupancy_policy",
+      "raw_value": "3 Adults or 2 Adults & 2 Children",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_f90047d33d40314e37200900",
+          "source_url": "https://furamavietnam.com/room-suites/garden-deluxe/",
+          "evidence_sha256": "ead9be627c543f7850cc77f3858137cbaacb0e887106894350bb7bd7cad45ea8"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_f98cc62814af2f149de51591",
+      "entity_id": "transportation.airport_transfer",
+      "fact_type": "policy_rule",
+      "context": "early_departure_booking",
+      "raw_value": "For early-morning departure, book before 21:00 the day before",
+      "required_role": "Front Office Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_400e468bc94e03e8ac1b99d9",
+          "source_url": "https://furamavietnam.com/room-directory/baggage-service/airport-transfer/",
+          "evidence_sha256": "577293a1ff3ad06352b0b1dea26651083cf2f8a9563d93730fbdb2e8a0cba349"
+        }
+      ]
+    },
+    {
+      "canonical_fact_id": "cfact_ff719adf03cb3596a20ca739",
+      "entity_id": "service.babysitting",
+      "fact_type": "policy_rule",
+      "context": "advance_booking_notice",
+      "raw_value": "Book one day in advance; additional charges apply.",
+      "required_role": "Guest Relations Manager",
+      "status": "pending",
+      "provenance_sources": [
+        {
+          "document_id": "web_db64dcbc1278114a76ddb140",
+          "source_url": "https://furamavietnam.com/room-directory/other-services/babysitting-services/",
+          "evidence_sha256": "e35898db86c7df5d49b87adfffb1a1bd95df6f0071fac01e08d8b787e35680f1"
+        }
+      ]
+    }
+  ]
+}

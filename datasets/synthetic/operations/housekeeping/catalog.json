@@ -1,0 +1,268 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "service_window": {
+    "routine_requests": "06:00-22:00",
+    "overnight_essential_items": "22:00-06:00 via night runner/front desk handoff",
+    "turndown_on_request": "18:00-21:00",
+    "assumption_refs": [
+      "asm_housekeeping_service_window",
+      "asm_turndown_window"
+    ],
+    "official_room_cleaning": "08:00-17:00",
+    "official_room_cleaning_source_ref": "furama_room_cleaning"
+  },
+  "catalog": [
+    {
+      "item_code": "bath_towel",
+      "names": {
+        "vi": "Khăn tắm",
+        "en": "Bath towel",
+        "ko": "목욕 수건",
+        "zh": "浴巾"
+      },
+      "unit": "piece",
+      "standard_max_per_request": 4,
+      "target_delivery_min": 15,
+      "charge_policy": "complimentary_standard_request",
+      "stock_class": "high",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": [
+        "furama_bath_towels"
+      ]
+    },
+    {
+      "item_code": "hand_towel",
+      "names": {
+        "vi": "Khăn tay",
+        "en": "Hand towel",
+        "ko": "핸드 타월",
+        "zh": "手巾"
+      },
+      "unit": "piece",
+      "standard_max_per_request": 4,
+      "target_delivery_min": 15,
+      "charge_policy": "complimentary_standard_request",
+      "stock_class": "high",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": []
+    },
+    {
+      "item_code": "toothbrush_kit",
+      "names": {
+        "vi": "Bộ bàn chải",
+        "en": "Toothbrush kit",
+        "ko": "칫솔 세트",
+        "zh": "牙刷套装"
+      },
+      "unit": "kit",
+      "standard_max_per_request": 4,
+      "target_delivery_min": 15,
+      "charge_policy": "complimentary_standard_request",
+      "stock_class": "high",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": []
+    },
+    {
+      "item_code": "shaving_kit",
+      "names": {
+        "vi": "Bộ cạo râu",
+        "en": "Shaving kit",
+        "ko": "면도 세트",
+        "zh": "剃须套装"
+      },
+      "unit": "kit",
+      "standard_max_per_request": 2,
+      "target_delivery_min": 15,
+      "charge_policy": "complimentary_standard_request",
+      "stock_class": "medium",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": []
+    },
+    {
+      "item_code": "slippers",
+      "names": {
+        "vi": "Dép đi trong phòng",
+        "en": "Room slippers",
+        "ko": "객실 슬리퍼",
+        "zh": "客房拖鞋"
+      },
+      "unit": "pair",
+      "standard_max_per_request": 2,
+      "target_delivery_min": 15,
+      "charge_policy": "complimentary_standard_request",
+      "stock_class": "high",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": []
+    },
+    {
+      "item_code": "extra_pillow",
+      "names": {
+        "vi": "Gối thêm",
+        "en": "Extra pillow",
+        "ko": "추가 베개",
+        "zh": "加枕"
+      },
+      "unit": "piece",
+      "standard_max_per_request": 2,
+      "target_delivery_min": 20,
+      "charge_policy": "complimentary_subject_to_stock",
+      "stock_class": "medium",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": [
+        "furama_housekeeping"
+      ]
+    },
+    {
+      "item_code": "blanket",
+      "names": {
+        "vi": "Chăn thêm",
+        "en": "Extra blanket",
+        "ko": "추가 담요",
+        "zh": "加毯"
+      },
+      "unit": "piece",
+      "standard_max_per_request": 2,
+      "target_delivery_min": 20,
+      "charge_policy": "complimentary_subject_to_stock",
+      "stock_class": "medium",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": [
+        "furama_housekeeping"
+      ]
+    },
+    {
+      "item_code": "baby_cot",
+      "names": {
+        "vi": "Nôi em bé",
+        "en": "Baby cot",
+        "ko": "아기 침대",
+        "zh": "婴儿床"
+      },
+      "unit": "unit",
+      "standard_max_per_request": 1,
+      "target_delivery_min": 45,
+      "charge_policy": "staff_confirmed_subject_to_availability",
+      "stock_class": "low",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": []
+    },
+    {
+      "item_code": "extra_bed",
+      "names": {
+        "vi": "Giường phụ",
+        "en": "Extra bed",
+        "ko": "엑스트라 베드",
+        "zh": "加床"
+      },
+      "unit": "unit",
+      "standard_max_per_request": 1,
+      "target_delivery_min": 60,
+      "charge_policy": "staff_confirmed_chargeable",
+      "benchmark_price_vnd": 1500000,
+      "price_truth_status": "external_corroborated_not_official",
+      "source_refs": [
+        "external_booking_furama_policy"
+      ],
+      "stock_class": "low",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": []
+    },
+    {
+      "item_code": "room_makeup",
+      "names": {
+        "vi": "Dọn phòng",
+        "en": "Make up room",
+        "ko": "객실 정비",
+        "zh": "客房清洁"
+      },
+      "unit": "service",
+      "target_first_attendance_min": 15,
+      "expected_completion_min": [
+        20,
+        30
+      ],
+      "access_required": true,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": [
+        "furama_room_cleaning"
+      ]
+    },
+    {
+      "item_code": "turndown",
+      "names": {
+        "vi": "Dịch vụ buổi tối",
+        "en": "Turndown service",
+        "ko": "턴다운 서비스",
+        "zh": "夜床服务"
+      },
+      "unit": "service",
+      "target_first_attendance_min": 20,
+      "expected_completion_min": [
+        20,
+        30
+      ],
+      "access_required": true,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_housekeeping_service_window",
+        "asm_turndown_window"
+      ],
+      "official_anchor_refs": []
+    }
+  ],
+  "source_refs": [
+    "furama_bath_towels",
+    "furama_housekeeping",
+    "benchmark_lqa_resort_delivery",
+    "benchmark_housekeeping_guest_requests_bali",
+    "furama_room_cleaning"
+  ],
+  "assumption_refs": [
+    "asm_housekeeping_service_window",
+    "asm_turndown_window"
+  ],
+  "guest_answer_policy": "May be used only in explicit synthetic/demo mode except items already present in canonical Furama data."
+}

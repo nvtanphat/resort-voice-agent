@@ -11,7 +11,7 @@ from concierge_kiosk.persistence.sqlite_store import Store
 
 def test_availability_routes_to_schedule_and_reads_pinned_release():
     decision = classify_dialogue('Is the spa available tomorrow?', 'en')
-    assert decision.branch == 'check_schedule'
+    assert decision.branch == 'knowledge'
 
     result = schedule_read(
         Store('data/concierge.sqlite3'),
@@ -57,6 +57,7 @@ def test_manage_request_is_a_session_scoped_staff_review_change():
         query='Cancel my request', language='en', session='session-a',
         effective_date='2026-10-01', action_nonce='nonce-1234',
         decision=RouteDecision('request_change', True),
+        change_action='cancel',
     ))
     assert result['tool_route'] == 'manage_request'
     assert result['request_change']['change_state'] == 'cancel_requested'
@@ -91,5 +92,26 @@ def test_manage_request_modify_extracts_only_allowlisted_changed_slots():
         query='Change my request to room 306', language='en', session='session-b',
         effective_date='2026-10-01', action_nonce='nonce-5678',
         decision=RouteDecision('request_change', True),
+        change_action='modify',
     ))
     assert result['request_change']['change_state'] == 'modify_requested'
+
+
+def test_manage_request_without_command_action_needs_details():
+    class Workflows:
+        @staticmethod
+        def list_guest_requests(*_args, **_kwargs):
+            raise AssertionError('missing command action must not inspect request state')
+
+    service = ServiceActionService(
+        workflows=Workflows(), task_memory=None, conversations=None, get_graph=lambda: None,
+        record_metric=lambda *_: None, logger=SimpleNamespace(),
+        enabled_request_kinds={'facilities'}, cfg=None,
+    )
+    result = service.manage_request_tool(AgentToolRequest(
+        query='ambiguous request change', language='en', session='session-c',
+        effective_date='2026-10-01', decision=RouteDecision('request_change', True),
+    ))
+
+    assert result['request_change'] == {'needs_details': True}
+    assert result['requires_staff_review'] is False

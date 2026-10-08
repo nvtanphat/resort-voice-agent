@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class WorkflowTruthfulnessTests(unittest.TestCase):
-    def test_v1_workflows_do_not_claim_direct_integrations(self):
+    def test_guest_service_workflows_do_not_claim_direct_integrations(self):
         forbidden = (
             "transmits order ticket to",
             "checks dnd",

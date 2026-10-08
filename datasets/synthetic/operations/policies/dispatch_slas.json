@@ -1,0 +1,51 @@
+{
+  "property_id": "FURAMA_DANANG",
+  "truth_status": "synthetic_operational",
+  "data_boundary": "demo_sandbox_not_canonical_rag_truth",
+  "timing_is_official_sla": false,
+  "description": "Demo dispatch targets used for agent simulation and operational UI. Not verified hotel SLAs.",
+  "rules": [
+    {
+      "service": "room_cleaning_request",
+      "target_delivery_min": 30,
+      "dispatch_hours": "06:00 - 22:00",
+      "source_type": "operational_config",
+      "note": "Kiosk workflow dispatch SLA"
+    },
+    {
+      "service": "towel_replenishment",
+      "target_delivery_min": 15,
+      "dispatch_hours": "24/7",
+      "source_type": "operational_config",
+      "note": "Kiosk workflow dispatch SLA"
+    },
+    {
+      "service": "adapter_delivery",
+      "target_delivery_min": 15,
+      "dispatch_hours": "24/7",
+      "source_type": "operational_config",
+      "note": "Kiosk workflow dispatch SLA"
+    },
+    {
+      "service": "luggage_pickup",
+      "target_delivery_min": 15,
+      "dispatch_hours": "24/7",
+      "source_type": "operational_config",
+      "note": "Kiosk workflow dispatch SLA"
+    },
+    {
+      "service": "taxi_arrival",
+      "target_delivery_min": 10,
+      "dispatch_hours": "24/7",
+      "source_type": "operational_config",
+      "note": "Kiosk workflow dispatch SLA"
+    },
+    {
+      "service": "in_room_dining",
+      "target_delivery_min": 35,
+      "dispatch_hours": "06:30 - 00:00",
+      "source_type": "operational_config",
+      "note": "Kiosk workflow dispatch SLA"
+    }
+  ]
+}

@@ -50,9 +50,9 @@ def test_airport_taxi_routes_to_transport_not_handoff():
     assert assessment.missing == ('preferred_time',)
 
 
-def test_cancel_and_hours_phrasings_keep_their_read_or_change_route():
+def test_cancel_and_hours_phrasings_wait_for_command_understanding():
     assert classify_dialogue(
         'I do not need the In-Room Dining (Room Service) I asked for earlier anymore. '
-        'Could you cancel it?', 'en').branch == 'request_change'
+        'Could you cancel it?', 'en').branch == 'knowledge'
     overview = 'Could you give me an overview of In-Room Dining (Room Service), including the hours?'
-    assert classify_dialogue(overview, 'en').branch == 'check_schedule'
+    assert classify_dialogue(overview, 'en').branch == 'knowledge'

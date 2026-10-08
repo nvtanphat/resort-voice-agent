@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "freshness.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "canonical_fact_id",
+    "fact_type",
+    "refresh_class",
+    "review_interval_days",
+    "verified_at",
+    "review_due_at",
+    "valid_until",
+    "expiry_policy",
+    "source_requirement"
+  ],
+  "properties": {
+    "canonical_fact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fact_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "refresh_class": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_interval_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 730
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "review_due_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "valid_until": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "expiry_policy": {
+      "enum": [
+        "abstain_if_expired",
+        "refresh_if_stale",
+        "answer_as_estimate_if_fresh",
+        "answer_with_verified_fact"
+      ]
+    },
+    "source_requirement": {
+      "const": "official_or_property_authorized"
+    }
+  }
+}

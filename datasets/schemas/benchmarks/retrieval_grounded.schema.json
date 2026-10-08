@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grounded retrieval case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "classification",
+    "language",
+    "query",
+    "expected_entity_id",
+    "expected_fact_id",
+    "fact_type",
+    "fact_context",
+    "expected_answer",
+    "verification_status",
+    "source_tier",
+    "difficulty",
+    "truth_status",
+    "must_be_grounded",
+    "must_not_hallucinate",
+    "origin",
+    "entity_type",
+    "entity_domain"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "classification": {
+      "const": "synthetic_grounded_evaluation"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "query": {
+      "type": "string",
+      "minLength": 2
+    },
+    "expected_entity_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "expected_fact_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "acceptable_fact_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      }
+    },
+    "fact_type": {
+      "type": "string"
+    },
+    "fact_context": {
+      "type": "string"
+    },
+    "expected_answer": {
+      "type": [
+        "string",
+        "number",
+        "integer",
+        "object"
+      ]
+    },
+    "verification_status": {
+      "const": "official_verified"
+    },
+    "source_tier": {
+      "const": "official_primary"
+    },
+    "difficulty": {
+      "const": "single_fact"
+    },
+    "truth_status": {
+      "const": "canonical_grounded"
+    },
+    "must_be_grounded": {
+      "const": true
+    },
+    "must_not_hallucinate": {
+      "const": true
+    },
+    "origin": {
+      "const": "generated_from_canonical_facts"
+    },
+    "entity_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entity_domain": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

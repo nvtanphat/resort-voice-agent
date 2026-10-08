@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Human-observed kiosk device voice task and interruption outcomes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "consent",
+    "observed_on_device",
+    "language",
+    "condition",
+    "interruption_attempted",
+    "interruption_succeeded",
+    "task_completed"
+  ],
+  "properties": {
+    "consent": {
+      "const": true
+    },
+    "observed_on_device": {
+      "const": true
+    },
+    "language": {
+      "enum": [
+        "vi",
+        "en",
+        "zh",
+        "ko"
+      ]
+    },
+    "condition": {
+      "enum": [
+        "quiet",
+        "noisy"
+      ]
+    },
+    "interruption_attempted": {
+      "type": "boolean"
+    },
+    "interruption_succeeded": {
+      "type": "boolean"
+    },
+    "task_completed": {
+      "type": "boolean"
+    },
+    "interruption_latency_ms": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 30000
+    }
+  }
+}

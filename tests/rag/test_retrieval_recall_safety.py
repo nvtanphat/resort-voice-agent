@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import json
-import sqlite3
 import tempfile
 import unittest
 from pathlib import Path

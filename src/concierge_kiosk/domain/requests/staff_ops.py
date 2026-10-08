@@ -54,6 +54,8 @@ class StaffWorkflowMixin:
             current = row['status']
             target = 'acknowledged' if action == 'acknowledge' else 'resolved'
             if current == target:
+                if action == 'resolve':
+                    raise InvalidTransition('Emergency alert is already resolved')
                 return {**dict(row), 'idempotent_replay': True}
             if action == 'acknowledge' and current != 'open':
                 raise InvalidTransition('Only an open emergency can be acknowledged')

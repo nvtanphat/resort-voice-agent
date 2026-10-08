@@ -60,6 +60,18 @@ def itinerary_topics(query: str, language: str) -> tuple[str, ...]:
     return found if len(found) >= _PLANNING.minimum_categories else ()
 
 
+def advisory_topics(query: str, language: str) -> tuple[str, ...]:
+    """Resolve read-only recommendation domains, including one-domain asks."""
+    if not isinstance(query, str) or len(query) > _PLANNING.max_query_chars:
+        return ()
+    normalized = normalize_intent_text(query)
+    cues = _PLANNING.intent_cues.get(language, ())
+    if not any(cue in normalized for cue in cues):
+        return ()
+    return tuple(topic for topic in _PLANNING.categories
+                 if any(alias in normalized for alias in _category_terms(topic, language)))
+
+
 def planning_search(topic: str, language: str) -> str:
     spec = _PLANNING.categories.get(topic)
     if not isinstance(spec, dict):

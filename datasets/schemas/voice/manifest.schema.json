@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Private consented concierge speech evaluation manifest row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "audio_path",
+    "language",
+    "condition",
+    "reference",
+    "consent",
+    "speaker_id",
+    "split"
+  ],
+  "properties": {
+    "audio_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "enum": [
+        "vi",
+        "en",
+        "zh",
+        "ko"
+      ]
+    },
+    "condition": {
+      "enum": [
+        "quiet",
+        "noisy"
+      ]
+    },
+    "reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "consent": {
+      "const": true
+    },
+    "speaker_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "split": {
+      "enum": [
+        "calibration",
+        "test"
+      ]
+    },
+    "intent": {
+      "type": "string"
+    },
+    "recording_device": {
+      "type": "string"
+    },
+    "snr_db_measured": {
+      "type": "number"
+    }
+  }
+}

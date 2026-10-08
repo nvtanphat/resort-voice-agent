@@ -26,7 +26,7 @@ python -m pytest -q -W error::ResourceWarning   # unclosed SQLite connections/fi
 python -m pip_audit --strict
 bandit -q -r src/concierge_kiosk tools -ll
 cd frontend && npm ci && npm run build && cd ..
-for f in web/guest.js web/ops.js web/pcm-worklet.js web/sos.js; do node --check "$f"; done
+for f in web/guest.js web/staff.js web/status.js web/pcm-worklet.js web/sos.js; do node --check "$f"; done
 ```
 
 After data changes, also run `python datasets/schemas/validate_contracts.py` (fails on unclassified files or shape drift), `tools/validate/schemas.py`, `tools/validate/semantics.py` and `tools/validate/agent_domain.py`. To check a runtime profile, run `tools/validate/runtime_profile.py <profile.json>` with `PYTHONPATH=src`.
@@ -56,11 +56,11 @@ python tools/evaluation/run_retrieval_eval.py --suite grounded --output reports/
 python tools/evaluation/run_human_review_probe.py --lang vi --output reports/vi.json                       # end-to-end gold, also en/ko/zh
 python tools/evaluation/run_tool_eval.py --tasks <tasks.jsonl> --base-url http://localhost:8000 --output reports/tool-eval/x.json --repeats 5
 python tools/nlu/perturb.py && python tools/nlu/robustness_report.py         # NLU robustness (no-diacritic, typos, fillers…)
-python tools/nlu/calibrate_router.py --model "ollama://bge-m3" --manifest models/embeddings/bge-m3.ollama.manifest.json
+python tools/nlu/calibrate_service_fallback.py --model "ollama://bge-m3" --manifest models/embeddings/bge-m3.ollama.manifest.json
 ```
 
 - Compare per-case results against a run from before your change. `run_retrieval_eval.py` writes every miss with its top-5 results and a failure cause.
-- Calibrate the semantic router with the same learned embedder used at runtime; thresholds computed with the hash embedder are meaningless.
+- Calibrate the service fallback with the same learned embedder used at runtime; thresholds computed with the hash embedder are meaningless.
 - Each eval run takes minutes.
 - On the dev machine Ollama offloads to the GPU. For kiosk (CPU-only) latency numbers pass `options.num_gpu = 0`; otherwise SLM timings are several times too optimistic.
 
@@ -83,7 +83,13 @@ Large modules have been split into packages that re-export their old public API:
 
 - **API route groups** (`api/`): `guest`, `staff`, `public`, `internal`, `voice` (HTTP transcription, WebSocket streaming, TTS playback/proof); shared auth/security/contracts in `api/shared/`.
 - **Turn flow** (`application/conversation/engine.py`, `services/turn_coordinator.py`):
-  1. Emergency is detected deterministically first (`agent/understanding/routing.py::classify_dialogue`) and always wins; no model call runs for it and nothing may override it.
+  1. Emergency detection runs via a 2-tier architecture (no SLM call, emergency always wins and cannot be overridden):
+     - **Tier 1 (Deterministic regex):** `agent/understanding/routing.py::classify_dialogue` matches immediate safety keywords (`emergency_event_patterns`).
+     - **Tier 2 (Semantic classifier gate):** `agent/understanding/emergency_gate.py::EmergencyGate` is a small logistic-regression classifier over the bge-m3 embedding of the turn (reusing the `ServiceSelector` query-vector cache). It is trained at startup from the reviewed training examples (positive = `emergency`, negative = every other example; weights cached by data hash), so a new way of describing an emergency is handled by adding reviewed examples, never phrases. It costs one cached embedding and one dot product, uses no SLM, and keeps working when the SLM is down.
+       - *Confident emergency* (probability >= `nlu.service_selector.emergency_min_prob`): routes immediately to `emergency` (`RouteDecision('emergency', True)`), aborts pending drafts/tasks, responds with `emergency_answer`, activates SOS UI (`show_staff_location`, `normal_request_disabled`), and queues staff safety alerts.
+       - *Review zone* (probability >= `emergency_review_prob`): routes to `emergency_check` (`RouteDecision('emergency_check', True)`), returns emergency safety contacts and a multilingual confirmation question, enables SOS button without locking normal requests, and queues NO staff alert. If the guest affirms in the next turn (Layer A `_is_expected_confirmation`), it escalates to full emergency with staff alert. A false review costs the guest one tap, a missed emergency costs far more, so the review threshold is calibrated for recall.
+       - *Calibration:* `tools/nlu/calibrate_emergency_gate.py` (group-held-out cross-validation; Vietnamese recall >= 0.98, full-escalation false positives <= 1%, review-zone false positives within budget) writes `reports/nlu/emergency-calibration.json` and the three `emergency_*` values (`emergency_l2` is the regularization strength).
+       - *Failure fallback:* If the embedding model fails, the index is not ready (a guest turn never builds it) or the gate raises, it logs a warning and passes through without crashing (Tier 1 regex remains active).
   2. Every other turn gets one bounded SLM call that proposes a closed `Command[]` (`agent/understanding/commands.py::model_commands`: `StartGoal`, `SetSlot`, `CorrectSlot`, `Cancel`, `Confirm`, `AskInfo`, `Navigate`, `Handoff`, `ChitChat`). There is no other understanding mode.
      - `agent/understanding/service_selector.py::ServiceSelector` embeds the service catalog and the train-split examples in `datasets/training/agent/` with bge-m3. It ranks services by their best similarity to either and hands the model the top-k candidates plus the nearest examples as few-shots. Evaluation data is never loaded here.
      - The JSON schema sent to Ollama is a per-type union: each `StartGoal` variant has a `const` goal from the candidates and an `enum` of that service's slots; `SetSlot`/`CorrectSlot` are offered only while a server question is pending. The model cannot emit a service or slot outside that set.
@@ -105,13 +111,13 @@ Large modules have been split into packages that re-export their old public API:
   - `agent/tools/policies.py::evaluate_policies` runs before tool calls and returns allow, deny(reason) or require_confirmation.
 - **Planner and loop**:
   - `agent/runtime/planner.py` parses a closed JSON DAG from the local SLM, with a deterministic fallback.
-  - Loop semantics are centralized in `agent/runtime/loop_semantics.py`, shared by `agent_loop.py` and the LangGraph adapter `langgraph_loop.py`. `CONCIERGE_ORCHESTRATOR` selects `langgraph` (default), `legacy` or `direct`.
+  - Loop semantics are centralized in `agent/runtime/loop_semantics.py` and the LangGraph adapter `langgraph_loop.py`.
   - `presentation/synthesizer.py` composes multi-read results. An abstention from one read must not be glued onto a verified answer from another.
   - `agent/proactive.py` produces suggestions only; it never writes.
 - **SLM calls**: the local SLM is called once per non-emergency turn for understanding. The planner model runs only for compound goals or after a failed read, and is skipped for voice. All SLM HTTP goes through `runtime/local_http.py`: loopback only, no redirects or proxies, per-turn deadline, connection circuit breaker. Voice turns use the tighter `voice_slm_caps`.
 - **Agent vs. business truth**: the agent only proposes or orchestrates. Creating, confirming, changing or cancelling service requests must go through the workflow service and domain transition rules (`application/workflow_service.py`, `application/service_actions.py`, `domain/`).
   - Guest confirmation, staff review and fulfillment run as a durable LangGraph graph with `interrupt()` in `agent/orchestration/graph.py`.
-  - The release property profile sets `hitl_mode=guest_confirm_all`, so even low-risk services with `approval: none` (`amenity_delivery`, `housekeeping`, `maintenance`) require the guest confirmation/staff workflow. Fixture profiles may retain `legacy_policy` for compatibility tests; this is not the production release policy. Voice turns with numeric slots (room, quantity) are still forced to a read-back confirmation.
+  - The release property profile sets `hitl_mode=guest_confirm_all`, so even low-risk services with `approval: none` (`amenity_delivery`, `housekeeping`, `maintenance`) require the guest confirmation/staff workflow. Voice turns with numeric slots (room, quantity) are still forced to a read-back confirmation.
   - Request lifecycle, ack/SLA clocks and two-level escalation live in `domain/requests/`.
 - **Two state stores**: business requests live in the main SQLite DB (`data/concierge.sqlite3`); LangGraph checkpoints live in a separate `<db-stem>-graph.sqlite3`. `tools/maintenance/reconcile_graph.py` reconciles the two (see `test_langgraph_durable_restart.py`).
 - **Memory** (`agent/memory/`):
@@ -120,7 +126,7 @@ Large modules have been split into packages that re-export their old public API:
   - Map-only answers anchor the place via `answers.place_anchor_sources`.
   - Pending service tasks and voice proposals live in `task_memory.py`; session preferences in `preferences.py`.
 - **RAG** (`rag/`):
-  - **Layout:** `documents`, `text/` (normalize, tokenization, safety), `embedding/` (base, hashed, onnx_e5, ollama, local, cache), `rerank/`, `ingestion/` (chunking, metadata, document, bundle, policy), `retrieval/` (engine, policy, context, evidence), `grounding/` (relevance, claims, citations), `index/`. `rag/common.py` and `rag/claims.py` are temporary re-export shims for the voice agent and semantic router; delete them once those import the focused modules.
+  - **Layout:** `documents`, `text/` (normalize, tokenization, safety), `embedding/` (base, hashed, onnx_e5, ollama, local, cache), `rerank/`, `ingestion/` (chunking, metadata, document, bundle, policy), `retrieval/` (engine, policy, context, evidence), `grounding/` (relevance, claims, citations), `index/`.
   - **Chunks.** Each chunk is one self-contained canonical fact. The `knowledge` table carries `entity_id`, `fact_type`, `fact_context`, `canonical_fact_id`, `context_text` (entity · category · label: value (qualifier)) and `metadata_json` (including `domain_review`). Entity-card documents cover entities that have no facts.
   - **Retrieval order** (`rag/retrieval/engine.py::retrieve`):
     1. Structured lookup when `entity_ids` and `fact_types` (and optionally `fact_context`) are known.
@@ -149,7 +155,7 @@ Large modules have been split into packages that re-export their old public API:
   - Edit `config/runtime-profiles/src/base.json` and the per-profile overlays, then run `python tools/config/build_runtime_profiles.py` (deep-merge, schema validation, repin).
   - Never edit `config/runtime-profiles/*.json` directly; `--check` detects drift.
   - A new key also needs `config/runtime-profile.schema.json` and wiring in `core/settings.py`. RAG keys additionally need `RAGPolicy` in `rag/retrieval/policy.py` and `bootstrap.py`.
-- **Multilingual language rules live in `config/agent-domain.json`**: NLU frames and regexes, greeting/courtesy/cancel terms, numeral and clock grammar, normalization, emergency patterns and contacts, voice rendering, tool descriptions, semantic-router mode and thresholds. Read them through the accessors in `agent/understanding/domain_nlu.py` and `core/domain_profile/` (`supported_languages()`, `nlu_policy()`, `rag_policy()`, …).
+  - **Multilingual language rules live in `config/agent-domain.json`**: NLU frames and regexes, greeting/courtesy/cancel terms, numeral and clock grammar, normalization, emergency patterns and contacts, voice rendering, tool descriptions, `nlu.service_selector` mode and thresholds. Read them through the accessors in `agent/understanding/domain_nlu.py` and `core/domain_profile/` (`supported_languages()`, `nlu_policy()`, `rag_policy()`, …).
   - A new key needs `config/agent-domain.schema.json` and validation in `core/domain_profile/validate/`. Per-language keys also need the `_clone_language` helper in `tests/agent/test_nlu_memory.py`.
   - **Do not put hotel entity or service names in it.** Those come from `datasets/` (aliases, `names_by_locale`, `tools/knowledge/build_domain_vocab.py`).
   - **Do not copy phrases from `datasets/evaluation/` into it.** When a natural phrasing is missed, add it to the router training examples, not to a phrase list.
@@ -180,5 +186,5 @@ Large modules have been split into packages that re-export their old public API:
 ## Frontend
 
 - Edit `frontend/src/` and rebuild. Never hand-patch `web/guest.js` or `web/app.css`: the bundle comes from the custom `build_offline.cjs` (not Vite) and embeds a `source-sha256` of the sources. `npm run build` runs `tsc` first, so a type error leaves a stale bundle.
-- `web/ops.html`, `web/ops.js`, `web/pcm-worklet.js` and `web/sos.js` are hand-maintained. The CSP is `script-src 'self'`, so inline `<script>` in `web/*.html` is blocked; put code in a static file.
+- `web/staff.html`, `web/staff.js`, `web/status.html`, `web/status.js`, `web/pcm-worklet.js` and `web/sos.js` are hand-maintained. The CSP is `script-src 'self'`, so inline `<script>` in `web/*.html` is blocked; put code in a static file.
 - `frontend/src/generated/api-contracts.ts` is generated from the FastAPI OpenAPI schema by `tools/config/generate_ts_contracts.py`; regenerate it when the `Ask`/`Prepare`/`ServicePayload` models change.

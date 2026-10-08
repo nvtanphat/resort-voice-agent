@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "languages", "entity_types", "domains", "card_labels"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "languages": {"type": "array", "const": ["en", "vi", "ko", "zh"]},
+    "entity_types": {"$ref": "#/$defs/labels"},
+    "domains": {"$ref": "#/$defs/labels"},
+    "card_labels": {"$ref": "#/$defs/labels"}
+  },
+  "$defs": {
+    "labels": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["en", "vi", "ko", "zh"],
+        "properties": {
+          "en": {"type": "string", "minLength": 1, "maxLength": 120},
+          "vi": {"type": "string", "minLength": 1, "maxLength": 120},
+          "ko": {"type": "string", "minLength": 1, "maxLength": 120},
+          "zh": {"type": "string", "minLength": 1, "maxLength": 120}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "property_id": "FURAMA_DANANG",
+  "truth_status": "synthetic_operational",
+  "data_boundary": "demo_sandbox_not_canonical_rag_truth",
+  "description": "Demo routing capabilities for the concierge sandbox; not verified hotel internal SOP.",
+  "rules": {
+    "kiosk_actionable": [
+      "service.room_cleaning",
+      "service.bath_towels",
+      "service.adapters",
+      "service.extra_bed",
+      "service.luggage",
+      "transportation.taxi",
+      "service.wake_up_calls",
+      "service.in_room_dining",
+      "service.first_aid"
+    ],
+    "kiosk_staff_request": [
+      "spa.booking",
+      "dining.restaurant_reservation",
+      "service.babysitting",
+      "transportation.car_rental",
+      "service.late_checkout",
+      "service.lost_and_found",
+      "service.courier",
+      "service.flight_reconfirmation"
+    ]
+  }
+}

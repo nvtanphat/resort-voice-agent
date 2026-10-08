@@ -1,0 +1,96 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_simulation",
+  "reviewed_at": "2026-10-03",
+  "inventory_basis": {
+    "simulated_rooms_and_suites": 198,
+    "simulated_private_pool_villas": 68,
+    "simulated_total_units": 266,
+    "basis": "official_verified_aggregate_counts_used_only_to_size_synthetic_capacity",
+    "source_refs": [
+      "furama_property_inventory"
+    ],
+    "note": "Aggregate counts are official; occupancy, unit assignment and every simulated stay/request remain synthetic."
+  },
+  "occupancy_bands": [
+    {
+      "band": "low",
+      "occupied_pct": [
+        35,
+        54
+      ],
+      "sla_multiplier": 0.9,
+      "queue_pressure": "low",
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "band": "normal",
+      "occupied_pct": [
+        55,
+        79
+      ],
+      "sla_multiplier": 1.0,
+      "queue_pressure": "normal",
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "band": "high",
+      "occupied_pct": [
+        80,
+        94
+      ],
+      "sla_multiplier": 1.2,
+      "queue_pressure": "high",
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "band": "sold_out_like",
+      "occupied_pct": [
+        95,
+        100
+      ],
+      "sla_multiplier": 1.35,
+      "queue_pressure": "very_high",
+      "truth_status": "synthetic_simulation"
+    }
+  ],
+  "daypart_load": [
+    {
+      "daypart": "overnight",
+      "hours": "00:00-05:59",
+      "demand_multiplier": 0.45,
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "daypart": "morning_peak",
+      "hours": "06:00-10:59",
+      "demand_multiplier": 1.25,
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "daypart": "midday",
+      "hours": "11:00-15:59",
+      "demand_multiplier": 0.85,
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "daypart": "evening_peak",
+      "hours": "16:00-21:59",
+      "demand_multiplier": 1.35,
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "daypart": "late_evening",
+      "hours": "22:00-23:59",
+      "demand_multiplier": 0.75,
+      "truth_status": "synthetic_simulation"
+    }
+  ],
+  "weekend_multiplier": 1.12,
+  "rainy_day_maintenance_multiplier": 1.18,
+  "assumption_refs": [
+    "asm_occupancy_model"
+  ],
+  "truth_note": "All occupancy and load multipliers are synthetic simulation parameters, not historical Furama data."
+}

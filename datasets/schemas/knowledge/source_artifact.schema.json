@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Knowledge source artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_id",
+    "property_id",
+    "publisher",
+    "source_kind",
+    "source_url",
+    "verified_at",
+    "verification_state",
+    "evidence_count",
+    "evidence_hashes",
+    "raw_path",
+    "raw_sha256",
+    "extracted_text_path"
+  ],
+  "properties": {
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "property_id": {
+      "const": "FURAMA_DANANG"
+    },
+    "publisher": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_kind": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "verified_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "verification_state": {
+      "enum": [
+        "verified_evidence",
+        "unverified_evidence"
+      ]
+    },
+    "evidence_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evidence_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "raw_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "raw_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "extracted_text_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evidence_snapshot_path": {
+      "const": "datasets/knowledge/sources/verification_snapshots.jsonl"
+    },
+    "evidence_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "raw_archive_status": {
+      "enum": [
+        "archived",
+        "unavailable_historical"
+      ]
+    },
+    "archive_requirement": {
+      "enum": [
+        "raw_source_must_be_archived_on_next_refresh",
+        "satisfied"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "verification_state"
+        ],
+        "properties": {
+          "verification_state": {
+            "const": "verified_evidence"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "verified_at",
+          "evidence_snapshot_path",
+          "evidence_snapshot_id",
+          "evidence_snapshot_sha256",
+          "raw_archive_status",
+          "archive_requirement"
+        ],
+        "properties": {
+          "verified_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "evidence_count": {
+            "minimum": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "raw_archive_status"
+        ],
+        "properties": {
+          "raw_archive_status": {
+            "const": "archived"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "raw_path",
+          "raw_sha256"
+        ],
+        "properties": {
+          "raw_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "raw_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "archive_requirement": {
+            "const": "satisfied"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,378 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "service_window": "09:00-22:00",
+  "treatment_rooms": 8,
+  "couples_rooms": 2,
+  "therapists_per_shift": {
+    "09:00-15:00": 7,
+    "15:00-22:00": 9
+  },
+  "appointment_durations_min": [
+    30,
+    60,
+    90,
+    120
+  ],
+  "same_day_cutoff_min": 60,
+  "slots": [
+    {
+      "date": "2026-10-03",
+      "time": "09:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 5,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "10:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 3,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "11:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 3,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "13:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 5,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "14:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 3,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "15:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 8,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "16:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 3,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "17:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 2,
+      "status": "limited"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "18:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 7,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "19:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 4,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "time": "20:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 2,
+      "status": "limited"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "09:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 0,
+      "status": "sold_out"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "10:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 5,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "11:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "13:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "14:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 0,
+      "status": "sold_out"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "15:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 5,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "16:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "17:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 5,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "18:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 0,
+      "status": "sold_out"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "19:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 5,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-04",
+      "time": "20:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 4,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "09:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 0,
+      "status": "sold_out"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "10:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 0,
+      "status": "sold_out"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "11:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 0,
+      "status": "sold_out"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "13:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 3,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "14:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 1,
+      "status": "limited"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "15:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 7,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "16:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "17:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "18:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 0,
+      "status": "sold_out"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "19:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 8,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-05",
+      "time": "20:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "09:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 1,
+      "status": "limited"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "10:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 5,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "11:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 5,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "13:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 0,
+      "status": "sold_out"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "14:00",
+      "duration_min": 60,
+      "capacity": 6,
+      "remaining": 3,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "15:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "16:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 8,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "17:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 7,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "18:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 1,
+      "status": "limited"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "19:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-06",
+      "time": "20:00",
+      "duration_min": 60,
+      "capacity": 8,
+      "remaining": 2,
+      "status": "limited"
+    }
+  ],
+  "assumption_refs": [
+    "asm_demo_spa_capacity"
+  ],
+  "truth_status": "synthetic_property_assumption"
+}

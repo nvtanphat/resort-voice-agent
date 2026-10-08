@@ -158,7 +158,7 @@ def _model_answer(response, on_observation: Callable[[str, float], None] | None 
 
 
 def build_slm_payload(model: str, question: str, evidence: list[dict], language: str,
-                      question_type: str = 'fact') -> dict:
+                      question_type: str = 'fact', num_gpu: int = -1) -> dict:
     """Shared exact inference options for production adapter and device benchmark."""
     context = compact_evidence(evidence, question=question, question_type=question_type)
     passages = "\n".join(f"[S{i+1}] {row['content']}" for i, row in enumerate(context))
@@ -188,7 +188,7 @@ def build_slm_payload(model: str, question: str, evidence: list[dict], language:
              "\n</UNTRUSTED_EVIDENCE>\nQuestion: " + question[:_BUDGETS['max_model_question_chars']]},
         ],
         "options": {"temperature": 0, "num_predict": max(_BUDGETS['composite_output_tokens'], output_token_budget(question_type)) if composite else output_token_budget(question_type),
-                    "num_ctx": SLM_NUM_CTX},
+                    "num_ctx": SLM_NUM_CTX, "num_gpu": num_gpu},
     }
 
 
@@ -196,7 +196,8 @@ def grounded_response(*, base_url: str, model: str, question: str,
                       evidence: list[dict], language: str, timeout: float = 8,
                       question_type: str = 'fact',
                       on_observation: Callable[[str, float], None] | None = None,
-                      should_cancel: Callable[[], bool] | None = None) -> str | None:
+                      should_cancel: Callable[[], bool] | None = None,
+                      num_gpu: int = -1) -> str | None:
     """Stream model transport internally; return only a verified evidence span.
 
     No model text, pricing, availability or transaction result can reach guests
@@ -206,7 +207,7 @@ def grounded_response(*, base_url: str, model: str, question: str,
     if (should_cancel and should_cancel()) or not base_url or not model or not evidence:
         return None
     context = compact_evidence(evidence, question=question, question_type=question_type)
-    payload = json.dumps(build_slm_payload(model, question, evidence, language, question_type),
+    payload = json.dumps(build_slm_payload(model, question, evidence, language, question_type, num_gpu),
                          ensure_ascii=False).encode()
     try:
         req = Request(base_url.rstrip('/') + '/api/chat', data=payload,

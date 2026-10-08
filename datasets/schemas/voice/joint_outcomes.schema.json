@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "On-device joint Voice-RAG simulated-expert held-out observations (no transcripts)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "consent",
+    "observed_on_device",
+    "approved_knowledge",
+    "stt_correct",
+    "retrieval_correct",
+    "answer_grounded",
+    "task_completed",
+    "stale_audio_emitted",
+    "unconfirmed_business_action",
+    "interruption_attempted",
+    "interruption_succeeded",
+    "case_id",
+    "language",
+    "condition",
+    "split",
+    "audible_first_response_ms",
+    "interruption_latency_ms"
+  ],
+  "properties": {
+    "consent": {
+      "const": true
+    },
+    "observed_on_device": {
+      "const": true
+    },
+    "approved_knowledge": {
+      "const": true
+    },
+    "stt_correct": {
+      "type": "boolean"
+    },
+    "retrieval_correct": {
+      "type": "boolean"
+    },
+    "answer_grounded": {
+      "type": "boolean"
+    },
+    "task_completed": {
+      "type": "boolean"
+    },
+    "stale_audio_emitted": {
+      "type": "boolean"
+    },
+    "unconfirmed_business_action": {
+      "type": "boolean"
+    },
+    "interruption_attempted": {
+      "type": "boolean"
+    },
+    "interruption_succeeded": {
+      "type": "boolean"
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "language": {
+      "enum": [
+        "vi",
+        "en",
+        "zh",
+        "ko"
+      ]
+    },
+    "condition": {
+      "enum": [
+        "quiet",
+        "noisy"
+      ]
+    },
+    "split": {
+      "const": "test"
+    },
+    "audible_first_response_ms": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 120000
+    },
+    "interruption_latency_ms": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 120000
+    }
+  }
+}

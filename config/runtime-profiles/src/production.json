@@ -3,6 +3,7 @@
   "models": {
     "slm": {
       "fallback_model": "",
+      "num_gpu": 0,
       "strict_mode": true
     },
     "embedding": {

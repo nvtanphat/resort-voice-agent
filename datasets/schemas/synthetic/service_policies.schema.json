@@ -1,0 +1,414 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Synthetic operational service policies",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "property_id",
+    "classification",
+    "runtime_use",
+    "reviewed_at",
+    "production_status",
+    "sla_semantics",
+    "truth_boundary",
+    "services",
+    "assumption_register",
+    "timing_model_id",
+    "quality_rules",
+    "simulation_policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "property_id": {
+      "const": "FURAMA_DANANG"
+    },
+    "classification": {
+      "const": "synthetic_operational"
+    },
+    "runtime_use": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "production_status": {
+      "type": "string"
+    },
+    "sla_semantics": {
+      "type": "string"
+    },
+    "truth_boundary": {
+      "type": "string"
+    },
+    "services": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "service_code",
+          "department_id",
+          "sla_minutes",
+          "escalation_after_minutes",
+          "priority_on_escalation",
+          "approval",
+          "runtime_dispatch_enabled",
+          "routing_basis",
+          "sla_basis",
+          "timing",
+          "access_model",
+          "confidence",
+          "rationale",
+          "source_refs",
+          "public_anchors",
+          "assumption_refs",
+          "simulation_adjustments",
+          "staff_response_windows_local",
+          "sla_clock_basis",
+          "required_slots",
+          "optional_slots",
+          "risk",
+          "reversible",
+          "staff_verification_required",
+          "confirmation",
+          "dedupe_window_minutes",
+          "modifiable_fields"
+        ],
+        "properties": {
+          "service_code": {
+            "enum": [
+              "amenity_delivery",
+              "housekeeping",
+              "maintenance",
+              "human_assistance",
+              "spa_reservation",
+              "dining_reservation",
+              "food_order",
+              "tour_reservation",
+              "facility_request",
+              "dining_request",
+              "tour_request",
+              "transport_request",
+              "late_checkout",
+              "wake_up_call"
+            ]
+          },
+          "department_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "sla_minutes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "escalation_after_minutes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "priority_on_escalation": {
+            "enum": [
+              "normal",
+              "high",
+              "urgent",
+              "critical"
+            ]
+          },
+          "approval": {
+            "enum": [
+              "none",
+              "staff"
+            ]
+          },
+          "runtime_dispatch_enabled": {
+            "type": "boolean"
+          },
+          "routing_basis": {
+            "type": "string"
+          },
+          "sla_basis": {
+            "type": "string"
+          },
+          "timing": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "guest_acknowledgement",
+              "first_staff_response_target_min",
+              "first_attendance_target_min",
+              "expected_resolution_window_min",
+              "runtime_sla_clock",
+              "completion_is_not_promised",
+              "after_hours_handling"
+            ],
+            "properties": {
+              "guest_acknowledgement": {
+                "type": "string"
+              },
+              "first_staff_response_target_min": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "first_attendance_target_min": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "expected_resolution_window_min": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "runtime_sla_clock": {
+                "type": "string"
+              },
+              "completion_is_not_promised": {
+                "type": "boolean"
+              },
+              "after_hours_handling": {
+                "type": "string"
+              }
+            }
+          },
+          "access_model": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "routing",
+              "timing"
+            ],
+            "properties": {
+              "routing": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "timing": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "public_anchors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "assumption_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "simulation_adjustments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "apply_occupancy_multiplier",
+              "apply_daypart_multiplier",
+              "min_effective_sla_min",
+              "max_effective_sla_min"
+            ],
+            "properties": {
+              "apply_occupancy_multiplier": {
+                "type": "boolean"
+              },
+              "apply_daypart_multiplier": {
+                "type": "boolean"
+              },
+              "min_effective_sla_min": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "max_effective_sla_min": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "operational_variants": {
+            "type": "object"
+          },
+          "safety_exclusions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "staff_response_windows_local": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "start",
+                "end",
+                "basis"
+              ],
+              "properties": {
+                "start": {
+                  "type": "string"
+                },
+                "end": {
+                  "type": "string"
+                },
+                "basis": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "sla_clock_basis": {
+            "enum": [
+              "wall_clock",
+              "business_hours"
+            ]
+          },
+          "required_slots": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "uniqueItems": true,
+            "maxItems": 32,
+            "description": "Minimum structured fields required before this service request can be committed."
+          },
+          "optional_slots": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "uniqueItems": true,
+            "maxItems": 32,
+            "description": "Structured fields that may refine the request but are not mandatory for commit."
+          },
+          "risk": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "description": "Prototype workflow risk tier; not a medical or legal risk classification."
+          },
+          "reversible": {
+            "type": "boolean",
+            "description": "Whether the request can generally be withdrawn before fulfillment/irreversible execution."
+          },
+          "staff_verification_required": {
+            "type": "boolean",
+            "description": "Whether staff must verify availability, acceptance, or fulfillment before the request is represented as confirmed."
+          },
+          "confirmation": {
+            "enum": [
+              "none",
+              "explicit_before_commit",
+              "staff_acknowledgement"
+            ],
+            "description": "Confirmation semantics. staff_acknowledgement means request receipt is not equivalent to staff acceptance/availability confirmation."
+          },
+          "dedupe_window_minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440,
+            "description": "Window used to suppress accidental duplicate submissions for the same normalized service request."
+          },
+          "modifiable_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "uniqueItems": true,
+            "maxItems": 32,
+            "description": "Structured fields permitted to change on an existing request without creating a semantically new service request."
+          }
+        }
+      }
+    },
+    "assumption_register": {
+      "type": "string"
+    },
+    "timing_model_id": {
+      "type": "string"
+    },
+    "quality_rules": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "simulation_policy": {
+      "type": "object",
+      "required": [
+        "occupancy_source",
+        "staffing_source",
+        "sla_runtime_default",
+        "truth_status"
+      ],
+      "properties": {
+        "dedupe_window_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1440
+        },
+        "occupancy_source": {
+          "type": "string"
+        },
+        "staffing_source": {
+          "type": "string"
+        },
+        "sla_runtime_default": {
+          "type": "string"
+        },
+        "truth_status": {
+          "const": "synthetic_simulation"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

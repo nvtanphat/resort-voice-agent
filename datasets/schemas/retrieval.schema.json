@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Retrieval benchmark record",
+  "oneOf": [
+    {
+      "$ref": "benchmarks/retrieval_grounded.schema.json"
+    },
+    {
+      "$ref": "benchmarks/retrieval_compositional.schema.json"
+    }
+  ]
+}

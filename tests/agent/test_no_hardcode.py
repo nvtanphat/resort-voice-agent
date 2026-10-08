@@ -85,3 +85,22 @@ def test_hardcoded_values_are_allowlisted() -> None:
 
 def test_allowlist_does_not_grow() -> None:
     assert len(_allowlist()) <= ALLOWLIST_MAX_LINES
+
+
+def test_service_action_metadata_is_data_driven() -> None:
+    service_actions = (SRC_ROOT / "application" / "service_actions.py").read_text(encoding="utf-8")
+    state = (SRC_ROOT / "agent" / "runtime" / "state.py").read_text(encoding="utf-8")
+    assert "mode == 'dining_reservation'" not in service_actions
+    assert "entity_type') != 'restaurant'" not in service_actions
+    assert "mode == 'dining_reservation'" not in state
+    assert "applies_to_slot" in (ROOT / "config" / "agent-domain.json").read_text(encoding="utf-8")
+    assert "venue_slot" in (ROOT / "config" / "agent-domain.json").read_text(encoding="utf-8")
+
+
+def test_service_goal_is_not_selected_from_an_embedded_alias() -> None:
+    selector = (SRC_ROOT / "agent" / "understanding" / "service_selector.py").read_text(encoding="utf-8")
+    engine = (SRC_ROOT / "application" / "conversation" / "engine.py").read_text(encoding="utf-8")
+    assert "catalog_service_goal_in_text" not in selector
+    assert "catalog_service_goal_in_text" not in engine
+    assert "exact_catalog_service_goal" not in selector
+    assert "exact_catalog_service_goal" not in engine

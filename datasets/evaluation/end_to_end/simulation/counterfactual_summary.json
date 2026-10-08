@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_counterfactual_simulation",
+  "seed": 20261004,
+  "events": 8068,
+  "manual_relay": {
+    "requests": 8068,
+    "dispatch_p50_min": 5.52,
+    "dispatch_p95_min": 7.2,
+    "attendance_p50_wall_min": 5.67,
+    "attendance_p95_wall_min": 140.13,
+    "sla_met_rate": 0.9667,
+    "escalation_rate": 0.0239,
+    "front_desk_touches": 8068
+  },
+  "agent_governed": {
+    "requests": 8068,
+    "dispatch_p50_min": 0.63,
+    "dispatch_p95_min": 5.03,
+    "attendance_p50_wall_min": 0.69,
+    "attendance_p95_wall_min": 120.81,
+    "sla_met_rate": 0.9746,
+    "escalation_rate": 0.0176,
+    "front_desk_touches": 3351,
+    "autonomous_dispatch_rate": 0.5847
+  },
+  "modeled_product_effect": {
+    "front_desk_touches_avoided": 4717,
+    "front_desk_touch_reduction_rate": 0.5847,
+    "dispatch_p50_minutes_saved": 4.89,
+    "sla_met_rate_delta_pp": 0.79,
+    "escalation_rate_delta_pp": -0.63
+  },
+  "interpretation_guard": "Counterfactual modeled estimates only. Physical fulfillment still requires hotel staff; front-desk touches avoided does not mean staff work was eliminated."
+}

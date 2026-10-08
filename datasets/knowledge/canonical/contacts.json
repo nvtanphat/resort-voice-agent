@@ -1,0 +1,124 @@
+[
+  {
+    "contact_id": "contact.danang_office",
+    "entity_id": "contact.danang_office",
+    "title": "Furama Resort Danang - Main Switchboard",
+    "phones": [
+      "+84 236 3847 333",
+      "+84 236 3847 888"
+    ],
+    "fax": "+84 236 3847 666",
+    "email": "reservation@furamavietnam.com",
+    "address": "103 - 105 Vo Nguyen Giap Street, Ngu Hanh Son Ward, Danang City, Vietnam",
+    "languages": {
+      "en": "Main Resort Switchboard & Concierge Desk",
+      "vi": "Tổng đài chính Khu nghỉ dưỡng & Quầy Concierge",
+      "ko": "리조트 메인 교환대 및 컨시어지 데스크",
+      "zh": "度假村总机与礼宾前台"
+    },
+    "verified_at": "2026-10-01"
+  },
+  {
+    "contact_id": "contact.reservation",
+    "entity_id": "contact.reservation",
+    "title": "Room Reservations Department",
+    "phones": [
+      "+84 236 3847 333"
+    ],
+    "email": "reservation@furamavietnam.com",
+    "languages": {
+      "en": "Room Booking & Inquiries",
+      "vi": "Bộ phận Đặt phòng & Thông tin lưu trú",
+      "ko": "객실 예약 및 문의",
+      "zh": "客房预订与咨询"
+    },
+    "verified_at": "2026-10-01"
+  },
+  {
+    "contact_id": "contact.fb_reservation",
+    "entity_id": "contact.fb_reservation",
+    "title": "Food & Beverage Reservations",
+    "phones": [
+      "+84 236 651 9999"
+    ],
+    "email": "fb@furamavietnam.com",
+    "languages": {
+      "en": "F&B Table Booking & In-Room Dining Desk",
+      "vi": "Bộ phận Đặt bàn Ẩm thực & Quầy Room Service",
+      "ko": "식음료 예약 및 룸서비스 데스크",
+      "zh": "餐饮预订与送餐服务台"
+    },
+    "verified_at": "2026-10-01"
+  },
+  {
+    "contact_id": "contact.butler_service",
+    "entity_id": "contact.butler_service",
+    "title": "Villa Butler Service Hotline",
+    "phones": [
+      "+84 911 301 020"
+    ],
+    "internal_extensions": [
+      "7303",
+      "7304"
+    ],
+    "languages": {
+      "en": "Villa butler service is available 06:00–midnight; hotline +84 911 301 020 or Villa Front Desk Ext 7303/7304.",
+      "vi": "Dịch vụ quản gia biệt thự phục vụ 06:00–nửa đêm; hotline +84 911 301 020 hoặc Lễ tân Villa máy lẻ 7303/7304.",
+      "ko": "빌라 버틀러 서비스는 06:00부터 자정까지 이용 가능하며, +84 911 301 020 또는 빌라 프런트 내선 7303/7304로 연락할 수 있습니다.",
+      "zh": "别墅管家服务时间为06:00至午夜；可拨打+84 911 301 020或别墅前台分机7303/7304。"
+    },
+    "verified_at": "2026-10-01"
+  },
+  {
+    "contact_id": "contact.medical_centre",
+    "entity_id": "contact.medical_centre",
+    "title": "Resort Medical Centre & First Aid",
+    "internal_extensions": [
+      "3420",
+      "0"
+    ],
+    "languages": {
+      "en": "Resort Medical Centre / in-room consultation; Ext 3420 or Operator 0; staffed 08:00–17:00 except Saturday afternoon and Sunday.",
+      "vi": "Trung tâm Y tế / tư vấn tại phòng; máy lẻ 3420 hoặc Tổng đài 0; phục vụ 08:00–17:00, trừ chiều thứ Bảy và Chủ Nhật.",
+      "ko": "리조트 의료센터/객실 상담; 내선 3420 또는 교환원 0; 토요일 오후와 일요일을 제외하고 08:00–17:00 운영.",
+      "zh": "度假村医疗中心/客房问诊；分机3420或总机0；除周六下午和周日外，08:00–17:00值班。"
+    },
+    "verified_at": "2026-10-01"
+  },
+  {
+    "contact_id": "contact.sales_hanoi",
+    "entity_id": "contact.sales_hanoi",
+    "title": "Hanoi Sales Representative Office",
+    "email": "saleshanoi@furamavietnam.com",
+    "address": "Suite 1403, 14th Floor, 109 Tran Hung Dao St., Hoan Kiem, Hanoi",
+    "languages": {
+      "en": "Hanoi Sales Office",
+      "vi": "Văn phòng Bán hàng Hà Nội",
+      "ko": "하노이 영업 사무소",
+      "zh": "河内销售办事处"
+    },
+    "phones": [
+      "+84 24 3942 8858"
+    ],
+    "fax": "+84 24 3942 8532",
+    "verified_at": "2026-10-01"
+  },
+  {
+    "contact_id": "contact.sales_hcm",
+    "entity_id": "contact.sales_hcm",
+    "title": "Ho Chi Minh City Sales Representative Office",
+    "email": "salesoffice@furamavietnam.com",
+    "address": "Suite 5D, Floor 10 Opera View Building, 161 Dong Khoi Street, District 1, HCMC",
+    "languages": {
+      "en": "Ho Chi Minh City Sales Office",
+      "vi": "Văn phòng Bán hàng TP. Hồ Chí Minh",
+      "ko": "호치민시 영업 사무소",
+      "zh": "胡志明市销售办事处"
+    },
+    "phones": [
+      "+84 28 3821 1888"
+    ],
+    "fax": "+84 28 3821 3246",
+    "verified_at": "2026-10-01"
+  }
+]

@@ -1,0 +1,286 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_simulation",
+  "reviewed_at": "2026-10-03",
+  "capacity_unit": "concurrent_open_tasks_per_shift",
+  "departments": [
+    {
+      "department_id": "HOUSEKEEPING",
+      "shifts": [
+        {
+          "name": "AM",
+          "hours": "06:00-14:00",
+          "room_attendants": 14,
+          "runners": 2,
+          "supervisors": 2,
+          "estimated_concurrent_task_capacity": 12
+        },
+        {
+          "name": "PM",
+          "hours": "14:00-22:00",
+          "room_attendants": 6,
+          "runners": 2,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 7
+        },
+        {
+          "name": "NIGHT",
+          "hours": "22:00-06:00",
+          "room_attendants": 1,
+          "runners": 1,
+          "supervisors": 0,
+          "estimated_concurrent_task_capacity": 2,
+          "fallback_role": "night_manager"
+        }
+      ],
+      "assumption_refs": [
+        "asm_housekeeping_shift_plan"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "ENGINEERING",
+      "shifts": [
+        {
+          "name": "DAY",
+          "hours": "07:00-15:00",
+          "technicians": 4,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 5
+        },
+        {
+          "name": "EVENING",
+          "hours": "15:00-23:00",
+          "technicians": 3,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 4
+        },
+        {
+          "name": "NIGHT",
+          "hours": "23:00-07:00",
+          "technicians": 1,
+          "on_call_technicians": 1,
+          "supervisors": 0,
+          "estimated_concurrent_task_capacity": 2,
+          "fallback_role": "duty_engineer"
+        }
+      ],
+      "assumption_refs": [
+        "asm_engineering_shift_plan"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "FO_CONCIERGE",
+      "shifts": [
+        {
+          "name": "DAY",
+          "hours": "07:00-15:00",
+          "agents": 3,
+          "bell_door": 3,
+          "estimated_concurrent_task_capacity": 8
+        },
+        {
+          "name": "EVENING",
+          "hours": "15:00-23:00",
+          "agents": 2,
+          "bell_door": 2,
+          "estimated_concurrent_task_capacity": 6
+        },
+        {
+          "name": "NIGHT",
+          "hours": "23:00-07:00",
+          "agents": 1,
+          "bell_door": 1,
+          "estimated_concurrent_task_capacity": 3
+        }
+      ],
+      "assumption_refs": [
+        "asm_concierge_shift_plan"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "FRONT_OFFICE",
+      "shifts": [
+        {
+          "name": "DAY",
+          "hours": "07:00-15:00",
+          "agents": 5,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 10
+        },
+        {
+          "name": "EVENING",
+          "hours": "15:00-23:00",
+          "agents": 5,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 10
+        },
+        {
+          "name": "NIGHT",
+          "hours": "23:00-07:00",
+          "agents": 3,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 6
+        }
+      ],
+      "assumption_refs": [
+        "asm_front_office_shift_plan"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "FNB_ROOM_SERVICE",
+      "shifts": [
+        {
+          "name": "MORNING",
+          "hours": "06:00-14:00",
+          "servers": 7,
+          "order_takers": 2,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 8
+        },
+        {
+          "name": "EVENING",
+          "hours": "14:00-22:00",
+          "servers": 10,
+          "order_takers": 2,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 12
+        },
+        {
+          "name": "LATE",
+          "hours": "22:00-06:00",
+          "servers": 2,
+          "order_takers": 1,
+          "supervisors": 0,
+          "estimated_concurrent_task_capacity": 3
+        }
+      ],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "SPA_WELLNESS",
+      "shifts": [
+        {
+          "name": "DAY",
+          "hours": "09:00-15:00",
+          "therapists": 7,
+          "receptionists": 1,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 7
+        },
+        {
+          "name": "EVENING",
+          "hours": "15:00-22:00",
+          "therapists": 9,
+          "receptionists": 2,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 9
+        }
+      ],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "TOUR_DESK",
+      "shifts": [
+        {
+          "name": "DAY",
+          "hours": "08:00-14:00",
+          "agents": 2,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 4
+        },
+        {
+          "name": "EVENING",
+          "hours": "14:00-20:00",
+          "agents": 2,
+          "supervisors": 0,
+          "estimated_concurrent_task_capacity": 4
+        }
+      ],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "TRANSPORT_DESK",
+      "shifts": [
+        {
+          "name": "DAY",
+          "hours": "06:00-18:00",
+          "dispatchers": 2,
+          "bell_door": 2,
+          "estimated_concurrent_task_capacity": 6
+        },
+        {
+          "name": "NIGHT",
+          "hours": "18:00-06:00",
+          "dispatchers": 1,
+          "bell_door": 1,
+          "estimated_concurrent_task_capacity": 3
+        }
+      ],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "SECURITY",
+      "shifts": [
+        {
+          "name": "DAY",
+          "hours": "07:00-19:00",
+          "officers": 5,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 6
+        },
+        {
+          "name": "NIGHT",
+          "hours": "19:00-07:00",
+          "officers": 4,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 5
+        }
+      ],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ],
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "LAUNDRY",
+      "shifts": [
+        {
+          "name": "DAY",
+          "hours": "07:00-15:00",
+          "attendants": 6,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 8
+        },
+        {
+          "name": "EVENING",
+          "hours": "15:00-22:00",
+          "attendants": 4,
+          "supervisors": 1,
+          "estimated_concurrent_task_capacity": 6
+        }
+      ],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ],
+      "truth_status": "synthetic_simulation"
+    }
+  ],
+  "truth_note": "Headcounts and capacities are intentionally synthetic demo fixtures and are not real Furama staffing facts."
+}

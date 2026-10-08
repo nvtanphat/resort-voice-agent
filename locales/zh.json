@@ -3,6 +3,7 @@
   "backend.out_of_scope.reply": "这个问题超出了酒店礼宾服务范围，但我可以为您提供酒店信息、路线指引或住客服务帮助。",
   "backend.emergency.alert_queued": " 已向工作人员队列提交高优先级警报；这不表示公共应急人员已经出动。",
   "backend.emergency.alert_unconfirmed": " 自助机无法确认内部警报已送达；请直接联系工作人员或拨打上述紧急电话。",
+  "backend.emergency.confirm_question": "您是否遇到紧急情况并需要立即协助？",
   "backend.knowledge.revoked": "之前话题的资料已无法核实，请重新提问或联系前台。",
   "backend.knowledge.abstain": "未找到可核实回答此问题的信息。",
   "backend.knowledge.staff_confirmation_required": "这项信息正在等待工作人员确认。使用前请向酒店工作人员核实。",
@@ -200,5 +201,6 @@
   "backend.clarification.activity_preference": "您喜欢哪类活动？",
   "backend.clarification.meal_preference": "您想吃哪种餐食？",
   "backend.clarification.time_window": "哪个时间段最适合您？",
-  "backend.clarification.room_number": "请问您的房间号是多少？"
+  "backend.clarification.room_number": "请问您的房间号是多少？",
+  "backend.preference.saved": "已记下，本次会话中推荐或准备请求时会考虑这个偏好。"
 }

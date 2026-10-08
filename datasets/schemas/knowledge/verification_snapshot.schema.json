@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:furama:knowledge:verification-snapshot:v1",
+  "title": "Immutable verification evidence snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "snapshot_id",
+    "artifact_id",
+    "property_id",
+    "publisher",
+    "source_url",
+    "verified_at",
+    "snapshot_kind",
+    "raw_archive_status",
+    "evidence",
+    "bundle_sha256"
+  ],
+  "properties": {
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "property_id": {
+      "const": "FURAMA_DANANG"
+    },
+    "publisher": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "snapshot_kind": {
+      "const": "curated_evidence_bundle"
+    },
+    "raw_archive_status": {
+      "enum": [
+        "archived",
+        "unavailable_historical"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence_sha256",
+          "evidence",
+          "canonical_fact_ids"
+        ],
+        "properties": {
+          "evidence_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "canonical_fact_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^cfact_[0-9a-f]{16,64}$"
+            }
+          }
+        }
+      }
+    },
+    "bundle_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

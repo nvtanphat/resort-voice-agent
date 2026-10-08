@@ -12,6 +12,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from concierge_kiosk.agent.understanding.commands import Command
 from concierge_kiosk.core.settings import Settings
 from concierge_kiosk.main import create_app
 
@@ -77,8 +78,16 @@ def test_where_question_reads_knowledge_once_per_turn(tmp_path: Path, monkeypatc
     assert calls == ["Where is the spa?"]
 
 
-def test_directions_use_guest_wording_and_never_fail_without_evidence(tmp_path: Path):
+def test_directions_use_guest_wording_and_never_fail_without_evidence(tmp_path: Path, understand):
     import hashlib
+
+    for query in (
+        "Show me the way to the gym",
+        "Take me to Don Cipriani",
+        "Dẫn tôi đến hồ bơi",
+        "Take me to the beach",
+    ):
+        understand(query, Command("Navigate", query=query))
 
     db = tmp_path / "kiosk.sqlite3"
     shutil.copyfile(ROOT / "data/concierge.sqlite3", db)

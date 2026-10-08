@@ -37,7 +37,7 @@ from .core.property_profile import load_property_profile, unconfigured_property_
 from .core.domain_profile import get_domain_profile, load_domain_profile, voice_policy
 from .agent.understanding.service_selector import ServiceSelector, load_command_examples
 from .core.dataset_layout import (
-    SERVICE_CATALOG, TRAIN_AGENT_MULTILINGUAL, TRAIN_AGENT_VI_GOLD, dataset_path,
+    SERVICE_CATALOG, TRAIN_AGENT_CANDIDATES, TRAIN_AGENT_MULTILINGUAL, TRAIN_AGENT_VI_GOLD, dataset_path,
 )
 from .core.settings import Settings
 from .domain.service_requests import InvalidTransition
@@ -118,10 +118,22 @@ def _build_service_selector(cfg, embedder):
     root = getattr(cfg, 'structured_dataset_dir', None)
     path = dataset_path(SERVICE_CATALOG, root)
     try:
-        examples = load_command_examples(
-            [dataset_path(name, root) for name in (TRAIN_AGENT_VI_GOLD, TRAIN_AGENT_MULTILINGUAL)])
+        command_paths = [dataset_path(name, root)
+                         for name in (TRAIN_AGENT_VI_GOLD, TRAIN_AGENT_MULTILINGUAL, TRAIN_AGENT_CANDIDATES)]
+        # Every reviewed JSONL under the training/agent data root is eligible
+        # to contribute command examples.  This keeps newly promoted gap-
+        # closure batches data-driven without adding a service/file allowlist
+        # to the application composition root.
+        training_root = command_paths[0].parent
+        command_paths.extend(
+            candidate for candidate in sorted(training_root.glob('*.jsonl'))
+            if candidate not in command_paths)
+        examples = load_command_examples(command_paths)
+        LOGGER.info('service_selector_examples count=%d files=%d', len(examples), len(command_paths))
+        cache_dir = Path(cfg.db_path).parent / 'service-selector-cache'
         return ServiceSelector(path, embedder, top_k=int(policy['top_k']),
-                               examples=examples, example_k=int(policy['example_k']))
+                               examples=examples, example_k=int(policy['example_k']),
+                               cache_dir=cache_dir)
     except (OSError, UnicodeError, ValueError, TypeError, json.JSONDecodeError) as exc:
         LOGGER.warning('service_selector_unavailable path=%s error=%s', path, type(exc).__name__)
         return None
@@ -147,7 +159,8 @@ def _build_lifespan(graph_holder, store, workflows, cfg=None):
                 # several seconds. A 1-token request keeps it resident.
                 from .runtime.local_ai import warm_local_slm
                 try:
-                    await asyncio.to_thread(warm_local_slm, cfg.llm_base_url, cfg.llm_model)
+                    await asyncio.to_thread(warm_local_slm, cfg.llm_base_url, cfg.llm_model,
+                                            num_gpu=cfg.slm_num_gpu)
                 except Exception as exc:
                     LOGGER.warning('slm_warmup_failed type=%s', type(exc).__name__)
             selector = getattr(_app.state, 'service_selector', None)
@@ -157,6 +170,14 @@ def _build_lifespan(graph_holder, store, workflows, cfg=None):
                     await asyncio.to_thread(selector.warm)
                 except Exception as exc:
                     LOGGER.warning('service_selector_warmup_failed type=%s', type(exc).__name__)
+                # Train the emergency classifier on the freshly embedded examples.
+                gate = getattr(getattr(getattr(_app.state, 'conversation_engine', None),
+                                       'turn_support', None), 'emergency_gate', None)
+                if gate is not None:
+                    try:
+                        await asyncio.to_thread(gate.warm)
+                    except Exception as exc:
+                        LOGGER.warning('emergency_gate_warmup_failed type=%s', type(exc).__name__)
         warmup = asyncio.create_task(warm_voice()) if cfg is not None else None
         async def overdue_worker():
             while not stop.is_set():
@@ -235,7 +256,7 @@ def _configure_voice_runtime(app: FastAPI, cfg):
         if (exact_ollama_digest(cfg.llm_base_url, cfg.llm_model, timeout=cfg.slm_probe_timeout_seconds)
                 != cfg.llm_model_digest.removeprefix('sha256:')):
             return False
-            from .core.model_manifest import check_model_manifest
+        from .core.model_manifest import check_model_manifest
         return check_model_manifest(cfg.nli_model_path, cfg.nli_manifest_path)
 
     audio_admission = AudioAdmission()
@@ -442,6 +463,7 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
         audio_admission=audio_admission, slm_permitted=slm_permitted,
         answers=answer_services, logger=LOGGER, service_selector=service_selector,
     )
+    app.state.conversation_engine = conversation_engine
     answer = conversation_engine.answer
     ensure_active_context_session = answer_services.ensure_active_context_session
     service_actions = conversation_engine.service_actions

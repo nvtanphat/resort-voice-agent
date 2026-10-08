@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical service catalog",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "service_id",
+      "entity_id",
+      "name",
+      "service_type",
+      "category",
+      "department_id",
+      "contact_extension",
+      "operating_hours",
+      "is_complimentary",
+      "description",
+      "names_by_locale",
+      "source_urls",
+      "verified_at",
+      "verification_status"
+    ],
+    "properties": {
+      "service_id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "entity_id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "service_type": {
+        "enum": [
+          "actionable_service",
+          "staff_request"
+        ]
+      },
+      "category": {
+        "type": "string",
+        "minLength": 1
+      },
+      "department_id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "contact_extension": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "operating_hours": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "is_complimentary": {
+        "type": [
+          "boolean",
+          "null"
+        ]
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1
+      },
+      "names_by_locale": {
+        "type": "object",
+        "required": [
+          "en",
+          "vi",
+          "ko",
+          "zh"
+        ],
+        "properties": {
+          "en": {
+            "type": "string",
+            "minLength": 1
+          },
+          "vi": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ko": {
+            "type": "string",
+            "minLength": 1
+          },
+          "zh": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "source_urls": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "verified_at": {
+        "type": "string",
+        "format": "date"
+      },
+      "verification_status": {
+        "const": "official_web_reviewed"
+      }
+    }
+  }
+}

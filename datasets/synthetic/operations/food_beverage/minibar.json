@@ -1,0 +1,242 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "currency": "VND",
+  "price_semantics": "product-authored prototype prices; tax and service-charge treatment is not verified and must be staff-confirmed before any charge",
+  "items": [
+    {
+      "item_id": "water_still_500",
+      "name_en": "Still water 500ml",
+      "name_vi": "Nước suối 500ml",
+      "price_vnd": 45000,
+      "unit": "bottle",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "coca_cola_330",
+      "name_en": "Coca-Cola 330ml",
+      "name_vi": "Coca-Cola 330ml",
+      "price_vnd": 75000,
+      "unit": "can",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "sprite_330",
+      "name_en": "Sprite 330ml",
+      "name_vi": "Sprite 330ml",
+      "price_vnd": 75000,
+      "unit": "can",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "tonic_330",
+      "name_en": "Tonic water 330ml",
+      "name_vi": "Tonic 330ml",
+      "price_vnd": 85000,
+      "unit": "can",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "orange_juice_250",
+      "name_en": "Orange juice 250ml",
+      "name_vi": "Nước cam 250ml",
+      "price_vnd": 90000,
+      "unit": "bottle",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "red_bull_250",
+      "name_en": "Red Bull 250ml",
+      "name_vi": "Red Bull 250ml",
+      "price_vnd": 95000,
+      "unit": "can",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "tiger_330",
+      "name_en": "Tiger beer 330ml",
+      "name_vi": "Bia Tiger 330ml",
+      "price_vnd": 110000,
+      "unit": "can",
+      "alcohol": true,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "heineken_330",
+      "name_en": "Heineken 330ml",
+      "name_vi": "Bia Heineken 330ml",
+      "price_vnd": 120000,
+      "unit": "can",
+      "alcohol": true,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "local_craft_330",
+      "name_en": "Da Nang craft beer 330ml",
+      "name_vi": "Bia thủ công Đà Nẵng 330ml",
+      "price_vnd": 145000,
+      "unit": "bottle",
+      "alcohol": true,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "pringles_107",
+      "name_en": "Potato crisps 107g",
+      "name_vi": "Khoai tây chiên 107g",
+      "price_vnd": 120000,
+      "unit": "canister",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "cashew_100",
+      "name_en": "Roasted cashew 100g",
+      "name_vi": "Hạt điều rang 100g",
+      "price_vnd": 150000,
+      "unit": "pack",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "chocolate_80",
+      "name_en": "Premium chocolate 80g",
+      "name_vi": "Sô-cô-la cao cấp 80g",
+      "price_vnd": 160000,
+      "unit": "bar",
+      "alcohol": false,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "red_wine_375",
+      "name_en": "House red wine 375ml",
+      "name_vi": "Vang đỏ 375ml",
+      "price_vnd": 520000,
+      "unit": "bottle",
+      "alcohol": true,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "white_wine_375",
+      "name_en": "House white wine 375ml",
+      "name_vi": "Vang trắng 375ml",
+      "price_vnd": 520000,
+      "unit": "bottle",
+      "alcohol": true,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_minibar_catalog"
+      ],
+      "source_refs": [
+        "benchmark_dilusso_minibar_danang",
+        "prototype_fnb_design_2026"
+      ]
+    }
+  ],
+  "inventory_policy": {
+    "restock": "daily_during_housekeeping",
+    "consumption_posting": "staff_or_pms_only",
+    "kiosk_can_commit_charge": false
+  },
+  "guest_answer_policy": "demo_only; all prices must be labeled estimated/simulated and reconfirmed before charge.",
+  "production_truth_usage": "synthetic_only",
+  "excluded_from_production_retrieval": true
+}

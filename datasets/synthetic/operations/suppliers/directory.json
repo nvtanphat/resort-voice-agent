@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "suppliers": [
+    {
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "display_name": "Central Vietnam Experiences (Demo)",
+      "category": "tour_operator",
+      "coverage": [
+        "Hoi An",
+        "My Son",
+        "Hue",
+        "Ba Na Hills",
+        "Son Tra"
+      ],
+      "contact_channel": "vendor-portal",
+      "email": "tour01@demo.invalid",
+      "confirmation_sla_min": 15,
+      "fallback_supplier_id": "SYN-SUP-TOUR-02",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_supplier_directory"
+      ]
+    },
+    {
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "display_name": "Heritage Routes Da Nang (Demo)",
+      "category": "tour_operator",
+      "coverage": [
+        "Hoi An",
+        "Hue",
+        "Marble Mountains"
+      ],
+      "contact_channel": "vendor-portal",
+      "email": "tour02@demo.invalid",
+      "confirmation_sla_min": 20,
+      "fallback_supplier_id": "SYN-SUP-TOUR-01",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_supplier_directory"
+      ]
+    },
+    {
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "display_name": "Coastal Transfer Fleet (Demo)",
+      "category": "transport",
+      "coverage": [
+        "airport",
+        "city",
+        "Hoi An"
+      ],
+      "contact_channel": "dispatch-api",
+      "email": "fleet01@demo.invalid",
+      "confirmation_sla_min": 5,
+      "fallback_supplier_id": "SYN-SUP-TRANS-02",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_supplier_directory"
+      ]
+    },
+    {
+      "supplier_id": "SYN-SUP-TRANS-02",
+      "display_name": "Da Nang Executive Mobility (Demo)",
+      "category": "transport",
+      "coverage": [
+        "airport",
+        "city",
+        "Hue"
+      ],
+      "contact_channel": "dispatch-api",
+      "email": "fleet02@demo.invalid",
+      "confirmation_sla_min": 10,
+      "fallback_supplier_id": "SYN-SUP-TRANS-01",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_supplier_directory"
+      ]
+    },
+    {
+      "supplier_id": "SYN-SUP-FLORAL-01",
+      "display_name": "Coastal Floral Studio (Demo)",
+      "category": "floral",
+      "coverage": [
+        "guest_room",
+        "villa",
+        "events"
+      ],
+      "contact_channel": "email",
+      "email": "floral@demo.invalid",
+      "confirmation_sla_min": 30,
+      "fallback_supplier_id": null,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_supplier_directory"
+      ]
+    },
+    {
+      "supplier_id": "SYN-SUP-LAUNDRY-01",
+      "display_name": "Resort Laundry Overflow (Demo)",
+      "category": "laundry_overflow",
+      "coverage": [
+        "express_overflow",
+        "bulk_linen"
+      ],
+      "contact_channel": "phone_queue",
+      "email": "laundry@demo.invalid",
+      "confirmation_sla_min": 20,
+      "fallback_supplier_id": null,
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_demo_supplier_directory"
+      ]
+    }
+  ],
+  "truth_status": "synthetic_property_assumption",
+  "assumption_refs": [
+    "asm_demo_supplier_directory"
+  ]
+}

@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_simulation",
+  "snapshot_at": "2026-10-03T12:00:00+07:00",
+  "valid_until": "2026-10-06T23:59:59+07:00",
+  "tours": [
+    {
+      "date": "2026-10-04",
+      "product_id": "hoi_an_evening",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 16,
+      "remaining": 12,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1950000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "hoi_an_evening",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 16,
+      "remaining": 8,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1950000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-06",
+      "product_id": "hoi_an_evening",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 16,
+      "remaining": 4,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1950000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-04",
+      "product_id": "my_son_half_day",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 16,
+      "remaining": 9,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1700000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "my_son_half_day",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 16,
+      "remaining": 5,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1700000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-06",
+      "product_id": "my_son_half_day",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 16,
+      "remaining": 1,
+      "status": "limited",
+      "synthetic_price_vnd_per_adult": 1700000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-04",
+      "product_id": "hue_full_day",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 12,
+      "remaining": 2,
+      "status": "limited",
+      "synthetic_price_vnd_per_adult": 3000000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "hue_full_day",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 12,
+      "remaining": 11,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 3000000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-06",
+      "product_id": "hue_full_day",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 12,
+      "remaining": 7,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 3000000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-04",
+      "product_id": "ba_na_hills",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 12,
+      "remaining": 12,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 2750000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "ba_na_hills",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 12,
+      "remaining": 8,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 2750000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-06",
+      "product_id": "ba_na_hills",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 12,
+      "remaining": 4,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 2750000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-04",
+      "product_id": "marble_hoi_an_combo",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 16,
+      "remaining": 0,
+      "status": "sold_out",
+      "synthetic_price_vnd_per_adult": 1850000,
+      "auto_confirm_demo": false
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "marble_hoi_an_combo",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 16,
+      "remaining": 13,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1850000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-06",
+      "product_id": "marble_hoi_an_combo",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "capacity": 16,
+      "remaining": 9,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1850000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-04",
+      "product_id": "son_tra_marble",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 16,
+      "remaining": 14,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1550000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "son_tra_marble",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 16,
+      "remaining": 10,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1550000,
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-06",
+      "product_id": "son_tra_marble",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "capacity": 16,
+      "remaining": 6,
+      "status": "available",
+      "synthetic_price_vnd_per_adult": 1550000,
+      "auto_confirm_demo": true
+    }
+  ],
+  "transport": [
+    {
+      "date": "2026-10-03",
+      "product_id": "airport_sedan",
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "available_units": 4,
+      "status": "available",
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-03",
+      "product_id": "airport_suv",
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "available_units": 3,
+      "status": "available",
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-03",
+      "product_id": "airport_van",
+      "supplier_id": "SYN-SUP-TRANS-02",
+      "available_units": 1,
+      "status": "available",
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-04",
+      "product_id": "airport_sedan",
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "available_units": 3,
+      "status": "available",
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-04",
+      "product_id": "airport_suv",
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "available_units": 2,
+      "status": "available",
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-04",
+      "product_id": "airport_van",
+      "supplier_id": "SYN-SUP-TRANS-02",
+      "available_units": 0,
+      "status": "sold_out",
+      "auto_confirm_demo": false
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "airport_sedan",
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "available_units": 2,
+      "status": "available",
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "airport_suv",
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "available_units": 1,
+      "status": "available",
+      "auto_confirm_demo": true
+    },
+    {
+      "date": "2026-10-05",
+      "product_id": "airport_van",
+      "supplier_id": "SYN-SUP-TRANS-02",
+      "available_units": 1,
+      "status": "available",
+      "auto_confirm_demo": true
+    }
+  ],
+  "shuttle": [
+    {
+      "date": "2026-10-03",
+      "route_id": "SYN-SHUTTLE-HOI-AN",
+      "direction": "FURAMA_TO_HOI_AN",
+      "depart": "09:30",
+      "seat_capacity": 14,
+      "seats_remaining": 10,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "route_id": "SYN-SHUTTLE-HOI-AN",
+      "direction": "FURAMA_TO_HOI_AN",
+      "depart": "15:00",
+      "seat_capacity": 14,
+      "seats_remaining": 12,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "route_id": "SYN-SHUTTLE-HOI-AN",
+      "direction": "HOI_AN_TO_FURAMA",
+      "depart": "13:30",
+      "seat_capacity": 14,
+      "seats_remaining": 6,
+      "status": "available"
+    },
+    {
+      "date": "2026-10-03",
+      "route_id": "SYN-SHUTTLE-HOI-AN",
+      "direction": "HOI_AN_TO_FURAMA",
+      "depart": "20:30",
+      "seat_capacity": 14,
+      "seats_remaining": 8,
+      "status": "available"
+    }
+  ],
+  "restaurant_summary": [
+    {
+      "entity_id": "restaurant.cafe_indochine",
+      "date": "2026-10-03",
+      "available_slot_count": 6,
+      "limited_slot_count": 0
+    },
+    {
+      "entity_id": "restaurant.don_cipriani",
+      "date": "2026-10-03",
+      "available_slot_count": 6,
+      "limited_slot_count": 1
+    },
+    {
+      "entity_id": "restaurant.danaksara",
+      "date": "2026-10-03",
+      "available_slot_count": 6,
+      "limited_slot_count": 0
+    },
+    {
+      "entity_id": "restaurant.the_fan_steakhouse",
+      "date": "2026-10-03",
+      "available_slot_count": 6,
+      "limited_slot_count": 1
+    },
+    {
+      "entity_id": "restaurant.taya_house",
+      "date": "2026-10-03",
+      "available_slot_count": 6,
+      "limited_slot_count": 2
+    },
+    {
+      "entity_id": "restaurant.v_senses_cafe",
+      "date": "2026-10-03",
+      "available_slot_count": 6,
+      "limited_slot_count": 2
+    }
+  ],
+  "spa_summary": [
+    {
+      "date": "2026-10-03",
+      "available_slot_count": 11,
+      "total_remaining_capacity": 45
+    },
+    {
+      "date": "2026-10-04",
+      "available_slot_count": 8,
+      "total_remaining_capacity": 42
+    },
+    {
+      "date": "2026-10-05",
+      "available_slot_count": 7,
+      "total_remaining_capacity": 37
+    },
+    {
+      "date": "2026-10-06",
+      "available_slot_count": 10,
+      "total_remaining_capacity": 44
+    }
+  ],
+  "assumption_refs": [
+    "asm_demo_commercial_inventory"
+  ],
+  "truth_status": "synthetic_simulation"
+}

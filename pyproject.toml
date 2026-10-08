@@ -61,11 +61,13 @@ include = ["concierge_kiosk*", "tools*"]
 "share/concierge-kiosk/config" = ["config/agent-domain.json", "config/agent-domain.schema.json", "config/agent-domain.sha256", "config/property-profile.schema.json", "config/runtime-profile.schema.json", "config/voice-stt-manifest.schema.json", "config/voice-tts-manifest.schema.json", "config/local-runtime.env.example"]
 "share/concierge-kiosk/config/runtime-profiles" = ["config/runtime-profiles/*.json", "config/runtime-profiles/*.sha256"]
 "share/concierge-kiosk/web" = ["web/index.html", "web/guest.js", "web/app.css", "web/staff.html", "web/staff.js", "web/status.html", "web/status.js", "web/favicon.ico", "web/header-bg.webp", "web/header-bg-original.jpg", "web/pcm-worklet.js", "web/sos.js"]
-"share/concierge-kiosk/web/media" = ["web/media/*.svg"]
 "share/concierge-kiosk/datasets/map" = ["datasets/schemas/knowledge/map.schema.json"]
 "share/concierge-kiosk/datasets/planning" = ["datasets/schemas/knowledge/planning.schema.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
+# Keep per-test temp files (each copies a ~40 MB SQLite DB) inside the repo
+# instead of the system drive; pytest clears this folder at the start of a run.
+addopts = "--basetemp=.pytest-tmp"
 

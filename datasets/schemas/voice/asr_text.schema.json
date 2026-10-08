@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "asr_text.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "split",
+    "language",
+    "source_case_id",
+    "reference_transcript",
+    "asr_text",
+    "perturbation_type",
+    "asr_confidence",
+    "semantic_preserved",
+    "critical_slot_changed",
+    "expected_route",
+    "service_code",
+    "expected_agent_behavior",
+    "synthetic_asr"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "split": {
+      "const": "test"
+    },
+    "language": {
+      "const": "vi"
+    },
+    "source_case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reference_transcript": {
+      "type": "string",
+      "minLength": 1
+    },
+    "asr_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "perturbation_type": {
+      "enum": [
+        "disfluency",
+        "punctuation_loss",
+        "number_normalization",
+        "accentless_output",
+        "code_switch",
+        "word_drop",
+        "self_correction",
+        "critical_slot_noise",
+        "mild_substitution"
+      ]
+    },
+    "asr_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "semantic_preserved": {
+      "type": "boolean"
+    },
+    "critical_slot_changed": {
+      "type": "boolean"
+    },
+    "expected_route": {
+      "type": "string",
+      "minLength": 1
+    },
+    "service_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_agent_behavior": {
+      "enum": [
+        "route_and_respond",
+        "clarify_before_action",
+        "abstain_or_handoff"
+      ]
+    },
+    "synthetic_asr": {
+      "const": true
+    }
+  }
+}

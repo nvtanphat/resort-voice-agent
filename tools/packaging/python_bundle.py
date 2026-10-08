@@ -11,7 +11,6 @@ import hashlib
 import json
 import os
 import zipfile
-from collections import defaultdict
 from pathlib import Path
 
 from packaging.utils import canonicalize_name, parse_wheel_filename

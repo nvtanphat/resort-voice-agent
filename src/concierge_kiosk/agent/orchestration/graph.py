@@ -225,16 +225,23 @@ class ConciergeGraph:
             raise InvalidTransition("Explicit confirmation is required")
         # The API has authenticated the guest; verify stored proposal ownership again.
         with self._lock:
-            cfg = self._start(session_id, proposal_id)
-            snapshot = self.requests.get_state(cfg)
-            validate_checkpoint(snapshot, session_id=session_id, proposal_id=proposal_id,
-                                property_id=self.property_id)
             # THE ONLY BUSINESS COMMIT: the authenticated API calls this method,
             # and this method commits before telling the graph to resume. The
-            # unique proposal constraint makes crash/replay idempotent.
+            # unique proposal constraint and domain dedupe policy make
+            # crash/replay idempotent.  Do this before reading the disposable
+            # graph projection: a stale checkpoint must never turn an already
+            # committed replay into a guest-visible failure.
             row = self.workflows.confirm(session_id, proposal_id, True,
                                          verification=verification,
                                          price_acknowledged=price_acknowledged)
+            try:
+                cfg = self._start(session_id, proposal_id)
+                snapshot = self.requests.get_state(cfg)
+                validate_checkpoint(snapshot, session_id=session_id, proposal_id=proposal_id,
+                                    property_id=self.property_id)
+            except Exception:
+                LOGGER.warning("guest_checkpoint_sync_deferred proposal_id=%s", proposal_id)
+                return {**row, "orchestration_sync": "deferred"}
             if "guest_confirmation" in snapshot.next:
                 try:
                     self.requests.invoke(self._Command(resume={

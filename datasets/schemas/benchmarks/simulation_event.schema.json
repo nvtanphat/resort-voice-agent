@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hospitality simulation event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "truth_status",
+    "stay_id",
+    "unit_id",
+    "language",
+    "guest_archetype_id",
+    "created_at",
+    "stay_phase",
+    "channel",
+    "emotion",
+    "service_code",
+    "approval",
+    "department_id",
+    "severity",
+    "occupancy_pct",
+    "staffing_pressure",
+    "outside_hours",
+    "inventory_constraint",
+    "manual_relay",
+    "agent_governed",
+    "guest_experience"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^HOSP-EVT-[0-9]{7}$"
+    },
+    "truth_status": {
+      "const": "synthetic_hospitality_simulation"
+    },
+    "stay_id": {
+      "type": "string",
+      "pattern": "^HOSP-STAY-[0-9]{6}$"
+    },
+    "unit_id": {
+      "type": "string",
+      "pattern": "^SIM-(?:ROOM|VILLA)-[0-9]{4}$"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "guest_archetype_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stay_phase": {
+      "enum": [
+        "overnight",
+        "in_stay_morning",
+        "in_stay_day",
+        "in_stay_evening"
+      ]
+    },
+    "channel": {
+      "enum": [
+        "kiosk_text",
+        "kiosk_voice",
+        "mobile_chat",
+        "front_desk"
+      ]
+    },
+    "emotion": {
+      "enum": [
+        "neutral",
+        "polite",
+        "hurried",
+        "frustrated",
+        "tired",
+        "confused",
+        "anxious"
+      ]
+    },
+    "service_code": {
+      "enum": [
+        "amenity_delivery",
+        "housekeeping",
+        "maintenance",
+        "human_assistance",
+        "spa_reservation",
+        "dining_reservation",
+        "food_order",
+        "tour_reservation",
+        "facility_request",
+        "dining_request",
+        "tour_request",
+        "transport_request",
+        "late_checkout",
+        "knowledge_only"
+      ]
+    },
+    "approval": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "none",
+        "staff",
+        null
+      ]
+    },
+    "department_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "severity": {
+      "enum": [
+        "routine",
+        "moderate",
+        "high",
+        "critical"
+      ]
+    },
+    "occupancy_pct": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "staffing_pressure": {
+      "type": "number",
+      "minimum": 0
+    },
+    "outside_hours": {
+      "type": "boolean"
+    },
+    "inventory_constraint": {
+      "type": "boolean"
+    },
+    "manual_relay": {
+      "type": "object",
+      "required": [
+        "front_desk_touch",
+        "dispatch_delay_min",
+        "first_attendance_min",
+        "sla_met"
+      ],
+      "properties": {
+        "front_desk_touch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dispatch_delay_min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "first_attendance_min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sla_met": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_governed": {
+      "type": "object",
+      "required": [
+        "front_desk_touch",
+        "autonomous_dispatch",
+        "dispatch_delay_min",
+        "first_attendance_min",
+        "sla_met"
+      ],
+      "properties": {
+        "front_desk_touch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "autonomous_dispatch": {
+          "type": "boolean"
+        },
+        "dispatch_delay_min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "first_attendance_min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sla_met": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "guest_experience": {
+      "type": "object",
+      "required": [
+        "effort_turns",
+        "recovery_needed",
+        "recovery_action",
+        "recovery_success",
+        "simulated_satisfaction_1_to_5"
+      ],
+      "properties": {
+        "effort_turns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recovery_needed": {
+          "type": "boolean"
+        },
+        "recovery_action": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recovery_success": {
+          "type": "boolean"
+        },
+        "simulated_satisfaction_1_to_5": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

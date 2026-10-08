@@ -1,0 +1,20 @@
+{
+  "batch_metrics": [
+    "exact_duplicate_rate",
+    "normalized_duplicate_rate",
+    "top_prefix_share",
+    "top10_prefix_share",
+    "bigram_jaccard_near_duplicate_rate",
+    "style_distribution",
+    "language_distribution"
+  ],
+  "default_thresholds": {
+    "exact_duplicate_rate_max": 0.005,
+    "normalized_duplicate_rate_max": 0.01,
+    "top_prefix_share_max": 0.03,
+    "top10_prefix_share_max": 0.15,
+    "near_duplicate_similarity_threshold": 0.82,
+    "near_duplicate_rate_max": 0.02
+  },
+  "note": "Thresholds are promotion gates for generated or curated training batches; source benchmarks are reported separately."
+}

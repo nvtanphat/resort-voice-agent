@@ -41,6 +41,8 @@ def request_kind_for_catalog_service(service: dict) -> str:
         return "dining"
     if sid == "spa.booking":
         return "facilities"
+    if sid == "service.tour_reservation":
+        return "tour"
     if sid == "service.luggage":
         return "human"
     if sid == "service.late_checkout":

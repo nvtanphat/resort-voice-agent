@@ -1,0 +1,112 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_simulation",
+  "reviewed_at": "2026-10-03",
+  "inventory_scope": "central_housekeeping_pantries_combined",
+  "items": [
+    {
+      "item_code": "bath_towel",
+      "par_level": 420,
+      "reorder_point": 160,
+      "critical_floor": 60,
+      "replenish_batch": 180,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    },
+    {
+      "item_code": "hand_towel",
+      "par_level": 320,
+      "reorder_point": 120,
+      "critical_floor": 40,
+      "replenish_batch": 140,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    },
+    {
+      "item_code": "toothbrush_kit",
+      "par_level": 260,
+      "reorder_point": 100,
+      "critical_floor": 35,
+      "replenish_batch": 120,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    },
+    {
+      "item_code": "shaving_kit",
+      "par_level": 100,
+      "reorder_point": 35,
+      "critical_floor": 12,
+      "replenish_batch": 50,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    },
+    {
+      "item_code": "slippers",
+      "par_level": 260,
+      "reorder_point": 100,
+      "critical_floor": 35,
+      "replenish_batch": 120,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    },
+    {
+      "item_code": "extra_pillow",
+      "par_level": 54,
+      "reorder_point": 18,
+      "critical_floor": 6,
+      "replenish_batch": 24,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    },
+    {
+      "item_code": "blanket",
+      "par_level": 36,
+      "reorder_point": 12,
+      "critical_floor": 4,
+      "replenish_batch": 18,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    },
+    {
+      "item_code": "baby_cot",
+      "par_level": 8,
+      "reorder_point": 3,
+      "critical_floor": 1,
+      "replenish_batch": 3,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    },
+    {
+      "item_code": "extra_bed",
+      "par_level": 12,
+      "reorder_point": 4,
+      "critical_floor": 2,
+      "replenish_batch": 4,
+      "truth_status": "synthetic_simulation",
+      "assumption_refs": [
+        "asm_amenity_inventory"
+      ]
+    }
+  ],
+  "assumption_refs": [
+    "asm_amenity_inventory"
+  ],
+  "truth_note": "Inventory is simulation-only; it is useful for stock-out, substitution and queue tests."
+}

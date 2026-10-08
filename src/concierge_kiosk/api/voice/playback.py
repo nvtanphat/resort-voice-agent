@@ -40,7 +40,7 @@ def register_playback_routes(app, *, cfg, store, voice_turns, turn_events, audio
                     return False
         return True
 
-    def resolve_v2_chunk(session: str, chunk_id: str) -> tuple[str, str, str]:
+    def resolve_speech_chunk(session: str, chunk_id: str) -> tuple[str, str, str]:
         resolved = voice_turns.resolve_chunk(session, chunk_id)
         if resolved is None:
             raise HTTPException(status_code=409, detail='Speech chunk is stale or unknown')
@@ -51,7 +51,7 @@ def register_playback_routes(app, *, cfg, store, voice_turns, turn_events, audio
                           session: str = Depends(guest_session)):
         """Revalidate a server-planned opaque chunk immediately before playback."""
         rate(request, f"speech-proof:{session}", 60)
-        turn_id, _, _ = resolve_v2_chunk(session, body.chunk_id)
+        turn_id, _, _ = resolve_speech_chunk(session, body.chunk_id)
         if not current_spoken_evidence(session, turn_id):
             voice_turns.cancel(session, turn_id)
             turn_events.emit(session, turn_id, 'turn.cancelled')
@@ -63,7 +63,7 @@ def register_playback_routes(app, *, cfg, store, voice_turns, turn_events, audio
                           session: str = Depends(guest_session)):
         """Idempotent delivery ACK. Only this transition advances speech order."""
         rate(request, f"speech-played:{session}", 60)
-        turn_id, _, _ = resolve_v2_chunk(session, body.chunk_id)
+        turn_id, _, _ = resolve_speech_chunk(session, body.chunk_id)
         if not current_spoken_evidence(session, turn_id):
             voice_turns.cancel(session, turn_id)
             turn_events.emit(session, turn_id, 'turn.cancelled')
@@ -78,7 +78,7 @@ def register_playback_routes(app, *, cfg, store, voice_turns, turn_events, audio
                           session: str = Depends(guest_session)):
         """Release only the synthesized-but-unheard chunk for a safe retry."""
         rate(request, f"speech-playback-failed:{session}", 30)
-        turn_id, _, _ = resolve_v2_chunk(session, body.chunk_id)
+        turn_id, _, _ = resolve_speech_chunk(session, body.chunk_id)
         if not voice_turns.mark_chunk_playback_failed(session, body.chunk_id):
             raise HTTPException(status_code=409, detail='Speech playback failure acknowledgement is stale')
         turn_events.emit_diagnostic(session, turn_id, 'tts.chunk.playback_failed')

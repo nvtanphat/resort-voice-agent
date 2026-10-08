@@ -1,4 +1,4 @@
-/* source-sha256:fb59dacab684969c60b0e224966aed9ade2d998ec542595e073e9b399e27d83f */
+/* source-sha256:36c87fa8f8562cb768f72b3821b735b728e0c7b1a4d0b389be20d0eb1996828a */
 /* Concierge Kiosk guest UI. */
 (function(){
 'use strict';
@@ -35195,12 +35195,11 @@ const useTurnLifecycle_1 = require("./hooks/useTurnLifecycle");
 const useSpeechPlayback_1 = require("./hooks/useSpeechPlayback");
 const Header_1 = require("./components/Header");
 const SidebarNav_1 = require("./components/SidebarNav");
-const ChatSection_1 = require("./components/ChatSection");
 const VoiceAssistant_1 = require("./components/VoiceAssistant");
 const MyRequests_1 = require("./components/MyRequests");
-const EditRequestModal_1 = require("./components/EditRequestModal");
-const TicketModal_1 = require("./components/TicketModal");
-const VerificationModal_1 = require("./components/VerificationModal");
+const Chat_1 = require("./screens/Chat");
+const RequestFlow_1 = require("./screens/RequestFlow");
+const useRequestDraft_1 = require("./hooks/useRequestDraft");
 function clock(lang) { return new Date().toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }); }
 function uuid() {
     const bytes = new Uint8Array(16);
@@ -35230,21 +35229,9 @@ const App = () => {
     const [startLocation, setStartLocation] = (0, react_1.useState)('');
     const [sessionReady, setSessionReady] = (0, react_1.useState)(false);
     const [toastMessage, setToastMessage] = (0, react_1.useState)(null);
-    const [dataConsent, setDataConsent] = (0, react_1.useState)(false);
     const [latestStatus, setLatestStatus] = (0, react_1.useState)(null);
     const [now, setNow] = (0, react_1.useState)(new Date());
-    const [requestType, setRequestType] = (0, react_1.useState)(null);
-    const [quantity, setQuantity] = (0, react_1.useState)(1);
-    const [roomNumber, setRoomNumber] = (0, react_1.useState)('');
-    const [requestTime, setRequestTime] = (0, react_1.useState)('');
-    const [partySize, setPartySize] = (0, react_1.useState)('');
-    const [note, setNote] = (0, react_1.useState)('');
-    const [suggestedDetails, setSuggestedDetails] = (0, react_1.useState)(null);
-    const [pendingProposal, setPendingProposal] = (0, react_1.useState)(null);
-    const [priceAcknowledged, setPriceAcknowledged] = (0, react_1.useState)(false);
-    const [submitting, setSubmitting] = (0, react_1.useState)(false);
-    const [verificationModalOpen, setVerificationModalOpen] = (0, react_1.useState)(false);
-    const [isEditModalOpen, setIsEditModalOpen] = (0, react_1.useState)(false);
+    const { requestType, setRequestType, quantity, setQuantity, roomNumber, setRoomNumber, requestTime, setRequestTime, partySize, setPartySize, note, setNote, suggestedDetails, setSuggestedDetails, pendingProposal, setPendingProposal, priceAcknowledged, setPriceAcknowledged, submitting, setSubmitting, verificationModalOpen, setVerificationModalOpen, isEditModalOpen, setIsEditModalOpen, dataConsent, setDataConsent } = (0, useRequestDraft_1.useRequestDraft)();
     const [isThinking, setIsThinking] = (0, react_1.useState)(false);
     const [inputText, setInputText] = (0, react_1.useState)('');
     const [messages, setMessages] = (0, react_1.useState)([]);
@@ -36536,13 +36523,22 @@ const App = () => {
                             const service = serviceItems.find(item => item.id === id);
                             if (service)
                                 handleSelectService(service);
-                        } }), (0, jsx_runtime_1.jsx)(ChatSection_1.ChatSection, { propertyName: serverConfig?.property_name || 'Concierge Kiosk', language: selectedLanguage, messages: messages, value: inputText, onChange: setInputText, onSendMessage: text => void handleSendMessage(text), isThinking: isThinking, ready: sessionReady, error: errorText, onRetry: () => void connect(), onSuggested: applySuggested, kindLabel: kind => requestKindLabel(kind, selectedLanguage), onStartRequest: () => { if (allowedRequestKinds.length)
-                            setIsEditModalOpen(true); }, canCreateRequest: Boolean(uiContract?.capabilities.create_request && allowedRequestKinds.length > 0), onOpenEditModal: () => setIsEditModalOpen(true), onVoice: () => void handleVoiceSearch(), voiceAvailable: voiceAvailable, mapPlaces: mapPlaces, startLocation: startLocation, onStartLocation: setStartLocation, requestPreview: preview, prepared: Boolean(pendingProposal), pending: submitting, priceDisclosure: pendingProposal?.price_disclosure || '', priceDisclosureRequired: Boolean(pendingProposal?.price_disclosure_required), priceAcknowledged: priceAcknowledged, onPriceAcknowledged: setPriceAcknowledged, outsideOperatingHours: Boolean(pendingProposal?.outside_operating_hours), nextOpenAt: pendingProposal?.next_open_at ?? null, onPrepare: () => void handleCreateRequest(), onConfirm: () => void handleConfirmRequest(), onCancel: () => void handleCancelProposal() }), (0, jsx_runtime_1.jsxs)("aside", { className: "lg:col-span-3 flex flex-col h-full min-h-0 overflow-y-auto custom-scrollbar space-y-2.5 pr-0.5", "data-purpose": "right-assistant-and-status", children: [(0, jsx_runtime_1.jsx)(VoiceAssistant_1.VoiceAssistant, { language: selectedLanguage, enabled: voiceUI.enabled, available: voiceAvailable, state: voiceUI.status, message: voiceUI.message, volume: voiceVolume, onToggle: () => void handleVoiceSearch() }), (0, jsx_runtime_1.jsx)(MyRequests_1.MyRequests, { language: selectedLanguage, tickets: requestsList.map(req => ({ ...req, title: req.kind ? requestKindLabel(req.kind, selectedLanguage) : req.title, statusText: (0, i18n_1.statusLabel)(selectedLanguage, req.status) })), selectedId: expandedRequest, onSelectTicket: id => void checkRequest(id) })] })] }), requestType && (0, jsx_runtime_1.jsx)(EditRequestModal_1.EditRequestModal, { isOpen: isEditModalOpen, kind: requestType, requestTypes: (changeTargetId ? uiContract?.request_types.filter(item => item.kind === requestType) : uiContract?.request_types.filter(item => item.actions.includes('create_request'))) || [], room: roomNumber, quantity: quantity, time: requestTime, party: partySize, note: note, dataConsent: dataConsent, showConsent: !Boolean(changeTargetId), language: selectedLanguage, onClose: () => { setIsEditModalOpen(false); setChangeTargetId(null); }, onSave: handleSaveEdit }), (0, jsx_runtime_1.jsx)(VerificationModal_1.VerificationModal, { isOpen: verificationModalOpen, language: selectedLanguage, room: roomNumber, onClose: () => setVerificationModalOpen(false), onSubmit: (lastName, roomQrToken) => { setVerificationModalOpen(false); void handleConfirmRequest({ room_number: roomNumber.trim(), last_name: lastName, room_qr_token: roomQrToken }); } }), (0, jsx_runtime_1.jsx)(TicketModal_1.TicketModal, { language: selectedLanguage, isOpen: Boolean(expandedRequest), progress: requestProgress, error: requestProgressError, busy: changeBusy, onCancelRequest: () => void requestCancelSubmitted(), onModifyRequest: requestModifySubmitted, onSubmitFeedback: (rating, note) => void submitFeedback(rating, note), onClose: () => { expandedRequestRef.current = null; setExpandedRequest(null); setRequestProgress(null); } })] });
+                        } }), (0, jsx_runtime_1.jsx)(Chat_1.Chat, { propertyName: serverConfig?.property_name || 'Concierge Kiosk', language: selectedLanguage, messages: messages, value: inputText, onChange: setInputText, onSendMessage: text => void handleSendMessage(text), isThinking: isThinking, ready: sessionReady, error: errorText, onRetry: () => void connect(), onSuggested: applySuggested, kindLabel: kind => requestKindLabel(kind, selectedLanguage), onStartRequest: () => { if (allowedRequestKinds.length)
+                            setIsEditModalOpen(true); }, canCreateRequest: Boolean(uiContract?.capabilities.create_request && allowedRequestKinds.length > 0), onOpenEditModal: () => setIsEditModalOpen(true), onVoice: () => void handleVoiceSearch(), voiceAvailable: voiceAvailable, mapPlaces: mapPlaces, startLocation: startLocation, onStartLocation: setStartLocation, requestPreview: preview, prepared: Boolean(pendingProposal), pending: submitting, priceDisclosure: pendingProposal?.price_disclosure || '', priceDisclosureRequired: Boolean(pendingProposal?.price_disclosure_required), priceAcknowledged: priceAcknowledged, onPriceAcknowledged: setPriceAcknowledged, outsideOperatingHours: Boolean(pendingProposal?.outside_operating_hours), nextOpenAt: pendingProposal?.next_open_at ?? null, onPrepare: () => void handleCreateRequest(), onConfirm: () => void handleConfirmRequest(), onCancel: () => void handleCancelProposal() }), (0, jsx_runtime_1.jsxs)("aside", { className: "lg:col-span-3 flex flex-col h-full min-h-0 overflow-y-auto custom-scrollbar space-y-2.5 pr-0.5", "data-purpose": "right-assistant-and-status", children: [(0, jsx_runtime_1.jsx)(VoiceAssistant_1.VoiceAssistant, { language: selectedLanguage, enabled: voiceUI.enabled, available: voiceAvailable, state: voiceUI.status, message: voiceUI.message, volume: voiceVolume, onToggle: () => void handleVoiceSearch() }), (0, jsx_runtime_1.jsx)(MyRequests_1.MyRequests, { language: selectedLanguage, tickets: requestsList.map(req => ({ ...req, title: req.kind ? requestKindLabel(req.kind, selectedLanguage) : req.title, statusText: (0, i18n_1.statusLabel)(selectedLanguage, req.status) })), selectedId: expandedRequest, onSelectTicket: id => void checkRequest(id) })] })] }), (0, jsx_runtime_1.jsx)(RequestFlow_1.RequestFlow, { edit: requestType ? { isOpen: isEditModalOpen, kind: requestType,
+                    requestTypes: (changeTargetId ? uiContract?.request_types.filter(item => item.kind === requestType) : uiContract?.request_types.filter(item => item.actions.includes('create_request'))) || [],
+                    room: roomNumber, quantity, time: requestTime, party: partySize, note, dataConsent,
+                    showConsent: !Boolean(changeTargetId), language: selectedLanguage,
+                    onClose: () => { setIsEditModalOpen(false); setChangeTargetId(null); }, onSave: handleSaveEdit } : null, verification: { isOpen: verificationModalOpen, language: selectedLanguage, room: roomNumber,
+                    onClose: () => setVerificationModalOpen(false),
+                    onSubmit: (lastName, roomQrToken) => { setVerificationModalOpen(false); void handleConfirmRequest({ room_number: roomNumber.trim(), last_name: lastName, room_qr_token: roomQrToken }); } }, ticket: { language: selectedLanguage, isOpen: Boolean(expandedRequest), progress: requestProgress, error: requestProgressError,
+                    busy: changeBusy, onCancelRequest: () => void requestCancelSubmitted(), onModifyRequest: requestModifySubmitted,
+                    onSubmitFeedback: (rating, note) => void submitFeedback(rating, note),
+                    onClose: () => { expandedRequestRef.current = null; setExpandedRequest(null); setRequestProgress(null); } } })] });
 };
 exports.App = App;
 exports.default = exports.App;
 
-},{"react/jsx-runtime":1,"react":3,"./api":15,"./i18n":16,"./continuousVoice":21,"./voiceAgent":22,"./hooks/useVoiceSession":78,"./hooks/useTurnLifecycle":79,"./hooks/useSpeechPlayback":80,"./components/Header":81,"./components/SidebarNav":82,"./components/ChatSection":83,"./components/VoiceAssistant":85,"./components/MyRequests":86,"./components/EditRequestModal":87,"./components/TicketModal":89,"./components/VerificationModal":90}],
+},{"react/jsx-runtime":1,"react":3,"./api":15,"./i18n":16,"./continuousVoice":21,"./voiceAgent":22,"./hooks/useVoiceSession":78,"./hooks/useTurnLifecycle":79,"./hooks/useSpeechPlayback":80,"./components/Header":81,"./components/SidebarNav":82,"./components/VoiceAssistant":83,"./components/MyRequests":84,"./screens/Chat":85,"./screens/RequestFlow":88,"./hooks/useRequestDraft":93}],
 15:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -48924,657 +48920,664 @@ exports.listEnumNumbers = listEnumNumbers;
 
 },{}],
 77:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.utils = exports.mulaw = exports.alaw = void 0;
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+    for (var name in all)
+        __defProp(target, name, { get: all[name], enumerable: true });
 };
-
 // src/lib/alaw.ts
 var alaw_exports = {};
+exports.alaw = alaw_exports;
 __export(alaw_exports, {
-  decode: () => decode,
-  decodeBuffer: () => decodeBuffer,
-  decodeSample: () => decodeSample,
-  encode: () => encode,
-  encodeBuffer: () => encodeBuffer,
-  encodeSample: () => encodeSample
+    decode: () => decode,
+    decodeBuffer: () => decodeBuffer,
+    decodeSample: () => decodeSample,
+    encode: () => encode,
+    encodeBuffer: () => encodeBuffer,
+    encodeSample: () => encodeSample
 });
 var LOG_TABLE = [
-  1,
-  1,
-  2,
-  2,
-  3,
-  3,
-  3,
-  3,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7
 ];
 function encodeSample(sample) {
-  let compandedValue;
-  sample = sample == -32768 ? -32767 : sample;
-  let sign = ~sample >> 8 & 128;
-  if (!sign) {
-    sample = sample * -1;
-  }
-  if (sample > 32635) {
-    sample = 32635;
-  }
-  if (sample >= 256) {
-    let exponent = LOG_TABLE[sample >> 8 & 127];
-    let mantissa = sample >> exponent + 3 & 15;
-    compandedValue = exponent << 4 | mantissa;
-  } else {
-    compandedValue = sample >> 4;
-  }
-  return compandedValue ^ (sign ^ 85);
+    let compandedValue;
+    sample = sample == -32768 ? -32767 : sample;
+    let sign = ~sample >> 8 & 128;
+    if (!sign) {
+        sample = sample * -1;
+    }
+    if (sample > 32635) {
+        sample = 32635;
+    }
+    if (sample >= 256) {
+        let exponent = LOG_TABLE[sample >> 8 & 127];
+        let mantissa = sample >> exponent + 3 & 15;
+        compandedValue = exponent << 4 | mantissa;
+    }
+    else {
+        compandedValue = sample >> 4;
+    }
+    return compandedValue ^ (sign ^ 85);
 }
 __name(encodeSample, "encodeSample");
 function decodeSample(sample) {
-  let sign = 0;
-  sample ^= 85;
-  if (sample & 128) {
-    sample &= -129;
-    sign = -1;
-  }
-  let position = ((sample & 240) >> 4) + 4;
-  let decoded = 0;
-  if (position != 4) {
-    decoded = 1 << position | (sample & 15) << position - 4 | 1 << position - 5;
-  } else {
-    decoded = sample << 1 | 1;
-  }
-  decoded = sign === 0 ? decoded : -decoded;
-  return decoded * 8 * -1;
+    let sign = 0;
+    sample ^= 85;
+    if (sample & 128) {
+        sample &= -129;
+        sign = -1;
+    }
+    let position = ((sample & 240) >> 4) + 4;
+    let decoded = 0;
+    if (position != 4) {
+        decoded = 1 << position | (sample & 15) << position - 4 | 1 << position - 5;
+    }
+    else {
+        decoded = sample << 1 | 1;
+    }
+    decoded = sign === 0 ? decoded : -decoded;
+    return decoded * 8 * -1;
 }
 __name(decodeSample, "decodeSample");
 function encode(samples) {
-  let aLawSamples = new Uint8Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
-    aLawSamples[i] = encodeSample(samples[i]);
-  }
-  return aLawSamples;
+    let aLawSamples = new Uint8Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+        aLawSamples[i] = encodeSample(samples[i]);
+    }
+    return aLawSamples;
 }
 __name(encode, "encode");
 function decode(samples) {
-  let pcmSamples = new Int16Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
-    pcmSamples[i] = decodeSample(samples[i]);
-  }
-  return pcmSamples;
+    let pcmSamples = new Int16Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+        pcmSamples[i] = decodeSample(samples[i]);
+    }
+    return pcmSamples;
 }
 __name(decode, "decode");
 function encodeBuffer(buffer) {
-  const numSamples = Math.floor(buffer.length / 2);
-  const samples = new Int16Array(numSamples);
-  for (let i = 0; i < numSamples; i++) {
-    samples[i] = buffer.readInt16LE(i * 2);
-  }
-  return Buffer.from(encode(samples).buffer);
+    const numSamples = Math.floor(buffer.length / 2);
+    const samples = new Int16Array(numSamples);
+    for (let i = 0; i < numSamples; i++) {
+        samples[i] = buffer.readInt16LE(i * 2);
+    }
+    return Buffer.from(encode(samples).buffer);
 }
 __name(encodeBuffer, "encodeBuffer");
 function decodeBuffer(buffer) {
-  const samples = decode(new Uint8Array(buffer));
-  return Buffer.from(samples.buffer);
+    const samples = decode(new Uint8Array(buffer));
+    return Buffer.from(samples.buffer);
 }
 __name(decodeBuffer, "decodeBuffer");
-
 // src/lib/mulaw.ts
 var mulaw_exports = {};
+exports.mulaw = mulaw_exports;
 __export(mulaw_exports, {
-  decode: () => decode2,
-  decodeBuffer: () => decodeBuffer2,
-  decodeSample: () => decodeSample2,
-  encode: () => encode2,
-  encodeBuffer: () => encodeBuffer2,
-  encodeSample: () => encodeSample2
+    decode: () => decode2,
+    decodeBuffer: () => decodeBuffer2,
+    decodeSample: () => decodeSample2,
+    encode: () => encode2,
+    encodeBuffer: () => encodeBuffer2,
+    encodeSample: () => encodeSample2
 });
 var BIAS = 132;
 var CLIP = 32635;
 var encodeTable = [
-  0,
-  0,
-  1,
-  1,
-  2,
-  2,
-  2,
-  2,
-  3,
-  3,
-  3,
-  3,
-  3,
-  3,
-  3,
-  3,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  4,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  5,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  6,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7,
-  7
+    0,
+    0,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7
 ];
 var decodeTable = [0, 132, 396, 924, 1980, 4092, 8316, 16764];
 function encodeSample2(sample) {
-  const sign = sample < 0 ? 128 : 0;
-  sample = Math.abs(sample);
-  sample += BIAS;
-  if (sample > CLIP) sample = CLIP;
-  const exponent = encodeTable[sample >> 7 & 255];
-  const mantissa = sample >> exponent + 3 & 15;
-  return ~(sign | exponent << 4 | mantissa) & 255;
+    const sign = sample < 0 ? 128 : 0;
+    sample = Math.abs(sample);
+    sample += BIAS;
+    if (sample > CLIP)
+        sample = CLIP;
+    const exponent = encodeTable[sample >> 7 & 255];
+    const mantissa = sample >> exponent + 3 & 15;
+    return ~(sign | exponent << 4 | mantissa) & 255;
 }
 __name(encodeSample2, "encodeSample");
 function decodeSample2(sample) {
-  sample = ~sample & 255;
-  const sign = sample & 128 ? -1 : 1;
-  const exponent = sample >> 4 & 7;
-  const mantissa = sample & 15;
-  const decodedSample = decodeTable[exponent] + (mantissa << exponent + 3);
-  return sign * decodedSample;
+    sample = ~sample & 255;
+    const sign = sample & 128 ? -1 : 1;
+    const exponent = sample >> 4 & 7;
+    const mantissa = sample & 15;
+    const decodedSample = decodeTable[exponent] + (mantissa << exponent + 3);
+    return sign * decodedSample;
 }
 __name(decodeSample2, "decodeSample");
 function encode2(samples) {
-  const muLawSamples = new Uint8Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
-    muLawSamples[i] = encodeSample2(samples[i]);
-  }
-  return muLawSamples;
+    const muLawSamples = new Uint8Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+        muLawSamples[i] = encodeSample2(samples[i]);
+    }
+    return muLawSamples;
 }
 __name(encode2, "encode");
 function decode2(samples) {
-  const pcmSamples = new Int16Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
-    pcmSamples[i] = decodeSample2(samples[i]);
-  }
-  return pcmSamples;
+    const pcmSamples = new Int16Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+        pcmSamples[i] = decodeSample2(samples[i]);
+    }
+    return pcmSamples;
 }
 __name(decode2, "decode");
 function encodeBuffer2(buffer) {
-  const numSamples = Math.floor(buffer.length / 2);
-  const samples = new Int16Array(numSamples);
-  for (let i = 0; i < numSamples; i++) {
-    samples[i] = buffer.readInt16LE(i * 2);
-  }
-  return Buffer.from(encode2(samples).buffer);
+    const numSamples = Math.floor(buffer.length / 2);
+    const samples = new Int16Array(numSamples);
+    for (let i = 0; i < numSamples; i++) {
+        samples[i] = buffer.readInt16LE(i * 2);
+    }
+    return Buffer.from(encode2(samples).buffer);
 }
 __name(encodeBuffer2, "encodeBuffer");
 function decodeBuffer2(buffer) {
-  const samples = decode2(new Uint8Array(buffer));
-  return Buffer.from(samples.buffer);
+    const samples = decode2(new Uint8Array(buffer));
+    return Buffer.from(samples.buffer);
 }
 __name(decodeBuffer2, "decodeBuffer");
-
 // src/lib/utils.ts
 var utils_exports = {};
+exports.utils = utils_exports;
 __export(utils_exports, {
-  calculateLoudness: () => calculateLoudness,
-  createWavHeader: () => createWavHeader,
-  resample: () => resample
+    calculateLoudness: () => calculateLoudness,
+    createWavHeader: () => createWavHeader,
+    resample: () => resample
 });
 var BIT_DEPTHS = [8, 16, 24, 32, 48];
 function calculateLoudness(buffer, bitDepth) {
-  if (!(buffer instanceof Buffer) || buffer.length === 0) {
-    throw new Error("Invalid buffer, must be a non-empty Buffer.");
-  }
-  if (!BIT_DEPTHS.includes(bitDepth)) {
-    throw new Error("Invalid bit depth, supported values are 8, 16, 24, 32, and 48.");
-  }
-  if (bitDepth === 48) {
-    throw new Error("48-bit audio is not yet implemented.");
-  }
-  const bytesPerSample = Math.ceil(bitDepth / 8);
-  if (buffer.length % bytesPerSample !== 0) {
-    throw new Error(
-      `Invalid buffer length ${buffer.length}. Must be a multiple of ${bytesPerSample} bytes for ${bitDepth}-bit audio.`
-    );
-  }
-  const maxValue = Math.pow(2, bitDepth - 1) - 1;
-  const numSamples = buffer.length / bytesPerSample;
-  let sumOfSquares = 0;
-  for (let i = 0; i < numSamples; i++) {
-    const offset = i * bytesPerSample;
-    let sample;
-    switch (bitDepth) {
-      case 8:
-        sample = buffer[offset];
-        if (sample & 128) sample = sample - 256;
-        break;
-      case 16:
-        sample = buffer[offset] | buffer[offset + 1] << 8;
-        if (sample & 32768) sample = sample - 65536;
-        break;
-      case 24:
-        sample = buffer[offset] | buffer[offset + 1] << 8 | buffer[offset + 2] << 16;
-        if (sample & 8388608) sample = sample | -16777216;
-        break;
-      case 32:
-        sample = buffer[offset] | buffer[offset + 1] << 8 | buffer[offset + 2] << 16 | buffer[offset + 3] << 24;
-        break;
-      default:
-        throw new Error(`Unsupported bit depth: ${bitDepth}`);
+    if (!(buffer instanceof Buffer) || buffer.length === 0) {
+        throw new Error("Invalid buffer, must be a non-empty Buffer.");
     }
-    const normalized = sample / maxValue;
-    sumOfSquares += normalized * normalized;
-  }
-  const rms = Math.sqrt(sumOfSquares / numSamples);
-  return rms <= 1e-10 ? -100 : 20 * Math.log10(rms);
+    if (!BIT_DEPTHS.includes(bitDepth)) {
+        throw new Error("Invalid bit depth, supported values are 8, 16, 24, 32, and 48.");
+    }
+    if (bitDepth === 48) {
+        throw new Error("48-bit audio is not yet implemented.");
+    }
+    const bytesPerSample = Math.ceil(bitDepth / 8);
+    if (buffer.length % bytesPerSample !== 0) {
+        throw new Error(`Invalid buffer length ${buffer.length}. Must be a multiple of ${bytesPerSample} bytes for ${bitDepth}-bit audio.`);
+    }
+    const maxValue = Math.pow(2, bitDepth - 1) - 1;
+    const numSamples = buffer.length / bytesPerSample;
+    let sumOfSquares = 0;
+    for (let i = 0; i < numSamples; i++) {
+        const offset = i * bytesPerSample;
+        let sample;
+        switch (bitDepth) {
+            case 8:
+                sample = buffer[offset];
+                if (sample & 128)
+                    sample = sample - 256;
+                break;
+            case 16:
+                sample = buffer[offset] | buffer[offset + 1] << 8;
+                if (sample & 32768)
+                    sample = sample - 65536;
+                break;
+            case 24:
+                sample = buffer[offset] | buffer[offset + 1] << 8 | buffer[offset + 2] << 16;
+                if (sample & 8388608)
+                    sample = sample | -16777216;
+                break;
+            case 32:
+                sample = buffer[offset] | buffer[offset + 1] << 8 | buffer[offset + 2] << 16 | buffer[offset + 3] << 24;
+                break;
+            default:
+                throw new Error(`Unsupported bit depth: ${bitDepth}`);
+        }
+        const normalized = sample / maxValue;
+        sumOfSquares += normalized * normalized;
+    }
+    const rms = Math.sqrt(sumOfSquares / numSamples);
+    return rms <= 1e-10 ? -100 : 20 * Math.log10(rms);
 }
 __name(calculateLoudness, "calculateLoudness");
 function createWavHeader(dataSize, sampleRate, channels, bitDepth) {
-  const headerData = [
-    { value: "RIFF", type: "string" },
-    { value: 36 + dataSize, type: "uint32" },
-    { value: "WAVE", type: "string" },
-    { value: "fmt ", type: "string" },
-    { value: 16, type: "uint32" },
-    { value: 1, type: "uint16" },
-    { value: channels, type: "uint16" },
-    { value: sampleRate, type: "uint32" },
-    { value: sampleRate * channels * bitDepth / 8, type: "uint32" },
-    { value: channels * bitDepth / 8, type: "uint16" },
-    { value: bitDepth, type: "uint16" },
-    { value: "data", type: "string" },
-    { value: dataSize, type: "uint32" }
-  ];
-  const header = Buffer.alloc(44);
-  let offset = 0;
-  headerData.forEach(({ value, type }) => {
-    if (type === "string") {
-      header.write(value, offset);
-      offset += 4;
-    } else if (type === "uint32") {
-      header.writeUInt32LE(value, offset);
-      offset += 4;
-    } else if (type === "uint16") {
-      header.writeUInt16LE(value, offset);
-      offset += 2;
-    }
-  });
-  return header;
+    const headerData = [
+        { value: "RIFF", type: "string" },
+        { value: 36 + dataSize, type: "uint32" },
+        { value: "WAVE", type: "string" },
+        { value: "fmt ", type: "string" },
+        { value: 16, type: "uint32" },
+        { value: 1, type: "uint16" },
+        { value: channels, type: "uint16" },
+        { value: sampleRate, type: "uint32" },
+        { value: sampleRate * channels * bitDepth / 8, type: "uint32" },
+        { value: channels * bitDepth / 8, type: "uint16" },
+        { value: bitDepth, type: "uint16" },
+        { value: "data", type: "string" },
+        { value: dataSize, type: "uint32" }
+    ];
+    const header = Buffer.alloc(44);
+    let offset = 0;
+    headerData.forEach(({ value, type }) => {
+        if (type === "string") {
+            header.write(value, offset);
+            offset += 4;
+        }
+        else if (type === "uint32") {
+            header.writeUInt32LE(value, offset);
+            offset += 4;
+        }
+        else if (type === "uint16") {
+            header.writeUInt16LE(value, offset);
+            offset += 2;
+        }
+    });
+    return header;
 }
 __name(createWavHeader, "createWavHeader");
 var resample = /* @__PURE__ */ __name((samples, inputSampleRate, targetSampleRate, bitDepth) => {
-  if (inputSampleRate <= 0 || targetSampleRate <= 0) {
-    throw new Error("Sample rates must be positive.");
-  }
-  if (!BIT_DEPTHS.includes(bitDepth)) {
-    throw new Error(`Invalid bit depth. Allowed values are: ${BIT_DEPTHS.join(", ")}`);
-  }
-  const ratio = targetSampleRate / inputSampleRate;
-  const outLength = Math.round(samples.length * ratio);
-  const resampled = new Array(outLength);
-  const maxSample = (1 << bitDepth - 1) - 1;
-  const minSample = -1 << bitDepth - 1;
-  for (let i = 0; i < outLength; i++) {
-    const sourcePos = i / ratio;
-    const index1 = Math.floor(sourcePos);
-    const index2 = Math.min(index1 + 1, samples.length - 1);
-    const alpha = sourcePos - index1;
-    const interpolated = samples[index1] * (1 - alpha) + samples[index2] * alpha;
-    const intSample = Math.round(interpolated);
-    resampled[i] = Math.max(minSample, Math.min(maxSample, intSample));
-  }
-  return resampled;
+    if (inputSampleRate <= 0 || targetSampleRate <= 0) {
+        throw new Error("Sample rates must be positive.");
+    }
+    if (!BIT_DEPTHS.includes(bitDepth)) {
+        throw new Error(`Invalid bit depth. Allowed values are: ${BIT_DEPTHS.join(", ")}`);
+    }
+    const ratio = targetSampleRate / inputSampleRate;
+    const outLength = Math.round(samples.length * ratio);
+    const resampled = new Array(outLength);
+    const maxSample = (1 << bitDepth - 1) - 1;
+    const minSample = -1 << bitDepth - 1;
+    for (let i = 0; i < outLength; i++) {
+        const sourcePos = i / ratio;
+        const index1 = Math.floor(sourcePos);
+        const index2 = Math.min(index1 + 1, samples.length - 1);
+        const alpha = sourcePos - index1;
+        const interpolated = samples[index1] * (1 - alpha) + samples[index2] * alpha;
+        const intSample = Math.round(interpolated);
+        resampled[i] = Math.max(minSample, Math.min(maxSample, intSample));
+    }
+    return resampled;
 }, "resample");
-
-export { alaw_exports as alaw, mulaw_exports as mulaw, utils_exports as utils };
 
 },{}],
 78:[function(module,exports,require,process){
@@ -49842,6 +49845,50 @@ exports.SidebarNav = SidebarNav;
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
 83:[function(module,exports,require,process){
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VoiceAssistant = void 0;
+const jsx_runtime_1 = require("react/jsx-runtime");
+const react_1 = __importDefault(require("react"));
+const i18n_1 = require("../i18n");
+const VoiceAssistant = ({ enabled, available, state, message, language, volume, onToggle }) => {
+    const statusKey = state === 'playing' ? 'voicePlaying' : state === 'processing' || state === 'recovering' ? 'voiceProcessing' : state === 'speaking' || state === 'interrupted' ? 'voiceSpeaking' : state === 'ready' ? 'voiceListening' : 'voiceStarting';
+    const voiceStatus = enabled ? (0, i18n_1.t)(language, statusKey) : (0, i18n_1.t)(language, 'voicePaused');
+    return (0, jsx_runtime_1.jsxs)("div", { className: "relative bg-white border border-brand-borderLight shadow-sm flex flex-col items-center p-3 rounded-lg shrink-0", "data-purpose": "voice-assistant-card", children: [(0, jsx_runtime_1.jsx)("h3", { className: "font-serif font-semibold text-base text-brand-navyDark", children: (0, i18n_1.t)(language, 'voiceAssistant') }), (0, jsx_runtime_1.jsx)("p", { className: "text-[11px] text-brand-textMuted mt-0.5", children: (0, i18n_1.t)(language, 'voiceDescription') }), (0, jsx_runtime_1.jsxs)("div", { className: "relative flex items-center justify-center my-3 w-24 h-24", children: [enabled && (0, jsx_runtime_1.jsx)("div", { "aria-hidden": "true", className: "absolute w-24 h-24 rounded-full bg-amber-400/20 animate-ping" }), (0, jsx_runtime_1.jsx)("button", { type: "button", "aria-label": (0, i18n_1.t)(language, enabled ? 'stopMic' : 'startMic'), "aria-pressed": enabled, disabled: !available, onClick: onToggle, className: "relative z-10 w-20 h-20 rounded-full bg-[#11243A] text-white flex items-center justify-center shadow-lg border-4 border-[#FAF5EC] disabled:opacity-40 text-2xl", children: enabled ? '◉' : '🎙' })] }), (0, jsx_runtime_1.jsx)("p", { role: "status", "aria-live": "polite", className: "text-xs text-center font-semibold text-[#142742]", children: available ? voiceStatus : (0, i18n_1.t)(language, 'voiceUnavailable') }), (0, jsx_runtime_1.jsx)("div", { className: "w-24 h-1.5 rounded-full bg-slate-200 overflow-hidden", role: "meter", "aria-label": "Microphone level", "aria-valuemin": 0, "aria-valuemax": 1, "aria-valuenow": enabled ? volume : 0, children: (0, jsx_runtime_1.jsx)("div", { className: "h-full rounded-full bg-emerald-500 transition-[width] duration-75", style: { width: `${enabled ? Math.round(volume * 100) : 0}%` } }) }), message && (0, jsx_runtime_1.jsx)("p", { role: "status", "aria-live": "polite", className: "text-[10px] text-gray-500 mt-1 text-center", children: message }), (0, jsx_runtime_1.jsx)("p", { className: "text-[10px] text-gray-500 mt-2", children: (0, i18n_1.t)(language, 'micPermission') })] });
+};
+exports.VoiceAssistant = VoiceAssistant;
+
+},{"react/jsx-runtime":1,"react":3,"../i18n":16}],
+84:[function(module,exports,require,process){
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MyRequests = void 0;
+const jsx_runtime_1 = require("react/jsx-runtime");
+const react_1 = __importDefault(require("react"));
+const i18n_1 = require("../i18n");
+const MyRequests = ({ tickets, selectedId, language, onSelectTicket }) => (0, jsx_runtime_1.jsxs)("div", { className: "bg-white border border-brand-borderLight shadow-sm rounded-lg p-3 space-y-3", "data-purpose": "my-requests-card", children: [(0, jsx_runtime_1.jsxs)("div", { className: "flex items-center justify-between pb-1 border-b border-gray-100", children: [(0, jsx_runtime_1.jsx)("h3", { className: "font-serif font-semibold text-base text-brand-navyDark", children: (0, i18n_1.t)(language, 'myRequests') }), (0, jsx_runtime_1.jsxs)("span", { className: "text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded", children: [tickets.length, " ", (0, i18n_1.t)(language, 'inSession')] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "space-y-2", children: [tickets.length === 0 && (0, jsx_runtime_1.jsx)("p", { className: "text-xs text-gray-500", children: (0, i18n_1.t)(language, 'noRequests') }), tickets.map(ticket => (0, jsx_runtime_1.jsxs)("button", { type: "button", onClick: () => onSelectTicket(ticket.id), className: `w-full min-h-11 text-left flex items-center justify-between gap-2 p-2.5 bg-[#FAF7F2] rounded-xl border ${selectedId === ticket.id ? 'border-[#73532C]' : 'border-[#E9E1D2]'} hover:bg-white`, children: [(0, jsx_runtime_1.jsxs)("div", { className: "min-w-0", children: [(0, jsx_runtime_1.jsx)("h4", { className: "font-semibold text-xs text-brand-navyDark", children: ticket.title }), (0, jsx_runtime_1.jsx)("div", { className: "text-[10px] font-mono text-[#73532C] break-all", children: ticket.id }), (0, jsx_runtime_1.jsx)("div", { className: "text-[10px] text-gray-600 mt-0.5", children: ticket.subtitle })] }), (0, jsx_runtime_1.jsx)("span", { className: "shrink-0 text-[9px] rounded px-2 py-1 bg-[#F8EBD8] text-[#845618]", children: ticket.statusText })] }, ticket.id))] })] });
+exports.MyRequests = MyRequests;
+
+},{"react/jsx-runtime":1,"react":3,"../i18n":16}],
+85:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Chat = Chat;
+const jsx_runtime_1 = require("react/jsx-runtime");
+const ChatSection_1 = require("../components/ChatSection");
+/** Screen boundary for the guest conversation and read-only request preview. */
+function Chat(props) {
+    return (0, jsx_runtime_1.jsx)(ChatSection_1.ChatSection, { ...props });
+}
+
+},{"react/jsx-runtime":1,"../components/ChatSection":86}],
+86:[function(module,exports,require,process){
+"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -49894,8 +49941,8 @@ const ChatSection = ({ propertyName, language, messages, value, onChange, onSend
 };
 exports.ChatSection = ChatSection;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"./MarkdownText":84}],
-84:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"./MarkdownText":87}],
+87:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -49931,39 +49978,21 @@ function MarkdownText({ text, className }) {
 }
 
 },{"react/jsx-runtime":1,"react":3}],
-85:[function(module,exports,require,process){
+88:[function(module,exports,require,process){
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.VoiceAssistant = void 0;
+exports.RequestFlow = RequestFlow;
 const jsx_runtime_1 = require("react/jsx-runtime");
-const react_1 = __importDefault(require("react"));
-const i18n_1 = require("../i18n");
-const VoiceAssistant = ({ enabled, available, state, message, language, volume, onToggle }) => {
-    const statusKey = state === 'playing' ? 'voicePlaying' : state === 'processing' || state === 'recovering' ? 'voiceProcessing' : state === 'speaking' || state === 'interrupted' ? 'voiceSpeaking' : state === 'ready' ? 'voiceListening' : 'voiceStarting';
-    const voiceStatus = enabled ? (0, i18n_1.t)(language, statusKey) : (0, i18n_1.t)(language, 'voicePaused');
-    return (0, jsx_runtime_1.jsxs)("div", { className: "relative bg-white border border-brand-borderLight shadow-sm flex flex-col items-center p-3 rounded-lg shrink-0", "data-purpose": "voice-assistant-card", children: [(0, jsx_runtime_1.jsx)("h3", { className: "font-serif font-semibold text-base text-brand-navyDark", children: (0, i18n_1.t)(language, 'voiceAssistant') }), (0, jsx_runtime_1.jsx)("p", { className: "text-[11px] text-brand-textMuted mt-0.5", children: (0, i18n_1.t)(language, 'voiceDescription') }), (0, jsx_runtime_1.jsxs)("div", { className: "relative flex items-center justify-center my-3 w-24 h-24", children: [enabled && (0, jsx_runtime_1.jsx)("div", { "aria-hidden": "true", className: "absolute w-24 h-24 rounded-full bg-amber-400/20 animate-ping" }), (0, jsx_runtime_1.jsx)("button", { type: "button", "aria-label": (0, i18n_1.t)(language, enabled ? 'stopMic' : 'startMic'), "aria-pressed": enabled, disabled: !available, onClick: onToggle, className: "relative z-10 w-20 h-20 rounded-full bg-[#11243A] text-white flex items-center justify-center shadow-lg border-4 border-[#FAF5EC] disabled:opacity-40 text-2xl", children: enabled ? '◉' : '🎙' })] }), (0, jsx_runtime_1.jsx)("p", { role: "status", "aria-live": "polite", className: "text-xs text-center font-semibold text-[#142742]", children: available ? voiceStatus : (0, i18n_1.t)(language, 'voiceUnavailable') }), (0, jsx_runtime_1.jsx)("div", { className: "w-24 h-1.5 rounded-full bg-slate-200 overflow-hidden", role: "meter", "aria-label": "Microphone level", "aria-valuemin": 0, "aria-valuemax": 1, "aria-valuenow": enabled ? volume : 0, children: (0, jsx_runtime_1.jsx)("div", { className: "h-full rounded-full bg-emerald-500 transition-[width] duration-75", style: { width: `${enabled ? Math.round(volume * 100) : 0}%` } }) }), message && (0, jsx_runtime_1.jsx)("p", { role: "status", "aria-live": "polite", className: "text-[10px] text-gray-500 mt-1 text-center", children: message }), (0, jsx_runtime_1.jsx)("p", { className: "text-[10px] text-gray-500 mt-2", children: (0, i18n_1.t)(language, 'micPermission') })] });
-};
-exports.VoiceAssistant = VoiceAssistant;
+const EditRequestModal_1 = require("../components/EditRequestModal");
+const TicketModal_1 = require("../components/TicketModal");
+const VerificationModal_1 = require("../components/VerificationModal");
+/** The prepare/confirm/edit modal flow, kept out of the chat screen. */
+function RequestFlow({ edit, verification, ticket }) {
+    return (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [edit && (0, jsx_runtime_1.jsx)(EditRequestModal_1.EditRequestModal, { ...edit }), (0, jsx_runtime_1.jsx)(VerificationModal_1.VerificationModal, { ...verification }), (0, jsx_runtime_1.jsx)(TicketModal_1.TicketModal, { ...ticket })] });
+}
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-86:[function(module,exports,require,process){
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.MyRequests = void 0;
-const jsx_runtime_1 = require("react/jsx-runtime");
-const react_1 = __importDefault(require("react"));
-const i18n_1 = require("../i18n");
-const MyRequests = ({ tickets, selectedId, language, onSelectTicket }) => (0, jsx_runtime_1.jsxs)("div", { className: "bg-white border border-brand-borderLight shadow-sm rounded-lg p-3 space-y-3", "data-purpose": "my-requests-card", children: [(0, jsx_runtime_1.jsxs)("div", { className: "flex items-center justify-between pb-1 border-b border-gray-100", children: [(0, jsx_runtime_1.jsx)("h3", { className: "font-serif font-semibold text-base text-brand-navyDark", children: (0, i18n_1.t)(language, 'myRequests') }), (0, jsx_runtime_1.jsxs)("span", { className: "text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded", children: [tickets.length, " ", (0, i18n_1.t)(language, 'inSession')] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "space-y-2", children: [tickets.length === 0 && (0, jsx_runtime_1.jsx)("p", { className: "text-xs text-gray-500", children: (0, i18n_1.t)(language, 'noRequests') }), tickets.map(ticket => (0, jsx_runtime_1.jsxs)("button", { type: "button", onClick: () => onSelectTicket(ticket.id), className: `w-full min-h-11 text-left flex items-center justify-between gap-2 p-2.5 bg-[#FAF7F2] rounded-xl border ${selectedId === ticket.id ? 'border-[#73532C]' : 'border-[#E9E1D2]'} hover:bg-white`, children: [(0, jsx_runtime_1.jsxs)("div", { className: "min-w-0", children: [(0, jsx_runtime_1.jsx)("h4", { className: "font-semibold text-xs text-brand-navyDark", children: ticket.title }), (0, jsx_runtime_1.jsx)("div", { className: "text-[10px] font-mono text-[#73532C] break-all", children: ticket.id }), (0, jsx_runtime_1.jsx)("div", { className: "text-[10px] text-gray-600 mt-0.5", children: ticket.subtitle })] }), (0, jsx_runtime_1.jsx)("span", { className: "shrink-0 text-[9px] rounded px-2 py-1 bg-[#F8EBD8] text-[#845618]", children: ticket.statusText })] }, ticket.id))] })] });
-exports.MyRequests = MyRequests;
-
-},{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-87:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"../components/EditRequestModal":89,"../components/TicketModal":91,"../components/VerificationModal":92}],
+89:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -49987,8 +50016,8 @@ const EditRequestModal = ({ isOpen, kind, requestTypes, room, quantity, time, pa
 };
 exports.EditRequestModal = EditRequestModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":88}],
-88:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":90}],
+90:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useModalFocus = useModalFocus;
@@ -50059,7 +50088,7 @@ function useModalFocus(isOpen, onClose) {
 }
 
 },{"react":3}],
-89:[function(module,exports,require,process){
+91:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -50086,8 +50115,8 @@ const TicketModal = ({ isOpen, progress, error, language, busy, onClose, onCance
 };
 exports.TicketModal = TicketModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":88}],
-90:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":90}],
+92:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -50113,7 +50142,38 @@ const VerificationModal = ({ isOpen, language, room, onClose, onSubmit }) => {
 };
 exports.VerificationModal = VerificationModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":88}]};const cache={};const process={env:{NODE_ENV:'production'}};
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":90}],
+93:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.useRequestDraft = useRequestDraft;
+const react_1 = require("react");
+/** Own the mutable request form independently from chat and voice state. */
+function useRequestDraft() {
+    const [requestType, setRequestType] = (0, react_1.useState)(null);
+    const [quantity, setQuantity] = (0, react_1.useState)(1);
+    const [roomNumber, setRoomNumber] = (0, react_1.useState)('');
+    const [requestTime, setRequestTime] = (0, react_1.useState)('');
+    const [partySize, setPartySize] = (0, react_1.useState)('');
+    const [note, setNote] = (0, react_1.useState)('');
+    const [suggestedDetails, setSuggestedDetails] = (0, react_1.useState)(null);
+    const [pendingProposal, setPendingProposal] = (0, react_1.useState)(null);
+    const [priceAcknowledged, setPriceAcknowledged] = (0, react_1.useState)(false);
+    const [submitting, setSubmitting] = (0, react_1.useState)(false);
+    const [verificationModalOpen, setVerificationModalOpen] = (0, react_1.useState)(false);
+    const [isEditModalOpen, setIsEditModalOpen] = (0, react_1.useState)(false);
+    const [dataConsent, setDataConsent] = (0, react_1.useState)(false);
+    return {
+        requestType, setRequestType, quantity, setQuantity, roomNumber, setRoomNumber,
+        requestTime, setRequestTime, partySize, setPartySize, note, setNote,
+        suggestedDetails, setSuggestedDetails, pendingProposal, setPendingProposal,
+        priceAcknowledged, setPriceAcknowledged, submitting, setSubmitting,
+        verificationModalOpen, setVerificationModalOpen, isEditModalOpen, setIsEditModalOpen,
+        dataConsent, setDataConsent,
+    };
+}
+
+},{"react":3}]};const cache={};const process={env:{NODE_ENV:'production'}};
 function load(id){if(cache[id])return cache[id].exports;const row=modules[id];if(!row)throw Error('Unknown frontend module '+id);
 const module={exports:{}};cache[id]=module;
 row[0](module,module.exports,function(spec){const dep=row[1][spec];if(dep===null)return {};if(dep===undefined)throw Error('Unbundled '+spec);return load(dep);},process);return module.exports;}

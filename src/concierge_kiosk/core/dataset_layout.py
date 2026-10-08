@@ -61,6 +61,7 @@ EVAL_VOICE_ASR: Final[str] = "evaluation/voice_text/vi_asr_robustness.jsonl"
 EVAL_MULTI_TURN_VI: Final[str] = "evaluation/end_to_end/journeys/vi_multi_turn.jsonl"
 TRAIN_AGENT_VI_GOLD: Final[str] = "training/agent/vi_gold.jsonl"
 TRAIN_AGENT_MULTILINGUAL: Final[str] = "training/agent/multilingual_support.jsonl"
+TRAIN_AGENT_CANDIDATES: Final[str] = "training/agent/assistant_candidates.jsonl"
 
 
 def dataset_root(root: str | Path | None = None) -> Path:

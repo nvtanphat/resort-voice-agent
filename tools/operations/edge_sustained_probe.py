@@ -13,7 +13,6 @@ import json
 import math
 import os
 import shutil
-import statistics
 import time
 from pathlib import Path
 from urllib.parse import urlsplit

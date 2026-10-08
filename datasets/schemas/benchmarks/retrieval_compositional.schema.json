@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Compositional retrieval case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "classification",
+    "language",
+    "query",
+    "expected_entity_id",
+    "expected_fact_ids",
+    "expected_fact_types",
+    "expected_fact_contexts",
+    "expected_answers",
+    "difficulty",
+    "truth_status",
+    "must_retrieve_all",
+    "must_not_hallucinate",
+    "origin",
+    "entity_type",
+    "entity_domain"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "classification": {
+      "const": "synthetic_grounded_evaluation"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "query": {
+      "type": "string",
+      "minLength": 2
+    },
+    "expected_entity_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "expected_fact_ids": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      }
+    },
+    "expected_fact_types": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "expected_fact_contexts": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "expected_answers": {
+      "type": "array",
+      "minItems": 2
+    },
+    "difficulty": {
+      "const": "compositional_same_entity"
+    },
+    "truth_status": {
+      "const": "canonical_grounded"
+    },
+    "must_retrieve_all": {
+      "const": true
+    },
+    "must_not_hallucinate": {
+      "const": true
+    },
+    "origin": {
+      "const": "generated_from_canonical_facts"
+    },
+    "entity_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entity_domain": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

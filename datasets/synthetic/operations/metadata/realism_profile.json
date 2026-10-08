@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "reviewed_at": "2026-10-04",
+  "classification": "synthetic_operational_meta",
+  "goal": "Provide realistic production-prototype operations and evaluation fixtures while keeping product-authored assumptions explicitly separate from official Furama facts.",
+  "truth_classes": {
+    "official_public": {
+      "may_answer_as_property_fact": true,
+      "requires_label_in_guest_answer": false
+    },
+    "external_corroborated": {
+      "may_answer_as_property_fact": false,
+      "requires_label_in_guest_answer": true
+    },
+    "industry_benchmark": {
+      "may_answer_as_property_fact": false,
+      "requires_label_in_guest_answer": true
+    },
+    "synthetic_property_assumption": {
+      "may_answer_as_property_fact": false,
+      "requires_label_in_guest_answer": true
+    },
+    "synthetic_simulation": {
+      "may_answer_as_property_fact": false,
+      "requires_label_in_guest_answer": true
+    }
+  },
+  "runtime_default": "Canonical official facts are guest-facing by default. Product-authored operational policy may drive workflow decisions, while synthetic facts, prices, credentials and inventory remain non-canonical and require the configured staff/tool gate before guest commitment.",
+  "production_gate": "Production prototype allows product-authored routing and target timings as internal workflow policy. Any claim about Furama facilities, credentials, live inventory, price or completion status must come from canonical truth or an authorized live/staff-confirmed source.",
+  "source_precedence": [
+    "official_public",
+    "external_corroborated",
+    "industry_benchmark",
+    "synthetic_property_assumption",
+    "synthetic_simulation"
+  ],
+  "demo_mode": "Synthetic business fixtures exercise end-to-end concierge flows for testing and controlled prototype operation; they are never indexed as canonical RAG truth.",
+  "dataset_profile": "production-prototype-with-isolated-synthetic-fixtures"
+}

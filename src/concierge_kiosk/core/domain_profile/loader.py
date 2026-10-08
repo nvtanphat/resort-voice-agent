@@ -49,16 +49,22 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
         escalate_without_evidence=bool(item.get("escalate_without_evidence", False)),
         availability_source=(dict(item["availability_source"])
                              if item.get("availability_source") is not None else None),
+        venue_slot=(dict(item["venue_slot"])
+                    if item.get("venue_slot") is not None else None),
+        description=item.get("description", ""),
     ) for item in payload["services"])
 
     preference_fields: dict[str, PreferenceField] = {}
     for name, spec in payload["preferences"]["fields"].items():
         if spec["type"] == "enum":
             preference_fields[name] = PreferenceField(
-                kind="enum", values=tuple(spec["values"]), recognition=spec.get("recognition", {}))
+                kind="enum", values=tuple(spec["values"]),
+                applies_to_slot=spec.get("applies_to_slot"),
+                recognition=spec.get("recognition", {}))
         else:
             preference_fields[name] = PreferenceField(
                 kind="integer", minimum=spec["minimum"], maximum=spec["maximum"],
+                applies_to_slot=spec.get("applies_to_slot"),
                 recognition=spec.get("recognition", {}))
 
     return DomainProfile(
@@ -104,6 +110,10 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
         security=SecurityPolicy(
             blocked_clarification_patterns=tuple(payload["security"]["blocked_clarification_patterns"]),
             sensitive_patterns=tuple(payload["security"]["sensitive_patterns"]),
+            prompt_injection_patterns={
+                language: tuple(patterns)
+                for language, patterns in payload["security"]["prompt_injection_patterns"].items()
+            },
         ),
         rag=RagPolicy(
             query_rewrites=payload["rag"]["query_rewrites"],

@@ -49,7 +49,9 @@ def client(tmp_path: Path, monkeypatch):
         yield ask
 
 
-def test_where_is_it_after_hours_question_returns_localized_route(client):
+def test_where_is_it_after_hours_question_returns_localized_route(client, understand):
+    from concierge_kiosk.agent.understanding.commands import Command
+    understand("nó ở đâu", Command("Navigate", query="nó ở đâu"))
     client("hồ bơi mở cửa lúc mấy giờ", "vi")
     body = client("nó ở đâu", "vi")
     assert body["grounding"] == "map_verified"
@@ -58,13 +60,17 @@ def test_where_is_it_after_hours_question_returns_localized_route(client):
     assert "verified route" not in body["answer"]
 
 
-def test_english_where_is_it_with_question_mark_is_a_followup(client):
+def test_english_where_is_it_with_question_mark_is_a_followup(client, understand):
+    from concierge_kiosk.agent.understanding.commands import Command
+    understand("where is it?", Command("Navigate", query="where is it?"))
     client("what time does the pool open", "en")
     body = client("where is it?", "en")
     assert body["map_guidance"]["status"] == "verified"
 
 
-def test_followup_after_map_only_answer_uses_the_place(client):
+def test_followup_after_map_only_answer_uses_the_place(client, understand):
+    from concierge_kiosk.agent.understanding.commands import Command
+    understand("spa ở đâu", Command("Navigate", query="spa ở đâu"))
     first = client("spa ở đâu", "vi")
     assert first["map_guidance"]["status"] == "verified"
     body = client("mấy giờ mở cửa", "vi")
@@ -72,7 +78,9 @@ def test_followup_after_map_only_answer_uses_the_place(client):
     assert "09:00" in body["answer"]
 
 
-def test_cross_language_followup_uses_target_language_map_label(client):
+def test_cross_language_followup_uses_target_language_map_label(client, understand):
+    from concierge_kiosk.agent.understanding.commands import Command
+    understand("where is it?", Command("Navigate", query="where is it?"))
     client("hồ bơi mở cửa lúc mấy giờ", "vi")
     body = client("where is it?", "en")
     assert body["tool_route"] == "navigation"
@@ -81,7 +89,10 @@ def test_cross_language_followup_uses_target_language_map_label(client):
 
 
 def test_quantity_reply_keeps_pending_service_task(client, understand):
+    from concierge_kiosk.agent.understanding.commands import Command
     understand("khăn tắm", "amenity_delivery")
+    understand("2 cái", Command("SetSlot", field="quantity", value="2 cái"))
+    understand("phòng 305", Command("SetSlot", field="room_number", value="phòng 305"))
     client("tôi muốn thêm khăn tắm", "vi")
     body = client("2 cái", "vi")
     assert body["tool_route"] == "service"
@@ -94,7 +105,9 @@ def test_quantity_reply_keeps_pending_service_task(client, understand):
     ("two extra towels to room 305 please", "cancel it", "en"),
 ])
 def test_cancel_phrase_clears_the_draft(client, understand, request_text, cancel_text, language):
+    from concierge_kiosk.agent.understanding.commands import Command
     understand(request_text, "amenity_delivery")
+    understand(cancel_text, Command("Cancel"))
     client(request_text, language)
     body = client(cancel_text, language)
     assert (body.get("agent_action") or {}).get("status") == "cancelled", body["answer"]

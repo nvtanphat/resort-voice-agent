@@ -34,7 +34,9 @@ function add(filename){
  const id=mod.length;ids.set(filename,id);mod.push(null);
  let code=fs.readFileSync(filename,'utf8');
  if(/\.json$/.test(filename))code=`module.exports=${code};`;
- if(/\.(tsx?|jsx)$/.test(filename))code=ts.transpileModule(code,{fileName:filename,compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
+ // ESM-only packages (e.g. x-law via Pipecat) must become CommonJS too; a raw `export` breaks the whole bundle.
+ const esm=/\.m?js$/.test(filename)&&/^\s*(import|export)\s/m.test(code);
+ if(/\.(tsx?|jsx)$/.test(filename)||esm)code=ts.transpileModule(code,{fileName:filename,compilerOptions:{allowJs:true,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
  const dependencies={};
  for(const match of code.matchAll(/\brequire\((['"])([^'"]+)\1\)/g)){
   const spec=match[2];if(dependencies[spec]!==undefined)continue;

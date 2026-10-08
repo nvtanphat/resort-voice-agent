@@ -1,0 +1,48 @@
+{
+  "schema_version": 3,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_simulation",
+  "simulation_seed": 20261003,
+  "period": "2026-07-01 through 2026-09-28 (simulated)",
+  "row_count": 5000,
+  "contains_real_guest_data": false,
+  "contains_real_room_numbers": false,
+  "unit_reference_model": {
+    "room_units": 198,
+    "villa_units": 68,
+    "total_units": 266,
+    "identifiers": [
+      "SIM-ROOM-*",
+      "SIM-VILLA-*"
+    ],
+    "truth_status": "synthetic_simulation_based_on_official_aggregate_counts",
+    "source_refs": [
+      "furama_property_inventory"
+    ]
+  },
+  "generator": "tools/generate_furama_synthetic_history.py",
+  "purpose": [
+    "dashboard demo",
+    "SLA analytics",
+    "overdue/escalation testing",
+    "capacity and peak-load evaluation"
+  ],
+  "business_hours_semantics": "Requests may be created while a department is closed. For business-hours services, the SLA clock starts at the next staff-response window and staff attendance is generated only inside a configured response window.",
+  "assumption_refs": [
+    "asm_request_history_model",
+    "asm_synthetic_unit_refs",
+    "asm_occupancy_model"
+  ],
+  "lifecycle_semantics": {
+    "states": [
+      "completed",
+      "cancelled",
+      "failed",
+      "reopened",
+      "escalated"
+    ],
+    "agent_action_field": "agent_next_action",
+    "purpose": "exercise retry, reopen, escalation, status and truthful completion behavior"
+  },
+  "distribution_note": "Operational distributions intentionally include skew, long tails, SLA misses and unresolved states; derived duration/SLA fields are reconciled from event timestamps and are not tuned to look clean."
+}

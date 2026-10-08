@@ -1,0 +1,108 @@
+{
+  "dataset_id": "furama-knowledge",
+  "property_id": "FURAMA_DANANG",
+  "role": "canonical_rag_truth",
+  "truth_boundary": "Verified canonical/property-grounded knowledge only. Quarantine, benchmark, result, and synthetic data are excluded from RAG truth.",
+  "metrics": {
+    "facts": 366,
+    "entities": 119,
+    "entity_relations": 273,
+    "verified_sources": 83,
+    "freshness_records": 366,
+    "evidence_snapshots": 83,
+    "pending_domain_reviews": 39
+  },
+  "artifacts": {
+    "knowledge/canonical/aliases.json": {
+      "sha256": "9c9961a12383cceaf437573a7e7d0a169f31480098cc573a283bca152ee88a8d",
+      "bytes": 54622
+    },
+    "knowledge/canonical/contacts.json": {
+      "sha256": "7015d74fd7a44bfd04071c068e8081a297a48ab583fa799b0492c76121514531",
+      "bytes": 4599
+    },
+    "knowledge/canonical/departments.json": {
+      "sha256": "d37d4068c228b4732503b83c6785ff5b3ef89eb8146a50c878349467b02e7d23",
+      "bytes": 4562
+    },
+    "knowledge/canonical/domain_review_queue.json": {
+      "sha256": "db6b574d3b8250d7bf66f2b97604e1dcc3dbe865253d38763fe5f0ce4a676492",
+      "bytes": 25366
+    },
+    "knowledge/canonical/entities.jsonl": {
+      "sha256": "c7c96a7fd00b037c47d2d32483f41a36031c4261e275c6021a4032572c4862dc",
+      "bytes": 55865,
+      "records": 119
+    },
+    "knowledge/canonical/entity_relations.jsonl": {
+      "sha256": "0a3aa52df70bace06090020088106e1f65540517df4cb15da9168d5d38a94a1d",
+      "bytes": 98414,
+      "records": 273
+    },
+    "knowledge/canonical/facts.jsonl": {
+      "sha256": "71113956d6486dc0d740d3f309753bc6bf93242143b702cf14ca76540f7c7b9d",
+      "bytes": 469760,
+      "records": 366
+    },
+    "knowledge/canonical/freshness.jsonl": {
+      "sha256": "8534aa6b18771d46bce6661878595e50560156144d0ee11c2f8751c61050dca4",
+      "bytes": 113897,
+      "records": 366
+    },
+    "knowledge/canonical/map.json": {
+      "sha256": "1f4b6ce7e22d5629686793a291b2e31268d09ed7420487533d706ab25cc6528f",
+      "bytes": 8156
+    },
+    "knowledge/canonical/map_paths.json": {
+      "sha256": "88a7777f8f4664ca62e4f49f5f8a6d590f3bf4b67af1ea6a236523b2314ecb37",
+      "bytes": 41629
+    },
+    "knowledge/canonical/planning.json": {
+      "sha256": "b5cbdc1dff378f9d2e8c5f44d3d17c116ededdc7b40dc8e10dc9b3de8ee0c0ce",
+      "bytes": 3717
+    },
+    "knowledge/canonical/property_profile.json": {
+      "sha256": "0f977b9ba63ca96c2fc5937985e3345f6763561fdde237f4e0181c042abc22f5",
+      "bytes": 2053
+    },
+    "knowledge/canonical/service_catalog.json": {
+      "sha256": "2198cc3b65fdc037f5d14c80884f78bde87d570404e8a19532ba9053c5d0edc4",
+      "bytes": 19297
+    },
+    "knowledge/documents/manifest.json": {
+      "sha256": "b90f48312d4522dda4b4ea7c0864257774f82c67aa288ed6455487f0162352d5",
+      "bytes": 416
+    },
+    "knowledge/sources/verification_snapshots.jsonl": {
+      "sha256": "f4059745ec1603c1490e9ec16bff00fada1f9176212202987cca105db021cd9c",
+      "bytes": 81550,
+      "records": 83
+    },
+    "knowledge/sources/verified_sources.jsonl": {
+      "sha256": "ba07f62d30ae18c40d040e11e5dea86b1aab0a181ab226a9b6374fcce8c817d9",
+      "bytes": 72571,
+      "records": 83
+    },
+    "knowledge/canonical/context_labels.json": {
+      "sha256": "bea2c1727cce6de522af3b44abda7fac03bd06b6138782f974afb88ca38d6848",
+      "bytes": 98748
+    },
+    "knowledge/canonical/entity_display_labels.json": {
+      "sha256": "cfbd36818b28b304d4a43556b30d5d8dc4646253594a786c9b782275bab5e7c2",
+      "bytes": 3169
+    }
+  },
+  "rag_index_policy": {
+    "source_of_truth": "datasets/knowledge/canonical/facts.jsonl",
+    "derived_documents": "datasets/knowledge/documents/",
+    "allowed_inputs": [
+      "datasets/knowledge/canonical/facts.jsonl"
+    ],
+    "excluded_prefixes": [
+      "datasets/training/",
+      "datasets/evaluation/",
+      "datasets/quarantine/",
+      "datasets/synthetic/"
+    ]
+  }
+}

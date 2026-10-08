@@ -1,7 +1,6 @@
 """Validate the canonical hospitality evaluation and simulation artifacts."""
 from __future__ import annotations
 
-from collections import Counter
 from datetime import datetime
 import json
 import sys

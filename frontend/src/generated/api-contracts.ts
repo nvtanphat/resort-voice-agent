@@ -8,5 +8,6 @@ export interface ServicePayload {
   preferred_time?: string;
   price_acknowledged?: boolean;
   quantity?: number;
+  restaurant_name?: string;
   room_number?: string;
 }

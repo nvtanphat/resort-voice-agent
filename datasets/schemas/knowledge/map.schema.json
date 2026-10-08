@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:furama:knowledge:map:v1",
+  "title": "Furama canonical zone map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "property_id",
+    "zones"
+  ],
+  "properties": {
+    "property_id": {
+      "const": "FURAMA_DANANG"
+    },
+    "zones": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "zone_id",
+          "name",
+          "description",
+          "locations"
+        ],
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "pattern": "^zone\\.[a-z0-9_]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "locations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "entity_id",
+                "name",
+                "level"
+              ],
+              "properties": {
+                "entity_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "level": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "source_url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "verification_status": {
+                  "enum": [
+                    "verified",
+                    "unverified"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

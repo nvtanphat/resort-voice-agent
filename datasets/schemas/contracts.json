@@ -1,0 +1,1345 @@
+{
+  "contract_version": 3,
+  "strict": true,
+  "format_validation": true,
+  "contracts": [
+    {
+      "path": "datasets/knowledge/canonical/facts.jsonl",
+      "schema": "datasets/schemas/knowledge/fact.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/knowledge/canonical/context_labels.json",
+      "schema": "datasets/schemas/knowledge/context_labels.schema.json",
+      "mode": "json"
+    },
+    {
+      "path": "datasets/knowledge/canonical/entity_display_labels.json",
+      "schema": "datasets/schemas/knowledge/entity_display_labels.schema.json",
+      "mode": "json"
+    },
+    {
+      "path": "datasets/knowledge/canonical/entities.jsonl",
+      "schema": "datasets/schemas/knowledge/entity.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/knowledge/canonical/entity_relations.jsonl",
+      "schema": "datasets/schemas/knowledge/relation.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/knowledge/canonical/service_catalog.json",
+      "schema": "datasets/schemas/knowledge/service_catalog.schema.json",
+      "mode": "json"
+    },
+    {
+      "path": "datasets/synthetic/operations/pms/stays.jsonl",
+      "schema": "datasets/schemas/synthetic/pms_stay.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/synthetic/operations/rooms/inventory.jsonl",
+      "schema": "datasets/schemas/synthetic/room_inventory.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/synthetic/operations/history/requests.jsonl",
+      "schema": "datasets/schemas/synthetic/service_request_history.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/synthetic/operations/policies/service_policies.json",
+      "schema": "datasets/schemas/synthetic/service_policies.schema.json",
+      "mode": "json"
+    },
+    {
+      "path": "datasets/training/agent/vi_gold.jsonl",
+      "schema": "datasets/schemas/training/agent_gold.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/training/agent/multilingual_support.jsonl",
+      "schema": "datasets/schemas/training/agent_gold.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/training/agent/assistant_candidates.jsonl",
+      "schema": "datasets/schemas/training/agent_candidate.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/training/rag/vi_grounded.jsonl",
+      "schema": "datasets/schemas/training/rag_grounded.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/gold/vi_dev.jsonl",
+      "schema": "datasets/schemas/training/agent_gold.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/gold/vi_test.jsonl",
+      "schema": "datasets/schemas/training/agent_gold.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/gold/vi_core.jsonl",
+      "schema": "datasets/schemas/training/agent_gold.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/retrieval/grounded.jsonl",
+      "schema": "datasets/schemas/benchmarks/retrieval_grounded.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/retrieval/grounded_seen.jsonl",
+      "schema": "datasets/schemas/benchmarks/retrieval_grounded.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/retrieval/grounded_fact_holdout.jsonl",
+      "schema": "datasets/schemas/benchmarks/retrieval_grounded.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/retrieval/compositional.jsonl",
+      "schema": "datasets/schemas/benchmarks/retrieval_compositional.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/scenarios/production.jsonl",
+      "schema": "datasets/schemas/benchmarks/scenario_production.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/journeys/production.jsonl",
+      "schema": "datasets/schemas/benchmarks/journey.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/simulation/hospitality_events.jsonl",
+      "schema": "datasets/schemas/benchmarks/simulation_event.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/simulation/stay_episodes.jsonl",
+      "schema": "datasets/schemas/benchmarks/stay_episode.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/simulation/counterfactual_events.jsonl",
+      "schema": "datasets/schemas/benchmarks/counterfactual_event.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/edge_cases.jsonl",
+      "schema": "datasets/schemas/benchmarks/edge_case.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/service_actions.jsonl",
+      "schema": "datasets/schemas/benchmarks/service_action.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/holdout/service_workflow.jsonl",
+      "schema": "datasets/schemas/holdout.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/challenges/natural.jsonl",
+      "schema": "datasets/schemas/benchmarks/natural_challenge.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/backend_plan/turn_cases.jsonl",
+      "schema": "datasets/schemas/benchmarks/backend_plan_turn_case.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/frames/semantic_frames.jsonl",
+      "schema": "datasets/evaluation/schemas/semantic_frame.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/journeys/vi_multi_turn.jsonl",
+      "schema": "datasets/schemas/benchmarks/journey.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/training/agent/source_registry.jsonl",
+      "schema": "datasets/schemas/training/source_registry.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/knowledge/canonical/freshness.jsonl",
+      "schema": "datasets/schemas/knowledge/freshness.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/gold/vi_hard_negatives.jsonl",
+      "schema": "datasets/evaluation/schemas/agent_gold.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/evaluation/voice_text/vi_asr_robustness.jsonl",
+      "schema": "datasets/schemas/voice/asr_text.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/knowledge/sources/verified_sources.jsonl",
+      "schema": "datasets/schemas/knowledge/source_artifact.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/quarantine/facts.jsonl",
+      "schema": "datasets/schemas/quarantine/fact.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/quarantine/source_candidates.jsonl",
+      "schema": "datasets/schemas/knowledge/source_artifact.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/synthetic/operations/engineering/workflows.jsonl",
+      "schema": "datasets/schemas/synthetic/engineering_workflow.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/synthetic/operations/workflows/guest_service_workflows.jsonl",
+      "schema": "datasets/schemas/synthetic/guest_service_workflow.schema.json",
+      "mode": "jsonl"
+    },
+    {
+      "path": "datasets/knowledge/canonical/map.json",
+      "schema": "datasets/schemas/knowledge/map.schema.json",
+      "mode": "json"
+    },
+    {
+      "path": "datasets/knowledge/canonical/planning.json",
+      "schema": "datasets/schemas/knowledge/planning.schema.json",
+      "mode": "json"
+    },
+    {
+      "path": "datasets/knowledge/sources/verification_snapshots.jsonl",
+      "schema": "datasets/schemas/knowledge/verification_snapshot.schema.json",
+      "mode": "jsonl"
+    }
+  ],
+  "shape_contracts": [
+    {
+      "path": "datasets/evaluation/agent/index.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "primary_language",
+        "primary_multi_turn_suite",
+        "primary_single_turn_suite",
+        "reporting",
+        "suites"
+      ],
+      "shape_sha256": "945d4ff72a6d2ec73b1384c92aaaeda945428b3dac69a842df31509096fd0874"
+    },
+    {
+      "path": "datasets/evaluation/audit/final_release_audit.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "blocking_findings",
+        "canonical_truth",
+        "domain_review",
+        "key_uniqueness",
+        "leakage",
+        "named_cross_property_refs",
+        "open_fix_items",
+        "property_id",
+        "referential_integrity",
+        "release_version",
+        "reviewed_at",
+        "schema_validation",
+        "scope_boundaries",
+        "slot_grounding",
+        "source_auditability",
+        "status",
+        "synthetic_reference_integrity",
+        "text_surface",
+        "tree",
+        "unfinished_markers"
+      ],
+      "shape_sha256": "33a3211d74761079355e2be35276b51b0f65f69eab2a5b178a2de6c31f29958c"
+    },
+    {
+      "path": "datasets/evaluation/audit/production_hardening_audit.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "audit_id",
+        "checks",
+        "release",
+        "status"
+      ],
+      "shape_sha256": "c957317d16e70f819671835f7ad1541069b9116ca4cee7c604e3857de2940f1f"
+    },
+    {
+      "path": "datasets/evaluation/audit/quality_summary.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "agent_core_vi_cases",
+        "agent_hard_negative_vi_cases",
+        "agent_training_records",
+        "asr_text_vi_cases",
+        "diversity_checks",
+        "domain_review",
+        "knowledge_freshness_records",
+        "known_limits",
+        "natural_challenge_language_distribution",
+        "primary_language",
+        "rag_entity_heldout_cases",
+        "rag_fact_heldout_cases",
+        "rag_training_records",
+        "release_boundary",
+        "retrieval_canonical_fact_coverage",
+        "retrieval_macro_dimensions",
+        "schema_contract_coverage",
+        "service_action_cases",
+        "service_action_language_distribution",
+        "service_action_subtype_distribution_by_language",
+        "source_auditability",
+        "status",
+        "vi_multi_turn_journeys",
+        "vi_multi_turn_turns"
+      ],
+      "shape_sha256": "fa94ea8cf67be7a1bc43768e56ff9358f1b2b048524c46927bc926a6df1b9225"
+    },
+    {
+      "path": "datasets/evaluation/config/diversity_policy.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "batch_metrics",
+        "default_thresholds",
+        "note"
+      ],
+      "shape_sha256": "bcb155fe2eb0ccbe1e01469d199748ee92340ada11782a7b35b084d5fe566e48"
+    },
+    {
+      "path": "datasets/evaluation/config/generation_policy.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "language_priority",
+        "pipeline",
+        "primary_language",
+        "principle",
+        "rules"
+      ],
+      "shape_sha256": "6d98aa265814d9f56fc70946edc6346b521773f75f033e18fde439047878d58b"
+    },
+    {
+      "path": "datasets/evaluation/config/promotion_policy.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "gold_name",
+        "minimum_judge_scores",
+        "on_second_failure",
+        "repair_attempts",
+        "required_booleans",
+        "review_label"
+      ],
+      "shape_sha256": "203aac77ad350ba10551ff3cde473a4354c1c0c93b18d9d98a710fbdc055446a"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/failures/production.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "cases",
+        "classification",
+        "property_id",
+        "schema_version"
+      ],
+      "shape_sha256": "3ad5756a096e0d739a2664e91b33fde8cc22ecfd83f77ae8f446c8b93bcdf4f8"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/simulation/counterfactual_summary.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "agent_governed",
+        "classification",
+        "events",
+        "interpretation_guard",
+        "manual_relay",
+        "modeled_product_effect",
+        "property_id",
+        "schema_version",
+        "seed"
+      ],
+      "shape_sha256": "79cd3ae00d7b107cc8f34196b81967cc8a3e5b10c15d3a45b0d7ab841f0ab21c"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/simulation/guest_archetypes.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "archetypes",
+        "classification",
+        "schema_version"
+      ],
+      "shape_sha256": "91ada0f25c1648af9fa30169e6a087675e78a54e3924d2bd0c0f64d7c13063db"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/simulation/hospitality_summary.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "agent_governed",
+        "classification",
+        "events",
+        "guest_experience",
+        "manual_relay",
+        "modeled_product_effect",
+        "schema_version",
+        "seed",
+        "stays",
+        "truth_boundary"
+      ],
+      "shape_sha256": "ad41686f287edb49b0fc061e1f4a74044cb0f24b47b5f23a8c8ae474c22bb20f"
+    },
+    {
+      "path": "datasets/evaluation/end_to_end/simulation/production_config.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "counterfactual_variants",
+        "extended_department_capacity",
+        "property_id",
+        "regimes",
+        "request_rate_per_occupied_unit_day",
+        "schema_version",
+        "seed",
+        "service_time_fallback_min",
+        "truth_note"
+      ],
+      "shape_sha256": "2d94129a69484f54709e85a6b10d9bff652f0a6822f8c47ddf43a4b04aa79b1d"
+    },
+    {
+      "path": "datasets/evaluation/frames/split.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "all_concepts_may_appear_in_primary_training",
+        "concepts",
+        "frame_partition_field",
+        "partition_basis",
+        "policy",
+        "primary_language",
+        "semantic_concept_holdout",
+        "supported_languages"
+      ],
+      "shape_sha256": "1a3bd86c00535575c70946f23045cd9f171e1c6e226ea91dfb81075ef1ebea1d"
+    },
+    {
+      "path": "datasets/evaluation/retrieval/metrics.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "diagnostic_suites",
+        "notes",
+        "primary_suites",
+        "reporting"
+      ],
+      "shape_sha256": "4b97401b2a03eefbb03e5a88cf6e350a24f13b12d646129a781b595d8030fcc4"
+    },
+    {
+      "path": "datasets/evaluation/retrieval/natural_queries.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "cases",
+        "dataset_id",
+        "effective_date",
+        "property_id"
+      ],
+      "shape_sha256": "88e4ac056fa83fcde66538a99db894c7964aa59e2a179fc2a964519ac28ac957"
+    },
+    {
+      "path": "datasets/evaluation/retrieval/split.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "canonical_facts_total",
+        "diagnostic_seen_test",
+        "entity_heldout_entities",
+        "entity_heldout_entities_by_type",
+        "entity_heldout_facts",
+        "entity_heldout_facts_by_type",
+        "entity_ids",
+        "evaluation_languages",
+        "fact_heldout_facts",
+        "fact_heldout_facts_by_type",
+        "fact_holdout_test",
+        "fact_ids",
+        "policy",
+        "primary_test",
+        "total_heldout_fact_share",
+        "total_heldout_facts",
+        "train_languages"
+      ],
+      "shape_sha256": "cd4f34b4559304ee591459d3492613b668cccb137dc357654390f7c268b57667"
+    },
+    {
+      "path": "datasets/evaluation/voice_text/index.json",
+      "mode": "json_shape",
+      "role": "evaluation_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "audio_included",
+        "case_count",
+        "language",
+        "perturbation_counts",
+        "reporting",
+        "route_counts",
+        "suite",
+        "synthetic_asr"
+      ],
+      "shape_sha256": "98c0661fa8dc681ab89cb1f1155b88a2cf06ecb6a4ba7256c1133ad0ed044306"
+    },
+    {
+      "path": "datasets/knowledge/canonical/aliases.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "aliases_by_entity",
+        "aliases_by_service_code",
+        "ambiguous_aliases",
+        "property_id"
+      ],
+      "shape_sha256": "1cd3c184b8dd626244e737fc43fbf776b8828b6d10c2f4417821d094384c52a8"
+    },
+    {
+      "path": "datasets/knowledge/canonical/contacts.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "array",
+      "required_top_level_keys": null,
+      "shape_sha256": "a7839db7e6a071cc6b520b8af4737938971484874d731ad035a54e749cc996a9"
+    },
+    {
+      "path": "datasets/knowledge/canonical/departments.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "array",
+      "required_top_level_keys": null,
+      "shape_sha256": "dfad0e411edafb773202a5d1d427482fb1dabb8e56927854e7321114f4b55f08"
+    },
+    {
+      "path": "datasets/knowledge/canonical/domain_review_queue.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "generated_at",
+        "items",
+        "pending_count",
+        "policy",
+        "property_id"
+      ],
+      "shape_sha256": "298c047040f4d7d9b7fb156679b37b1d139ac9e291a1e2582545560db47ae945"
+    },
+    {
+      "path": "datasets/knowledge/canonical/map_paths.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "effective_from",
+        "effective_to",
+        "paths",
+        "property_id",
+        "reviewed_at",
+        "source_label",
+        "source_page",
+        "source_url"
+      ],
+      "shape_sha256": "0c2a665ec5ba03204e00af3f10ffcf4c46f6e8ca301faddfefbfbf7163da09ff"
+    },
+    {
+      "path": "datasets/knowledge/canonical/property_profile.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "address",
+        "brand",
+        "check_in_time",
+        "check_out_time",
+        "contact",
+        "currency",
+        "data_quality",
+        "electricity",
+        "inventory",
+        "legal_name",
+        "name",
+        "property_id",
+        "source_provenance",
+        "source_urls",
+        "star_rating",
+        "supported_languages",
+        "timezone",
+        "verified_at"
+      ],
+      "shape_sha256": "5ee7e9aacdaaa055734ebf32fa02e6dc19334be72abb4111a6f3b7c9e54b5586"
+    },
+    {
+      "path": "datasets/knowledge/documents/manifest.json",
+      "mode": "json_shape",
+      "role": "release_metadata",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "dataset_id",
+        "latest_validated_compiled_documents",
+        "note",
+        "property_id",
+        "role",
+        "source_of_truth",
+        "storage_policy",
+        "stored_documents"
+      ],
+      "shape_sha256": "24d755d7ef46091112522da74a9af9ca63939117af8515206ec45f943676a235"
+    },
+    {
+      "path": "datasets/knowledge/manifest.json",
+      "mode": "json_shape",
+      "role": "release_metadata",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "artifacts",
+        "dataset_id",
+        "metrics",
+        "property_id",
+        "rag_index_policy",
+        "role",
+        "truth_boundary"
+      ],
+      "shape_sha256": "1a82f49cf5f774d09c83ef532f28a59ad3996e0e647d8c37b0ac4c919b033059"
+    },
+    {
+      "path": "datasets/manifest.json",
+      "mode": "json_shape",
+      "role": "release_metadata",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "artifact_policy",
+        "dataset_id",
+        "file_count",
+        "files",
+        "primary_language",
+        "property_id",
+        "release_status",
+        "version"
+      ],
+      "shape_sha256": "186f8689a2b0764255843c7e8785dc622e9dc4cc03567fc513b9465265ca2d83"
+    },
+    {
+      "path": "datasets/quarantine/manifest.json",
+      "mode": "json_shape",
+      "role": "release_metadata",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "artifacts",
+        "dataset_id",
+        "metrics",
+        "property_id",
+        "role",
+        "truth_boundary"
+      ],
+      "shape_sha256": "355033cce0023d1306876192a77ed1abc624c122f905b6ba9b56a35a292eb7b0"
+    },
+    {
+      "path": "datasets/release.json",
+      "mode": "json_shape",
+      "role": "release_metadata",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "canonical_truth_policy",
+        "counts",
+        "dataset_id",
+        "hardening",
+        "open_fix_items",
+        "operational_policy_mode",
+        "property_id",
+        "released_at",
+        "status",
+        "version"
+      ],
+      "shape_sha256": "b09fad3ee44a91db9bb9e70eb08200ab6712399c8a5a366c962567235b6bcb7c"
+    },
+    {
+      "path": "datasets/synthetic/manifest.json",
+      "mode": "json_shape",
+      "role": "release_metadata",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "artifacts",
+        "dataset_id",
+        "metrics",
+        "property_id",
+        "record_counts",
+        "role",
+        "truth_boundary"
+      ],
+      "shape_sha256": "cb1984b89f9b51d00ccaf5b4c93cbdd2d11c01534f4507e1dcdb850471391605"
+    },
+    {
+      "path": "datasets/synthetic/operations/billing/charge_rules.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "charge_codes",
+        "classification",
+        "currency",
+        "demo_pricing_model",
+        "payment_methods_demo",
+        "posting_rules",
+        "property_id",
+        "reviewed_at",
+        "schema_version",
+        "truth_status"
+      ],
+      "shape_sha256": "7126e0694acac3720fd7ce68a7df4b544ffebe086c6f41a749ab9fe0ed6f75cd"
+    },
+    {
+      "path": "datasets/synthetic/operations/billing/service_recovery.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "levels",
+        "property_id",
+        "repeat_issue_rule",
+        "reviewed_at",
+        "schema_version",
+        "truth_status"
+      ],
+      "shape_sha256": "70bda6ed546516032f03264794d8e74338a9274e22a6a69796ec99bbe9ae756b"
+    },
+    {
+      "path": "datasets/synthetic/operations/engineering/maintenance_taxonomy.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "default_department_id",
+        "issue_families",
+        "property_id",
+        "purpose",
+        "reviewed_at",
+        "runtime_authority",
+        "schema_version",
+        "truth_note"
+      ],
+      "shape_sha256": "7568a1537bec89687ff9cd88d578150daac1a5427e4e37dd31dad4e106a8aadf"
+    },
+    {
+      "path": "datasets/synthetic/operations/food_beverage/minibar.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "currency",
+        "excluded_from_production_retrieval",
+        "guest_answer_policy",
+        "inventory_policy",
+        "items",
+        "price_semantics",
+        "production_truth_usage",
+        "property_id",
+        "reviewed_at",
+        "schema_version"
+      ],
+      "shape_sha256": "5d11d35f363997e4dfdf119f44005211dce1501a84071ffb6e3b6956551702cc"
+    },
+    {
+      "path": "datasets/synthetic/operations/food_beverage/restaurants.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "property_id",
+        "reviewed_at",
+        "schema_version",
+        "venues"
+      ],
+      "shape_sha256": "78661b805f980617d7e7a94eb5d48993ca5bc59da3b8497bffe6c3a04b7da0bf"
+    },
+    {
+      "path": "datasets/synthetic/operations/food_beverage/room_service_menu.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "currency",
+        "excluded_from_production_retrieval",
+        "items",
+        "order_policy",
+        "price_semantics",
+        "production_truth_usage",
+        "property_id",
+        "reviewed_at",
+        "schema_version",
+        "service_hours_anchor",
+        "source_refs"
+      ],
+      "shape_sha256": "89acd29a4d8d1ec0c23a9e2b75ea3470c0325f7f679c85c2a4ffe20cce57a840"
+    },
+    {
+      "path": "datasets/synthetic/operations/history/metadata.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "business_hours_semantics",
+        "classification",
+        "contains_real_guest_data",
+        "contains_real_room_numbers",
+        "distribution_note",
+        "generator",
+        "lifecycle_semantics",
+        "period",
+        "property_id",
+        "purpose",
+        "row_count",
+        "schema_version",
+        "simulation_seed",
+        "unit_reference_model"
+      ],
+      "shape_sha256": "989242d273a060795173799e54204ace6ec6e810f912be0a5de283dd50be9ed5"
+    },
+    {
+      "path": "datasets/synthetic/operations/history/summary.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "agent_lifecycle_states",
+        "classification",
+        "note",
+        "property_id",
+        "row_count",
+        "schema_version",
+        "service_distribution",
+        "simulation_seed",
+        "status_distribution",
+        "status_rates"
+      ],
+      "shape_sha256": "ec09ec9cdb5e7b7625bc84e43e37d29a48e926856561ce1cef7979c764df0008"
+    },
+    {
+      "path": "datasets/synthetic/operations/housekeeping/catalog.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "catalog",
+        "classification",
+        "guest_answer_policy",
+        "property_id",
+        "reviewed_at",
+        "schema_version",
+        "service_window",
+        "source_refs"
+      ],
+      "shape_sha256": "c151f9acc144f5732362ba99b6d76c831134239bf57c91ea6b8c2e16221a3909"
+    },
+    {
+      "path": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "property_id",
+        "restaurant_summary",
+        "schema_version",
+        "shuttle",
+        "snapshot_at",
+        "spa_summary",
+        "tours",
+        "transport",
+        "truth_status",
+        "valid_until"
+      ],
+      "shape_sha256": "4b7b9dd430fad45c1cf7e1ad7ee75218ab483e86af22ede3198c9253e1d3a7c1"
+    },
+    {
+      "path": "datasets/synthetic/operations/metadata/assumptions.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumptions",
+        "classification",
+        "excluded_from_production_retrieval",
+        "production_rule",
+        "production_truth_usage",
+        "property_id",
+        "purpose",
+        "reviewed_at",
+        "schema_version"
+      ],
+      "shape_sha256": "2295f9b08684af89977b8dc4c0e8e727ea4fb8647bca3a64b5db68b5c09719fd"
+    },
+    {
+      "path": "datasets/synthetic/operations/metadata/coverage.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "additional_demo_domains",
+        "classification",
+        "fills",
+        "profile_role",
+        "property_id",
+        "prototype_coverage",
+        "reviewed_at",
+        "schema_version",
+        "truth_note"
+      ],
+      "shape_sha256": "72e1968fae7328e879ec924c590c3c12f4f81905e10ab12b470a6cbeceb7ed6f"
+    },
+    {
+      "path": "datasets/synthetic/operations/metadata/demo_business_summary.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "counts",
+        "coverage",
+        "dataset_profile",
+        "demo_complete",
+        "generated_at",
+        "property_id",
+        "schema_version",
+        "truth_status"
+      ],
+      "shape_sha256": "c452cf5ab536229212d60e65bf47c7230ccb1aa8429660a95a54dcc2fef8eb26"
+    },
+    {
+      "path": "datasets/synthetic/operations/metadata/nonpublic_policy_registry.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "items",
+        "property_id",
+        "purpose",
+        "reviewed_at",
+        "schema_version"
+      ],
+      "shape_sha256": "b48647d6e9cf766c1dcf36897a8951bbb746008f4563f7d8bf7a9fac1cac68e1"
+    },
+    {
+      "path": "datasets/synthetic/operations/metadata/property_simulation.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "daypart_load",
+        "inventory_basis",
+        "occupancy_bands",
+        "property_id",
+        "rainy_day_maintenance_multiplier",
+        "reviewed_at",
+        "schema_version",
+        "truth_note",
+        "weekend_multiplier"
+      ],
+      "shape_sha256": "203f8e3f652086474088f2805a4d1166c920b50b97beeaa49af85b8bec814581"
+    },
+    {
+      "path": "datasets/synthetic/operations/metadata/realism_profile.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "dataset_profile",
+        "demo_mode",
+        "goal",
+        "production_gate",
+        "property_id",
+        "reviewed_at",
+        "runtime_default",
+        "schema_version",
+        "source_precedence",
+        "truth_classes"
+      ],
+      "shape_sha256": "711d7ef707a8942ac3e8f1895787a52d5f297a2d2f4b489d2deddaacb5c869bb"
+    },
+    {
+      "path": "datasets/synthetic/operations/metadata/sources.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "excluded_from_production_retrieval",
+        "property_id",
+        "purpose",
+        "reviewed_at",
+        "schema_version",
+        "source_scope",
+        "sources"
+      ],
+      "shape_sha256": "3646f4fec682f575aca8c7727131f2d2e8add57af1c45f3d58b0ab7f6742d4cd"
+    },
+    {
+      "path": "datasets/synthetic/operations/policies/constraints.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "property_id",
+        "reviewed_at",
+        "rules",
+        "schema_version",
+        "source_refs"
+      ],
+      "shape_sha256": "f1cf46590d4aea9689cf8937fb5983686c0190d2261401d3dd1073ce3507df8c"
+    },
+    {
+      "path": "datasets/synthetic/operations/policies/dispatch_slas.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "data_boundary",
+        "description",
+        "property_id",
+        "rules",
+        "timing_is_official_sla",
+        "truth_status"
+      ],
+      "shape_sha256": "1a33beb0390039ac3977d629f629c9f9418e3eda1e81b49813d11ff6a2cc22db"
+    },
+    {
+      "path": "datasets/synthetic/operations/policies/escalation_matrix.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "matrix",
+        "property_id",
+        "reviewed_at",
+        "safety_boundary",
+        "schema_version"
+      ],
+      "shape_sha256": "caa8bf9f6b32f9a27c4d3a31c0f2cfafa5eaca0d13c437acdd5ed7dd08f8bdd7"
+    },
+    {
+      "path": "datasets/synthetic/operations/policies/escalation_policy.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "policy",
+        "property_id",
+        "reviewed_at",
+        "schema_version"
+      ],
+      "shape_sha256": "0bdbff3f5a5a537fb046d3d82f075260ac7cb4dbb7133e91f2be532aa20533ff"
+    },
+    {
+      "path": "datasets/synthetic/operations/policies/guest_overrides.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "guest_answer_policy",
+        "policies",
+        "property_id",
+        "reviewed_at",
+        "schema_version"
+      ],
+      "shape_sha256": "ec3319366e26d39b6cfbd44d6eb5713b175f977ddf03c6699c693c3fe944a888"
+    },
+    {
+      "path": "datasets/synthetic/operations/rooms/access_sop.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "dnd",
+        "guest_answer_policy",
+        "principles",
+        "property_id",
+        "reviewed_at",
+        "routine_delivery",
+        "schema_version",
+        "security_sensitive",
+        "source_refs"
+      ],
+      "shape_sha256": "918906b244825e970e219d7c5bb66851062cc72540bf5754ee5eb46e1487ab34"
+    },
+    {
+      "path": "datasets/synthetic/operations/rooms/amenities.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "inventory_scope",
+        "items",
+        "property_id",
+        "reviewed_at",
+        "schema_version",
+        "truth_note"
+      ],
+      "shape_sha256": "0da45cbc20041b4651014b98e44556497db5633bfc7cbdbb8944d1e6c5a356e3"
+    },
+    {
+      "path": "datasets/synthetic/operations/spa/operations.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "appointment_durations_min",
+        "assumption_refs",
+        "classification",
+        "couples_rooms",
+        "property_id",
+        "reviewed_at",
+        "same_day_cutoff_min",
+        "schema_version",
+        "service_window",
+        "slots",
+        "therapists_per_shift",
+        "treatment_rooms",
+        "truth_status"
+      ],
+      "shape_sha256": "8cede9587136398484f150be4b43da27ea02e626066ed8f471b31e456f4a78a6"
+    },
+    {
+      "path": "datasets/synthetic/operations/staffing/capacity.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "capacity_unit",
+        "classification",
+        "departments",
+        "property_id",
+        "reviewed_at",
+        "schema_version",
+        "truth_note"
+      ],
+      "shape_sha256": "1d8f6a977b85686a4efbb0588e6c5952b6075ea500ee5d6bd09bca66149ebea7"
+    },
+    {
+      "path": "datasets/synthetic/operations/staffing/departments.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "demo_directory_complete",
+        "departments",
+        "property_id",
+        "reviewed_at",
+        "schema_version"
+      ],
+      "shape_sha256": "4bec520cb7e582a853c48fee5e9849d3958966e71ccbf0f8c027bb86481a360d"
+    },
+    {
+      "path": "datasets/synthetic/operations/suppliers/directory.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "assumption_refs",
+        "classification",
+        "property_id",
+        "reviewed_at",
+        "schema_version",
+        "suppliers",
+        "truth_status"
+      ],
+      "shape_sha256": "805a8ef65885a2c667d0fb66af1d7151d8b94642ca8bb4f20ad4021cf75af853"
+    },
+    {
+      "path": "datasets/synthetic/operations/tours/operations.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "booking_rule",
+        "classification",
+        "contact_extension",
+        "department_id",
+        "destinations",
+        "inventory_and_price_status",
+        "production_status",
+        "property_id",
+        "public_anchors",
+        "reviewed_at",
+        "schema_version",
+        "truth_note"
+      ],
+      "shape_sha256": "a26018e26615788f047eb86195b5acf8c5e7040578748e30c8aa95e9288d897b"
+    },
+    {
+      "path": "datasets/synthetic/operations/tours/products.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "approval",
+        "assumption_refs",
+        "classification",
+        "currency",
+        "demo_booking_mode",
+        "demo_live_availability",
+        "guest_answer_policy",
+        "historical_benchmark_source_ref",
+        "historical_vendor_cancellation_reference",
+        "live_availability",
+        "price_basis",
+        "products",
+        "property_id",
+        "reviewed_at",
+        "schema_version"
+      ],
+      "shape_sha256": "c5819f436e1af9e1dad5d4b31f6eb1afa4a1c5ebde94fa099852a5e1ca2e9d08"
+    },
+    {
+      "path": "datasets/synthetic/operations/transport/products.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "airport_context",
+        "assumption_refs",
+        "classification",
+        "demo_booking_mode",
+        "fixed_shuttle_schedule_ref",
+        "guest_answer_policy",
+        "official_service_anchor_refs",
+        "pricing_basis_refs",
+        "products",
+        "property_id",
+        "reviewed_at",
+        "ride_hailing",
+        "schema_version",
+        "taxi"
+      ],
+      "shape_sha256": "05bb4954bc0c1b11cf80e773eba1568cee49f978441f73fb8c27d1c5e81b6c44"
+    },
+    {
+      "path": "datasets/synthetic/operations/transport/shuttle_schedule.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "classification",
+        "currency",
+        "demo_booking_mode",
+        "property_id",
+        "reviewed_at",
+        "routes",
+        "schema_version",
+        "service_date_model",
+        "truth_note"
+      ],
+      "shape_sha256": "19acf0cfeb1c8900dacca73bf115182bab92839223b4e0420d6e4707538dd9d4"
+    },
+    {
+      "path": "datasets/synthetic/operations/workflows/channel_dispatch_rules.json",
+      "mode": "json_shape",
+      "role": "runtime_data",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "data_boundary",
+        "description",
+        "property_id",
+        "rules",
+        "truth_status"
+      ],
+      "shape_sha256": "3b64abf85804940e9c0eae4711e27bcc27ee36b3e671e41c18f0a23548babe6d"
+    },
+    {
+      "path": "datasets/training/agent/research/humanized_vi_web_2026_10.json",
+      "mode": "json_shape",
+      "role": "training_only",
+      "top_level_type": "object",
+      "required_top_level_keys": [
+        "batch_id",
+        "copyright_note",
+        "language",
+        "method",
+        "observed_patterns",
+        "property_scope",
+        "purpose",
+        "records_added",
+        "research_date",
+        "route_distribution",
+        "service_code_distribution",
+        "web_sources"
+      ],
+      "shape_sha256": "f1b643dcdb2947f1db583f9d3c9e7890858554276a8e34aa83ca3ee624bae239"
+    }
+  ],
+  "coverage_policy": {
+    "scope": "all_non_schema_json_and_jsonl",
+    "rule": "Every data JSON/JSONL artifact must be covered by a strict schema contract or a deterministic JSON shape contract; no silent unclassified documents.",
+    "runtime_rule": "Canonical and synthetic runtime JSON must never be exempted from coverage.",
+    "unclassified_allowed": 0
+  }
+}

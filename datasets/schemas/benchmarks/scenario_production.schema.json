@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Production end-to-end scenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenario_id",
+    "classification",
+    "language",
+    "utterance",
+    "expected_route",
+    "service_code",
+    "approval_path",
+    "expected_slots",
+    "notes",
+    "origin",
+    "evaluation_bucket",
+    "risk_class",
+    "model_policy",
+    "expected_business_writes_before_confirmation",
+    "expected_staff_review",
+    "must_not_claim_completed",
+    "must_not_5xx",
+    "latency_class",
+    "truth_behavior"
+  ],
+  "properties": {
+    "scenario_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "classification": {
+      "enum": [
+        "production_evaluation_synthetic",
+        "synthetic_evaluation"
+      ]
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 2
+    },
+    "expected_route": {
+      "enum": [
+        "service",
+        "knowledge",
+        "emergency",
+        "status",
+        "knowledge_abstain",
+        "non_action",
+        "clarification",
+        "multi_step",
+        "privacy_guard",
+        "safety_escalation",
+        "request_change",
+        "policy_guard",
+        "escalation",
+        "reopen"
+      ]
+    },
+    "service_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "amenity_delivery",
+        "housekeeping",
+        "maintenance",
+        "human_assistance",
+        "spa_reservation",
+        "dining_reservation",
+        "food_order",
+        "tour_reservation",
+        "facility_request",
+        "dining_request",
+        "tour_request",
+        "transport_request",
+        "late_checkout",
+        null
+      ]
+    },
+    "approval_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "none",
+        "staff",
+        null
+      ]
+    },
+    "expected_slots": {
+      "type": "object"
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "origin": {
+      "type": "string"
+    },
+    "evaluation_bucket": {
+      "type": "string"
+    },
+    "risk_class": {
+      "type": "string"
+    },
+    "model_policy": {
+      "type": "string"
+    },
+    "expected_business_writes_before_confirmation": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expected_staff_review": {
+      "type": "boolean"
+    },
+    "must_not_claim_completed": {
+      "type": "boolean"
+    },
+    "must_not_5xx": {
+      "const": true
+    },
+    "latency_class": {
+      "type": "string"
+    },
+    "truth_behavior": {
+      "type": "string"
+    },
+    "expected_truth_class": {
+      "type": "string"
+    }
+  }
+}

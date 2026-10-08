@@ -1,0 +1,1651 @@
+{
+  "approved": true,
+  "property_id": "FURAMA_DANANG",
+  "effective_from": "2026-01-01",
+  "effective_to": "2030-01-01",
+  "source_id": "kb_property_furama_resort_danang",
+  "source_revisions": {
+    "vi": "6f7bdb21bb400052f6ab827f",
+    "en": "41daa5d2d6269e994d3784fc",
+    "zh": "7d76d2cc3a500a9b8ffa20ad",
+    "ko": "64b4172966044b6d82a94cf5"
+  },
+  "origin": "property_furama_resort_danang",
+  "places": [
+    {
+      "id": "zone_main_lobby",
+      "place_type": "zone_hub",
+      "zone_hub_id": "zone_main_lobby",
+      "aliases": [
+        "Main Building & Lobby",
+        "zone.main_lobby",
+        "Tòa nhà chính & Sảnh",
+        "메인 빌딩 & 로비",
+        "主楼与大堂"
+      ],
+      "labels": {
+        "vi": "Tòa nhà chính & Sảnh",
+        "en": "Main Building & Lobby",
+        "zh": "主楼与大堂",
+        "ko": "메인 빌딩 & 로비"
+      }
+    },
+    {
+      "id": "property_furama_resort_danang",
+      "place_type": "entity",
+      "zone_hub_id": "zone_main_lobby",
+      "aliases": [
+        "Front Desk & Cashier",
+        "Furama Resort Danang",
+        "property.furama_resort_danang",
+        "Khu nghỉ dưỡng Furama Đà Nẵng",
+        "푸라마 리조트 다낭",
+        "岘港富丽华度假村",
+        "wifi",
+        "와이파이",
+        "无线网络",
+        "wi-fi",
+        "미니바",
+        "迷你吧",
+        "minibar",
+        "레이트 체크아웃",
+        "延迟退房",
+        "late checkout",
+        "trả phòng muộn",
+        "체크아웃 시간",
+        "退房时间",
+        "check out late"
+      ],
+      "labels": {
+        "vi": "Khu nghỉ dưỡng Furama Đà Nẵng",
+        "en": "Furama Resort Danang",
+        "zh": "岘港富丽华度假村",
+        "ko": "푸라마 리조트 다낭"
+      }
+    },
+    {
+      "id": "service_concierge",
+      "place_type": "entity",
+      "zone_hub_id": "zone_main_lobby",
+      "aliases": [
+        "Concierge Desk",
+        "service.concierge",
+        "Quầy Concierge",
+        "컨시어지 데스크",
+        "礼宾部"
+      ],
+      "labels": {
+        "vi": "Quầy Concierge",
+        "en": "Concierge Desk",
+        "zh": "礼宾部",
+        "ko": "컨시어지 데스크"
+      }
+    },
+    {
+      "id": "bar_hai_van_lounge",
+      "place_type": "entity",
+      "zone_hub_id": "zone_main_lobby",
+      "aliases": [
+        "Hải Vân Lounge",
+        "bar.hai_van_lounge",
+        "하이반 라운지",
+        "海云酒廊"
+      ],
+      "labels": {
+        "vi": "Hải Vân Lounge",
+        "en": "Hải Vân Lounge",
+        "zh": "海云酒廊",
+        "ko": "하이반 라운지"
+      }
+    },
+    {
+      "id": "meeting_boardroom",
+      "place_type": "entity",
+      "zone_hub_id": "zone_main_lobby",
+      "aliases": [
+        "Boardroom",
+        "meeting.boardroom",
+        "Phòng họp Boardroom",
+        "이사회실",
+        "董事会议室"
+      ],
+      "labels": {
+        "vi": "Phòng họp Boardroom",
+        "en": "Boardroom",
+        "zh": "董事会议室",
+        "ko": "이사회실"
+      }
+    },
+    {
+      "id": "meeting_gallery",
+      "place_type": "entity",
+      "zone_hub_id": "zone_main_lobby",
+      "aliases": [
+        "The Gallery",
+        "meeting.gallery",
+        "Phòng Gallery",
+        "갤러리",
+        "画廊厅"
+      ],
+      "labels": {
+        "vi": "Phòng Gallery",
+        "en": "The Gallery",
+        "zh": "画廊厅",
+        "ko": "갤러리"
+      }
+    },
+    {
+      "id": "meeting_ocean_ballroom",
+      "place_type": "entity",
+      "zone_hub_id": "zone_main_lobby",
+      "aliases": [
+        "Ocean Ballroom",
+        "meeting.ocean_ballroom",
+        "오션 볼룸",
+        "海洋宴会厅"
+      ],
+      "labels": {
+        "vi": "Ocean Ballroom",
+        "en": "Ocean Ballroom",
+        "zh": "海洋宴会厅",
+        "ko": "오션 볼룸"
+      }
+    },
+    {
+      "id": "zone_ocean_wing",
+      "place_type": "zone_hub",
+      "zone_hub_id": "zone_ocean_wing",
+      "aliases": [
+        "Ocean Wing Guest Accommodations",
+        "zone.ocean_wing",
+        "Ocean Wing Guest Rooms",
+        "Khu phòng Ocean Wing",
+        "오션 윙 객실 구역",
+        "海景翼客房区"
+      ],
+      "labels": {
+        "vi": "Khu phòng Ocean Wing",
+        "en": "Ocean Wing Guest Rooms",
+        "zh": "海景翼客房区",
+        "ko": "오션 윙 객실 구역"
+      }
+    },
+    {
+      "id": "room_ocean_deluxe",
+      "place_type": "entity",
+      "zone_hub_id": "zone_ocean_wing",
+      "aliases": [
+        "Ocean Deluxe Rooms",
+        "Ocean Deluxe",
+        "room.ocean_deluxe",
+        "Phòng Ocean Deluxe",
+        "오션 디럭스",
+        "海景豪华房"
+      ],
+      "labels": {
+        "vi": "Phòng Ocean Deluxe",
+        "en": "Ocean Deluxe",
+        "zh": "海景豪华房",
+        "ko": "오션 디럭스"
+      }
+    },
+    {
+      "id": "room_ocean_studio_suite",
+      "place_type": "entity",
+      "zone_hub_id": "zone_ocean_wing",
+      "aliases": [
+        "Ocean Studio Suites",
+        "Ocean Studio Suite",
+        "room.ocean_studio_suite",
+        "Phòng Ocean Studio Suite",
+        "오션 스튜디오 스위트",
+        "海景单间套房"
+      ],
+      "labels": {
+        "vi": "Phòng Ocean Studio Suite",
+        "en": "Ocean Studio Suite",
+        "zh": "海景单间套房",
+        "ko": "오션 스튜디오 스위트"
+      }
+    },
+    {
+      "id": "room_ocean_suite",
+      "place_type": "entity",
+      "zone_hub_id": "zone_ocean_wing",
+      "aliases": [
+        "Ocean Suites",
+        "Ocean Suite",
+        "room.ocean_suite",
+        "Phòng Ocean Suite",
+        "오션 스위트",
+        "海景套房"
+      ],
+      "labels": {
+        "vi": "Phòng Ocean Suite",
+        "en": "Ocean Suite",
+        "zh": "海景套房",
+        "ko": "오션 스위트"
+      }
+    },
+    {
+      "id": "room_presidential_suite",
+      "place_type": "entity",
+      "zone_hub_id": "zone_ocean_wing",
+      "aliases": [
+        "Presidential Suite",
+        "room.presidential_suite",
+        "Phòng Tổng Thống",
+        "프레지덴셜 스위트",
+        "总统套房"
+      ],
+      "labels": {
+        "vi": "Phòng Tổng Thống",
+        "en": "Presidential Suite",
+        "zh": "总统套房",
+        "ko": "프레지덴셜 스위트"
+      }
+    },
+    {
+      "id": "zone_garden_wing",
+      "place_type": "zone_hub",
+      "zone_hub_id": "zone_garden_wing",
+      "aliases": [
+        "Garden & Lagoon Wing Guest Accommodations",
+        "zone.garden_wing",
+        "Garden & Lagoon Wing Guest Rooms",
+        "Khu phòng Garden & Lagoon Wing",
+        "가든 & 라군 윙 객실 구역",
+        "花园与泻湖翼客房区"
+      ],
+      "labels": {
+        "vi": "Khu phòng Garden & Lagoon Wing",
+        "en": "Garden & Lagoon Wing Guest Rooms",
+        "zh": "花园与泻湖翼客房区",
+        "ko": "가든 & 라군 윙 객실 구역"
+      }
+    },
+    {
+      "id": "room_garden_superior",
+      "place_type": "entity",
+      "zone_hub_id": "zone_garden_wing",
+      "aliases": [
+        "Garden Superior Rooms",
+        "Garden Superior",
+        "room.garden_superior",
+        "Phòng Garden Superior",
+        "가든 수페리어",
+        "花园高级房"
+      ],
+      "labels": {
+        "vi": "Phòng Garden Superior",
+        "en": "Garden Superior",
+        "zh": "花园高级房",
+        "ko": "가든 수페리어"
+      }
+    },
+    {
+      "id": "room_garden_deluxe",
+      "place_type": "entity",
+      "zone_hub_id": "zone_garden_wing",
+      "aliases": [
+        "Garden Deluxe Rooms",
+        "Garden Deluxe",
+        "room.garden_deluxe",
+        "Phòng Garden Deluxe",
+        "가든 디럭스",
+        "花园豪华房"
+      ],
+      "labels": {
+        "vi": "Phòng Garden Deluxe",
+        "en": "Garden Deluxe",
+        "zh": "花园豪华房",
+        "ko": "가든 디럭스"
+      }
+    },
+    {
+      "id": "room_lagoon_superior",
+      "place_type": "entity",
+      "zone_hub_id": "zone_garden_wing",
+      "aliases": [
+        "Lagoon Superior Rooms",
+        "Lagoon Superior",
+        "room.lagoon_superior",
+        "Phòng Lagoon Superior",
+        "라군 수페리어",
+        "环礁湖高级房"
+      ],
+      "labels": {
+        "vi": "Phòng Lagoon Superior",
+        "en": "Lagoon Superior",
+        "zh": "环礁湖高级房",
+        "ko": "라군 수페리어"
+      }
+    },
+    {
+      "id": "zone_villas",
+      "place_type": "zone_hub",
+      "zone_hub_id": "zone_villas",
+      "aliases": [
+        "Furama Villas Enclave",
+        "zone.villas",
+        "Furama Villas",
+        "Khu biệt thự Furama",
+        "푸라마 빌라 구역",
+        "富丽华别墅区"
+      ],
+      "labels": {
+        "vi": "Khu biệt thự Furama",
+        "en": "Furama Villas",
+        "zh": "富丽华别墅区",
+        "ko": "푸라마 빌라 구역"
+      }
+    },
+    {
+      "id": "room_pool_villas",
+      "place_type": "entity",
+      "zone_hub_id": "zone_villas",
+      "aliases": [
+        "Pool Villas",
+        "room.pool_villas",
+        "Biệt thự có hồ bơi",
+        "풀 빌라",
+        "泳池别墅"
+      ],
+      "labels": {
+        "vi": "Biệt thự có hồ bơi",
+        "en": "Pool Villas",
+        "zh": "泳池别墅",
+        "ko": "풀 빌라"
+      }
+    },
+    {
+      "id": "room_beach_front_villas",
+      "place_type": "entity",
+      "zone_hub_id": "zone_villas",
+      "aliases": [
+        "Beachfront Villas",
+        "room.beach_front_villas",
+        "Biệt thự trước biển",
+        "비치프론트 빌라",
+        "海滨别墅"
+      ],
+      "labels": {
+        "vi": "Biệt thự trước biển",
+        "en": "Beachfront Villas",
+        "zh": "海滨别墅",
+        "ko": "비치프론트 빌라"
+      }
+    },
+    {
+      "id": "contact_butler_service",
+      "place_type": "entity",
+      "zone_hub_id": "zone_villas",
+      "aliases": [
+        "Villa Butler Desk",
+        "Butler Service",
+        "contact.butler_service",
+        "Dịch vụ Quản gia",
+        "버틀러 서비스",
+        "管家服务",
+        "butler",
+        "quản gia",
+        "버틀러",
+        "管家",
+        "villa butler",
+        "quản gia biệt thự",
+        "빌라 버틀러",
+        "别墅管家",
+        "butler hotline",
+        "hotline quản gia",
+        "전담 버틀러",
+        "私人管家",
+        "private butler"
+      ],
+      "labels": {
+        "vi": "Dịch vụ Quản gia",
+        "en": "Butler Service",
+        "zh": "管家服务",
+        "ko": "버틀러 서비스"
+      }
+    },
+    {
+      "id": "zone_dining_hub",
+      "place_type": "zone_hub",
+      "zone_hub_id": "zone_dining_hub",
+      "aliases": [
+        "Dining & Culinary Venues",
+        "zone.dining_hub",
+        "Dining & Culinary Area",
+        "Khu ẩm thực & nhà hàng",
+        "다이닝 & 레스토랑 구역",
+        "餐饮与餐厅区域"
+      ],
+      "labels": {
+        "vi": "Khu ẩm thực & nhà hàng",
+        "en": "Dining & Culinary Area",
+        "zh": "餐饮与餐厅区域",
+        "ko": "다이닝 & 레스토랑 구역"
+      }
+    },
+    {
+      "id": "restaurant_cafe_indochine",
+      "place_type": "entity",
+      "zone_hub_id": "zone_dining_hub",
+      "aliases": [
+        "Café Indochine",
+        "restaurant.cafe_indochine",
+        "Nhà hàng Café Indochine",
+        "카페 인도차이나",
+        "印度支那咖啡厅",
+        "cafe indochine",
+        "인도차이나 레스토랑",
+        "印度支那餐厅",
+        "indochine restaurant",
+        "nhà hàng cafe indochine",
+        "조식 뷔페",
+        "早餐餐厅",
+        "breakfast restaurant",
+        "nhà hàng buffet sáng",
+        "海鲜自助餐",
+        "buffet restaurant",
+        "buffet sáng",
+        "ăn sáng buffet",
+        "buffet hải sản"
+      ],
+      "labels": {
+        "vi": "Nhà hàng Café Indochine",
+        "en": "Café Indochine",
+        "zh": "印度支那咖啡厅",
+        "ko": "카페 인도차이나"
+      }
+    },
+    {
+      "id": "restaurant_don_cipriani",
+      "place_type": "entity",
+      "zone_hub_id": "zone_dining_hub",
+      "aliases": [
+        "Don Cipriani's Italian Restaurant",
+        "Don Cipriani's",
+        "restaurant.don_cipriani",
+        "Nhà hàng Ý Don Cipriani",
+        "돈 치프리아니",
+        "唐·奇普里亚尼意大利餐厅",
+        "don cipriani",
+        "이탈리안 레스토랑",
+        "唐奇普里亚尼",
+        "italian restaurant",
+        "nhà hàng ý",
+        "피자",
+        "意大利餐厅",
+        "pizza",
+        "nhà hàng don cipriani",
+        "파스타",
+        "披萨",
+        "pasta",
+        "bánh pizza",
+        "이탈리아 요리"
+      ],
+      "labels": {
+        "vi": "Nhà hàng Ý Don Cipriani",
+        "en": "Don Cipriani's",
+        "zh": "唐·奇普里亚尼意大利餐厅",
+        "ko": "돈 치프리아니"
+      }
+    },
+    {
+      "id": "restaurant_danaksara",
+      "place_type": "entity",
+      "zone_hub_id": "zone_dining_hub",
+      "aliases": [
+        "Danaksara Central Vietnamese Cuisine",
+        "Danaksara",
+        "restaurant.danaksara",
+        "Nhà hàng Danaksara",
+        "다낙사라",
+        "达纳克萨拉餐厅"
+      ],
+      "labels": {
+        "vi": "Nhà hàng Danaksara",
+        "en": "Danaksara",
+        "zh": "达纳克萨拉餐厅",
+        "ko": "다낙사라"
+      }
+    },
+    {
+      "id": "restaurant_the_fan_steakhouse",
+      "place_type": "entity",
+      "zone_hub_id": "zone_dining_hub",
+      "aliases": [
+        "The Fan Beachfront Steakhouse",
+        "The Fan Steakhouse",
+        "restaurant.the_fan_steakhouse",
+        "Nhà hàng The Fan",
+        "더 팬 스테이크하우스",
+        "The Fan牛排餐厅"
+      ],
+      "labels": {
+        "vi": "Nhà hàng The Fan",
+        "en": "The Fan Steakhouse",
+        "zh": "The Fan牛排餐厅",
+        "ko": "더 팬 스테이크하우스"
+      }
+    },
+    {
+      "id": "restaurant_taya_house",
+      "place_type": "entity",
+      "zone_hub_id": "zone_dining_hub",
+      "aliases": [
+        "Tàya House",
+        "restaurant.taya_house",
+        "Nhà hàng Tàya House",
+        "타야 하우스",
+        "塔亚之家"
+      ],
+      "labels": {
+        "vi": "Nhà hàng Tàya House",
+        "en": "Tàya House",
+        "zh": "塔亚之家",
+        "ko": "타야 하우스"
+      }
+    },
+    {
+      "id": "bar_lagoon_bar",
+      "place_type": "entity",
+      "zone_hub_id": "zone_dining_hub",
+      "aliases": [
+        "Lagoon Bar",
+        "bar.lagoon_bar",
+        "Quầy bar Lagoon",
+        "라군 바",
+        "环礁湖酒吧"
+      ],
+      "labels": {
+        "vi": "Quầy bar Lagoon",
+        "en": "Lagoon Bar",
+        "zh": "环礁湖酒吧",
+        "ko": "라군 바"
+      }
+    },
+    {
+      "id": "zone_convention_centre",
+      "place_type": "zone_hub",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "International Convention Palace (ICP)",
+        "zone.convention_centre",
+        "International Convention Palace",
+        "Cung Hội nghị Quốc tế",
+        "국제컨벤션팰리스",
+        "国际会议宫"
+      ],
+      "labels": {
+        "vi": "Cung Hội nghị Quốc tế",
+        "en": "International Convention Palace",
+        "zh": "国际会议宫",
+        "ko": "국제컨벤션팰리스"
+      }
+    },
+    {
+      "id": "meeting_international_convention_palace",
+      "place_type": "entity",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "ICP Grand Entrance",
+        "International Convention Palace (ICP)",
+        "meeting.international_convention_palace",
+        "Cung Hội nghị Quốc tế Furama (ICP)",
+        "국제 컨벤션 팰리스 (ICP)",
+        "国际会议宫 (ICP)"
+      ],
+      "labels": {
+        "vi": "Cung Hội nghị Quốc tế Furama (ICP)",
+        "en": "International Convention Palace (ICP)",
+        "zh": "国际会议宫 (ICP)",
+        "ko": "국제 컨벤션 팰리스 (ICP)"
+      }
+    },
+    {
+      "id": "meeting_danang_grand_ballroom",
+      "place_type": "entity",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "Danang Grand Ballroom",
+        "meeting.danang_grand_ballroom",
+        "Đà Nẵng Grand Ballroom",
+        "다낭 그랜드 볼룸",
+        "岘港大宴会厅",
+        "grand ballroom",
+        "hội trường grand ballroom",
+        "그랜드 볼룸",
+        "大宴会厅",
+        "danang ballroom",
+        "sảnh tiệc",
+        "대연회장",
+        "会议大厅",
+        "conference hall",
+        "phòng hội nghị lớn",
+        "컨벤션 홀",
+        "meeting hall",
+        "icp ballroom"
+      ],
+      "labels": {
+        "vi": "Đà Nẵng Grand Ballroom",
+        "en": "Danang Grand Ballroom",
+        "zh": "岘港大宴会厅",
+        "ko": "다낭 그랜드 볼룸"
+      }
+    },
+    {
+      "id": "meeting_ballroom_1",
+      "place_type": "entity",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "Danang Ballroom 1",
+        "meeting.ballroom_1",
+        "Đà Nẵng Ballroom 1",
+        "다낭 볼룸 1",
+        "岘港宴会厅 1"
+      ],
+      "labels": {
+        "vi": "Đà Nẵng Ballroom 1",
+        "en": "Danang Ballroom 1",
+        "zh": "岘港宴会厅 1",
+        "ko": "다낭 볼룸 1"
+      }
+    },
+    {
+      "id": "meeting_ballroom_2",
+      "place_type": "entity",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "Danang Ballroom 2",
+        "meeting.ballroom_2",
+        "Đà Nẵng Ballroom 2",
+        "다낭 볼룸 2",
+        "岘港宴会厅 2"
+      ],
+      "labels": {
+        "vi": "Đà Nẵng Ballroom 2",
+        "en": "Danang Ballroom 2",
+        "zh": "岘港宴会厅 2",
+        "ko": "다낭 볼룸 2"
+      }
+    },
+    {
+      "id": "meeting_ballroom_3",
+      "place_type": "entity",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "Danang Ballroom 3",
+        "meeting.ballroom_3",
+        "Đà Nẵng Ballroom 3",
+        "다낭 볼룸 3",
+        "岘港宴会厅 3"
+      ],
+      "labels": {
+        "vi": "Đà Nẵng Ballroom 3",
+        "en": "Danang Ballroom 3",
+        "zh": "岘港宴会厅 3",
+        "ko": "다낭 볼룸 3"
+      }
+    },
+    {
+      "id": "meeting_han_river_1",
+      "place_type": "entity",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "Han River Room 1",
+        "Han River 1",
+        "meeting.han_river_1",
+        "Phòng Sông Hàn 1",
+        "한강 1",
+        "汉江厅 1"
+      ],
+      "labels": {
+        "vi": "Phòng Sông Hàn 1",
+        "en": "Han River 1",
+        "zh": "汉江厅 1",
+        "ko": "한강 1"
+      }
+    },
+    {
+      "id": "meeting_han_river_2",
+      "place_type": "entity",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "Han River Room 2",
+        "Han River 2",
+        "meeting.han_river_2",
+        "Phòng Sông Hàn 2",
+        "한강 2",
+        "汉江厅 2"
+      ],
+      "labels": {
+        "vi": "Phòng Sông Hàn 2",
+        "en": "Han River 2",
+        "zh": "汉江厅 2",
+        "ko": "한강 2"
+      }
+    },
+    {
+      "id": "meeting_son_tra_1",
+      "place_type": "entity",
+      "zone_hub_id": "zone_convention_centre",
+      "aliases": [
+        "Son Tra Room",
+        "meeting.son_tra_1",
+        "Phòng Sơn Trà",
+        "손트라 룸",
+        "山茶厅",
+        "son tra 1",
+        "phòng sơn trà 1",
+        "손트라 1",
+        "山茶厅 1"
+      ],
+      "labels": {
+        "vi": "Phòng Sơn Trà",
+        "en": "Son Tra Room",
+        "zh": "山茶厅",
+        "ko": "손트라 룸"
+      }
+    },
+    {
+      "id": "zone_wellness_recreation",
+      "place_type": "zone_hub",
+      "zone_hub_id": "zone_wellness_recreation",
+      "aliases": [
+        "Wellness, Pools & Recreation",
+        "zone.wellness_recreation",
+        "Wellness & Recreation Area",
+        "Khu chăm sóc sức khỏe & giải trí",
+        "웰니스 & 레크리에이션 구역",
+        "康体与休闲区域"
+      ],
+      "labels": {
+        "vi": "Khu chăm sóc sức khỏe & giải trí",
+        "en": "Wellness & Recreation Area",
+        "zh": "康体与休闲区域",
+        "ko": "웰니스 & 레크리에이션 구역"
+      }
+    },
+    {
+      "id": "spa_v_senses_wellness",
+      "place_type": "entity",
+      "zone_hub_id": "zone_wellness_recreation",
+      "aliases": [
+        "V-Senses Wellness & Spa",
+        "spa.v_senses_wellness",
+        "V-센스 웰니스 & 스파",
+        "V-Senses 水疗养生中心",
+        "spa",
+        "스파",
+        "水疗",
+        "v senses spa",
+        "v-senses spa",
+        "v센스 스파",
+        "水疗中心",
+        "wellness",
+        "mát xa",
+        "마사지 예약",
+        "水疗预约",
+        "massage booking",
+        "đặt lịch spa",
+        "스파 예약",
+        "按摩预约",
+        "sauna"
+      ],
+      "labels": {
+        "vi": "V-Senses Wellness & Spa",
+        "en": "V-Senses Wellness & Spa",
+        "zh": "V-Senses 水疗养生中心",
+        "ko": "V-센스 웰니스 & 스파"
+      }
+    },
+    {
+      "id": "contact_medical_centre",
+      "place_type": "entity",
+      "zone_hub_id": "zone_wellness_recreation",
+      "aliases": [
+        "Resort Medical Centre",
+        "contact.medical_centre",
+        "Liên hệ Trung tâm Y tế Resort",
+        "의료 센터 연락처",
+        "医疗中心联系方式",
+        "trung tâm y tế resort",
+        "의사",
+        "医务室",
+        "medical center",
+        "bác sĩ",
+        "간호사",
+        "医生",
+        "doctor",
+        "y tá",
+        "응급 처치",
+        "护士",
+        "nurse",
+        "sơ cấp cứu",
+        "구급",
+        "急救"
+      ],
+      "labels": {
+        "vi": "Liên hệ Trung tâm Y tế Resort",
+        "en": "Resort Medical Centre",
+        "zh": "医疗中心联系方式",
+        "ko": "의료 센터 연락처"
+      }
+    },
+    {
+      "id": "recreation_fitness_center",
+      "place_type": "entity",
+      "zone_hub_id": "zone_wellness_recreation",
+      "aliases": [
+        "Fitness & Health Club",
+        "Fitness Center",
+        "recreation.fitness_center",
+        "Phòng tập thể dục",
+        "피트니스 센터",
+        "健身中心",
+        "phòng tập thể dục fitness center",
+        "gym",
+        "phòng gym",
+        "헬스장",
+        "健身房",
+        "fitness centre",
+        "phòng tập",
+        "피트니스",
+        "自由重量",
+        "weights",
+        "tạ",
+        "웨이트",
+        "有氧设备",
+        "cardio"
+      ],
+      "labels": {
+        "vi": "Phòng tập thể dục",
+        "en": "Fitness Center",
+        "zh": "健身中心",
+        "ko": "피트니스 센터"
+      }
+    },
+    {
+      "id": "recreation_swimming_pools",
+      "place_type": "entity",
+      "zone_hub_id": "zone_wellness_recreation",
+      "aliases": [
+        "Ocean & Lagoon Swimming Pools",
+        "Resort Swimming Pools",
+        "recreation.swimming_pools",
+        "Hồ bơi Resort (Lagoon & Ocean Pool)",
+        "리조트 수영장",
+        "度假村游泳池",
+        "swimming pool",
+        "hồ bơi",
+        "수영장",
+        "游泳池",
+        "pool",
+        "bể bơi",
+        "풀장",
+        "泳池",
+        "ocean pool",
+        "hồ bơi lagoon",
+        "오션 풀",
+        "环礁湖泳池",
+        "lagoon pool",
+        "hồ bơi ocean"
+      ],
+      "labels": {
+        "vi": "Hồ bơi Resort (Lagoon & Ocean Pool)",
+        "en": "Resort Swimming Pools",
+        "zh": "度假村游泳池",
+        "ko": "리조트 수영장"
+      }
+    },
+    {
+      "id": "recreation_water_sports",
+      "place_type": "entity",
+      "zone_hub_id": "zone_wellness_recreation",
+      "aliases": [
+        "Water Sports Centre",
+        "Water Sports Center",
+        "recreation.water_sports",
+        "Trung tâm Thể thao Dưới nước",
+        "수상 스포츠 센터",
+        "水上运动中心"
+      ],
+      "labels": {
+        "vi": "Trung tâm Thể thao Dưới nước",
+        "en": "Water Sports Center",
+        "zh": "水上运动中心",
+        "ko": "수상 스포츠 센터"
+      }
+    },
+    {
+      "id": "recreation_tennis_club",
+      "place_type": "entity",
+      "zone_hub_id": "zone_wellness_recreation",
+      "aliases": [
+        "Tennis Courts",
+        "recreation.tennis_club",
+        "Sân quần vợt",
+        "테니스 코트",
+        "网球场",
+        "sân quần vợt tennis"
+      ],
+      "labels": {
+        "vi": "Sân quần vợt",
+        "en": "Tennis Courts",
+        "zh": "网球场",
+        "ko": "테니스 코트"
+      }
+    },
+    {
+      "id": "recreation_kids_club",
+      "place_type": "entity",
+      "zone_hub_id": "zone_wellness_recreation",
+      "aliases": [
+        "Kids Club",
+        "recreation.kids_club",
+        "Câu lạc bộ Trẻ em",
+        "키즈 클럽",
+        "儿童俱乐部",
+        "kids activities",
+        "hoạt động trẻ em",
+        "어린이 활동",
+        "儿童活动",
+        "children activities",
+        "khu vui chơi trẻ em",
+        "키즈 놀이",
+        "儿童游乐",
+        "play area"
+      ],
+      "labels": {
+        "vi": "Câu lạc bộ Trẻ em",
+        "en": "Kids Club",
+        "zh": "儿童俱乐部",
+        "ko": "키즈 클럽"
+      }
+    }
+  ],
+  "paths": [
+    {
+      "from": "zone_main_lobby",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "Within the main lobby zone, follow the Reception signs to the front desk.",
+        "vi": "Trong khu sảnh chính, đi theo biển chỉ dẫn Lễ tân để tới quầy front desk.",
+        "ko": "메인 로비 구역에서 리셉션 표지판을 따라 프런트 데스크로 가세요.",
+        "zh": "在主大堂区域内沿“前台”标识前往前台柜台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "7690f9063fea145895b6c575e210f49b62faf810e173926d1be0e21c0cf7c57a",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "zone_main_lobby",
+      "precision": "zone",
+      "instructions": {
+        "en": "Reception is facility 1 on the reviewed resort map and is located in the main lobby zone.",
+        "vi": "Lễ tân là điểm số 1 trên sơ đồ resort đã duyệt và nằm trong khu sảnh chính.",
+        "ko": "리셉션은 검토된 리조트 지도에서 1번 시설이며 메인 로비 구역에 있습니다.",
+        "zh": "前台在已审核的度假村地图上标为1号设施，位于主大堂区域。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "4db7055bbf7ef58158ac13e0452abc48ce4792039e4563e48fc84955ac5ef14e",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "meeting_international_convention_palace",
+      "to": "meeting_danang_grand_ballroom",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "On ICP Level 1, enter through the main foyer; the Danang Grand Ballroom is the large central hall.",
+        "vi": "Tại tầng 1 ICP, đi qua sảnh chính; Danang Grand Ballroom là sảnh lớn ở khu vực trung tâm.",
+        "ko": "ICP 1층 메인 로비로 들어가면 중앙의 큰 홀이 다낭 그랜드 볼룸입니다.",
+        "zh": "进入ICP一层主前厅后，中央的大型大厅就是岘港大宴会厅。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "092ff29a833d52d51abcb65b5cdd653f8505a010d48e6357ca69f96a8d6714ab",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_danang_grand_ballroom",
+      "to": "meeting_international_convention_palace",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "From the Danang Grand Ballroom, return through the Level 1 main foyer to the ICP entrance.",
+        "vi": "Từ Danang Grand Ballroom, đi qua sảnh chính tầng 1 để trở lại lối vào ICP.",
+        "ko": "다낭 그랜드 볼룸에서 1층 메인 로비를 지나 ICP 입구로 돌아가세요.",
+        "zh": "从岘港大宴会厅经一层主前厅返回ICP入口。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "b49cb5d46cc30af63476abf89decf16f22108300fbd2a4e7d139bce9d9175efb",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_danang_grand_ballroom",
+      "to": "meeting_ballroom_1",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "Danang Ballroom 1 is the first divisible section of the Danang Grand Ballroom on ICP Level 1.",
+        "vi": "Danang Ballroom 1 là khu chia phòng số 1 của Danang Grand Ballroom tại tầng 1 ICP.",
+        "ko": "다낭 볼룸 1은 ICP 1층 다낭 그랜드 볼룸의 첫 번째 분할 구역입니다.",
+        "zh": "岘港宴会厅1是ICP一层岘港大宴会厅的第一个可分隔区域。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "403984d0aabe7da5ddf3b13f18ab980729ab7aac80a2db69cd89475d4a265eb3",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_danang_grand_ballroom",
+      "to": "meeting_ballroom_2",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "Danang Ballroom 2 is the middle divisible section of the Danang Grand Ballroom on ICP Level 1.",
+        "vi": "Danang Ballroom 2 là khu chia phòng ở giữa của Danang Grand Ballroom tại tầng 1 ICP.",
+        "ko": "다낭 볼룸 2는 ICP 1층 다낭 그랜드 볼룸의 가운데 분할 구역입니다.",
+        "zh": "岘港宴会厅2是ICP一层岘港大宴会厅中间的可分隔区域。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "95c4602ea700ef4f51b207c046c8fb04e147f90b6b97d4c172294a0a3897897c",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_danang_grand_ballroom",
+      "to": "meeting_ballroom_3",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "Danang Ballroom 3 is the third divisible section of the Danang Grand Ballroom on ICP Level 1.",
+        "vi": "Danang Ballroom 3 là khu chia phòng số 3 của Danang Grand Ballroom tại tầng 1 ICP.",
+        "ko": "다낭 볼룸 3은 ICP 1층 다낭 그랜드 볼룸의 세 번째 분할 구역입니다.",
+        "zh": "岘港宴会厅3是ICP一层岘港大宴会厅的第三个可分隔区域。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "bf234aa1a385af11b854b1e165010f61c3aa28bfd66d2d5198c11210f6af9715",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_danang_grand_ballroom",
+      "to": "meeting_han_river_1",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "Han River Room 1 is on ICP Level 1 beside the Grand Ballroom foyer, as shown on the official floor plan.",
+        "vi": "Phòng Sông Hàn 1 ở tầng 1 ICP, cạnh khu sảnh của Grand Ballroom theo sơ đồ chính thức.",
+        "ko": "한강 룸 1은 공식 도면상 ICP 1층 그랜드 볼룸 로비 옆에 있습니다.",
+        "zh": "根据官方平面图，汉江厅1位于ICP一层大宴会厅前厅旁。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "fcadb8e8197cf04abf2fe6008afac21c69d47b627781d3ab88f26415e7d217d5",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_danang_grand_ballroom",
+      "to": "meeting_han_river_2",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "Han River Room 2 is on ICP Level 1 beside the opposite end of the Grand Ballroom, as shown on the official floor plan.",
+        "vi": "Phòng Sông Hàn 2 ở tầng 1 ICP, cạnh đầu còn lại của Grand Ballroom theo sơ đồ chính thức.",
+        "ko": "한강 룸 2는 공식 도면상 ICP 1층 그랜드 볼룸 반대쪽 끝에 있습니다.",
+        "zh": "根据官方平面图，汉江厅2位于ICP一层大宴会厅另一端旁。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "76a51ae760e1df180b11057057689184497f6b49ed13db9d79696a84f1c76cf3",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_han_river_1",
+      "to": "meeting_danang_grand_ballroom",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "From Han River Room 1, follow the Level 1 foyer back to the adjacent Danang Grand Ballroom.",
+        "vi": "Từ Phòng Sông Hàn 1, theo sảnh tầng 1 để trở lại Danang Grand Ballroom ở ngay bên cạnh.",
+        "ko": "한강 룸 1에서 1층 로비를 따라 인접한 다낭 그랜드 볼룸으로 이동하세요.",
+        "zh": "从汉江厅1沿一层前厅返回相邻的岘港大宴会厅。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "cefd25fdb9a1bbbcf43cd47941c03ebb8449c256c916de5bf56ad5e7aa55bc1a",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_han_river_2",
+      "to": "meeting_danang_grand_ballroom",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "From Han River Room 2, follow the Level 1 foyer back to the Danang Grand Ballroom.",
+        "vi": "Từ Phòng Sông Hàn 2, theo sảnh tầng 1 để trở lại Danang Grand Ballroom.",
+        "ko": "한강 룸 2에서 1층 로비를 따라 다낭 그랜드 볼룸으로 이동하세요.",
+        "zh": "从汉江厅2沿一层前厅返回岘港大宴会厅。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1",
+        "evidence_sha256": "7d28054ee6270ea78a18ceb78518809c02589c10a0b5841406f65da2b213a66c",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "zone_dining_hub",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow the resort signs toward the restaurant/dining area marked on the reviewed facility map. Use the venue signs inside that area for the exact restaurant.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn của khu nghỉ dưỡng đến khu nhà hàng/ẩm thực trên sơ đồ cơ sở đã duyệt. Trong khu này, tiếp tục theo biển tên để đến đúng nhà hàng.",
+        "ko": "리셉션에서 검토된 시설 지도에 표시된 레스토랑/다이닝 구역 표지판을 따라가세요. 구역 안에서는 각 업장 표지판으로 정확한 레스토랑을 찾으세요.",
+        "zh": "从前台沿度假村指示牌前往已审核设施图上的餐厅/餐饮区域。进入该区域后，请根据场内标识寻找具体餐厅。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "5f13ab0a37764ee711dc7d7ea2988a7935e8571bf336a30a7f4352e0cc3cf610",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "zone_dining_hub",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the dining area, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ khu ẩm thực, đi theo biển chỉ dẫn của khu nghỉ dưỡng trở lại Lễ tân tại sảnh chính.",
+        "ko": "다이닝 구역에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从餐饮区域沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "e41c2c5a0d5c1b1485df84767adaca985fe8e3fd7f5e5da2a2a0f06a8fafcd50",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "zone_ocean_wing",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow resort signs toward the resort guest-room area on the reviewed facility map. Exact sub-venue positioning is not published in this route.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn đến khu phòng nghỉ của resort trên sơ đồ cơ sở đã duyệt. Tuyến này không công bố vị trí chi tiết bên trong từng điểm.",
+        "ko": "리셉션에서 검토된 시설 지도의 리조트 객실 구역 방향 표지판을 따라가세요. 이 경로는 구역 내부의 세부 위치까지 제공하지 않습니다.",
+        "zh": "从前台沿指示牌前往已审核设施图中的度假村客房区。本路线不提供区域内部的精确点位。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "21bfda6ebb1ad7321260a79c82411388e1bf7b87f095776565af25d9a38476ff",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "zone_ocean_wing",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the resort guest-room area, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ khu phòng nghỉ của resort, đi theo biển chỉ dẫn trở lại Lễ tân tại sảnh chính.",
+        "ko": "리조트 객실 구역에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从度假村客房区沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "c82b873ba38f7295603202a7b6ec873c33193d4a78714269ea92dba9ea34cba9",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "zone_garden_wing",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow resort signs toward the resort guest-room area on the reviewed facility map. Exact sub-venue positioning is not published in this route.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn đến khu phòng nghỉ của resort trên sơ đồ cơ sở đã duyệt. Tuyến này không công bố vị trí chi tiết bên trong từng điểm.",
+        "ko": "리셉션에서 검토된 시설 지도의 리조트 객실 구역 방향 표지판을 따라가세요. 이 경로는 구역 내부의 세부 위치까지 제공하지 않습니다.",
+        "zh": "从前台沿指示牌前往已审核设施图中的度假村客房区。本路线不提供区域内部的精确点位。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "c1ceca3b7c3c27cac6dd01d8b64ef97b18ffe7738e7b742543ae6bb94bf01653",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "zone_garden_wing",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the resort guest-room area, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ khu phòng nghỉ của resort, đi theo biển chỉ dẫn trở lại Lễ tân tại sảnh chính.",
+        "ko": "리조트 객실 구역에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从度假村客房区沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "44699457a2170fba25856de715c5e30e451b53f185ba741884c040666225fe3c",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "zone_villas",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow resort signs toward the resort villas area on the reviewed facility map. Exact sub-venue positioning is not published in this route.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn đến khu biệt thự trên sơ đồ cơ sở đã duyệt. Tuyến này không công bố vị trí chi tiết bên trong từng điểm.",
+        "ko": "리셉션에서 검토된 시설 지도의 리조트 빌라 구역 방향 표지판을 따라가세요. 이 경로는 구역 내부의 세부 위치까지 제공하지 않습니다.",
+        "zh": "从前台沿指示牌前往已审核设施图中的度假村别墅区。本路线不提供区域内部的精确点位。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "5727ccef58917e31e431663b6f8e06e0020b1c27ca6bc0e34190c6be2b4dbba1",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "zone_villas",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the resort villas area, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ khu biệt thự, đi theo biển chỉ dẫn trở lại Lễ tân tại sảnh chính.",
+        "ko": "리조트 빌라 구역에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从度假村别墅区沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "b5a496069668b3a59d3b000f1e8886cba1ddf43f6e1183e0991377b57bc7dc92",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "zone_wellness_recreation",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow resort signs toward the recreation area shown by the pool, tennis and Kids Club markers on the reviewed facility map. Exact sub-venue positioning is not published in this route.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn đến khu vui chơi/thể thao được nhận diện bằng các mốc hồ bơi, tennis và Kids Club trên sơ đồ cơ sở đã duyệt. Tuyến này không công bố vị trí chi tiết bên trong từng điểm.",
+        "ko": "리셉션에서 검토된 시설 지도의 수영장·테니스·키즈클럽 표식으로 확인되는 레크리에이션 구역 방향 표지판을 따라가세요. 이 경로는 구역 내부의 세부 위치까지 제공하지 않습니다.",
+        "zh": "从前台沿指示牌前往已审核设施图中的由泳池、网球场和儿童俱乐部标记所指示的休闲区域。本路线不提供区域内部的精确点位。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "ee3f41b2a9d160e07f82e8edb600471dbb6d88b97355a7228d1c760d229f9616",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "zone_wellness_recreation",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the recreation area shown by the pool, tennis and Kids Club markers, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ khu vui chơi/thể thao được nhận diện bằng các mốc hồ bơi, tennis và Kids Club, đi theo biển chỉ dẫn trở lại Lễ tân tại sảnh chính.",
+        "ko": "수영장·테니스·키즈클럽 표식으로 확인되는 레크리에이션 구역에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从由泳池、网球场和儿童俱乐部标记所指示的休闲区域沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "acd1ffd683c5bcbaefa0cb9630cfb20cddd929dd371d999eaec42d5e3285203c",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "meeting_international_convention_palace",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow the resort signs to the International Convention Palace (ICP), marked as the convention palace on the reviewed facility map.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn đến International Convention Palace (ICP), được đánh dấu là khu hội nghị trên sơ đồ cơ sở đã duyệt.",
+        "ko": "리셉션에서 검토된 시설 지도에 컨벤션 팰리스로 표시된 국제컨벤션팰리스(ICP) 표지판을 따라가세요.",
+        "zh": "从前台沿指示牌前往国际会议宫（ICP）；该区域在已审核设施图上标注为会议中心。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "5a142cb8145ae8084e8bed17e43c17c68c1a9b70a6a8035e2c9062b44e4c66a5",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "meeting_international_convention_palace",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the ICP, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ ICP, đi theo biển chỉ dẫn của khu nghỉ dưỡng trở lại Lễ tân tại sảnh chính.",
+        "ko": "ICP에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从ICP沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "444c196c1a8cc479b9f9891a43f6abc0f3649991400bb5f8ac43a44a8c10506c",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "recreation_swimming_pools",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow resort signs toward the swimming-pool area, identified as facility 7 on the reviewed resort map.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn đến khu hồ bơi, được đánh dấu là điểm số 7 trên sơ đồ resort đã duyệt.",
+        "ko": "리셉션에서 검토된 리조트 지도에 7번으로 표시된 수영장 구역 방향 표지판을 따라가세요.",
+        "zh": "从前台沿指示牌前往泳池区域；该设施在已审核的度假村地图上标为7号。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "29523dacfa67a3e246e27d6cd7a8b8dbf0fdc92cab2abf8dc46dbcd017e90ebb",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "recreation_swimming_pools",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the swimming-pool area, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ khu hồ bơi, đi theo biển chỉ dẫn trở lại Lễ tân tại sảnh chính.",
+        "ko": "수영장 구역에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从泳池区域沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "28bc38b3eb9db95d6bb1b75062316ed120535494d0aa4bd82375c6c7b374d7c2",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "recreation_tennis_club",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow resort signs toward the tennis courts, identified as facility 8 on the reviewed resort map.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn đến sân tennis, được đánh dấu là điểm số 8 trên sơ đồ resort đã duyệt.",
+        "ko": "리셉션에서 검토된 리조트 지도에 8번으로 표시된 테니스 코트 방향 표지판을 따라가세요.",
+        "zh": "从前台沿指示牌前往网球场；该设施在已审核的度假村地图上标为8号。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "e90adacbc29db290d6d7d4386db41ac51782aa95e23e06fb491103a91f516482",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "recreation_tennis_club",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the tennis courts, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ sân tennis, đi theo biển chỉ dẫn trở lại Lễ tân tại sảnh chính.",
+        "ko": "테니스 코트에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从网球场沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "879aa5b549aff515b95ada392ce6dd0ad986540e41949c3fe8faf3aa5cb4860d",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "property_furama_resort_danang",
+      "to": "recreation_kids_club",
+      "precision": "zone",
+      "instructions": {
+        "en": "From Reception, follow resort signs toward the Kids Club, identified as facility 9 on the reviewed resort map.",
+        "vi": "Từ Lễ tân, đi theo biển chỉ dẫn đến Kids Club, được đánh dấu là điểm số 9 trên sơ đồ resort đã duyệt.",
+        "ko": "리셉션에서 검토된 리조트 지도에 9번으로 표시된 키즈클럽 방향 표지판을 따라가세요.",
+        "zh": "从前台沿指示牌前往儿童俱乐部；该设施在已审核的度假村地图上标为9号。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "be40151baf4c883fa8306b585c338f761585b3351494b0f911b40940f8bce2e9",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "recreation_kids_club",
+      "to": "property_furama_resort_danang",
+      "precision": "zone",
+      "instructions": {
+        "en": "From the Kids Club, follow resort signs back to Reception in the main lobby.",
+        "vi": "Từ Kids Club, đi theo biển chỉ dẫn trở lại Lễ tân tại sảnh chính.",
+        "ko": "키즈클럽에서 리조트 안내 표지판을 따라 메인 로비 리셉션으로 돌아가세요.",
+        "zh": "从儿童俱乐部沿度假村指示牌返回主大堂前台。"
+      },
+      "evidence": {
+        "source_url": "https://apmpf2025.hoatieuvietnam.com.vn/venue",
+        "source_page": 1,
+        "source_label": "APMPF 2025 Furama Resort facility map",
+        "evidence_sha256": "e4071bc9252a0c96cba2510bcdbcccf7bd62f12487d6146641136165f2a6a506",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "secondary_facility_map",
+        "limitations": "Topological facility-zone guidance only; no metric distance, accessibility status, or turn-by-turn geometry is claimed."
+      }
+    },
+    {
+      "from": "meeting_ballroom_1",
+      "to": "meeting_danang_grand_ballroom",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "From Danang Ballroom 1, move back into the shared Danang Grand Ballroom / foyer area on ICP Level 1.",
+        "vi": "Từ Danang Ballroom 1, trở lại khu Danang Grand Ballroom/sảnh chung tại tầng 1 ICP.",
+        "ko": "다낭 볼룸 1에서 ICP 1층의 공용 다낭 그랜드 볼룸/로비 구역으로 돌아가세요.",
+        "zh": "从岘港宴会厅1返回ICP一层共用的岘港大宴会厅/前厅区域。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1/2",
+        "evidence_sha256": "f552a8c7c3c3f08649a9c445ccbaaa8cd90e9a07869363b2223f95af5ef304c0",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_ballroom_2",
+      "to": "meeting_danang_grand_ballroom",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "From Danang Ballroom 2, move back into the shared Danang Grand Ballroom / foyer area on ICP Level 1.",
+        "vi": "Từ Danang Ballroom 2, trở lại khu Danang Grand Ballroom/sảnh chung tại tầng 1 ICP.",
+        "ko": "다낭 볼룸 2에서 ICP 1층의 공용 다낭 그랜드 볼룸/로비 구역으로 돌아가세요.",
+        "zh": "从岘港宴会厅2返回ICP一层共用的岘港大宴会厅/前厅区域。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1/2",
+        "evidence_sha256": "172d60e0efcde4a18e70fe92b6e49210e36945a27006a79d70aa94cc1bd8feb7",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_ballroom_3",
+      "to": "meeting_danang_grand_ballroom",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "From Danang Ballroom 3, move back into the shared Danang Grand Ballroom / foyer area on ICP Level 1.",
+        "vi": "Từ Danang Ballroom 3, trở lại khu Danang Grand Ballroom/sảnh chung tại tầng 1 ICP.",
+        "ko": "다낭 볼룸 3에서 ICP 1층의 공용 다낭 그랜드 볼룸/로비 구역으로 돌아가세요.",
+        "zh": "从岘港宴会厅3返回ICP一层共用的岘港大宴会厅/前厅区域。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 2,
+        "source_label": "Furama ICP Floorplan of Level 1/2",
+        "evidence_sha256": "40635297e3095b9827eb14b9dd2c86439fb76a11dc8709ba44e39af51f230a01",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Indoor floor-plan guidance only; no accessibility or live obstruction data."
+      }
+    },
+    {
+      "from": "meeting_international_convention_palace",
+      "to": "meeting_son_tra_1",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "Inside the ICP, use the internal staircase shown on the official floor plans to reach Level 2; Son Tra Room is on the right side of the Level-2 plan beside the stair/core area.",
+        "vi": "Bên trong ICP, dùng cầu thang nội bộ thể hiện trên sơ đồ chính thức để lên tầng 2; phòng Sơn Trà nằm phía bên phải sơ đồ tầng 2, cạnh khu lõi/cầu thang.",
+        "ko": "ICP 내부에서 공식 평면도에 표시된 내부 계단으로 2층으로 올라가세요. 손트라 룸은 2층 도면 오른쪽, 계단/코어 구역 옆에 있습니다.",
+        "zh": "在ICP内部，按官方平面图所示使用内部楼梯到二层；山茶厅位于二层平面图右侧、靠近楼梯/核心区。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 3,
+        "source_label": "Furama ICP Floorplan of Level 1/2",
+        "evidence_sha256": "2d61716cb2bcd0b7d72eb84b54ab4083182860f732183b9a99dac549bf8a6ba8",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Uses the staircase shown on the official Level 1/2 floor plans; elevator/accessibility routing is not asserted."
+      }
+    },
+    {
+      "from": "meeting_son_tra_1",
+      "to": "meeting_international_convention_palace",
+      "precision": "floorplan",
+      "instructions": {
+        "en": "From Son Tra Room on ICP Level 2, return to the internal stair/core shown on the official plan and descend to Level 1 toward the ICP entrance/foyer.",
+        "vi": "Từ phòng Sơn Trà ở tầng 2 ICP, trở lại khu lõi/cầu thang trên sơ đồ chính thức và xuống tầng 1 theo hướng sảnh/lối vào ICP.",
+        "ko": "ICP 2층 손트라 룸에서 공식 도면의 계단/코어 구역으로 돌아가 1층 ICP 입구/로비 방향으로 내려가세요.",
+        "zh": "从ICP二层山茶厅返回官方平面图中的楼梯/核心区，下到一层并前往ICP入口/前厅。"
+      },
+      "evidence": {
+        "source_url": "https://furamavietnam.com/wp-content/uploads/2025/02/Furama-ICP-Capacity-Charts-Floor-PLan.pdf",
+        "source_page": 3,
+        "source_label": "Furama ICP Floorplan of Level 1/2",
+        "evidence_sha256": "90c12b194710531d7f95ab5a3602a167d6f30e28135006a9b886cd8e140be212",
+        "reviewed_at": "2026-10-01",
+        "source_kind": "official_floorplan",
+        "limitations": "Uses the staircase shown on the official Level 1/2 floor plans; elevator/accessibility routing is not asserted."
+      }
+    }
+  ]
+}

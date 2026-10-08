@@ -1,0 +1,127 @@
+{
+  "dataset_id": "furama-natural-paraphrase-smoke",
+  "property_id": "FURAMA_DANANG",
+  "effective_date": "2026-10-01",
+  "cases": [
+    {
+      "id": "italian_en",
+      "language": "en",
+      "query": "I feel like pasta or Italian food tonight. Where should I eat?",
+      "expected_source_id": "restaurant.don_cipriani"
+    },
+    {
+      "id": "room_service_en",
+      "language": "en",
+      "query": "Can I still get food delivered to my room late at night?",
+      "expected_source_id": "service.in_room_dining"
+    },
+    {
+      "id": "kids_en",
+      "language": "en",
+      "query": "Is there somewhere for children to play later on Friday evening?",
+      "expected_source_id": "recreation.kids_club"
+    },
+    {
+      "id": "fitness_en",
+      "language": "en",
+      "query": "How late can I work out at the gym?",
+      "expected_source_id": "recreation.fitness_center"
+    },
+    {
+      "id": "outside_food_en",
+      "language": "en",
+      "query": "Am I allowed to bring takeaway food back to my room?",
+      "expected_source_id": "service.in_room_dining"
+    },
+    {
+      "id": "italian_vi",
+      "language": "vi",
+      "query": "Tối nay tôi muốn ăn pasta hoặc món Ý thì nên đi đâu?",
+      "expected_source_id": "restaurant.don_cipriani"
+    },
+    {
+      "id": "room_service_vi",
+      "language": "vi",
+      "query": "Khuya rồi tôi còn gọi đồ ăn giao lên phòng được không?",
+      "expected_source_id": "service.in_room_dining"
+    },
+    {
+      "id": "kids_vi",
+      "language": "vi",
+      "query": "Tối thứ Sáu có chỗ nào cho trẻ em chơi muộn không?",
+      "expected_source_id": "recreation.kids_club"
+    },
+    {
+      "id": "fitness_vi",
+      "language": "vi",
+      "query": "Tôi có thể tập gym tới khuya không?",
+      "expected_source_id": "recreation.fitness_center"
+    },
+    {
+      "id": "outside_food_vi",
+      "language": "vi",
+      "query": "Tôi có được mang đồ ăn mua bên ngoài về phòng không?",
+      "expected_source_id": "service.in_room_dining"
+    },
+    {
+      "id": "italian_ko",
+      "language": "ko",
+      "query": "오늘 저녁 파스타나 이탈리아 음식을 먹고 싶은데 어디로 가면 되나요?",
+      "expected_source_id": "restaurant.don_cipriani"
+    },
+    {
+      "id": "room_service_ko",
+      "language": "ko",
+      "query": "늦은 밤에도 객실로 음식을 주문할 수 있나요?",
+      "expected_source_id": "service.in_room_dining"
+    },
+    {
+      "id": "kids_ko",
+      "language": "ko",
+      "query": "금요일 저녁 늦게까지 아이들이 놀 수 있는 곳이 있나요?",
+      "expected_source_id": "recreation.kids_club"
+    },
+    {
+      "id": "fitness_ko",
+      "language": "ko",
+      "query": "밤늦게까지 운동할 수 있는 피트니스 시설이 있나요?",
+      "expected_source_id": "recreation.fitness_center"
+    },
+    {
+      "id": "outside_food_ko",
+      "language": "ko",
+      "query": "외부에서 산 음식을 객실로 가져와도 되나요?",
+      "expected_source_id": "service.in_room_dining"
+    },
+    {
+      "id": "italian_zh",
+      "language": "zh",
+      "query": "今晚想吃意大利菜或者意面，应该去哪里？",
+      "expected_source_id": "restaurant.don_cipriani"
+    },
+    {
+      "id": "room_service_zh",
+      "language": "zh",
+      "query": "深夜还能把餐点送到房间吗？",
+      "expected_source_id": "service.in_room_dining"
+    },
+    {
+      "id": "kids_zh",
+      "language": "zh",
+      "query": "周五晚上孩子有没有可以玩到比较晚的地方？",
+      "expected_source_id": "recreation.kids_club"
+    },
+    {
+      "id": "fitness_zh",
+      "language": "zh",
+      "query": "晚上比较晚的时候还能去健身吗？",
+      "expected_source_id": "recreation.fitness_center"
+    },
+    {
+      "id": "outside_food_zh",
+      "language": "zh",
+      "query": "可以把外面买的食物带回房间吗？",
+      "expected_source_id": "service.in_room_dining"
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_simulation",
+  "seed": 20261004,
+  "truth_note": "All workload, staffing extensions and counterfactual effects are synthetic; no Furama KPI is inferred.",
+  "request_rate_per_occupied_unit_day": 1.08,
+  "regimes": [
+    {
+      "id": "normal",
+      "days": 14,
+      "occupancy_pct": [
+        68,
+        78
+      ],
+      "demand_multiplier": 1.0,
+      "staffing_multiplier": 1.0,
+      "maintenance_multiplier": 1.0
+    },
+    {
+      "id": "high_weekend",
+      "days": 7,
+      "occupancy_pct": [
+        86,
+        94
+      ],
+      "demand_multiplier": 1.15,
+      "staffing_multiplier": 1.0,
+      "maintenance_multiplier": 1.05
+    },
+    {
+      "id": "soldout_rain",
+      "days": 4,
+      "occupancy_pct": [
+        96,
+        100
+      ],
+      "demand_multiplier": 1.35,
+      "staffing_multiplier": 0.9,
+      "maintenance_multiplier": 1.35
+    },
+    {
+      "id": "degraded_staffing",
+      "days": 5,
+      "occupancy_pct": [
+        82,
+        92
+      ],
+      "demand_multiplier": 1.18,
+      "staffing_multiplier": 0.68,
+      "maintenance_multiplier": 1.1
+    }
+  ],
+  "counterfactual_variants": {
+    "manual_relay": {
+      "front_desk_touch_all_requests": true,
+      "dispatch_delay_min": [
+        3.0,
+        8.0
+      ]
+    },
+    "agent_governed": {
+      "low_risk_auto_route_delay_min": [
+        0.15,
+        0.8
+      ],
+      "staff_gated_triage_delay_min": [
+        2.0,
+        6.0
+      ]
+    }
+  },
+  "extended_department_capacity": [
+    {
+      "department_id": "FNB_ROOM_SERVICE",
+      "capacity": 8,
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "SPA_WELLNESS",
+      "capacity": 5,
+      "truth_status": "synthetic_simulation"
+    },
+    {
+      "department_id": "TOUR_DESK",
+      "capacity": 2,
+      "truth_status": "synthetic_simulation"
+    }
+  ],
+  "service_time_fallback_min": {
+    "human_assistance": [
+      8,
+      20
+    ],
+    "facility_request": [
+      10,
+      25
+    ],
+    "dining_request": [
+      10,
+      25
+    ],
+    "transport_request": [
+      15,
+      35
+    ],
+    "late_checkout": [
+      12,
+      30
+    ],
+    "dining_reservation": [
+      8,
+      20
+    ],
+    "spa_reservation": [
+      10,
+      25
+    ],
+    "tour_request": [
+      15,
+      35
+    ],
+    "tour_reservation": [
+      20,
+      45
+    ],
+    "food_order": [
+      30,
+      60
+    ]
+  }
+}

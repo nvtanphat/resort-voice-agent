@@ -91,7 +91,7 @@ class AgentTaskMemory:
     def save(self, session: str, *, kind: str, language: str, mode: str, details: str,
              slots: dict[str, str | int], missing: tuple[str, ...]) -> None:
         if (not session or kind not in _ALLOWED_KINDS or language not in _ALLOWED_LANGUAGES or
-                not mode or len(mode) > 40 or not 2 <= len(details) <= 500 or not missing):
+                not mode or len(mode) > 40 or not 2 <= len(details) <= 500):
             raise ValueError('Invalid pending agent task')
         clean_slots = {key: value for key, value in slots.items() if key in _ALLOWED_SLOTS}
         now = time.monotonic()

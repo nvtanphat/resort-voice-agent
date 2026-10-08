@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Synthetic stay episode",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "stay_id",
+    "truth_status",
+    "unit_id",
+    "language",
+    "guest_archetype_id",
+    "party_size",
+    "check_in_at",
+    "check_out_at",
+    "nights",
+    "channel_preference",
+    "privacy_preference",
+    "truth_note"
+  ],
+  "properties": {
+    "stay_id": {
+      "type": "string",
+      "pattern": "^HOSP-STAY-[0-9]{6}$"
+    },
+    "truth_status": {
+      "const": "synthetic_stay_episode"
+    },
+    "unit_id": {
+      "type": "string",
+      "pattern": "^SIM-(?:ROOM|VILLA)-[0-9]{4}$"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "guest_archetype_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "party_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "check_in_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "check_out_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nights": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "channel_preference": {
+      "type": "string"
+    },
+    "privacy_preference": {
+      "type": "string"
+    },
+    "truth_note": {
+      "type": "string"
+    }
+  }
+}

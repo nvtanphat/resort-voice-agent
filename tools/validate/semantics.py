@@ -21,12 +21,8 @@ if str(ROOT / "src") not in sys.path:
 from tools.validate.property_dataset import verify_dataset_manifest
 from concierge_kiosk.core.dataset_layout import (
     CONTACTS,
-    DEPARTMENTS,
     FACTS,
-    MAP,
-    PLANNING,
     PROPERTY,
-    RELATIONS,
     SERVICE_CATALOG,
     WORKFLOWS,
     dataset_path,

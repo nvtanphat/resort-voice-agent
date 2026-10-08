@@ -1,0 +1,52 @@
+{
+  "principle": "situation_first_not_paraphrase",
+  "pipeline": [
+    "semantic_frame",
+    "situation_generation",
+    "independent_native_utterance_generation",
+    "llm_judge",
+    "deterministic_diversity_audit",
+    "auto_repair_once",
+    "promote_or_reject"
+  ],
+  "rules": {
+    "reference_utterance_visible_to_generator": false,
+    "max_utterances_per_generation_call": 2,
+    "split_before_generation": true,
+    "translation_between_languages": false,
+    "language_generation": "independent_native_generation_from_same_semantic_frame",
+    "label_source": "semantic_frame_only",
+    "generator_may_change_labels": false,
+    "preferred_situation_dimensions": [
+      "guest_profile",
+      "reason",
+      "previous_event",
+      "urgency",
+      "emotion",
+      "directness",
+      "information_known",
+      "information_missing",
+      "conversation_position",
+      "code_switching",
+      "self_correction"
+    ],
+    "conversation_positions": [
+      "opening",
+      "follow_up",
+      "clarification_answer",
+      "complaint",
+      "correction",
+      "confirmation",
+      "cancellation",
+      "status_query"
+    ],
+    "explicit_intent_keyword_required": false
+  },
+  "primary_language": "vi",
+  "language_priority": [
+    "vi",
+    "en",
+    "ko",
+    "zh"
+  ]
+}

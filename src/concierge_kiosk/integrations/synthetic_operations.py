@@ -145,51 +145,76 @@ class SyntheticOperations:
         return [row for score, row in scored if score == top_score]
 
     @staticmethod
-    def _at_date(rows: Iterable[Mapping[str, Any]], effective_date: str) -> list[dict[str, Any]]:
-        return [dict(row) for row in rows
-                if not row.get("date") or str(row.get("date")) == effective_date]
+    def _at_date(rows: Iterable[Mapping[str, Any]], effective_date: str, *,
+                 rolling_template: bool = False) -> list[dict[str, Any]]:
+        selected: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, Mapping):
+                continue
+            row_date = row.get("date")
+            if rolling_template:
+                item = dict(row)
+                if row_date:
+                    item["date"] = effective_date
+                selected.append(item)
+            elif not row_date or str(row_date) == effective_date:
+                selected.append(dict(row))
+        return selected
 
     @staticmethod
     def _at_time(rows: Iterable[Mapping[str, Any]], preferred_time: str | None) -> list[dict[str, Any]]:
         if not preferred_time:
             return [dict(row) for row in rows]
-        wanted = str(preferred_time).strip()
+        wanted_text = str(preferred_time).strip()
+        clock = re.search(r"(?<!\d)([01]\d|2[0-3]):[0-5]\d(?!\d)", wanted_text)
+        wanted = clock.group(0) if clock else wanted_text
         return [dict(row) for row in rows if str(row.get("time") or row.get("depart") or "") == wanted]
 
     def restaurant_availability(self, *, path: str, query: str, effective_date: str,
                                 preferred_time: str | None = None,
-                                party_size: int | None = None) -> AvailabilityObservation | None:
+                                party_size: int | None = None,
+                                allow_any_venue: bool = False,
+                                rolling_template: bool = False) -> AvailabilityObservation | None:
         payload = self._json(path)
         if payload is None or not isinstance(payload.get("venues"), list):
             return None
         source = self._source(path, payload)
         venues = self._matching_rows(query, payload["venues"], ("name", "entity_id"))
         if not venues:
-            return AvailabilityObservation("ambiguous", source, reason="venue_not_identified")
+            if not allow_any_venue:
+                return AvailabilityObservation("ambiguous", source, reason="venue_not_identified")
+            venues = [dict(row) for row in payload["venues"] if isinstance(row, Mapping)]
         if len(venues) > 1 and venues[0].get("name") != venues[1].get("name"):
-            options = tuple({"entity_id": row.get("entity_id"), "name": row.get("name")} for row in venues[:3])
-            return AvailabilityObservation("ambiguous", source, alternatives=options,
-                                           reason="multiple_venues")
-        venue = venues[0]
-        slots = self._at_date(venue.get("slots", ()), effective_date)
-        if not slots:
+            if not allow_any_venue:
+                options = tuple({"entity_id": row.get("entity_id"), "name": row.get("name")} for row in venues[:3])
+                return AvailabilityObservation("ambiguous", source, alternatives=options,
+                                               reason="multiple_venues")
+        required = party_size if isinstance(party_size, int) and party_size > 0 else 1
+        candidates: list[dict[str, Any]] = []
+        had_date_coverage = False
+        for venue in venues:
+            slots = self._at_date(venue.get("slots", ()), effective_date,
+                                  rolling_template=rolling_template)
+            had_date_coverage = had_date_coverage or bool(slots)
+            for row in self._at_time(slots, preferred_time):
+                if str(row.get("status")) not in {"available", "limited"}:
+                    continue
+                candidates.append({
+                    "entity_id": venue.get("entity_id"), "name": venue.get("name"),
+                    "date": row.get("date"), "time": row.get("time"),
+                    "remaining": row.get("covers_remaining"), "status": row.get("status"),
+                    "requested_party_size": required,
+                })
+        if not had_date_coverage:
             # A missing effective date is a data-coverage miss, not proof that
-            # the property is sold out.  Let the canonical schedule tool own
+            # the property is sold out. Let the canonical schedule tool own
             # that fallback rather than presenting stale demo data.
             return None
-        slots = self._at_time(slots, preferred_time)
-        required = party_size if isinstance(party_size, int) and party_size > 0 else 1
-        available = [row for row in slots
-                     if str(row.get("status")) == "available"
-                     and int(row.get("covers_remaining") or 0) >= required]
-        alternatives = [row for row in slots if str(row.get("status")) in {"available", "limited"}]
+        available = [row for row in candidates
+                     if row.get("status") == "available"
+                     and int(row.get("remaining") or 0) >= required]
         status = "available" if available else "unavailable"
-        records = tuple({
-            "entity_id": venue.get("entity_id"), "name": venue.get("name"),
-            "date": row.get("date"), "time": row.get("time"),
-            "remaining": row.get("covers_remaining"), "status": row.get("status"),
-            "requested_party_size": required,
-        } for row in (available[:3] if available else alternatives[:3]))
+        records = tuple((available if available else candidates)[:3])
         return AvailabilityObservation(status, source, records=records,
                                        reason=None if available else "no_matching_capacity")
 
@@ -244,7 +269,8 @@ class SyntheticOperations:
 
     def check_availability(self, *, service_code: str, query: str, effective_date: str,
                            preferred_time: str | None = None,
-                           party_size: int | None = None) -> AvailabilityObservation | None:
+                           party_size: int | None = None,
+                           allow_any_venue: bool = False) -> AvailabilityObservation | None:
         """Return a read-only synthetic availability observation for a service."""
         definition = service_definition(service_code)
         source = definition.availability_source if definition is not None else None
@@ -253,12 +279,15 @@ class SyntheticOperations:
         path = str(source.get("dataset") or "")
         shape = str(source.get("shape") or "")
         collection = str(source.get("collection") or "")
+        rolling_template = str(source.get("date_semantics") or "") == "rolling_demo_day_template"
         if not path or not shape:
             return None
         if shape == "table_capacity":
             return self.restaurant_availability(query=query, effective_date=effective_date,
                                                 path=path,
-                                                preferred_time=preferred_time, party_size=party_size)
+                                                preferred_time=preferred_time, party_size=party_size,
+                                                allow_any_venue=allow_any_venue,
+                                                rolling_template=rolling_template)
         if shape == "time_slots":
             return self.spa_availability(path=path, effective_date=effective_date,
                                          preferred_time=preferred_time, party_size=party_size)

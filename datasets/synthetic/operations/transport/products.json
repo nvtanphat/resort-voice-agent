@@ -1,0 +1,152 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "airport_context": {
+    "distance_km": 7.0,
+    "drive_time_typical_min": [
+      15,
+      25
+    ],
+    "distance_status": "external_corroborated",
+    "source_refs": [
+      "external_agoda_furama_transfer"
+    ]
+  },
+  "products": [
+    {
+      "product_id": "airport_sedan",
+      "service": "airport_transfer",
+      "vehicle": "sedan",
+      "max_passengers": 3,
+      "max_medium_bags": 3,
+      "synthetic_price_vnd_one_way": 380000,
+      "recommended_booking_lead_hours": 6,
+      "late_booking": "subject_to_availability",
+      "approval": "staff",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_airport_transfer_products"
+      ],
+      "source_refs": [
+        "furama_airport_transfer",
+        "external_agoda_furama_transfer",
+        "external_expedia_furama_policy",
+        "benchmark_banyan_tree_airport_transfer"
+      ],
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    },
+    {
+      "product_id": "airport_suv",
+      "service": "airport_transfer",
+      "vehicle": "SUV/MPV",
+      "max_passengers": 5,
+      "max_medium_bags": 5,
+      "synthetic_price_vnd_one_way": 550000,
+      "recommended_booking_lead_hours": 6,
+      "late_booking": "subject_to_availability",
+      "approval": "staff",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_airport_transfer_products"
+      ],
+      "source_refs": [
+        "furama_airport_transfer",
+        "external_agoda_furama_transfer",
+        "external_expedia_furama_policy",
+        "benchmark_banyan_tree_airport_transfer"
+      ],
+      "supplier_id": "SYN-SUP-TRANS-01",
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    },
+    {
+      "product_id": "airport_van",
+      "service": "airport_transfer",
+      "vehicle": "van",
+      "max_passengers": 10,
+      "max_medium_bags": 10,
+      "synthetic_price_vnd_one_way": 750000,
+      "recommended_booking_lead_hours": 12,
+      "late_booking": "subject_to_availability",
+      "approval": "staff",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_airport_transfer_products"
+      ],
+      "source_refs": [
+        "furama_airport_transfer",
+        "external_agoda_furama_transfer",
+        "external_expedia_furama_policy",
+        "benchmark_banyan_tree_airport_transfer"
+      ],
+      "supplier_id": "SYN-SUP-TRANS-02",
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    },
+    {
+      "product_id": "airport_meet_greet",
+      "service": "airport_transfer_addon",
+      "vehicle": "any",
+      "synthetic_price_vnd": 150000,
+      "description": "Name-board meet & greet at arrivals; simulated add-on",
+      "approval": "staff",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_airport_transfer_products"
+      ],
+      "source_refs": [
+        "furama_airport_transfer",
+        "external_agoda_furama_transfer",
+        "external_expedia_furama_policy",
+        "benchmark_banyan_tree_airport_transfer"
+      ],
+      "supplier_id": "SYN-SUP-TRANS-02",
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    }
+  ],
+  "taxi": {
+    "availability": "24h at front entrance",
+    "truth_status": "official_public",
+    "source_refs": [
+      "furama_taxi"
+    ],
+    "pricing": "metered_or_driver_quote; kiosk must not invent fare"
+  },
+  "ride_hailing": {
+    "supported_apps": [
+      "Grab"
+    ],
+    "synthetic_pickup_point": "main lobby / porte-cochere",
+    "guest_safety": [
+      "match plate and driver name in app",
+      "do not accept unsolicited replacement vehicle",
+      "ask bell/concierge for help if pickup is unclear"
+    ],
+    "assumption_refs": [
+      "asm_grab_pickup"
+    ],
+    "truth_status": "synthetic_property_assumption",
+    "source_refs": []
+  },
+  "pricing_basis_refs": [
+    "external_agoda_furama_transfer",
+    "external_expedia_furama_policy",
+    "benchmark_banyan_tree_airport_transfer"
+  ],
+  "assumption_refs": [
+    "asm_airport_transfer_products",
+    "asm_grab_pickup"
+  ],
+  "guest_answer_policy": "airport product prices are demo estimates and always require staff confirmation.",
+  "official_service_anchor_refs": [
+    "furama_taxi",
+    "furama_airport_transfer"
+  ],
+  "fixed_shuttle_schedule_ref": "datasets/synthetic/operations/transport/shuttle_schedule.json",
+  "demo_booking_mode": "auto_confirm_if_snapshot_capacity_and_cutoff_pass"
+}

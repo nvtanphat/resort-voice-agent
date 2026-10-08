@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent_gold.schema.json",
+  "type": "object",
+  "required": [
+    "scenario_id",
+    "split",
+    "language",
+    "utterance",
+    "expected_route",
+    "source_family",
+    "source_id",
+    "gold_status",
+    "training_priority"
+  ],
+  "properties": {
+    "scenario_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "split": {
+      "enum": [
+        "train",
+        "dev",
+        "test"
+      ]
+    },
+    "language": {
+      "enum": [
+        "vi",
+        "en",
+        "ko",
+        "zh"
+      ]
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_route": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "service_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_slots": {
+      "type": "object"
+    },
+    "concept_key": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "frame_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_family": {
+      "type": "string"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "gold_status": {
+      "const": "GOLD"
+    },
+    "training_priority": {
+      "enum": [
+        "primary",
+        "support"
+      ]
+    },
+    "targets": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

@@ -11,3 +11,6 @@ def validate_security(payload: dict[str, Any]) -> None:
     for key in ("blocked_clarification_patterns", "sensitive_patterns"):
         for index, pattern in enumerate(security[key]):
             compile_regex(pattern, label=f"security.{key}.{index}")
+    for language, patterns in security["prompt_injection_patterns"].items():
+        for index, pattern in enumerate(patterns):
+            compile_regex(pattern, label=f"security.prompt_injection_patterns.{language}.{index}")

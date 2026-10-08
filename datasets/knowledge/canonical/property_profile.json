@@ -1,0 +1,57 @@
+{
+  "property_id": "FURAMA_DANANG",
+  "name": "Furama Resort Danang",
+  "brand": "Furama Hotels & Resorts International",
+  "legal_name": "Furama Resort Danang Joint Venture Company",
+  "star_rating": 5,
+  "address": {
+    "street": "103 - 105 Vo Nguyen Giap Street",
+    "ward": "Ngu Hanh Son Ward",
+    "city": "Danang City",
+    "country": "Vietnam"
+  },
+  "contact": {
+    "main_phone": "+84 236 3847 333",
+    "secondary_phone": "+84 236 3847 888",
+    "fax": "+84 236 3847 666",
+    "butler_hotline": "+84 911 301 020",
+    "general_email": "reservation@furamavietnam.com",
+    "fnb_phone": "+84 236 651 9999",
+    "fnb_email": "fb@furamavietnam.com"
+  },
+  "supported_languages": [
+    "en",
+    "vi",
+    "ko",
+    "zh"
+  ],
+  "timezone": "Asia/Ho_Chi_Minh",
+  "currency": "VND",
+  "check_in_time": "14:00",
+  "check_out_time": "11:00",
+  "electricity": {
+    "voltage": "220V",
+    "frequency": "50Hz",
+    "adapter_service": "Adapter is available in-room; transformers are available from Housekeeping (Adapters page title: Ext 13).",
+    "source_url": "https://furamavietnam.com/room-directory/room-facilities-services/electricity/"
+  },
+  "source_provenance": "Official Furama Resort Danang Website & Room Directory",
+  "verified_at": "2026-10-01",
+  "inventory": {
+    "rooms_and_suites": 198,
+    "private_pool_villas": 68,
+    "source_url": "https://furamavietnam.com/"
+  },
+  "source_urls": [
+    "https://furamavietnam.com/",
+    "https://furamavietnam.com/the-resort/contact-us/",
+    "https://furamavietnam.com/room-directory/resorts-policies/check-out-time/",
+    "https://furamavietnam.com/page/15/?l=en&p=gbook",
+    "https://furamavietnam.com/room-directory/room-facilities-services/electricity/",
+    "https://furamavietnam.com/room-directory/room-facilities-services/adapters-ext-13/"
+  ],
+  "data_quality": {
+    "curated_at": "2026-10-01",
+    "note": "Guest-facing values are limited to current or explicitly time-bounded official Furama evidence; conflicting official guidance is surfaced instead of silently guessed."
+  }
+}

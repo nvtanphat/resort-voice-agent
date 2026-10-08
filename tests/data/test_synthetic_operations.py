@@ -10,6 +10,7 @@ from concierge_kiosk.agent.core.tool_contracts import (
     ActionRequest, ToolObservation, answer_card, observation_contract,
     validate_tool_result,
 )
+from concierge_kiosk.agent.understanding.commands import Command
 from concierge_kiosk.agent.understanding.routing import (
     RouteDecision,
 )
@@ -38,6 +39,24 @@ def test_synthetic_restaurant_availability_is_read_only_and_provenanced():
     assert payload["source"]["synthetic"] is True
     assert payload["source"]["guest_answer_policy"] == "demo_only_staff_confirmation"
     assert payload["records"][0]["remaining"] >= 4
+
+
+def test_conditional_generic_restaurant_availability_uses_declared_rolling_template():
+    observation = SyntheticOperations().check_availability(
+        service_code="dining_reservation",
+        query="if available, reserve a table for four tonight",
+        effective_date="2026-10-07",
+        preferred_time="tonight 19:00",
+        party_size=4,
+        allow_any_venue=True,
+    )
+    assert observation is not None
+    payload = observation.public()
+    assert payload["status"] == "available"
+    assert payload["records"]
+    assert all(row["date"] == "2026-10-07" for row in payload["records"])
+    assert all(row["time"] == "19:00" for row in payload["records"])
+    assert payload["source"]["synthetic"] is True
 
 
 class _AvailabilityEmbedder:
@@ -106,11 +125,12 @@ def test_versioned_tool_observation_and_action_contracts_are_closed():
 
 
 def test_schedule_route_fails_closed_when_semantic_availability_selector_is_unavailable(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, understand):
     monkeypatch.setattr(
         "concierge_kiosk.core.clock.property_today",
         lambda _timezone: "2026-10-03",
     )
+    understand("table", Command('CheckAvailability', goal="dining_reservation"))
     profile = ROOT / "releases" / "property-profile.json"
     cfg = Settings(
         db_path=tmp_path / "edge.sqlite3",

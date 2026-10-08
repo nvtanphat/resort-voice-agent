@@ -91,14 +91,15 @@ def inspect_local_ai(settings, *, check_runtime: bool = True) -> LocalAIReadines
         nli_manifest_valid=nli_pin, nli_loaded=loaded)
 
 
-def warm_local_slm(base_url: str, model: str, *, timeout: float = 90.0) -> bool:
+def warm_local_slm(base_url: str, model: str, *, timeout: float = 90.0,
+                   num_gpu: int = -1) -> bool:
     """Load the local model into memory with a 1-token request (startup only)."""
     from urllib.request import Request
     from .local_http import local_chat_open
     body = json.dumps({
         'model': model, 'stream': False, 'keep_alive': '30m',
         'messages': [{'role': 'user', 'content': 'ok'}],
-        'options': {'num_predict': 1},
+        'options': {'num_predict': 1, 'num_gpu': num_gpu},
     }).encode('utf-8')
     request = Request(base_url.rstrip('/') + '/api/chat', data=body,
                       headers={'Content-Type': 'application/json'}, method='POST')

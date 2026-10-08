@@ -1,0 +1,140 @@
+{
+  "status": "dataset_integrity_pass_runtime_contract_blocked",
+  "primary_language": "vi",
+  "agent_training_records": 709,
+  "agent_core_vi_cases": 280,
+  "vi_multi_turn_journeys": 123,
+  "vi_multi_turn_turns": 441,
+  "rag_training_records": 565,
+  "rag_entity_heldout_cases": 220,
+  "rag_fact_heldout_cases": 88,
+  "retrieval_macro_dimensions": [
+    "fact_type",
+    "entity_type",
+    "entity_domain",
+    "language"
+  ],
+  "known_limits": [
+    "Voice/audio production validation is outside this release by explicit scope decision.",
+    "39 policy/safety-sensitive canonical facts await authorized domain-owner sign-off and are runtime-gated to staff confirmation until approved.",
+    "Historical raw HTML/PDF was not retained in v1.0.0; immutable evidence bundles are frozen in v1.0.1 and raw source archiving is mandatory on the next refresh.",
+    "Product-authored operational policies are workflow rules, not official Furama facts; live/secret/dynamic property data uses staff or authorized-tool confirmation.",
+    "Synthetic simulation and benchmark fixtures are isolated from canonical RAG truth.",
+    "Phase-1 Vietnamese guest-style additions are manually curated/synthetic and humanized for spoken naturalness; they are not observed guest transcripts. source_family=real remains reserved for de-identified utterances with auditable lineage.",
+    "The simulated_realistic guest-persona batch is synthetic/curated role-play, not observed guest speech; source_family=real remains reserved for de-identified utterances with auditable guest lineage.",
+    "Multilingual guest-persona support is simulated/curated rather than observed guest speech; source_family=real remains reserved for de-identified utterances with auditable lineage.",
+    "Runtime service-policy parity is not yet established: config/agent-domain.json remains authoritative; service_policies.json is an offline migration candidate only.",
+    "Training/evaluation expected_route labels are not yet proven one-to-one with the current runtime router/Command ontology; direct route-score comparison is blocked until that mapping is finalized.",
+    "Runtime migration remains blocked until exact service-policy and route/Command parity are verified against the current code bundle."
+  ],
+  "agent_hard_negative_vi_cases": 80,
+  "asr_text_vi_cases": 350,
+  "knowledge_freshness_records": 366,
+  "diversity_checks": {
+    "vi_multi_turn": {
+      "utterances": 441,
+      "exact_duplicates": 0,
+      "near_duplicate_pairs_ge_90": 0,
+      "near_duplicate_pairs_ge_85": 0,
+      "near_duplicate_pairs_ge_82": 2
+    },
+    "vi_compositional_retrieval": {
+      "queries": 144,
+      "exact_duplicates": 0,
+      "near_duplicate_pairs_ge_90": 0,
+      "near_duplicate_pairs_ge_82": 0,
+      "top_prefix_share_2_tokens": 0.0139,
+      "top10_prefix_share_2_tokens": 0.1389
+    },
+    "cross_suite": {
+      "multi_turn_exact_overlap_agent_train": 0,
+      "multi_turn_near_overlap_ge_90_agent_train": 0,
+      "multi_turn_exact_overlap_agent_core": 0,
+      "multi_turn_near_overlap_ge_90_agent_core": 0,
+      "compositional_exact_overlap_rag_train": 0,
+      "agent_train_exact_overlap_production_vi": 0
+    },
+    "asr_journey_lineage_errors": 0,
+    "vi_agent_training": {
+      "utterances": 709,
+      "normalized_duplicates": 0,
+      "near_duplicate_pairs_ge_90": 1,
+      "top_prefix_share_2_tokens": 0.0268,
+      "top10_prefix_share_2_tokens": 0.1678
+    }
+  },
+  "schema_contract_coverage": {
+    "documents_in_scope": 106,
+    "strict_schema_contracts": 43,
+    "recursive_shape_contracts": 63,
+    "classified_documents": 106,
+    "unclassified_documents": 0,
+    "validation_errors": 0,
+    "validated_objects": 83934
+  },
+  "release_boundary": "Canonical RAG truth is official/public Furama knowledge only. Product-authored operational policy may drive workflow behavior but cannot be presented as an official Furama claim.",
+  "source_auditability": {
+    "verified_sources": 83,
+    "evidence_snapshots": 83,
+    "snapshot_hash_link_errors": 0
+  },
+  "domain_review": {
+    "required": 39,
+    "pending": 39,
+    "approved": 0,
+    "fabricated_approvals": 0,
+    "gate_enforced": true
+  },
+  "service_action_cases": 240,
+  "service_action_language_distribution": {
+    "vi": 60,
+    "en": 60,
+    "ko": 60,
+    "zh": 60
+  },
+  "natural_challenge_language_distribution": {
+    "en": 159,
+    "ko": 133,
+    "vi": 203,
+    "zh": 100
+  },
+  "service_action_subtype_distribution_by_language": {
+    "vi": {
+      "cancel": 10,
+      "create": 10,
+      "hours": 10,
+      "info": 10,
+      "info_and_hours": 10,
+      "modify": 10
+    },
+    "en": {
+      "cancel": 10,
+      "create": 10,
+      "hours": 10,
+      "info": 10,
+      "info_and_hours": 10,
+      "modify": 10
+    },
+    "ko": {
+      "cancel": 10,
+      "create": 10,
+      "hours": 10,
+      "info": 10,
+      "info_and_hours": 10,
+      "modify": 10
+    },
+    "zh": {
+      "cancel": 10,
+      "create": 10,
+      "hours": 10,
+      "info": 10,
+      "info_and_hours": 10,
+      "modify": 10
+    }
+  },
+  "retrieval_canonical_fact_coverage": {
+    "canonical_facts": 366,
+    "represented_facts": 366,
+    "coverage": 1.0
+  }
+}

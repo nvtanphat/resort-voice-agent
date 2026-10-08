@@ -272,7 +272,12 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
         if cfg.data_consent_required and not workflows.guest_consent_granted(
                 session, 'service_request', policy_version='privacy-v1'):
             raise HTTPException(status_code=428, detail='Data consent is required before collecting request details')
-        proposal, orchestration_sync = prepare_authorized_proposal(session, body)
+        try:
+            proposal, orchestration_sync = prepare_authorized_proposal(session, body)
+        except ValueError as exc:
+            # Structured payload validation (including configured venue
+            # resolution) is a client error, never an internal-server 500.
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         with conversations.serialize(session):
             conversations.sync_workflow(session, body.language, proposal_id=proposal["id"],
                                         service_kind=proposal["kind"], status="awaiting_confirmation")

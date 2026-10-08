@@ -8,12 +8,14 @@ from dataclasses import dataclass
 from typing import Callable
 
 from concierge_kiosk.agent.understanding.intent import (
-    emergency_response, normalize_intent_text,
+    emergency_response, normalize_intent_text, EMERGENCY_TEXT,
 )
 from concierge_kiosk.agent.orchestration.grounding import grounded_response
-from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS, MULTI_CONNECTOR_PATTERNS, INFORMATION_FRAME_PATTERNS
+from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS
 from concierge_kiosk.agent.understanding.semantic import semantic_grounded_response, SemanticResult
-from concierge_kiosk.agent.tools.planning import itinerary_topics, planning_search, planning_query_expansions, draft_plan
+from concierge_kiosk.agent.tools.planning import (advisory_topics, itinerary_topics,
+                                                  planning_search, planning_query_expansions,
+                                                  draft_plan)
 from concierge_kiosk.agent.tools.scheduling import approved_schedule, ScheduleUnavailable
 from concierge_kiosk.domain.entity_resolver import record_alias_matches
 from concierge_kiosk.domain.entity_resolver import property_entity_matches
@@ -28,7 +30,8 @@ from concierge_kiosk.rag.retrieval import (
     Retrieval, abstention_answer, retrieve, retrieve_context, retrieve_localized_anchor,
 )
 
-from concierge_kiosk.rag.grounding.relevance import answerable, has_explicit_topic, requested_facets
+from concierge_kiosk.rag.grounding.relevance import (
+    answerable, has_explicit_topic, normalized_query, requested_facets)
 from .recovery import load_support_directory, recovery_metadata
 from concierge_kiosk.i18n import text as i18n_text
 
@@ -83,22 +86,6 @@ def _short_single_fact_extract(answer: str, sources: list[dict]) -> bool:
         and normalized in ' '.join(source['content'].casefold().split())
         for source in sources
     )
-
-
-def _split_information_queries(query: str, language: str) -> tuple[str, ...]:
-    """Split only genuine multi-question information turns at profile connectors."""
-    pattern = MULTI_CONNECTOR_PATTERNS.get(language)
-    if pattern is None or not pattern.search(query):
-        return (query.strip(),)
-    parts = tuple(part.strip(' ,;') for part in re.split(pattern, query)
-                  if part.strip(' ,;'))
-    if len(parts) < 2 or len(parts) > 4:
-        return (query.strip(),)
-    def question_like(part: str) -> bool:
-        normalized = normalize_intent_text(part)
-        return ('?' in part or bool(INFORMATION_FRAME_PATTERNS.get(language, re.compile(r'(?!)')).search(part))
-                or bool(re.search(r'\b(?:what|where|when|which|how|why|is|are|does|do)\b', normalized)))
-    return parts if all(len(part) >= 4 and question_like(part) for part in parts) else (query.strip(),)
 
 
 _FACT_TEMPLATE_TYPES = frozenset({
@@ -221,10 +208,29 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
             return (), ()
         entities = property_entity_matches(query, language, structured_dataset.aliases)
         facets = query_keys(query, language)['facets']
-        if len(entities) != 1 or len(facets) != 1:
+        contexts = _mentioned_contexts(query, language)
+        if len(entities) != 1:
             return (), ()
-        fact_types = FACET_FACT_TYPES.get(facets[0], ())
+        if len(facets) == 1:
+            fact_types = FACET_FACT_TYPES.get(facets[0], ())
+        elif len(contexts) == 1:
+            fact_types = tuple(dict.fromkeys(
+                str(fact.get('fact_type')) for fact in structured_dataset.facts
+                if isinstance(fact, dict)
+                and fact.get('entity_id') == entities[0]
+                and fact.get('context') == contexts[0]
+                and isinstance(fact.get('fact_type'), str)
+            ))
+        else:
+            return (), ()
+        if not fact_types:
+            return (), ()
         return entities, tuple(fact_types)
+
+    def structured_context_selector(query: str, language: str) -> tuple[str, ...]:
+        """Return one data-owned context when the question names it exactly."""
+        contexts = _mentioned_contexts(query, language)
+        return contexts if len(contexts) == 1 else ()
 
     def knowledge_release_snapshot() -> dict:
         # Runtime freshness/lineage signal for the agent. This is metadata only;
@@ -248,7 +254,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
             raise PermissionError("Session ended before conversation turn")
 
     def emergency_answer(query: str, language: str, session: str, *, source: str = 'dialogue') -> dict:
-        urgent = emergency_response(query, language)
+        urgent = emergency_response(query, language) or EMERGENCY_TEXT.get(language)
         if not urgent:
             raise ValueError("Emergency route requires a recognized safety phrase")
         record_metric('safety.emergency_route', language)
@@ -296,14 +302,17 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
             record_metric('rag.structured_lookup_candidate', language)
         contextual = False
         retrieval_started = time.monotonic()
-        compound_queries = _split_information_queries(q, language)
+        compound_queries = (q,)
         if len(compound_queries) > 1 and anchor is None:
-            pieces = [retrieve(
-                store, property_id=cfg.property_id, language=language, query=part,
-                embedder=embedder, reranker=reranker, vector_store=vector_store,
-                effective_date=effective_date,
-                policy=rag_policy, expand_parent=True)
-                for part in compound_queries]
+            pieces = []
+            for part in compound_queries:
+                part_entities, part_fact_types = structured_selectors(part, language)
+                pieces.append(retrieve(
+                    store, property_id=cfg.property_id, language=language, query=part,
+                    embedder=embedder, reranker=reranker, vector_store=vector_store,
+                    effective_date=effective_date, policy=rag_policy, expand_parent=True,
+                    entity_ids=part_entities, fact_types=part_fact_types,
+                    fact_context=structured_context_selector(part, language)))
             sources = []
             answers = []
             seen = set()
@@ -353,7 +362,8 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                               query=search_query, embedder=embedder, reranker=reranker,
                               vector_store=vector_store,
                               effective_date=effective_date, policy=rag_policy, expand_parent=True,
-                              entity_ids=structured_entities, fact_types=structured_fact_types)
+                              entity_ids=structured_entities, fact_types=structured_fact_types,
+                              fact_context=structured_context_selector(search_query, language))
         answerability_failure = None
         # Context is part of a fact's identity. If the guest names one, do not
         # compose a list from sibling contexts such as banquet + classroom.
@@ -367,9 +377,14 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                 if not filtered_sources:
                     result.mode = 'context_filter_abstention'
                     contextual = False
-            if result.sources and not answerable(
+            anchored_hours_followup = (
+                anchor is not None
+                and result.sources[0].get('fact_type') == 'opening_hours'
+                and 'operating hours' in normalized_query(q, language))
+            if (result.sources and not answerable(
                     keys, q, result.sources[0], language=language,
-                    dense_threshold=cfg.rag_min_dense_similarity):
+                    dense_threshold=cfg.rag_min_dense_similarity)
+                    and not anchored_hours_followup):
                 # Keep no adjacent evidence alive for generation/citation. The
                 # recovery layer can still expose safe related topics below.
                 answerability_failure = {
@@ -427,6 +442,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                             require_independent_nli=cfg.semantic_require_independent_nli,
                             nli_manifest_path=cfg.nli_manifest_path,
                             nli_require_manifest=cfg.nli_require_manifest,
+                            num_gpu=cfg.slm_num_gpu,
                             timeout=slm_timeout,
                             should_cancel=lambda: audio_admission.slm_cancelled(session))
                     if semantic is None:
@@ -434,6 +450,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                             base_url=cfg.llm_base_url, model=model, question=q,
                             evidence=result.sources, language=language,
                             question_type=question_type,
+                            num_gpu=cfg.slm_num_gpu,
                             timeout=slm_timeout,
                             on_observation=generation_observation,
                             should_cancel=lambda: audio_admission.slm_cancelled(session))
@@ -594,7 +611,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         The response metadata labels the result as advisory for the UI; every
         spoken claim must be an exact current citation in the business DB.
         """
-        topics = itinerary_topics(query, language)
+        topics = itinerary_topics(query, language) or advisory_topics(query, language)
         if not topics:
             raise RuntimeError('Planning route requires an explicit multi-domain request')
         claims, candidate_sources, missing, selected = [], [], [], []

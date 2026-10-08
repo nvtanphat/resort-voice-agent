@@ -32,6 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -46,8 +49,19 @@ jobs:
       - name: Check generated JavaScript syntax
         run: |
           node --check web/guest.js
+          node --check web/staff.js
+          node --check web/status.js
           node --check web/pcm-worklet.js
           node --check web/sos.js
+      - name: Verify bundle source digests
+        run: node frontend/verify_bundle.cjs
+      - name: Install Playwright smoke dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[crawler]'
+          python -m playwright install --with-deps chromium
+      - name: Smoke test guest and staff pages
+        run: python tools/validate/frontend_smoke.py
 
   security:
     runs-on: ubuntu-latest

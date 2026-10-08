@@ -1,0 +1,22 @@
+{
+  "dataset_id": "furama-quarantine",
+  "property_id": "FURAMA_DANANG",
+  "role": "non_indexable_review_queue",
+  "truth_boundary": "Rejected, stale, unverified, or internal-source-required material. Never index into RAG or treat as live operational truth.",
+  "metrics": {
+    "quarantined_facts": 400,
+    "source_candidates": 79
+  },
+  "artifacts": {
+    "quarantine/facts.jsonl": {
+      "sha256": "4c941c9c670c3f660817417b3ea9c3f600757c90f19ca1fc80e3a904c14fc7fd",
+      "bytes": 479819,
+      "records": 400
+    },
+    "quarantine/source_candidates.jsonl": {
+      "sha256": "b53fd8ed088709527891ae9f1276f44ce6d19e4e8217c52e02534748cfce3f78",
+      "bytes": 52194,
+      "records": 79
+    }
+  }
+}

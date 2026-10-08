@@ -1,0 +1,324 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_operational",
+  "reviewed_at": "2026-10-03",
+  "demo_directory_complete": true,
+  "departments": [
+    {
+      "department_id": "FRONT_OFFICE",
+      "name": "Front Office",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3000",
+      "public_extension_if_verified": null,
+      "operating_hours": "24:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-FRONT_OFFICE",
+      "primary_supervisor_role": "Front Office Duty Manager",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "check-in/out",
+        "guest verification",
+        "room assignment",
+        "folio questions"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "FO_CONCIERGE",
+      "name": "Concierge & Bell",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3010",
+      "public_extension_if_verified": null,
+      "operating_hours": "24:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-FO_CONCIERGE",
+      "primary_supervisor_role": "Concierge/Bell Captain",
+      "after_hours_route": "FO_CONCIERGE",
+      "responsibilities": [
+        "transport",
+        "luggage",
+        "local guidance",
+        "general guest requests"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "HOUSEKEEPING",
+      "name": "Housekeeping",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3100",
+      "public_extension_if_verified": "13",
+      "operating_hours": "24:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-HOUSEKEEPING",
+      "primary_supervisor_role": "Housekeeping Supervisor",
+      "after_hours_route": "HOUSEKEEPING",
+      "responsibilities": [
+        "room cleaning",
+        "linen/towels",
+        "amenities",
+        "turndown"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "ENGINEERING",
+      "name": "Engineering",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3200",
+      "public_extension_if_verified": null,
+      "operating_hours": "24:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-ENGINEERING",
+      "primary_supervisor_role": "Duty Engineer",
+      "after_hours_route": "ENGINEERING",
+      "responsibilities": [
+        "AC",
+        "electrical",
+        "plumbing",
+        "guest-room equipment"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "SECURITY",
+      "name": "Security",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3300",
+      "public_extension_if_verified": null,
+      "operating_hours": "24:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-SECURITY",
+      "primary_supervisor_role": "Security Shift Leader",
+      "after_hours_route": "SECURITY",
+      "responsibilities": [
+        "guest welfare support",
+        "lost property custody",
+        "access incidents",
+        "incident coordination"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "FNB_ROOM_SERVICE",
+      "name": "Food & Beverage / In-Room Dining",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3400",
+      "public_extension_if_verified": null,
+      "operating_hours": "06:00-00:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-FNB_ROOM_SERVICE",
+      "primary_supervisor_role": "F&B Duty Manager",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "room service",
+        "restaurant reservations",
+        "special dietary coordination"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "SPA_WELLNESS",
+      "name": "V-Senses Spa",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3416",
+      "public_extension_if_verified": "16",
+      "operating_hours": "09:00 - 22:00",
+      "operating_hours_status": "officially_verified",
+      "queue_id": "DEMO-Q-SPA_WELLNESS",
+      "primary_supervisor_role": "Spa Supervisor",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "spa reservations",
+        "treatment scheduling",
+        "wellness requests"
+      ],
+      "truth_status": "synthetic_operational_with_public_hours",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "TOUR_DESK",
+      "name": "Tour Desk",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3777",
+      "public_extension_if_verified": null,
+      "operating_hours": "08:00-20:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-TOUR_DESK",
+      "primary_supervisor_role": "Concierge Supervisor",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "excursions",
+        "supplier confirmation",
+        "itinerary planning"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "TRANSPORT_DESK",
+      "name": "Transport Desk",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3020",
+      "public_extension_if_verified": null,
+      "operating_hours": "24:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-TRANSPORT_DESK",
+      "primary_supervisor_role": "Concierge/Bell Captain",
+      "after_hours_route": "TRANSPORT_DESK",
+      "responsibilities": [
+        "airport transfers",
+        "hotel shuttle",
+        "private car",
+        "ride-hailing pickup"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "LAUNDRY",
+      "name": "Laundry & Valet",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3110",
+      "public_extension_if_verified": null,
+      "operating_hours": "07:00-22:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-LAUNDRY",
+      "primary_supervisor_role": "Laundry Supervisor",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "guest laundry",
+        "pressing",
+        "express laundry",
+        "linen support"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "KIDS_CLUB",
+      "name": "Kids Club",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3500",
+      "public_extension_if_verified": null,
+      "operating_hours": "09:00-18:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-KIDS_CLUB",
+      "primary_supervisor_role": "Kids Club Supervisor",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "kids activities",
+        "child handoff coordination",
+        "activity enrollment"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "RESERVATIONS",
+      "name": "Reservations",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3600",
+      "public_extension_if_verified": null,
+      "operating_hours": "08:00-20:00",
+      "operating_hours_status": "synthetic_demo_schedule",
+      "queue_id": "DEMO-Q-RESERVATIONS",
+      "primary_supervisor_role": "Reservations Supervisor",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "room reservations",
+        "stay extension inquiry",
+        "package questions"
+      ],
+      "truth_status": "synthetic_operational",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "BUTLER_SERVICE",
+      "name": "Villa Butler Service",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "7303/7304",
+      "public_extension_if_verified": "7303/7304",
+      "operating_hours": "06:00 - 00:00",
+      "operating_hours_status": "officially_verified",
+      "queue_id": "DEMO-Q-BUTLER_SERVICE",
+      "primary_supervisor_role": "Butler Captain",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "villa guest assistance",
+        "villa dining coordination",
+        "personalized arrangements"
+      ],
+      "truth_status": "synthetic_operational_with_public_hours",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    },
+    {
+      "department_id": "MEDICAL_CENTRE",
+      "name": "Medical Centre",
+      "runtime_role": "demo_internal_dispatch",
+      "internal_extension_demo": "3420",
+      "public_extension_if_verified": "3420",
+      "operating_hours": "08:00 - 17:00; except Saturday afternoon and Sunday",
+      "operating_hours_status": "officially_verified",
+      "queue_id": "DEMO-Q-MEDICAL_CENTRE",
+      "primary_supervisor_role": "Medical Centre Lead",
+      "after_hours_route": "FRONT_OFFICE",
+      "responsibilities": [
+        "first aid",
+        "medical consultation",
+        "doctor coordination"
+      ],
+      "truth_status": "synthetic_operational_with_public_hours",
+      "source_refs": [],
+      "assumption_refs": [
+        "asm_demo_department_directory"
+      ]
+    }
+  ]
+}

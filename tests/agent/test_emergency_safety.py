@@ -177,6 +177,42 @@ def test_electrical_facility_questions_are_not_emergencies(query: str, language:
     assert classify_dialogue(query, language).branch != "emergency"
 
 
-def test_t0_masks_catalog_names_without_exclusion_phrase_lists():
+@pytest.mark.parametrize(("query", "language"), [
+    ("Flames are spreading", "en"), ("There is thick smoke", "en"),
+    ("The fire is burning", "en"), ("We see a fire", "en"),
+    ("I see smoke", "en"), ("A fire is spreading", "en"),
+    ("Smoke is thick", "en"), ("The curtains are burning", "en"),
+    ("T\u1ea7ng ba \u0111ang b\u1ed1c ch\u00e1y", "vi"), ("Kh\u00f3i d\u00e0y qu\u00e1", "vi"),
+    ("\u0110ang ch\u00e1y r\u1ed3i", "vi"), ("B\u1ed1c ch\u00e1y \u1edf ph\u00eda tr\u01b0\u1edbc", "vi"),
+    ("T\u00f4i th\u1ea5y kh\u00f3i d\u00e0y", "vi"), ("\u0110\u00e1m ch\u00e1y \u0111ang lan", "vi"),
+    ("Ch\u00e1y \u0111ang b\u1ed1c l\u00ean", "vi"), ("Kh\u00f3i d\u00e0y \u0111ang bao quanh", "vi"),
+    ("\u8fd9\u91cc\u7740\u706b\u4e86", "zh"), ("\u7a97\u5916\u5728\u5192\u70df", "zh"),
+    ("\u770b\u5230\u4e86\u7740\u706b", "zh"), ("\u95e8\u53e3\u5192\u70df\u4e86", "zh"),
+    ("\u8fd9\u91cc\u7740\u706b", "zh"), ("\u673a\u5668\u5192\u70df", "zh"),
+    ("\u91cc\u9762\u7740\u706b\u4e86", "zh"), ("\u6211\u770b\u89c1\u5192\u70df", "zh"),
+    ("\ubd88\uc774 \ub0ac\uc5b4\uc694", "ko"), ("\uc5f0\uae30\uac00 \ubcf4\uc5ec\uc694", "ko"),
+    ("\ubd88\uc774 \ubc88\uc84c\uc5b4\uc694", "ko"), ("\uc5f0\uae30\uac00 \uc9d9\uc5b4\uc694", "ko"),
+    ("\uc5f0\uae30\uac00 \ub098\uc694", "ko"), ("\ubd88\uc774 \ub098\uace0 \uc788\uc5b4\uc694", "ko"),
+    ("\ubd88\uc774 \ub0ac\uc2b5\ub2c8\ub2e4", "ko"), ("\uc5f0\uae30\uac00 \uc9d9\uac8c \ubcf4\uc5ec\uc694", "ko"),
+])
+def test_fire_and_smoke_grammar_preempts_understanding(query: str, language: str):
+    assert classify_dialogue(query, language).branch == "emergency"
+
+
+@pytest.mark.parametrize(("query", "language"), [
+    ("charcoal grilled vegetables", "en"), ("Does the bar use a smoke machine?", "en"),
+    ("smoked salmon for breakfast", "en"), ("a burning candle scent", "en"),
+    ("M\u00f3n n\u01b0\u1edbng than h\u1ed3ng c\u00f3 cay kh\u00f4ng?", "vi"), ("Bar c\u00f3 m\u00e1y t\u1ea1o kh\u00f3i kh\u00f4ng?", "vi"),
+    ("C\u00e1 h\u1ed3i hun kh\u00f3i c\u00f3 ngon kh\u00f4ng?", "vi"), ("M\u00f9i n\u1ebfn th\u01a1m nh\u01b0 kh\u00f3i", "vi"),
+    ("\u70df\u718f\u4e09\u6587\u9c7c", "zh"), ("\u9152\u5427\u6709\u70df\u96fe\u673a\u5417", "zh"),
+    ("\u70ad\u706b\u70e7\u70e4\u597d\u5403\u5417", "zh"), ("\u70df\u718f\u83dc\u54c1\u7684\u4ef7\u683c", "zh"),
+    ("\ud6c8\uc81c \uc5f0\uc5b4 \uc788\ub098\uc694", "ko"), ("\ubc14\uc5d0 \uc5f0\uae30 \uae30\uacc4\uac00 \uc788\ub098\uc694", "ko"),
+    ("\ucc38\uc22f \uad6c\uc774\ub97c \uc8fc\ubb38\ud558\uace0 \uc2f6\uc5b4\uc694", "ko"), ("\ud6c8\uc81c \uc694\ub9ac\uc758 \uac00\uaca9", "ko"),
+])
+def test_food_and_presentation_smoke_words_do_not_trigger_emergency(query: str, language: str):
+    assert classify_dialogue(query, language).branch != "emergency"
+
+
+def test_catalog_name_masking_without_exclusion_phrase_lists():
     assert emergency_response("I want to request first aid & medical support", "en") is None
     assert emergency_response("There is a fire at first aid & medical support", "en")

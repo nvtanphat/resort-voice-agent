@@ -1,0 +1,384 @@
+{
+  "property_id": "FURAMA_DANANG",
+  "property_name": "Furama Resort Danang",
+  "property_timezone": "Asia/Ho_Chi_Minh",
+  "default_language": "vi",
+  "enabled_languages": [
+    "vi",
+    "en",
+    "zh",
+    "ko"
+  ],
+  "low_risk_requires_verified_room": true,
+  "emergency_policy": {
+    "escalation_after_seconds": 60,
+    "default_kiosk_location": "property_furama_resort_danang"
+  },
+  "session_policy": {
+    "idle_timeout_seconds": 1200,
+    "warning_seconds": 30
+  },
+  "voice_policy": {
+    "protocol": 2,
+    "sample_rate": 16000,
+    "max_frame_bytes": 131072,
+    "max_windowed_audio_bytes": 6000000,
+    "queue_bytes": 1000000,
+    "credit_bytes": 262144,
+    "vad_start_ms": 180,
+    "vad_end_silence_ms": 650,
+    "barge_preview_ms": 160,
+    "barge_confirm_ms": 480,
+    "false_interruption_recovery_ms": 500,
+    "backpressure_timeout_ms": 3000,
+    "vad": {
+      "engine": "energy",
+      "noise_floor_initial": 0.002,
+      "positive_threshold": 0.006,
+      "negative_threshold": 0.004,
+      "redemption_ms": 96,
+      "pre_speech_pad_ms": 420,
+      "min_speech_ms": 320,
+      "playback_positive_threshold": 0.065,
+      "continuation_extra_ms": 620
+    }
+  },
+  "service_catalog": [
+    {
+      "id": "service.in_room_dining",
+      "request_kind": "dining",
+      "title": {
+        "en": "In-Room Dining (Room Service)",
+        "vi": "Dịch vụ Ăn uống tại phòng (Room Service)",
+        "ko": "인룸 다이닝 (룸서비스)",
+        "zh": "客房送餐服务"
+      },
+      "question": {
+        "en": "Would you like assistance with In-Room Dining (Room Service)?",
+        "vi": "Bạn có muốn được hỗ trợ về Dịch vụ Ăn uống tại phòng (Room Service) không?",
+        "ko": "인룸 다이닝 (룸서비스) 서비스를 요청하시겠습니까?",
+        "zh": "您需要 客房送餐服务 的协助吗？"
+      }
+    },
+    {
+      "id": "service.room_cleaning",
+      "request_kind": "housekeeping",
+      "title": {
+        "en": "Room Cleaning & Make-Up",
+        "vi": "Dọn phòng & Dịch vụ Buồng phòng",
+        "ko": "객실 정비 및 청소 서비스",
+        "zh": "客房打扫与客房服务"
+      },
+      "question": {
+        "en": "Would you like assistance with Room Cleaning & Make-Up?",
+        "vi": "Bạn có muốn được hỗ trợ về Dọn phòng & Dịch vụ Buồng phòng không?",
+        "ko": "객실 정비 및 청소 서비스 서비스를 요청하시겠습니까?",
+        "zh": "您需要 客房打扫与客房服务 的协助吗？"
+      }
+    },
+    {
+      "id": "service.bath_towels",
+      "request_kind": "facilities",
+      "title": {
+        "en": "Fresh Bath Towels",
+        "vi": "Khăn tắm sạch bổ sung",
+        "ko": "추가 목욕 수건 요청",
+        "zh": "补充干净浴巾"
+      },
+      "question": {
+        "en": "Would you like assistance with Fresh Bath Towels?",
+        "vi": "Bạn có muốn được hỗ trợ về Khăn tắm sạch bổ sung không?",
+        "ko": "추가 목욕 수건 요청 서비스를 요청하시겠습니까?",
+        "zh": "您需要 补充干净浴巾 的协助吗？"
+      }
+    },
+    {
+      "id": "service.adapters",
+      "request_kind": "housekeeping",
+      "title": {
+        "en": "Electrical Adapters",
+        "vi": "Ổ cắm chuyển đổi đa năng",
+        "ko": "멀티 어댑터 대여",
+        "zh": "多功能电源适配器"
+      },
+      "question": {
+        "en": "Would you like assistance with Electrical Adapters?",
+        "vi": "Bạn có muốn được hỗ trợ về Ổ cắm chuyển đổi đa năng không?",
+        "ko": "멀티 어댑터 대여 서비스를 요청하시겠습니까?",
+        "zh": "您需要 多功能电源适配器 的协助吗？"
+      }
+    },
+    {
+      "id": "service.extra_bed",
+      "request_kind": "housekeeping",
+      "title": {
+        "en": "Extra Bed Setup",
+        "vi": "Kê thêm giường phụ",
+        "ko": "엑스트라 베드 설치",
+        "zh": "加床服务"
+      },
+      "question": {
+        "en": "Would you like assistance with Extra Bed Setup?",
+        "vi": "Bạn có muốn được hỗ trợ về Kê thêm giường phụ không?",
+        "ko": "엑스트라 베드 설치 서비스를 요청하시겠습니까?",
+        "zh": "您需要 加床服务 的协助吗？"
+      }
+    },
+    {
+      "id": "service.luggage",
+      "request_kind": "human",
+      "title": {
+        "en": "Luggage Pickup & Storage",
+        "vi": "Hỗ trợ hành lý & Giữ hành lý",
+        "ko": "수하물 운반 및 보관",
+        "zh": "行李运送与寄存"
+      },
+      "question": {
+        "en": "Would you like assistance with Luggage Pickup & Storage?",
+        "vi": "Bạn có muốn được hỗ trợ về Hỗ trợ hành lý & Giữ hành lý không?",
+        "ko": "수하물 운반 및 보관 서비스를 요청하시겠습니까?",
+        "zh": "您需要 行李运送与寄存 的协助吗？"
+      }
+    },
+    {
+      "id": "transportation.taxi",
+      "request_kind": "transport",
+      "title": {
+        "en": "Taxi Calling Service",
+        "vi": "Gọi xe Taxi",
+        "ko": "택시 호출 서비스",
+        "zh": "叫车与出租车服务"
+      },
+      "question": {
+        "en": "Would you like assistance with Taxi Calling Service?",
+        "vi": "Bạn có muốn được hỗ trợ về Gọi xe Taxi không?",
+        "ko": "택시 호출 서비스 서비스를 요청하시겠습니까?",
+        "zh": "您需要 叫车与出租车服务 的协助吗？"
+      }
+    },
+    {
+      "id": "service.wake_up_calls",
+      "request_kind": "human",
+      "title": {
+        "en": "Wake-Up Call",
+        "vi": "Báo thức buổi sáng",
+        "ko": "모닝콜 서비스",
+        "zh": "叫醒服务"
+      },
+      "question": {
+        "en": "Would you like assistance with Wake-Up Call?",
+        "vi": "Bạn có muốn được hỗ trợ về Báo thức buổi sáng không?",
+        "ko": "모닝콜 서비스 서비스를 요청하시겠습니까?",
+        "zh": "您需要 叫醒服务 的协助吗？"
+      }
+    },
+    {
+      "id": "service.currency_exchange",
+      "request_kind": "human",
+      "title": {
+        "en": "Currency Exchange",
+        "vi": "Đổi ngoại tệ",
+        "ko": "환전 서비스",
+        "zh": "外币兑换"
+      },
+      "question": {
+        "en": "Would you like assistance with Currency Exchange?",
+        "vi": "Bạn có muốn được hỗ trợ về Đổi ngoại tệ không?",
+        "ko": "환전 서비스 서비스를 요청하시겠습니까?",
+        "zh": "您需要 外币兑换 的协助吗？"
+      }
+    },
+    {
+      "id": "service.first_aid",
+      "request_kind": "human",
+      "title": {
+        "en": "First Aid & Medical Support",
+        "vi": "Sơ cấp cứu & Hỗ trợ Y tế",
+        "ko": "응급 처치 및 의료 지원",
+        "zh": "急救与医疗协助"
+      },
+      "question": {
+        "en": "Would you like assistance with First Aid & Medical Support?",
+        "vi": "Bạn có muốn được hỗ trợ về Sơ cấp cứu & Hỗ trợ Y tế không?",
+        "ko": "응급 처치 및 의료 지원 서비스를 요청하시겠습니까?",
+        "zh": "您需要 急救与医疗协助 的协助吗？"
+      }
+    },
+    {
+      "id": "spa.booking",
+      "request_kind": "facilities",
+      "title": {
+        "en": "Spa Treatment Reservation",
+        "vi": "Đặt lịch dịch vụ Spa V-Senses",
+        "ko": "스파 트리트먼트 예약 요청",
+        "zh": "水疗护理预约"
+      },
+      "question": {
+        "en": "Would you like assistance with Spa Treatment Reservation?",
+        "vi": "Bạn có muốn được hỗ trợ về Đặt lịch dịch vụ Spa V-Senses không?",
+        "ko": "스파 트리트먼트 예약 요청 서비스를 요청하시겠습니까?",
+        "zh": "您需要 水疗护理预约 的协助吗？"
+      }
+    },
+    {
+      "id": "dining.restaurant_reservation",
+      "request_kind": "dining",
+      "title": {
+        "en": "Restaurant Table Reservation",
+        "vi": "Đặt bàn Nhà hàng ẩm thực",
+        "ko": "레스토랑 테이블 예약 요청",
+        "zh": "餐厅订位预约"
+      },
+      "question": {
+        "en": "Would you like assistance with Restaurant Table Reservation?",
+        "vi": "Bạn có muốn được hỗ trợ về Đặt bàn Nhà hàng ẩm thực không?",
+        "ko": "레스토랑 테이블 예약 요청 서비스를 요청하시겠습니까?",
+        "zh": "您需要 餐厅订位预约 的协助吗？"
+      }
+    },
+    {
+      "id": "service.babysitting",
+      "request_kind": "human",
+      "title": {
+        "en": "Babysitting Service",
+        "vi": "Dịch vụ Trông trẻ",
+        "ko": "베이비시팅 서비스 요청",
+        "zh": "托儿保姆服务"
+      },
+      "question": {
+        "en": "Would you like assistance with Babysitting Service?",
+        "vi": "Bạn có muốn được hỗ trợ về Dịch vụ Trông trẻ không?",
+        "ko": "베이비시팅 서비스 요청 서비스를 요청하시겠습니까?",
+        "zh": "您需要 托儿保姆服务 的协助吗？"
+      }
+    },
+    {
+      "id": "transportation.car_rental",
+      "request_kind": "transport",
+      "title": {
+        "en": "Private Car Rental",
+        "vi": "Thuê xe riêng",
+        "ko": "전용 차량 렌탈",
+        "zh": "包车服务"
+      },
+      "question": {
+        "en": "Would you like assistance with Private Car Rental?",
+        "vi": "Bạn có muốn được hỗ trợ về Thuê xe riêng không?",
+        "ko": "전용 차량 렌탈 서비스를 요청하시겠습니까?",
+        "zh": "您需要 包车服务 的协助吗？"
+      }
+    },
+    {
+      "id": "service.late_checkout",
+      "request_kind": "front_office",
+      "title": {
+        "en": "Late Check-Out Inquiry",
+        "vi": "Yêu cầu Trả phòng trễ",
+        "ko": "레이트 체크아웃 문의",
+        "zh": "延迟退房咨询"
+      },
+      "question": {
+        "en": "Would you like assistance with Late Check-Out Inquiry?",
+        "vi": "Bạn có muốn được hỗ trợ về Yêu cầu Trả phòng trễ không?",
+        "ko": "레이트 체크아웃 문의 서비스를 요청하시겠습니까?",
+        "zh": "您需要 延迟退房咨询 的协助吗？"
+      }
+    },
+    {
+      "id": "service.lost_and_found",
+      "request_kind": "human",
+      "title": {
+        "en": "Lost & Found Inquiry",
+        "vi": "Tra cứu Thất lạc & Tìm kiếm",
+        "ko": "분실물 센터 문의",
+        "zh": "失物招领咨询"
+      },
+      "question": {
+        "en": "Would you like assistance with Lost & Found Inquiry?",
+        "vi": "Bạn có muốn được hỗ trợ về Tra cứu Thất lạc & Tìm kiếm không?",
+        "ko": "분실물 센터 문의 서비스를 요청하시겠습니까?",
+        "zh": "您需要 失物招领咨询 的协助吗？"
+      }
+    },
+    {
+      "id": "service.courier",
+      "request_kind": "human",
+      "title": {
+        "en": "Courier & Mail Handling",
+        "vi": "Chuyển phát bưu phẩm & Thư tín",
+        "ko": "우편 및 택배 발송 서비스",
+        "zh": "快递与信件代发"
+      },
+      "question": {
+        "en": "Would you like assistance with Courier & Mail Handling?",
+        "vi": "Bạn có muốn được hỗ trợ về Chuyển phát bưu phẩm & Thư tín không?",
+        "ko": "우편 및 택배 발송 서비스 서비스를 요청하시겠습니까?",
+        "zh": "您需要 快递与信件代发 的协助吗？"
+      }
+    },
+    {
+      "id": "service.flight_reconfirmation",
+      "request_kind": "human",
+      "title": {
+        "en": "Flight Reconfirmation & Info",
+        "vi": "Xác nhận chuyến bay & Thông tin vé",
+        "ko": "항공편 정보 및 예약 확인",
+        "zh": "航班信息确认与协助"
+      },
+      "question": {
+        "en": "Would you like assistance with Flight Reconfirmation & Info?",
+        "vi": "Bạn có muốn được hỗ trợ về Xác nhận chuyến bay & Thông tin vé không?",
+        "ko": "항공편 정보 및 예약 확인 서비스를 요청하시겠습니까?",
+        "zh": "您需要 航班信息确认与协助 的协助吗？"
+      }
+    },
+    {
+      "id": "transportation.airport_transfer",
+      "request_kind": "transport",
+      "title": {
+        "en": "Airport Transfer Arrangement",
+        "vi": "Sắp xếp đưa đón sân bay",
+        "ko": "공항 이동 서비스 요청",
+        "zh": "机场接送安排"
+      },
+      "question": {
+        "en": "Would you like assistance with Airport Transfer Arrangement?",
+        "vi": "Bạn có muốn được hỗ trợ về Sắp xếp đưa đón sân bay không?",
+        "ko": "공항 이동 서비스 요청 서비스를 요청하시겠습니까?",
+        "zh": "您需要 机场接送安排 的协助吗？"
+      }
+    },
+    {
+      "id": "service.medical_centre",
+      "request_kind": "human",
+      "title": {
+        "en": "Medical Centre Assistance",
+        "vi": "Hỗ trợ Trung tâm Y tế",
+        "ko": "의료 센터 지원",
+        "zh": "医疗中心协助"
+      },
+      "question": {
+        "en": "Would you like assistance with Medical Centre Assistance?",
+        "vi": "Bạn có muốn được hỗ trợ về Hỗ trợ Trung tâm Y tế không?",
+        "ko": "의료 센터 지원 서비스를 요청하시겠습니까?",
+        "zh": "您需要 医疗中心协助 的协助吗？"
+      }
+    },
+    {
+      "id": "service.tour_reservation",
+      "request_kind": "tour",
+      "title": {
+        "en": "Tour Desk Reservation Assistance",
+        "vi": "Hỗ trợ đặt tour tại Tour Desk",
+        "ko": "투어 데스크 예약 지원",
+        "zh": "旅游服务台预订协助"
+      },
+      "question": {
+        "en": "Would you like assistance with Tour Desk Reservation Assistance?",
+        "vi": "Bạn có muốn được hỗ trợ về Hỗ trợ đặt tour tại Tour Desk không?",
+        "ko": "투어 데스크 예약 지원 서비스를 요청하시겠습니까?",
+        "zh": "您需要 旅游服务台预订协助 的协助吗？"
+      }
+    }
+  ]
+}

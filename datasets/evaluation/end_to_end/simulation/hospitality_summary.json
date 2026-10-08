@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "classification": "synthetic_hospitality_simulation_summary",
+  "seed": 20261005,
+  "stays": 12000,
+  "events": 50000,
+  "truth_boundary": "All stay, request, staffing, satisfaction and counterfactual values are synthetic; not measured Furama KPIs.",
+  "manual_relay": {
+    "front_desk_touches": 50000,
+    "dispatch_p50_min": 4.74,
+    "attendance_p95_min": 52.07,
+    "sla_met_rate": 0.6739
+  },
+  "agent_governed": {
+    "front_desk_touches": 26943,
+    "dispatch_p50_min": 2.37,
+    "attendance_p95_min": 52.09,
+    "sla_met_rate": 0.8289,
+    "autonomous_dispatch_rate": 0.4611
+  },
+  "guest_experience": {
+    "recovery_needed_rate": 0.256,
+    "recovery_success_rate": 0.7446,
+    "guest_effort_p50_turns": 2.0,
+    "simulated_satisfaction_avg": 4.13
+  },
+  "modeled_product_effect": {
+    "front_desk_touches_avoided": 23057,
+    "front_desk_touch_reduction_rate": 0.4611,
+    "median_dispatch_minutes_saved": 2.37,
+    "sla_met_delta_pp": 15.49
+  }
+}

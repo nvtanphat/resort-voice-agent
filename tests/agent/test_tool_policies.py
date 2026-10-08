@@ -1,6 +1,5 @@
 from concierge_kiosk.agent.tools.policies import (
     PolicyContext, evaluate_policies, quantity_within_limit, room_verified_for_write,
-    service_enabled_now,
 )
 from concierge_kiosk.agent.core.concierge import AgentToolRequest, BoundedToolRegistry
 from concierge_kiosk.agent.runtime.execution.models import AgentBudget

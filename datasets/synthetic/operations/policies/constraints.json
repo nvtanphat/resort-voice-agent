@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_operational",
+  "reviewed_at": "2026-10-03",
+  "rules": {
+    "guest_request_truthfulness": {
+      "acknowledged": "The kiosk may say the request was created/dispatched only after workflow commit.",
+      "completed": "Never claim completion until business state is completed.",
+      "staff_confirmed_services": "Never claim a reservation, price, vehicle, tour, treatment or late checkout is confirmed until staff confirmation is recorded."
+    },
+    "room_access": {
+      "dnd_blocks_routine_entry": true,
+      "kiosk_never_authorizes_forced_entry": true,
+      "unverified_room_allowed_for_low_risk_dispatch": true,
+      "unverified_room_requires_visible_ops_flag": true,
+      "room_access_note": "Prototype policy forbids autonomous key entry or DND override. Any room-entry exception requires authorized staff handling and audit logging."
+    },
+    "handoff": {
+      "money_or_inventory_commitment": "staff",
+      "irreversible_or_medium_risk": "staff",
+      "safety_concern": "deterministic_emergency_path_or_staff",
+      "unknown_operational_fact": "ask_or_escalate_without_inventing"
+    },
+    "timing_semantics": {
+      "sla_minutes": "Runtime first-attendance/first-staff-response target, not a completion guarantee.",
+      "expected_resolution_windows": "Planning ranges only; never presented as a guaranteed completion time.",
+      "peak_load": "Runtime base SLA remains deterministic; simulation/evaluation may apply occupancy/daypart multipliers from metadata/property_simulation.json. These multipliers are synthetic and not official Furama staffing commitments."
+    }
+  },
+  "source_refs": [
+    "benchmark_lqa_resort_delivery",
+    "benchmark_hotel_engineering_case",
+    "benchmark_housekeeping_cleaning"
+  ]
+}

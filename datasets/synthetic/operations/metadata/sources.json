@@ -1,0 +1,478 @@
+{
+  "schema_version": 3,
+  "property_id": "FURAMA_DANANG",
+  "reviewed_at": "2026-10-03",
+  "purpose": "Sources supporting canonical anchors and product-authored operational assumptions. External named peer-hotel menu sources are excluded from the final release.",
+  "sources": [
+    {
+      "source_id": "furama_bath_towels",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Bath Towels",
+      "url": "https://furamavietnam.com/room-directory/room-facilities-services/bath-towels/",
+      "supports": [
+        "additional_towels_via_housekeeping"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_6dc77a2e78c83ae9af82cc44",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_housekeeping",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Housekeeping",
+      "url": "https://furamavietnam.com/room-directory/room-facilities-services/housekeeping/",
+      "supports": [
+        "housekeeping_extra_room_items"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-01",
+      "dataset_artifact_id": "web_6006671de0a6fa51f7e7f4d7",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_room_service",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Room Service",
+      "url": "https://furamavietnam.com/room-directory/room-facilities-services/room-service/",
+      "supports": [
+        "in_room_dining_0630_midnight",
+        "late_night_dishes_2230_0600",
+        "front_desk_ext10_for_room_service"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_4412b6f6374bca43eaaf7f85",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_restaurant_reservations",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Restaurants & Bars",
+      "url": "https://furamavietnam.com/room-directory/fb-services/restaurants-bars/",
+      "supports": [
+        "restaurant_bar_reservations_ext12",
+        "reservation_contact_window_0600_0000"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_88f523122790c4f587038acb",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_taxi",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Taxi",
+      "url": "https://furamavietnam.com/room-directory/baggage-service/taxi/",
+      "supports": [
+        "taxi_available_24h_at_resort_front_entrance",
+        "baggage_team_can_arrange_taxi"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_38bd32191d567019241ae091",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_spa",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "The V-Senses Wellness and Spa",
+      "url": "https://furamavietnam.com/room-directory/v-senses-wellness-spa-services/the-v-senses-wellness-and-spa/",
+      "supports": [
+        "spa_ext16",
+        "spa_open_0900_2200"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_d50e1f222cff5e7c6c2e3dde",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_butler",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Butler service: Hotline 0911301020",
+      "url": "https://furamavietnam.com/room-directory/room-facilities-services/butler-service-hotline-0911301020/",
+      "supports": [
+        "villa_butler_0600_midnight",
+        "butler_hotline_0911301020",
+        "villa_front_desk_ext7303_7304"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_77bcf46237de00faae78413c",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_medical",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Medical Service",
+      "url": "https://furamavietnam.com/room-directory/security-safety/medical-service/",
+      "supports": [
+        "medical_ext3420",
+        "operator_ext0",
+        "medical_0800_1700_except_sat_pm_sunday"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_16a00e8a5c3f8dd0b9404d46",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_room_features",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Garden Superior Room",
+      "url": "https://furamavietnam.com/room-suites/garden-superior/",
+      "supports": [
+        "room_air_conditioning",
+        "free_wifi",
+        "minibar_exists",
+        "late_checkout_subject_to_availability"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_3833990913958974bd32b210",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "benchmark_lqa_resort_delivery",
+      "source_type": "industry_benchmark_secondary",
+      "publisher": "LQA Luxury Benchmark (public mirror)",
+      "title": "Luxury benchmark standards - in-house item delivery",
+      "url": "https://fliphtml5.com/tzfrf/ehae/LQA_LuxuryBenchmarkStandards_%282%29_%283%29/13/",
+      "supports": [
+        "resort_requested_in_house_items_15min_benchmark"
+      ],
+      "trust_tier": "industry_secondary",
+      "limitations": "Public mirror, not a Furama SOP and not evidence that Furama uses LQA targets.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "benchmark_hotel_engineering_case",
+      "source_type": "academic_case_study",
+      "publisher": "International Journal of Hospitality Management / ScienceDirect",
+      "title": "Hotel engineering facilities: A case study of maintenance performance",
+      "url": "https://www.sciencedirect.com/science/article/abs/pii/S0278431911000739",
+      "supports": [
+        "guestroom_maintenance_80pct_within_30min_case",
+        "common_work_majority_5_15min_case"
+      ],
+      "trust_tier": "academic_secondary",
+      "limitations": "Single-hotel case study; used only to calibrate a conservative prototype range, not as a universal SLA.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "benchmark_housekeeping_cleaning",
+      "source_type": "industry_benchmark_secondary",
+      "publisher": "SiteMinder",
+      "title": "Hotel housekeeping: Full guide to hotel room cleaning",
+      "url": "https://www.siteminder.com/r/hotel-room-cleaning/",
+      "supports": [
+        "stayover_clean_20_30min_benchmark",
+        "checkout_clean_30_45min_benchmark"
+      ],
+      "trust_tier": "industry_secondary",
+      "limitations": "Industry benchmark, not Furama staffing or productivity data.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_checkout_policy",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Check-Out Time",
+      "url": "https://furamavietnam.com/room-directory/resorts-policies/check-out-time/",
+      "supports": [
+        "checkout_1100",
+        "late_checkout_until_1800_50pct_daily_rate",
+        "late_checkout_after_1800_one_night_rate",
+        "late_checkout_subject_to_availability",
+        "front_desk_assistance_for_late_checkout"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_7acddbf6648b1e0ad227eb4e",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_tour_desk_contact",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Kids Club",
+      "url": "https://furamavietnam.com/room-directory/recreation/kids-club/",
+      "supports": [
+        "tour_desk_name",
+        "tour_desk_ext3777_for_babysitting_coordination",
+        "kids_club_hours"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "live_web_checked_at": "2026-10-03",
+      "limitations": "This page proves the Tour Desk name/ext 3777 for babysitting coordination; it does not prove that all tours are routed there.",
+      "dataset_artifact_id": "web_83a23ecf0cbca1be58197c9f",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01"
+    },
+    {
+      "source_id": "external_booking_furama_policy",
+      "source_type": "external_ota_corroboration",
+      "publisher": "Booking.com",
+      "title": "Furama Resort Danang - property policies",
+      "url": "https://www.booking.com/hotel/vn/furama-resort-danang.html",
+      "supports": [
+        "pets_not_allowed",
+        "extra_bed_1500000_vnd_current_listing"
+      ],
+      "trust_tier": "external_corroboration",
+      "limitations": "OTA listing, not Furama primary policy. Values may be package/date dependent and must not override signed hotel policy.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "external_expedia_furama_policy",
+      "source_type": "external_ota_corroboration",
+      "publisher": "Expedia",
+      "title": "Furama Resort Danang - amenities and transfer policy",
+      "url": "https://www.expedia.com/Da-Nang-Hotels-Furama-Resort-Danang.h526011.Hotel-Information",
+      "supports": [
+        "service_animals_welcome",
+        "free_valet_parking",
+        "airport_shuttle_on_request",
+        "airport_shuttle_usd24_per_person_listing"
+      ],
+      "trust_tier": "external_corroboration",
+      "limitations": "OTA-supplied property information; transfer price may change and must be reconfirmed before guest commitment.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "external_agoda_furama_transfer",
+      "source_type": "external_ota_corroboration",
+      "publisher": "Agoda",
+      "title": "Furama Resort Danang - getting around",
+      "url": "https://www.agoda.com/furama-resort-danang/hotel/da-nang-vn.html",
+      "supports": [
+        "airport_distance_approx_7km",
+        "airport_transfer_fee_370000_vnd_listing",
+        "free_parking_listing"
+      ],
+      "trust_tier": "external_corroboration",
+      "limitations": "OTA listing. Fee may be stale, per booking, or vehicle/package dependent; used only to calibrate synthetic prototype pricing.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "external_hotels_furama_profile",
+      "source_type": "external_ota_corroboration",
+      "publisher": "Hotels.com",
+      "title": "Furama Resort Danang - property profile",
+      "url": "https://www.hotels.com/ho232859/furama-resort-danang-da-nang-vietnam/",
+      "supports": [
+        "198_units_listing",
+        "airport_shuttle_24h_on_request",
+        "free_valet_parking",
+        "pets_not_allowed_service_animals_welcome"
+      ],
+      "trust_tier": "external_corroboration",
+      "limitations": "OTA listing, not authoritative for internal staffing or service policies. Unit count may exclude villas or use a different inventory definition.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "benchmark_banyan_tree_airport_transfer",
+      "source_type": "industry_benchmark_secondary",
+      "publisher": "Banyan Tree Lăng Cô",
+      "title": "Airport Transfer Service",
+      "url": "https://www.banyantree.com/vi/vietnam/lang-co/airport-transfer-service",
+      "supports": [
+        "luxury_vietnam_private_transfer_vehicle_price_benchmark",
+        "24h_advance_recommendation",
+        "meet_and_greet_pattern"
+      ],
+      "trust_tier": "peer_property_primary",
+      "limitations": "Different luxury resort and longer route; used only to calibrate vehicle classes, booking cutoff, and price order-of-magnitude.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "benchmark_dilusso_minibar_danang",
+      "source_type": "industry_benchmark_secondary",
+      "publisher": "Di Lusso Boutique Hotel Da Nang",
+      "title": "Mini bar price list",
+      "url": "https://dilussohotel.com/en/bang-gia-mini-bar/",
+      "supports": [
+        "danang_minibar_low_mid_price_floor"
+      ],
+      "trust_tier": "local_market_secondary",
+      "limitations": "Lower-tier local hotel; used only as a price-floor reference before applying a luxury-resort uplift.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "benchmark_housekeeping_guest_requests_bali",
+      "source_type": "academic_case_study",
+      "publisher": "ResearchGate-hosted hospitality operations case study",
+      "title": "Operational assessment of housekeeping services in fulfilling guest requests",
+      "url": "https://www.researchgate.net/publication/395641095_An_operational_assessment_of_housekeeping_services_in_fulfilling_guest_requests_A_case_study_of_Rby_Bali",
+      "supports": [
+        "standard_guest_request_15min_case",
+        "special_request_60min_case",
+        "turndown_30min_case",
+        "occupancy_delay_factor"
+      ],
+      "trust_tier": "academic_secondary",
+      "limitations": "Single-property case study and secondary host. Used for simulation distributions and stress cases, not as a Furama SLA.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "benchmark_oxmaint_engineering",
+      "source_type": "industry_benchmark_secondary",
+      "publisher": "OxMaint",
+      "title": "Hotel Maintenance Response Time Optimization Strategies",
+      "url": "https://oxmaint.co.uk/industries/hospitality/hotel-maintenance-response-time-strategies",
+      "supports": [
+        "critical_engineering_15min_response_benchmark",
+        "tiered_maintenance_priority_pattern"
+      ],
+      "trust_tier": "vendor_industry_secondary",
+      "limitations": "Vendor benchmark and marketing material; useful only for stress-test priority tiers, not an official standard or Furama SLA.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_hosted_tour_program_2024",
+      "source_type": "property_hosted_historical_vendor_document",
+      "publisher": "VNBIKETOUR CO., LTD",
+      "title": "Tour Program Price List 2024",
+      "url": "https://furamavietnam.com/wp-content/uploads/2024/08/Furama-Resort-Danang-Tour-programs-2024.pdf",
+      "supports": [
+        "historical_tour_products",
+        "historical_2024_group_pricing",
+        "historical_vendor_cancellation_terms"
+      ],
+      "trust_tier": "historical_vendor_reference",
+      "limitations": "Vendor-issued 2024 price list hosted on the Furama domain. It is historical and does not prove current 2026 Furama pricing, availability, supplier contract, pickup time, or cancellation terms.",
+      "observed_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_property_inventory",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Furama Resort Danang property overview",
+      "url": "https://furamavietnam.com/",
+      "supports": [
+        "198_rooms_and_suites",
+        "68_private_pool_villas"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-01",
+      "dataset_artifact_id": "web_494098dc4286fc1dbb3424d6",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01"
+    },
+    {
+      "source_id": "furama_spa_booking_cutoff",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "V-Senses historical booking guidance",
+      "url": "https://furamavietnam.com/page/14/?id=307&l=en&p=newsdetail",
+      "supports": [
+        "spa_open_0900_2200",
+        "spa_booking_until_2030",
+        "schedule_treatments_24h_in_advance"
+      ],
+      "trust_tier": "official_primary_historical_page",
+      "observed_at": "2026-10-01",
+      "dataset_artifact_id": "web_9b451aae1a3c05e712c60e1b",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01",
+      "limitations": "Historical official Furama page retained in the curated dataset; current live treatment availability still requires staff confirmation."
+    },
+    {
+      "source_id": "furama_airport_transfer",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Airport Transfer",
+      "url": "https://furamavietnam.com/room-directory/baggage-service/airport-transfer/",
+      "supports": [
+        "airport_transfer_available",
+        "early_morning_departure_book_before_2100_previous_day"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-01",
+      "dataset_artifact_id": "web_400e468bc94e03e8ac1b99d9",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-01"
+    },
+    {
+      "source_id": "furama_pet_policy",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Pet Policy",
+      "url": "https://furamavietnam.com/room-directory/resorts-policies/pet-policy/",
+      "supports": [
+        "pets_not_permitted"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_86f2553dec044c1022e4a9c3",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-03",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "furama_room_cleaning",
+      "source_type": "official_property_web",
+      "publisher": "Furama Resort Danang",
+      "title": "Room cleaning service",
+      "url": "https://furamavietnam.com/room-directory/room-facilities-services/room-cleaning-service/",
+      "supports": [
+        "room_cleaning_daily_0800_1700",
+        "special_time_via_housekeeping"
+      ],
+      "trust_tier": "official_primary",
+      "observed_at": "2026-10-03",
+      "dataset_artifact_id": "web_43e81a9f2c719a169685d400",
+      "dataset_verification_state": "verified_evidence",
+      "dataset_verified_at": "2026-10-03",
+      "live_web_checked_at": "2026-10-03"
+    },
+    {
+      "source_id": "prototype_fnb_design_2026",
+      "source_type": "product_authored_assumption",
+      "publisher": "ViReception prototype",
+      "title": "Product-authored F&B operational assumption baseline",
+      "supports": [
+        "synthetic_minibar_price_band",
+        "synthetic_room_service_menu_design"
+      ],
+      "trust_tier": "prototype_assumption",
+      "limitations": "Product-authored synthetic values for workflow testing and prototype operation; not official Furama menu or pricing.",
+      "observed_at": "2026-10-04",
+      "source_scope": "prototype_operational_assumption_only",
+      "excluded_from_production_retrieval": true
+    }
+  ],
+  "source_scope": "external_peer_benchmark_only",
+  "excluded_from_production_retrieval": true
+}

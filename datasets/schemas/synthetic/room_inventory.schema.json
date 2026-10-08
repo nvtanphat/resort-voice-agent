@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Synthetic room inventory snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "unit_ref",
+    "unit_type",
+    "room_type",
+    "classification",
+    "snapshot_at",
+    "occupancy_status",
+    "housekeeping_status",
+    "maintenance_state",
+    "dnd",
+    "priority_clean",
+    "truth_status",
+    "assumption_refs"
+  ],
+  "properties": {
+    "unit_ref": {
+      "type": "string",
+      "pattern": "^SIM-(?:ROOM|VILLA)-[0-9]{4}$"
+    },
+    "unit_type": {
+      "enum": [
+        "room",
+        "villa"
+      ]
+    },
+    "room_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "classification": {
+      "const": "synthetic_simulation"
+    },
+    "snapshot_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "occupancy_status": {
+      "enum": [
+        "occupied",
+        "vacant_clean",
+        "vacant_dirty",
+        "out_of_order"
+      ]
+    },
+    "housekeeping_status": {
+      "enum": [
+        "clean",
+        "dirty",
+        "inspection_hold"
+      ]
+    },
+    "maintenance_state": {
+      "enum": [
+        "normal",
+        "open_work_order"
+      ]
+    },
+    "dnd": {
+      "type": "boolean"
+    },
+    "priority_clean": {
+      "type": "boolean"
+    },
+    "truth_status": {
+      "const": "synthetic_simulation"
+    },
+    "assumption_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

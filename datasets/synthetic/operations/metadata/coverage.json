@@ -1,0 +1,99 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-04",
+  "fills": [
+    {
+      "gap_key": "wifi_password",
+      "demo_fill": "datasets/synthetic/operations/policies/guest_overrides.json#policies.wifi_demo",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "fixed_shuttle_schedule",
+      "demo_fill": "datasets/synthetic/operations/transport/shuttle_schedule.json",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "minibar_prices",
+      "demo_fill": "datasets/synthetic/operations/food_beverage/minibar.json",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "ev_charging",
+      "demo_fill": "datasets/synthetic/operations/policies/guest_overrides.json#policies.ev_charging",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "grab_instructions",
+      "demo_fill": "datasets/synthetic/operations/transport/products.json#ride_hailing",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "official_service_sla_matrix",
+      "demo_fill": "service-policies.json + staffing-capacity.json + escalation-matrix.json",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "engineering_department_contact_and_hours",
+      "demo_fill": "datasets/knowledge/canonical/departments.json#ENGINEERING",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "room_access_and_dnd_sop",
+      "demo_fill": "datasets/synthetic/operations/rooms/access_sop.json",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "ops_escalation_chain",
+      "demo_fill": "datasets/synthetic/operations/policies/escalation_matrix.json",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    },
+    {
+      "gap_key": "live_tour_inventory_prices_suppliers",
+      "demo_fill": "tour-products.json + supplier-directory.json + commercial-inventory-snapshot.json",
+      "status": "prototype_policy_covered",
+      "prototype_ready": true,
+      "official_property_validation_available": false,
+      "official_claim_allowed": false
+    }
+  ],
+  "additional_demo_domains": {
+    "pms_stays": "datasets/synthetic/operations/pms/stays.jsonl",
+    "room_inventory": "datasets/synthetic/operations/rooms/inventory.jsonl",
+    "restaurant_capacity": "datasets/synthetic/operations/food_beverage/restaurants.json",
+    "spa_capacity": "datasets/synthetic/operations/spa/operations.json",
+    "billing": "datasets/synthetic/operations/billing/charge_rules.json",
+    "service_recovery": "datasets/synthetic/operations/billing/service_recovery.json"
+  },
+  "truth_note": "Every identified non-public operational topic has an explicit product-authored policy or staff-confirmation gate. These policies support the production prototype but are never represented as official Furama facts.",
+  "profile_role": "production_prototype_policy_coverage",
+  "prototype_coverage": "complete"
+}

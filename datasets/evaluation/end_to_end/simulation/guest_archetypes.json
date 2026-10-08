@@ -1,0 +1,474 @@
+{
+  "schema_version": 1,
+  "classification": "synthetic_guest_archetypes",
+  "archetypes": [
+    {
+      "archetype_id": "GUEST-01",
+      "key": "family_young_children",
+      "party_type": "family",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "kids",
+        "meal_timing",
+        "pool"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-02",
+      "key": "multigenerational_family",
+      "party_type": "family",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "mobility",
+        "quiet",
+        "dining"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-03",
+      "key": "parent_with_infant",
+      "party_type": "family",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "crib",
+        "quiet",
+        "room_service"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-04",
+      "key": "family_with_teens",
+      "party_type": "family",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "wifi",
+        "activities",
+        "food"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-05",
+      "key": "honeymoon_couple",
+      "party_type": "couple",
+      "stay_purpose": "celebration",
+      "common_needs": [
+        "privacy",
+        "spa",
+        "dining"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-06",
+      "key": "anniversary_couple",
+      "party_type": "couple",
+      "stay_purpose": "celebration",
+      "common_needs": [
+        "dining",
+        "quiet",
+        "late_checkout"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-07",
+      "key": "wellness_solo",
+      "party_type": "solo",
+      "stay_purpose": "wellness",
+      "common_needs": [
+        "spa",
+        "fitness",
+        "quiet"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-08",
+      "key": "golf_couple",
+      "party_type": "couple",
+      "stay_purpose": "golf",
+      "common_needs": [
+        "transport",
+        "early_departure",
+        "equipment"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-09",
+      "key": "business_solo",
+      "party_type": "solo",
+      "stay_purpose": "business",
+      "common_needs": [
+        "wifi",
+        "transport",
+        "time_pressure"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-10",
+      "key": "remote_worker",
+      "party_type": "solo",
+      "stay_purpose": "workation",
+      "common_needs": [
+        "wifi",
+        "quiet",
+        "late_checkout"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-11",
+      "key": "mice_delegate",
+      "party_type": "solo",
+      "stay_purpose": "mice",
+      "common_needs": [
+        "venue",
+        "timing",
+        "transport"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-12",
+      "key": "conference_organizer",
+      "party_type": "group",
+      "stay_purpose": "mice",
+      "common_needs": [
+        "coordination",
+        "dining",
+        "transport"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-13",
+      "key": "group_tour_member",
+      "party_type": "group",
+      "stay_purpose": "tour",
+      "common_needs": [
+        "meeting_point",
+        "timing",
+        "luggage"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-14",
+      "key": "villa_guest",
+      "party_type": "family",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "privacy",
+        "amenities",
+        "housekeeping"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-15",
+      "key": "returning_guest",
+      "party_type": "couple",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "personalization",
+        "speed",
+        "recognition"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-16",
+      "key": "first_time_guest",
+      "party_type": "couple",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "directions",
+        "policies",
+        "activities"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-17",
+      "key": "elderly_couple",
+      "party_type": "couple",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "mobility",
+        "medical",
+        "quiet"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-18",
+      "key": "mobility_access_guest",
+      "party_type": "solo",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "accessibility",
+        "transport",
+        "room_access"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-19",
+      "key": "dietary_sensitive_guest",
+      "party_type": "couple",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "dietary",
+        "dining",
+        "clarification"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-20",
+      "key": "foodie_guest",
+      "party_type": "couple",
+      "stay_purpose": "culinary",
+      "common_needs": [
+        "dining",
+        "room_service",
+        "reservations"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-21",
+      "key": "spa_focused_guest",
+      "party_type": "couple",
+      "stay_purpose": "wellness",
+      "common_needs": [
+        "spa",
+        "schedule",
+        "quiet"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-22",
+      "key": "active_sports_guest",
+      "party_type": "solo",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "fitness",
+        "tennis",
+        "beach"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-23",
+      "key": "quiet_sleep_guest",
+      "party_type": "solo",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "noise",
+        "dnd",
+        "room_comfort"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-24",
+      "key": "high_privacy_guest",
+      "party_type": "solo",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "privacy",
+        "dnd",
+        "minimal_contact"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-25",
+      "key": "late_arrival_guest",
+      "party_type": "couple",
+      "stay_purpose": "transit",
+      "common_needs": [
+        "late_food",
+        "luggage",
+        "room_comfort"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-26",
+      "key": "early_departure_guest",
+      "party_type": "solo",
+      "stay_purpose": "transit",
+      "common_needs": [
+        "airport",
+        "wake_up",
+        "breakfast"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-27",
+      "key": "long_stay_guest",
+      "party_type": "solo",
+      "stay_purpose": "workation",
+      "common_needs": [
+        "laundry",
+        "housekeeping",
+        "maintenance"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-28",
+      "key": "weekend_staycation",
+      "party_type": "couple",
+      "stay_purpose": "staycation",
+      "common_needs": [
+        "pool",
+        "dining",
+        "late_checkout"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-29",
+      "key": "beach_relaxation_guest",
+      "party_type": "couple",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "beach",
+        "towels",
+        "weather"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-30",
+      "key": "kids_club_family",
+      "party_type": "family",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "kids_club",
+        "adult_time",
+        "dining"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-31",
+      "key": "complaint_recovery_guest",
+      "party_type": "couple",
+      "stay_purpose": "recovery",
+      "common_needs": [
+        "apology",
+        "resolution",
+        "follow_up"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-32",
+      "key": "time_critical_guest",
+      "party_type": "solo",
+      "stay_purpose": "business",
+      "common_needs": [
+        "speed",
+        "transport",
+        "status"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-33",
+      "key": "low_tech_guest",
+      "party_type": "couple",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "clarity",
+        "human_help",
+        "directions"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-34",
+      "key": "digital_native_guest",
+      "party_type": "solo",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "self_service",
+        "status",
+        "speed"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-35",
+      "key": "language_support_guest",
+      "party_type": "family",
+      "stay_purpose": "leisure",
+      "common_needs": [
+        "translation",
+        "clarity",
+        "directions"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    },
+    {
+      "archetype_id": "GUEST-36",
+      "key": "celebration_group",
+      "party_type": "group",
+      "stay_purpose": "celebration",
+      "common_needs": [
+        "dining",
+        "coordination",
+        "room_service"
+      ],
+      "truth_status": "synthetic_guest_archetype",
+      "note": "Evaluation persona only; not a claim about Furama guest demographics."
+    }
+  ]
+}

@@ -3,6 +3,7 @@
   "backend.out_of_scope.reply": "Câu này nằm ngoài phạm vi hỗ trợ của khách sạn, nhưng tôi có thể giúp bạn về thông tin, chỉ đường hoặc dịch vụ lưu trú.",
   "backend.emergency.alert_queued": " Đã tạo cảnh báo ưu tiên cao trên hàng đợi của nhân viên; đây không phải xác nhận rằng lực lượng cứu hộ đã được điều động.",
   "backend.emergency.alert_unconfirmed": " Không thể xác nhận cảnh báo nội bộ đã được gửi; hãy liên hệ trực tiếp nhân viên hoặc số khẩn cấp ở trên.",
+  "backend.emergency.confirm_question": "Bạn có đang trong tình huống khẩn cấp cần trợ giúp ngay không?",
   "backend.knowledge.revoked": "Chủ đề trước không còn thông tin đã xác minh. Vui lòng hỏi lại hoặc liên hệ lễ tân.",
   "backend.knowledge.abstain": "Chưa tìm thấy thông tin đã xác minh cho câu hỏi này.",
   "backend.knowledge.staff_confirmation_required": "Thông tin này đang chờ nhân viên xác nhận. Vui lòng hỏi nhân viên khách sạn để xác nhận trước khi sử dụng.",
@@ -200,5 +201,6 @@
   "backend.clarification.activity_preference": "Bạn thích loại hoạt động nào?",
   "backend.clarification.meal_preference": "Bạn muốn dùng bữa kiểu gì?",
   "backend.clarification.time_window": "Khung giờ nào phù hợp với bạn?",
-  "backend.clarification.room_number": "Số phòng của bạn là bao nhiêu?"
+  "backend.clarification.room_number": "Số phòng của bạn là bao nhiêu?",
+  "backend.preference.saved": "Mình đã ghi nhận sở thích này cho phiên hiện tại và sẽ dùng khi gợi ý hoặc chuẩn bị yêu cầu."
 }

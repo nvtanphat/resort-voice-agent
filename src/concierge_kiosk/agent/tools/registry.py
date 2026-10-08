@@ -21,6 +21,18 @@ class _ContractModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
 
 
+ToolResultStatus = Literal[
+    "ok", "needs_slot", "needs_confirmation", "needs_verification",
+    "pending_staff", "unavailable", "denied", "error",
+]
+
+
+class _ToolResultModel(_ContractModel):
+    """Common observation state for every typed tool result."""
+
+    status: ToolResultStatus = "ok"
+
+
 class HotelInfoSearchParams(_ContractModel):
     query: str = Field(min_length=1, max_length=300)
     topic: str | None = Field(default=None, min_length=1, max_length=96)
@@ -90,11 +102,11 @@ class HotelFact(_ContractModel):
     source: SourceRef
 
 
-class HotelInfoSearchResult(_ContractModel):
+class HotelInfoSearchResult(_ToolResultModel):
     facts: list[HotelFact] = Field(max_length=16)
 
 
-class HotelHoursGetResult(_ContractModel):
+class HotelHoursGetResult(_ToolResultModel):
     open: str | None = Field(default=None, max_length=32)
     close: str | None = Field(default=None, max_length=32)
     is_open_now: bool | None = None
@@ -102,7 +114,7 @@ class HotelHoursGetResult(_ContractModel):
     source: SourceRef
 
 
-class HotelPlaceFindResult(_ContractModel):
+class HotelPlaceFindResult(_ToolResultModel):
     venue_id: str = Field(min_length=1, max_length=96)
     label: str = Field(min_length=1, max_length=160)
     zone: str | None = Field(default=None, max_length=96)
@@ -115,7 +127,7 @@ class RouteStep(_ContractModel):
     distance_m: int | None = Field(default=None, ge=0, le=100000)
 
 
-class HotelRouteGetResult(_ContractModel):
+class HotelRouteGetResult(_ToolResultModel):
     steps: list[RouteStep] = Field(max_length=32)
     distance_m: int | None = Field(default=None, ge=0, le=100000)
     minutes: int | None = Field(default=None, ge=0, le=1440)
@@ -123,20 +135,20 @@ class HotelRouteGetResult(_ContractModel):
     source: SourceRef
 
 
-class HotelNowResult(_ContractModel):
+class HotelNowResult(_ToolResultModel):
     local_time: str = Field(min_length=1, max_length=64)
     date: str = Field(min_length=1, max_length=40)
     weather: str | None = Field(default=None, max_length=240)
     source: SourceRef | None = None
 
 
-class ServiceRequestCreateResult(_ContractModel):
+class ServiceRequestCreateResult(_ToolResultModel):
     proposal_id: str = Field(min_length=1, max_length=128)
     needs_confirmation: bool
     readback: str = Field(min_length=1, max_length=500)
 
 
-class ServiceRequestConfirmResult(_ContractModel):
+class ServiceRequestConfirmResult(_ToolResultModel):
     request_id: str | None = Field(default=None, max_length=128)
     status: str = Field(min_length=1, max_length=64)
     eta: str | None = Field(default=None, max_length=64)
@@ -149,19 +161,19 @@ class ServiceRequestStatusItem(_ContractModel):
     eta: str | None = Field(default=None, max_length=64)
 
 
-class ServiceRequestStatusResult(_ContractModel):
+class ServiceRequestStatusResult(_ToolResultModel):
     items: list[ServiceRequestStatusItem] = Field(max_length=32)
 
 
-class ServiceRequestCancelResult(_ContractModel):
+class ServiceRequestCancelResult(_ToolResultModel):
     status: str = Field(min_length=1, max_length=64)
 
 
-class ServiceRequestUpdateResult(_ContractModel):
+class ServiceRequestUpdateResult(_ToolResultModel):
     status: str = Field(min_length=1, max_length=64)
 
 
-class StaffHandoffResult(_ContractModel):
+class StaffHandoffResult(_ToolResultModel):
     ticket_id: str = Field(min_length=1, max_length=128)
     desk_extension: str | None = Field(default=None, max_length=32)
 
@@ -172,7 +184,7 @@ class ItineraryItem(_ContractModel):
     end: str = Field(min_length=1, max_length=64)
 
 
-class ItineraryPlanResult(_ContractModel):
+class ItineraryPlanResult(_ToolResultModel):
     items: list[ItineraryItem] = Field(max_length=32)
     gaps: list[str] = Field(max_length=16)
 

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "levels": [
+    {
+      "level": "R0",
+      "trigger": "minor inconvenience resolved within SLA",
+      "actions": [
+        "apology",
+        "confirm_resolution"
+      ],
+      "agent_may_offer_demo": [
+        "priority_followup"
+      ],
+      "max_goodwill_value_vnd": 0,
+      "approval": "none"
+    },
+    {
+      "level": "R1",
+      "trigger": "missed SLA or repeat request",
+      "actions": [
+        "apology",
+        "priority_dispatch",
+        "supervisor_callback"
+      ],
+      "agent_may_offer_demo": [
+        "non_alcoholic_beverage_or_small_amenity"
+      ],
+      "max_goodwill_value_vnd": 200000,
+      "approval": "supervisor"
+    },
+    {
+      "level": "R2",
+      "trigger": "material service failure affecting stay",
+      "actions": [
+        "duty_manager_callback",
+        "priority_resolution"
+      ],
+      "agent_may_offer_demo": [
+        "meal_or_spa_credit",
+        "late_checkout_if_available"
+      ],
+      "max_goodwill_value_vnd": 700000,
+      "approval": "duty_manager"
+    },
+    {
+      "level": "R3",
+      "trigger": "major room/service disruption without immediate safety emergency",
+      "actions": [
+        "duty_manager_takeover",
+        "room_move_review"
+      ],
+      "agent_may_offer_demo": [
+        "room_move",
+        "enhanced_goodwill_credit"
+      ],
+      "max_goodwill_value_vnd": 2000000,
+      "approval": "rooms_division_manager"
+    }
+  ],
+  "repeat_issue_rule": {
+    "same_category_within_hours": 24,
+    "upgrade_one_level": true,
+    "cap_at": "R3"
+  },
+  "truth_status": "synthetic_property_assumption",
+  "assumption_refs": [
+    "asm_demo_service_recovery"
+  ]
+}

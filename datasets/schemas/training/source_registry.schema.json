@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent training source registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_family",
+    "source_id",
+    "embedded_source_record",
+    "promoted_scenario_ids",
+    "promoted_record_count",
+    "promoted_records_sha256",
+    "lineage_status",
+    "note"
+  ],
+  "properties": {
+    "source_family": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "embedded_source_record": {
+      "type": "boolean"
+    },
+    "source_reference": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "promoted_scenario_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "promoted_record_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "promoted_records_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "lineage_status": {
+      "enum": [
+        "resolvable_frame",
+        "external_source_id_preserved"
+      ]
+    },
+    "note": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

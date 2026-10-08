@@ -3,7 +3,7 @@
   "profile_id": "concierge-domain",
   "domain_vocab": {
     "path": "releases/domain-vocab.json",
-    "sha256": "0c13c48049382e80834f57ad5a7b68219981a507bd847100c129d32c5069a0ea"
+    "sha256": "ab1e8110c0b3d92c6323bc313a37af3c987149bb6b2b32448e00afb9f969d68b"
   },
   "languages": {
     "supported": [
@@ -40,7 +40,23 @@
     ],
     "sensitive_patterns": [
       "\\b(?:password|passcode|otp|pin|cvv|cvc|passport|cccd)\\b|m\\u1eadt\\s*kh\\u1ea9u|h\\u1ed9\\s*chi\\u1ebfu|c\\u0103n\\s*c\\u01b0\\u1edbc|s\\u1ed1\\s*th\\u1ebb|\\u5bc6\\u7801|\\u62a4\\u7167|\\u8eab\\u4efd\\u8bc1|\\u94f6\\u884c\\u5361|\\u4fe1\\u7528\\u5361|\\u9a8c\\u8bc1\\u7801|\\ube44\\ubc00\\ubc88\\ud638|\\uc5ec\\uad8c|\\uc2e0\\uc6a9\\uce74\\ub4dc|\\uc778\\uc99d\\ubc88\\ud638|(?:\\d[ -]?){13,19}"
-    ]
+    ],
+    "prompt_injection_patterns": {
+      "en": [
+        "\\bignore\\s+(?:all\\s+|the\\s+)?(?:previous|system|developer)\\s+(?:instructions|prompts)\\b",
+        "\\bignore\\s+(?:all\\s+|the\\s+)?instructions?\\b",
+        "\\b(?:system\\s+prompt|developer\\s+message|reveal\\s+(?:your\\s+)?(?:secret|password|api\\s+key)|send\\s+(?:the\\s+)?(?:secret|password|api\\s+key)\\s+to|exfiltrat(?:e|ion))\\b"
+      ],
+      "vi": [
+        "bỏ qua\\s+(?:mọi\\s+|tất cả\\s+)?(?:chỉ dẫn|hướng dẫn)(?:\\s+(?:trước|hệ thống)|(?=\\s*[,!?:;.]))"
+      ],
+      "zh": [
+        "忽略(?:之前|系统)(?:的)?指令"
+      ],
+      "ko": [
+        "이전\\s+(?:지시|명령)(?:을|를)\\s+무시"
+      ]
+    }
   },
   "services": [
     {
@@ -61,7 +77,8 @@
         "quantity"
       ],
       "approval": "none",
-      "catalog_service_id": "service.bath_towels"
+      "catalog_service_id": "service.bath_towels",
+      "description": "Bring extra in-room items or supplies to the guest room (towels, water, toiletries, adapters, small items)."
     },
     {
       "code": "maintenance",
@@ -80,7 +97,8 @@
       "escalate_without_evidence": true,
       "optional_slots": [],
       "approval": "none",
-      "catalog_service_id": ""
+      "catalog_service_id": "",
+      "description": "Repair something broken or not working in the room (air conditioning, plumbing, lights, TV, locks)."
     },
     {
       "code": "housekeeping",
@@ -100,7 +118,8 @@
         "preferred_time"
       ],
       "approval": "none",
-      "catalog_service_id": "service.room_cleaning"
+      "catalog_service_id": "service.room_cleaning",
+      "description": "Clean or tidy the guest room, change linen, or schedule room cleaning."
     },
     {
       "code": "human_assistance",
@@ -121,7 +140,8 @@
         "issue"
       ],
       "approval": "staff",
-      "catalog_service_id": ""
+      "catalog_service_id": "",
+      "description": "Connect the guest with a staff member, or handle a request no other service covers (luggage, lost items, special help)."
     },
     {
       "code": "spa_reservation",
@@ -140,6 +160,7 @@
       "optional_slots": [],
       "approval": "staff",
       "catalog_service_id": "spa.booking",
+      "description": "Book a spa, massage or wellness treatment at a requested time.",
       "availability_source": {
         "dataset": "synthetic/operations/spa/operations.json",
         "shape": "time_slots",
@@ -161,13 +182,21 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": false,
-      "optional_slots": [],
+      "optional_slots": [
+        "restaurant_name"
+      ],
+      "venue_slot": {
+        "name": "restaurant_name",
+        "entity_type": "restaurant"
+      },
       "approval": "staff",
       "catalog_service_id": "dining.restaurant_reservation",
+      "description": "Reserve a restaurant table for a number of people at a time.",
       "availability_source": {
         "dataset": "synthetic/operations/food_beverage/restaurants.json",
         "shape": "table_capacity",
-        "collection": "venues"
+        "collection": "venues",
+        "date_semantics": "rolling_demo_day_template"
       }
     },
     {
@@ -186,7 +215,8 @@
       "default_for_kind": false,
       "optional_slots": [],
       "approval": "staff",
-      "catalog_service_id": "service.in_room_dining"
+      "catalog_service_id": "service.in_room_dining",
+      "description": "Order food or drinks delivered to the guest room (room service)."
     },
     {
       "code": "tour_reservation",
@@ -204,7 +234,8 @@
       "default_for_kind": false,
       "optional_slots": [],
       "approval": "staff",
-      "catalog_service_id": "",
+      "catalog_service_id": "service.tour_reservation",
+      "description": "Book a seat on an organized tour or excursion at a requested time.",
       "availability_source": {
         "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
         "shape": "inventory",
@@ -229,7 +260,8 @@
         "room_number"
       ],
       "approval": "staff",
-      "catalog_service_id": "service.wake_up_calls"
+      "catalog_service_id": "service.wake_up_calls",
+      "description": "Schedule a telephone wake-up call to the guest room at a requested time."
     },
     {
       "code": "facility_request",
@@ -247,7 +279,8 @@
         "preferred_time"
       ],
       "approval": "staff",
-      "catalog_service_id": ""
+      "catalog_service_id": "",
+      "description": "Request a facility or equipment arrangement not covered by a specific service (extra bed, crib, iron, hair dryer)."
     },
     {
       "code": "dining_request",
@@ -266,7 +299,8 @@
         "preferred_time"
       ],
       "approval": "staff",
-      "catalog_service_id": ""
+      "catalog_service_id": "",
+      "description": "Arrange a special dining need (cake, private dinner, dietary or allergy request) that is not a table booking."
     },
     {
       "code": "tour_request",
@@ -285,6 +319,7 @@
       ],
       "approval": "staff",
       "catalog_service_id": "",
+      "description": "Ask the tour desk to arrange or advise on a custom trip, guide or activity outside the listed tours.",
       "availability_source": {
         "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
         "shape": "inventory",
@@ -310,6 +345,7 @@
       ],
       "approval": "staff",
       "catalog_service_id": "transportation.taxi",
+      "description": "Arrange a taxi, car or airport transfer at a requested time.",
       "availability_source": {
         "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
         "shape": "inventory",
@@ -333,7 +369,8 @@
       "default_for_kind": true,
       "optional_slots": [],
       "approval": "staff",
-      "catalog_service_id": "service.late_checkout"
+      "catalog_service_id": "service.late_checkout",
+      "description": "Ask to keep the room past the normal check-out time."
     }
   ],
   "public_catalog_kinds": {
@@ -396,6 +433,7 @@
         "type": "integer",
         "minimum": 1,
         "maximum": 20,
+        "applies_to_slot": "party_size",
         "recognition": {
           "integer_patterns": {
             "en": [
@@ -423,7 +461,7 @@
               "\\b(\\d{1,2})\\s*(?:children|kids)\\b"
             ],
             "vi": [
-              "\\b(\\d{1,2})\\s*(?:trẻ em|trẻ|tre em|tre)\\b"
+              "\\b(\\d{1,2})\\s*(?:trẻ em|trẻ|tre em|tre|con(?:\\s+nhỏ)?)\\b"
             ],
             "zh": [
               "(\\d{1,2})\\s*(?:个)?(?:孩子|儿童)"
@@ -456,7 +494,8 @@
       "mobility": {
         "type": "enum",
         "values": [
-          "minimal_walking"
+          "minimal_walking",
+          "wheelchair_access"
         ],
         "recognition": {
           "enum_terms": {
@@ -484,6 +523,26 @@
                 "적게 걷",
                 "걷는 것을 최소",
                 "많이 걷고 싶지"
+              ]
+            },
+            "wheelchair_access": {
+              "en": [
+                "wheelchair",
+                "wheelchair access",
+                "accessible for wheelchair"
+              ],
+              "vi": [
+                "xe lăn",
+                "xe lan",
+                "tiếp cận xe lăn"
+              ],
+              "zh": [
+                "轮椅",
+                "轮椅通行"
+              ],
+              "ko": [
+                "휠체어",
+                "휠체어 접근"
               ]
             }
           }
@@ -734,11 +793,13 @@
           "\\b(?:outlet|socket|air conditioner|ac|wire|wiring|electrical panel|power panel)[^.!?]{0,24}\\b(?:sparks?|sparking|arcing)\\b",
           "\\b(?:smell(?:s|ing)?|odor|odour)[^.!?]{0,32}\\b(?:burning|burnt)[^.!?]{0,20}\\b(?:electrical|wire|wiring|plastic|outlet|socket|ac|air conditioner)\\b",
           "\\b(?:burning|burnt)[^.!?]{0,20}\\b(?:electrical|wire|wiring|plastic)[^.!?]{0,16}\\b(?:smell|odor|odour)\\b",
-          "\\b(?:is|are|keeps?|started|been)\\s+bleeding\\b|\\bbleeding\\s+(?:a lot|heavily|badly|everywhere)\\b|\\blot of blood\\b"
+          "\\b(?:is|are|keeps?|started|been)\\s+bleeding\\b|\\bbleeding\\s+(?:a lot|heavily|badly|everywhere)\\b|\\blot of blood\\b",
+          "\\b(?:(?:there is|i|we)\\s+(?:see\\s+)?(?:a\\s+)?(?:fire|smoke)|(?:fire|smoke)\\s+(?:is\\s+)?(?:spreading|thick)|(?:is|are)\\s+burning)\\b",
+          "\\b(?:flames?\\s+(?:are\\s+)?(?:spreading|burning)|(?:there is|i|we)\\s+(?:thick\\s+)?smoke|smoke\\s+(?:is\\s+)?thick)\\b"
         ],
         "vi": [
-          "^\\s*(?:cháy|cứu|sos)\\s*[!.!?]*\\s*$",
-          "(?<!\\w)(?:cấp cứu|khẩn cấp|đang cháy|cháy rồi|có cháy|cháy\\s+(?:trong|ở|tại)|bất tỉnh|ngất xỉu|ngất|đau tim|chảy máu (?:nhiều|rất nhiều)|khó thở|không thở được|bị nghẹn|bị hóc|bạo lực|đuối nước|chìm dưới nước|rơi xuống hồ bơi)(?!\\w)",
+          "^\\s*(?:cháy|chay|cứu|sos)\\s*[!.!?]*\\s*$",
+          "(?<!\\w)(?:cấp cứu|khẩn cấp|đang cháy|đang chay|cháy rồi|chay rồi|có cháy|co chay|cháy\\s+(?:trong|ở|tại)|chay\\s+(?:trong|o|tai)|bất tỉnh|ngất xỉu|ngất|đau tim|chảy máu (?:nhiều|rất nhiều)|khó thở|không thở được|bị nghẹn|bị hóc|bạo lực|đuối nước|chìm dưới nước|rơi xuống hồ bơi)(?!\\w)",
           "(?<!\\w)(?:(?:con|bé|trẻ|em bé)(?:\\s+(?:tôi|của tôi|nhà tôi))?\\s+(?:bị )?(?:lạc|mất tích)|(?:lạc|mất tích)\\s+(?:trẻ|bé|em bé))(?!\\w)",
           "(?<!\\w)(?:tôi|chúng tôi)\\s+(?:không|chẳng)\\s+(?:tìm thấy|tìm được|thấy)\\s+(?:được\\s+)?(?:con|bé|trẻ|em bé)(?:\\s+(?:tôi|của tôi|nhà tôi))?(?!\\w)",
           "(?<!\\w)(?:rò rỉ gas|rò khí gas|mùi gas|ngửi thấy mùi gas|ổ điện (?:tóe|phát) lửa|dây điện trần|dây điện hở|phòng (?:đang )?ngập|vỡ ống nước|kẹt (?:trong )?thang máy)(?!\\w)",
@@ -746,7 +807,9 @@
           "(?<!\\w)(?:ổ điện|ổ cắm|dây điện|bảng điện|tủ điện|máy lạnh|điều hòa)[^.!?。！？]{0,24}(?:tóe|phát|bắn)\\s*lửa(?!\\w)",
           "(?<!\\w)(?:mùi\\s+)?khét[^.!?。！？]{0,28}(?:điện|dây điện|ổ điện|ổ cắm|máy lạnh|điều hòa)(?!\\w)",
           "(?<!\\w)(?:dây điện|ổ điện|ổ cắm|bảng điện|tủ điện)[^.!?。！？]{0,20}(?:cháy|khét)(?!\\w)",
-          "(?<!\\w)(?:có người|ai đó|bị|đang|vẫn)\\s+chảy máu|chảy (?:rất )?nhiều máu|mất nhiều máu"
+          "(?<!\\w)(?:có người|ai đó|bị|đang|vẫn)\\s+chảy máu|chảy (?:rất )?nhiều máu|mất nhiều máu",
+          "(?<!\\w)(?:b\\u1ed1c\\s+ch\\u00e1y|\\u0111ang\\s+(?:b\\u1ed1c\\s+)?ch\\u00e1y|kh\\u00f3i\\s+d\\u00e0y)(?!\\w)",
+          "(?<!\\w)(?:\\u0111\\u00e1m\\s+ch\\u00e1y|ch\\u00e1y\\s+\\u0111ang\\s+b\\u1ed1c)(?!\\w)"
         ],
         "zh": [
           "(?:着火了|发生火灾|急救|紧急情况|溺水|落水|孩子走失|儿童走失|孩子失踪|昏倒|失去意识|胸痛|心脏病发作|大量出血|呼吸困难|窒息)",
@@ -758,7 +821,8 @@
           "(?:插座|电线|電線|空调|空調|配电箱|配電箱)[^。！？]{0,18}(?:冒火花|火花四溅|打火|起火花)",
           "(?:电线|電線|插座|空调|空調|配电箱|配電箱)[^。！？]{0,22}(?:烧焦|燒焦|焦糊|焦味)",
           "(?:烧焦|燒焦|焦糊|焦味)[^。！？]{0,22}(?:电线|電線|插座|空调|空調|电气|電氣)",
-          "流血|流了很多血|大出血|血流不止"
+          "流血|流了很多血|大出血|血流不止",
+          "(?:\\u7740\\u706b|\\u5192\\u70df)"
         ],
         "ko": [
           "(?:화재가 (?:났|발생)|화재입니다|불이 났|응급 상황|긴급 상황|물에 빠졌|익사|아이가 사라졌|아이를 잃어버렸|기절|의식이 없|심장마비|심한 출혈|숨을 못 쉬|질식|쓰러졌)",
@@ -769,97 +833,9 @@
           "(?:아이|아들|딸)(?:을|를)?[^.!?。！？]{0,28}(?:안\\s*보여|보이지\\s*않|보이질\\s*않)",
           "(?:전선|콘센트|에어컨|배전반)[^.!?。！？]{0,20}(?:타는|탄|그을린)[^.!?。！？]{0,10}(?:냄새)",
           "(?:타는|탄|그을린)[^.!?。！？]{0,16}(?:전선|전기|콘센트|에어컨)[^.!?。！？]{0,10}(?:냄새)",
-          "피가\\s*(?:나요|나고|많이|멈추지)|피를\\s*(?:많이\\s*)?흘려|출혈"
-        ]
-      },
-      "action_phrases": {
-        "vi": {
-          "directions": [
-            "dẫn đường",
-            "đưa tôi đến",
-            "dẫn tôi đến",
-            "chỉ đường"
-          ]
-        },
-        "en": {
-          "directions": [
-            "show me the way",
-            "guide me to",
-            "take me to",
-            "directions to"
-          ]
-        },
-        "zh": {
-          "directions": [
-            "带我去",
-            "引导我去"
-          ]
-        },
-        "ko": {
-          "directions": [
-            "안내해 주세요",
-            "데려다 주세요"
-          ]
-        }
-      },
-      "info_only": {
-        "vi": [
-          "giá bao nhiêu",
-          "mấy giờ",
-          "ở đâu",
-          "cho biết",
-          "thông tin",
-          "cho hỏi",
-          "có những",
-          "là gì",
-          "như thế nào",
-          "cách đặt",
-          "có tính phí",
-          "bao nhiêu",
-          "làm sao"
-        ],
-        "en": [
-          "how much",
-          "how many",
-          "what time",
-          "where is",
-          "tell me about",
-          "information about",
-          "how do i",
-          "how can i",
-          "please explain",
-          "what does",
-          "what is",
-          "could you tell me",
-          "can you tell me",
-          "tell me whether",
-          "tell me if",
-          "is it possible",
-          "give me an overview",
-          "overview of"
-        ],
-        "zh": [
-          "多少钱",
-          "几点",
-          "在哪里",
-          "请问",
-          "有什么",
-          "介绍一下",
-          "怎么",
-          "如何",
-          "可以",
-          "是否"
-        ],
-        "ko": [
-          "얼마",
-          "몇 시",
-          "어디",
-          "알려주세요",
-          "무엇",
-          "어떤",
-          "가능한가요",
-          "할 수 있나요",
-          "어떻게"
+          "피가\\s*(?:나요|나고|많이|멈추지)|피를\\s*(?:많이\\s*)?흘려|출혈",
+          "(?:\\ubd88\\uc774\\s*(?:\\ub0ac|\\ub098|\\ubc88\\uc84c)|\\uc5f0\\uae30\\uac00\\s*(?:\\ub098|\\ubcf4\\uc774|\\uc9d9))",
+          "(?:\\uc5f0\\uae30\\uac00\\s*(?:\\ub098|\\ubcf4\\uc774|\\ubcf4\\uc5ec|\\uc9d9))"
         ]
       },
       "negation_patterns": {
@@ -867,46 +843,6 @@
         "en": "\\b(?:do\\s+not|don't|dont|never|not|cancel|stop|avoid|no\\s+need\\s+to)\\b",
         "zh": "不要|不用|别|取消|不想|不需要",
         "ko": "하지\\s*마|안\\s*할|취소|원하지\\s*않|필요\\s*없"
-      },
-      "action_patterns": {
-        "en": {
-          "directions": [
-            "^(?:where\\s+(?:is|are)|directions?\\s+to)\\s+.+$"
-          ]
-        },
-        "vi": {
-          "directions": [
-            "^(?:chỉ\\s+đường|đường\\s+đến|đến\\s+đâu|ở\\s+đâu)\\s+.+$"
-          ]
-        },
-        "zh": {
-          "directions": [
-            "^(?:哪里|在哪儿|怎么去)\\s*.+"
-          ]
-        },
-        "ko": {
-          "directions": [
-            "^(?:어디에\\s+있나요|어떻게\\s+가나요|가는\\s+길)\\s*.+"
-          ]
-        }
-      },
-      "information_frame_patterns": {
-        "en": "^(?:tell me|explain|what|where|when|why|how|is|are|do|does|can i|may i)\\b",
-        "vi": "^(?:cho tôi biết|cho hỏi|giải thích|gì|ở đâu|khi nào|tại sao|vì sao|làm sao|bao nhiêu|mấy giờ)\\b",
-        "zh": "^(?:请问|告诉我|介绍|什么|哪里|什么时候|为什么|怎么|如何|是否)",
-        "ko": "^(?:알려|설명|무엇|뭐|어디|언제|왜|어떻게|가능)"
-      },
-      "information_request_patterns": {
-        "en": "\\b(?:tell me|explain|show me how|how (?:do|can|should) i use|instructions? for|give me (?:an? )?(?:overview|information|details?)|provide (?:an? )?(?:overview|information|details?))\\b",
-        "vi": "cho tôi biết|cho mình hỏi(?: thêm)? về|giải thích|hướng dẫn(?: tôi)? cách|cách (?:dùng|sử dụng|bật|tắt)|làm thế nào|thế nào|cần làm gì|liên hệ thế nào",
-        "zh": "告诉我|介绍|解释|怎么用|如何使用|怎么开|怎么调",
-        "ko": "알려\\s?주|설명해|사용법|사용 방법|이용 방법|이용 가능한 시간"
-      },
-      "multi_connector_patterns": {
-        "en": "\\b(?:and|also|plus|then|after that|but|however)\\b",
-        "vi": "\\b(?:và|rồi|với|sau đó|nhưng)\\b",
-        "zh": "并|和|还要|同时|然后|但是|但",
-        "ko": "그리고|또|와|과|다음에|하지만"
       },
       "emergency_text": {
         "vi": "Tình huống khẩn cấp: hãy báo ngay cho nhân viên gần nhất hoặc Tổng đài resort máy lẻ 0. Cấp cứu y tế: 115. Cứu hỏa: 114. Trung tâm Y tế resort: máy lẻ 3420. Kiosk không thể tự điều động cơ quan khẩn cấp.",
@@ -1093,6 +1029,24 @@
           "안녕하십니까"
         ]
       },
+      "thanks_terms": {
+        "vi": [
+          "cảm ơn",
+          "cam on"
+        ],
+        "en": [
+          "thank you",
+          "thanks"
+        ],
+        "zh": [
+          "谢谢",
+          "多谢"
+        ],
+        "ko": [
+          "감사합니다",
+          "고마워요"
+        ]
+      },
       "courtesy_particles": {
         "vi": [
           "nha",
@@ -1255,146 +1209,6 @@
           "프런트"
         ]
       },
-      "request_status_terms": {
-        "en": [
-          "request status",
-          "status of my request",
-          "my service request",
-          "my request",
-          "my ticket"
-        ],
-        "vi": [
-          "trạng thái yêu cầu",
-          "yêu cầu của tôi",
-          "phiếu yêu cầu của tôi",
-          "yêu cầu dịch vụ của tôi",
-          "yêu cầu tới đâu rồi"
-        ],
-        "zh": [
-          "我的请求",
-          "请求状态",
-          "服务请求状态"
-        ],
-        "ko": [
-          "내 요청",
-          "요청 상태",
-          "서비스 요청 상태"
-        ]
-      },
-      "request_change_terms": {
-        "en": {
-          "cancel": [
-            "cancel my request",
-            "cancel that request",
-            "cancel the request",
-            "stop that request",
-            "cancel it",
-            "cancel this",
-            "cancel that"
-          ],
-          "modify": [
-            "modify my request",
-            "modify that request",
-            "change my request",
-            "change that request",
-            "modify",
-            "change",
-            "update"
-          ]
-        },
-        "vi": {
-          "cancel": [
-            "hủy yêu cầu của tôi",
-            "hủy yêu cầu đó",
-            "hủy yêu cầu này",
-            "bỏ yêu cầu đó",
-            "hủy giúp mình",
-            "hủy"
-          ],
-          "modify": [
-            "sửa yêu cầu của tôi",
-            "sửa yêu cầu đó",
-            "đổi yêu cầu đó",
-            "thay đổi yêu cầu đó",
-            "sửa",
-            "đổi",
-            "thay đổi",
-            "chỉnh",
-            "cập nhật"
-          ]
-        },
-        "zh": {
-          "cancel": [
-            "取消我的请求",
-            "取消那个请求",
-            "取消这个请求",
-            "取消一下",
-            "帮我取消"
-          ],
-          "modify": [
-            "修改我的请求",
-            "修改那个请求",
-            "更改那个请求",
-            "改一下",
-            "修改一下",
-            "修改",
-            "更改",
-            "更新"
-          ]
-        },
-        "ko": {
-          "cancel": [
-            "내 요청 취소",
-            "그 요청 취소",
-            "이 요청 취소",
-            "취소해 주세요",
-            "취소해줘"
-          ],
-          "modify": [
-            "내 요청 수정",
-            "그 요청 수정",
-            "요청 변경",
-            "바꾸고 싶어요",
-            "바꾸고 싶어",
-            "수정",
-            "변경",
-            "업데이트"
-          ]
-        }
-      },
-      "request_change_reference_terms": {
-        "vi": [
-          "yêu cầu",
-          "lúc này",
-          "lúc nãy",
-          "của mình",
-          "của tôi"
-        ],
-        "en": [
-          "request",
-          "requested",
-          "earlier",
-          "already",
-          "that",
-          "my"
-        ],
-        "zh": [
-          "请求",
-          "申请",
-          "已经",
-          "现在",
-          "这个",
-          "那个"
-        ],
-        "ko": [
-          "요청",
-          "신청",
-          "이미",
-          "지금",
-          "그",
-          "이"
-        ]
-      },
       "language_switch_terms": {
         "vi": [
           "tiếng việt",
@@ -1422,8 +1236,8 @@
         ]
       },
       "switch_command_patterns": {
-        "vi": "^(?:(?:vui lòng|hãy|xin)\\s+)?(?:đổi|chuyển)\\s+sang\\s+(.+?)\\s*[.!。！]*$",
-        "en": "^(?:please\\s+)?(?:switch|change)\\s+to\\s+(.+?)\\s*(?:please)?[.!。！]*$",
+        "vi": "^(?:(?:(?:vui lòng|hãy|xin)\\s+)?(?:đổi|chuyển)\\s+sang|(?:nói(?:\\s+bằng)?))\\s+(.+?)(?:\\s+đi)?\\s*[.!。！]*$",
+        "en": "^(?:(?:please\\s+)?(?:switch|change)\\s+to|(?:please\\s+)?(?:speak|use))\\s+(.+?)\\s*(?:please)?[.!。！]*$",
         "zh": "^(?:请)?(?:切换(?:到|为)?|换成)\\s*(.+?)\\s*[.!。！]*$",
         "ko": "^(?:언어를\\s*)?(?:바꿔|전환)\\s*(.+?)\\s*(?:주세요)?[.!。！]*$"
       },
@@ -1441,6 +1255,12 @@
           "en": "Hello! I can help with hotel information, directions, planning, and handle eligible service tasks within my authority.",
           "zh": "您好！我可以提供酒店信息、路线与行程协助，并在授权范围内处理符合条件的服务任务。",
           "ko": "안녕하세요! 호텔 정보, 길 안내, 일정 계획을 돕고 권한 범위 내의 서비스 작업을 처리할 수 있습니다."
+        },
+        "thanks": {
+          "vi": "Không có gì! Tôi vẫn giữ chủ đề trước nếu bạn muốn hỏi tiếp.",
+          "en": "You're welcome! I can continue with the previous topic if you have another question.",
+          "zh": "不客气！如果您还有问题，我可以继续刚才的主题。",
+          "ko": "천만에요! 계속 질문하시면 이전 주제로 이어서 도와드릴게요."
         },
         "service": {
           "vi": "Tôi có thể chuẩn bị yêu cầu này. Vui lòng kiểm tra nội dung rồi xác nhận trước khi gửi cho nhân viên.",
@@ -1471,6 +1291,12 @@
           "en": "To prevent accidental submission, confirm on the request review screen. I will not submit a request from this phrase alone.",
           "zh": "为避免误提交，请在请求审核界面确认。仅凭这句话不会自动发送请求。",
           "ko": "실수로 전송되는 것을 막기 위해 요청 검토 화면에서 확인해 주세요. 이 문장만으로 요청을 자동 전송하지 않습니다."
+        },
+        "goodbye": {
+          "vi": "Tạm biệt và chúc bạn một kỳ nghỉ vui vẻ! Khi cần, bạn cứ quay lại kiosk nhé.",
+          "en": "Goodbye, and enjoy your stay! Come back to the kiosk any time you need help.",
+          "zh": "再见，祝您住宿愉快！需要帮助时随时回到这里。",
+          "ko": "안녕히 가세요, 즐거운 시간 보내세요! 도움이 필요하면 언제든 다시 찾아 주세요."
         }
       }
     },
@@ -1543,6 +1369,24 @@
         "zh": [],
         "ko": []
       },
+      "room_reference_terms": {
+        "en": [
+          "room",
+          "room number"
+        ],
+        "vi": [
+          "phòng",
+          "số phòng"
+        ],
+        "zh": [
+          "房间",
+          "房号"
+        ],
+        "ko": [
+          "객실",
+          "방"
+        ]
+      },
       "room_patterns": {
         "en": [
           "\\broom\\s*(?:number\\s*)?#?\\s*([A-Za-z]?\\d{2,5})\\b",
@@ -1585,6 +1429,9 @@
           "sáng nay",
           "chiều nay",
           "tối nay",
+          "sáng này",
+          "chiều này",
+          "tối này",
           "sáng mai",
           "chiều mai",
           "tối mai",
@@ -1632,7 +1479,9 @@
         ],
         "vi": [
           "khăn",
-          "vật dụng"
+          "vật dụng",
+          "cái",
+          "chiếc"
         ],
         "zh": [
           "条毛巾",
@@ -1698,62 +1547,6 @@
           "오늘"
         ]
       },
-      "cancel_terms": {
-        "en": [
-          "cancel",
-          "cancel that",
-          "never mind",
-          "forget that",
-          "stop that request",
-          "cancel it",
-          "cancel this",
-          "forget it",
-          "no thanks",
-          "skip it",
-          "i do not need it",
-          "i don't need it"
-        ],
-        "vi": [
-          "hủy",
-          "hủy yêu cầu đó",
-          "thôi bỏ đi",
-          "không cần nữa",
-          "bỏ yêu cầu đó",
-          "thôi",
-          "thôi hủy",
-          "hủy đi",
-          "thôi hủy đi",
-          "thôi bỏ",
-          "bỏ đi",
-          "thôi khỏi",
-          "khỏi",
-          "thôi không cần",
-          "không cần đâu",
-          "hủy yêu cầu",
-          "thôi đừng"
-        ],
-        "zh": [
-          "取消",
-          "取消那个请求",
-          "不用了",
-          "算了",
-          "不要了",
-          "取消吧",
-          "不用"
-        ],
-        "ko": [
-          "취소",
-          "그 요청 취소",
-          "됐어요",
-          "필요 없어요",
-          "취소해",
-          "취소해요",
-          "취소할게요",
-          "안 할게요",
-          "취소할래요",
-          "됐어"
-        ]
-      },
       "clock_daypart_patterns": {
         "vi": "(?<!\\d)(?P<hour>\\d{1,2})(?::(?P<minute>\\d{2}))?\\s*(?:giờ)?\\s*(?P<daypart>sáng|trưa|chiều|tối)(?!\\w)"
       },
@@ -1763,32 +1556,40 @@
           "quantity": "quantity",
           "preferred_time": "preferred time",
           "party_size": "number of guests",
+          "restaurant_name": "restaurant",
           "destination": "destination",
-          "issue": "issue"
+          "issue": "issue",
+          "note": "note"
         },
         "vi": {
           "room_number": "số phòng",
           "quantity": "số lượng",
           "preferred_time": "thời gian mong muốn",
           "party_size": "số khách",
+          "restaurant_name": "nhà hàng",
           "destination": "điểm đến",
-          "issue": "vấn đề"
+          "issue": "vấn đề",
+          "note": "ghi chú"
         },
         "zh": {
           "room_number": "房号",
           "quantity": "数量",
           "preferred_time": "期望时间",
           "party_size": "人数",
+          "restaurant_name": "餐厅",
           "destination": "目的地",
-          "issue": "问题"
+          "issue": "问题",
+          "note": "备注"
         },
         "ko": {
           "room_number": "객실 번호",
           "quantity": "수량",
           "preferred_time": "희망 시간",
           "party_size": "인원",
+          "restaurant_name": "식당",
           "destination": "목적지",
-          "issue": "문제"
+          "issue": "문제",
+          "note": "메모"
         }
       },
       "clarification_text": {
@@ -1865,7 +1666,6 @@
           " there",
           " those ",
           " them ",
-          "and ",
           "what about",
           "how about",
           "then",
@@ -2209,183 +2009,7 @@
         ]
       }
     },
-    "read_intent": {
-      "info_terms": {
-        "en": [
-          "what time",
-          "where is",
-          "tell me about",
-          "information about",
-          "opening hours",
-          "when does",
-          "what is"
-        ],
-        "vi": [
-          "mấy giờ",
-          "giờ mở",
-          "thông tin",
-          "cho biết",
-          "ở đâu"
-        ],
-        "zh": [
-          "几点",
-          "什么时候",
-          "营业时间",
-          "介绍",
-          "在哪里"
-        ],
-        "ko": [
-          "몇 시",
-          "운영 시간",
-          "알려",
-          "어디"
-        ]
-      },
-      "conjunction_patterns": {
-        "en": "\\b(?:and|also|then|plus)\\b",
-        "vi": "\\b(?:và|rồi|sau đó)\\b",
-        "zh": "和|并|然后|还有",
-        "ko": "그리고|또|다음에"
-      },
-      "next_pattern": "\\b(?:then|after that|rồi|sau đó)\\b|然后|다음에",
-      "route_terms": {
-        "en": [
-          "directions",
-          "route to",
-          "way to",
-          "locate",
-          "find the way",
-          "how to get to",
-          "show me the way"
-        ],
-        "vi": [
-          "đường đến",
-          "đường tới",
-          "chỉ đường",
-          "tìm đường",
-          "dẫn đường"
-        ],
-        "zh": [
-          "路线",
-          "怎么走",
-          "如何到达",
-          "带我去",
-          "指路"
-        ],
-        "ko": [
-          "가는 길",
-          "길 안내",
-          "어떻게 가",
-          "안내해 주세요"
-        ]
-      },
-      "info_more_terms": {
-        "en": [
-          "explain",
-          "describe",
-          "details about",
-          "tell me",
-          "hours of",
-          "rules for"
-        ],
-        "vi": [
-          "giải thích",
-          "mô tả",
-          "quy định",
-          "giờ hoạt động",
-          "cho tôi biết"
-        ],
-        "zh": [
-          "说明",
-          "介绍",
-          "规定",
-          "信息"
-        ],
-        "ko": [
-          "설명",
-          "정보",
-          "규정",
-          "운영시간"
-        ]
-      },
-      "deny_pattern": "\\b(?:do not|don't|never|cancel|stop|not|reserve|book|order|pay|purchase|send|submit|confirm)\\b|không|đừng|hủy|đặt lịch|đặt bàn|gửi yêu cầu|xác nhận|预约|预订|取消|예약|취소",
-      "composite_information_terms": {
-        "en": [
-          "tell me",
-          "explain",
-          "opening hours",
-          "what time",
-          "where is",
-          "information",
-          "how much"
-        ],
-        "vi": [
-          "cho biết",
-          "thông tin",
-          "mấy giờ",
-          "giờ mở",
-          "giải thích",
-          "bao nhiêu"
-        ],
-        "zh": [
-          "介绍",
-          "信息",
-          "几点",
-          "多少钱",
-          "营业时间"
-        ],
-        "ko": [
-          "알려",
-          "정보",
-          "몇 시",
-          "운영 시간",
-          "얼마"
-        ]
-      },
-      "availability_terms": {
-        "en": [
-          "is it available",
-          "available",
-          "is there a slot",
-          "are there any openings",
-          "availability",
-          "any tables available",
-          "is there a table",
-          "opening hours",
-          "operating hours",
-          "hours"
-        ],
-        "vi": [
-          "còn chỗ",
-          "còn suất",
-          "còn lịch",
-          "có thể đặt",
-          "còn bàn",
-          "có bàn không",
-          "mấy giờ",
-          "giờ mở",
-          "giờ hoạt động"
-        ],
-        "zh": [
-          "有空位",
-          "可以预订",
-          "有预约",
-          "有桌位",
-          "营业时间",
-          "开放时间",
-          "几点到几点"
-        ],
-        "ko": [
-          "이용 가능",
-          "예약 가능",
-          "자리 있어",
-          "자리 있나요",
-          "운영 시간",
-          "이용 시간",
-          "몇 시"
-        ]
-      }
-    },
+    "read_intent": {},
     "time_expressions": {
       "en": {
         "tonight": "time_window",
@@ -2476,12 +2100,17 @@
       "policy": "\\b(?:policy|must|required|prohibited|permitted|only if|subject to|cancel(?:lation)?|refund)\\b|ch\\u00ednh s\\u00e1ch|b\\u1eaft bu\\u1ed9c|kh\\u00f4ng \\u0111\\u01b0\\u1ee3c|ch\\u1ec9 khi|h\\u1ee7y|ho\\u00e0n ti\\u1ec1n|\\u653f\\u7b56|\\u5fc5\\u987b|\\u7981\\u6b62|\\ucde8\\uc18c|\\ud658\\ubd88",
       "dynamic_state": "\\b(?:confirmed|completed|assigned|booked|cancelled|canceled|refunded|payment received|request submitted|order placed|room assigned)\\b|x\\u00e1c nh\\u1eadn|\\u0111\\u00e3 \\u0111\\u1eb7t|\\u0111\\u00e3 h\\u1ee7y|\\u0111\\u00e3 ho\\u00e0n ti\\u1ec1n|\\u0111\\u00e3 thanh to\\u00e1n|\\u0111\\u00e3 g\\u1eedi y\\u00eau c\\u1ea7u|\\u0111\\u00e3 ph\\u00e2n ph\\u00f2ng|\\u786e\\u8ba4\\u5b8c\\u6210|\\u5df2\\u9884\\u8ba2|\\u5df2\\u53d6\\u6d88|\\u5df2\\u9000\\u6b3e|\\uc608\\uc57d \\uc644\\ub8cc|\\ucde8\\uc18c \\uc644\\ub8cc|\\ud658\\ubd88 \\uc644\\ub8cc"
     },
-      "service_selector": {
-        "top_k": 8,
-        "example_k": 4,
-        "fallback_min_score": 0.7,
-        "fallback_min_margin": 0.02
-      }
+    "service_selector": {
+      "top_k": 5,
+      "example_k": 2,
+      "fallback_min_score": 0.88,
+      "fallback_min_margin": 0.13,
+      "router_min_score": 0.87,
+      "router_min_margin": 0.08,
+      "emergency_min_prob": 0.64,
+      "emergency_review_prob": 0.11,
+      "emergency_l2": 3e-05
+    }
   },
   "memory_policy": {
     "conversation_ttl_seconds": 900,

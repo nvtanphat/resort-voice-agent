@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "principles": [
+    "kiosk_never_authorizes_forced_entry",
+    "DND blocks routine entry",
+    "life-safety concerns use human emergency/welfare-check authority",
+    "all master-key use is staff-controlled and audited"
+  ],
+  "routine_delivery": {
+    "door_sequence": [
+      "knock_or_ring",
+      "wait_10_seconds",
+      "knock_or_ring_again_and_announce_department",
+      "if_no_answer_for_handoff_item_then_contact_guest_or_return_item_to_department"
+    ],
+    "contactless_allowed": true,
+    "contactless_rule": "Only for non-sensitive items and only when guest requested/confirmed drop-off location."
+  },
+  "dnd": {
+    "routine_action": "do_not_enter",
+    "first_step": "send in-app/phone message or call guest",
+    "second_step_after_min": 15,
+    "second_step": "one additional contact attempt; keep request pending",
+    "no_response_after_attempts": 2,
+    "normal_outcome": "defer service and notify ops",
+    "welfare_concern_outcome": "human Duty Manager/Security welfare-check process; kiosk cannot authorize entry"
+  },
+  "security_sensitive": [
+    "safe malfunction",
+    "door lock failure",
+    "lost key",
+    "suspected unauthorized entry",
+    "welfare check"
+  ],
+  "assumption_refs": [
+    "asm_room_access_sop"
+  ],
+  "source_refs": [
+    "benchmark_lqa_resort_delivery"
+  ],
+  "guest_answer_policy": "May explain the conservative demo procedure only if clearly labeled as prototype policy."
+}

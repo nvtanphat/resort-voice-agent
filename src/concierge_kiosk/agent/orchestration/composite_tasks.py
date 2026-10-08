@@ -7,25 +7,19 @@ its own current-source citations; navigation uses only the pinned map.
 """
 from __future__ import annotations
 
-from concierge_kiosk.agent.understanding.intent import normalize_intent_text
-from concierge_kiosk.agent.understanding.domain_nlu import COMPOSITE_INFORMATION_TERMS as _INFORMATION
-from concierge_kiosk.agent.tools.read_tasks import _INFO
-
-# information-request vocabulary is profile-owned.
+from concierge_kiosk.agent.understanding.commands import Command
 
 
-def wants_knowledge_read(query: str, language: str) -> bool:
-    """A model cannot invent an information task or source."""
-    text = normalize_intent_text(query)
-    return language in _INFORMATION and any(
-        cue in text for cue in _INFORMATION[language] + _INFO[language])
+def wants_knowledge_read(commands: tuple[Command, ...] | None) -> bool:
+    """Only a validated AskInfo command can authorize a knowledge read."""
+    return any(command.type == 'AskInfo' for command in (commands or ()))
 
 
-def composite_review_plan(query: str, language: str, result: dict,
+def composite_review_plan(commands: tuple[Command, ...] | None, result: dict,
                           knowledge_result: dict | None = None) -> dict | None:
     """Compose read status and independent service review from a validated router result."""
     choices = result.get('action_options')
-    if (not wants_knowledge_read(query, language) or
+    if (not wants_knowledge_read(commands) or
             not isinstance(choices, list) or len(choices) < 2):
         return None
     # The original routing contract must have produced the specific pending
@@ -57,10 +51,10 @@ def composite_review_plan(query: str, language: str, result: dict,
                                  if knowledge_result and knowledge_result.get('citations') else None)}
 
 
-def validate_composite_review(plan: dict, original: dict, query: str, language: str,
+def validate_composite_review(plan: dict, original: dict, commands: tuple[Command, ...] | None,
                               knowledge_result: dict | None = None) -> None:
     """Reconstruct every server-owned task; reject model-generated authority."""
-    expected = composite_review_plan(query, language, original, knowledge_result)
+    expected = composite_review_plan(commands, original, knowledge_result)
     if expected is None or plan != expected or plan.get('request_completed') is not False:
         raise RuntimeError('Invalid composite read/review execution')
     proof = plan.get('knowledge_result')

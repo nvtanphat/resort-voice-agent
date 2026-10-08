@@ -126,10 +126,13 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
         if matching:
             status = matching[-1].get('status', 'unavailable')
             public = 'verified' if status == 'completed' else status
-            if objective.capability in {'navigation', 'find_place'} and isinstance(map_guidance, dict):
+            own_map = next((raw.get('map_guidance')
+                            for meta, raw in reversed(list(zip(run.observations, run.raw_results)))
+                            if meta.get('objective_id') == objective.id), None)
+            if objective.capability in {'navigation', 'find_place'} and isinstance(own_map, dict):
                 # Navigation completion is defined by the signed map result, not
                 # by the fallback prose returned by the knowledge layer.
-                public = ('verified' if map_guidance.get('status') == 'verified'
+                public = ('verified' if own_map.get('status') == 'verified'
                           else 'unavailable')
         else:
             public = 'unavailable'

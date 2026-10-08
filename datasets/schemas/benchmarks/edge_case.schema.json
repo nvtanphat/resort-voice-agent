@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "High-signal edge case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "classification",
+    "concept_key",
+    "language",
+    "utterance",
+    "expected_route",
+    "expected_service_code",
+    "must_not_5xx",
+    "must_not_claim_completed",
+    "truth_status",
+    "origin"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "classification": {
+      "const": "synthetic_high_signal_evaluation"
+    },
+    "concept_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 2
+    },
+    "expected_route": {
+      "enum": [
+        "service",
+        "knowledge",
+        "emergency",
+        "status",
+        "knowledge_abstain",
+        "non_action",
+        "clarification",
+        "multi_step",
+        "privacy_guard",
+        "safety_escalation",
+        "request_change",
+        "policy_guard",
+        "escalation",
+        "reopen"
+      ]
+    },
+    "expected_service_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "amenity_delivery",
+        "housekeeping",
+        "maintenance",
+        "human_assistance",
+        "spa_reservation",
+        "dining_reservation",
+        "food_order",
+        "tour_reservation",
+        "facility_request",
+        "dining_request",
+        "tour_request",
+        "transport_request",
+        "late_checkout",
+        null
+      ]
+    },
+    "must_not_5xx": {
+      "const": true
+    },
+    "must_not_claim_completed": {
+      "type": "boolean"
+    },
+    "truth_status": {
+      "const": "synthetic_behavioral_oracle"
+    },
+    "origin": {
+      "type": "string"
+    }
+  }
+}

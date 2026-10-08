@@ -54,6 +54,15 @@ Trước khi sửa:
 
 Không sửa bằng cách thêm một `if language == ...` hoặc một string ngoại lệ để làm xanh một test đơn lẻ.
 
+Không "học đề":
+
+- Không thêm cụm từ vào `config/agent-domain.json` để một câu cụ thể được hiểu đúng. Ý định (dịch vụ, hỏi thông tin, huỷ/đổi, hỏi tiếp, xã giao, sở thích, kế hoạch) được học từ ví dụ trong `datasets/training/agent/`, không từ danh sách cụm từ.
+- Không chép câu từ `datasets/evaluation/` hay `docs/BACKEND-TEST-PLAN.md` vào training. Khi một câu tự nhiên bị hiểu sai, thêm 2–3 ví dụ **khác cách nói** với nhãn đúng; `gold_status: GOLD` chỉ khi người đã duyệt, ví dụ do agent viết dùng `CANDIDATE`.
+- Không thêm đường tắt tra cứu nguyên văn (câu khách trùng câu train → trả nhãn) hay ngưỡng đếm từ để đoán ý định.
+- `tests/agent/test_no_case_specific_rules.py` chặn các điểm trên; `tests/agent_domain_keyword_budget.json` chỉ được giảm.
+
+Không đặt tên file/hàm theo phiên bản hay giai đoạn (final, v2, after, rerun, t2…). Báo cáo ghi đè đúng một đường dẫn ổn định; so sánh trước/sau để trong cùng file; lịch sử thuộc về git.
+
 Sau khi sửa:
 
 - thêm regression test cho bug gốc và ít nhất một case không liên quan;

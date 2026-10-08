@@ -13,6 +13,7 @@ class PreferenceField:
     values: tuple[str, ...] = ()
     minimum: int | None = None
     maximum: int | None = None
+    applies_to_slot: str | None = None
     recognition: Mapping[str, Any] | None = None
 
 
@@ -66,6 +67,7 @@ class PlanningPolicy:
 class SecurityPolicy:
     blocked_clarification_patterns: tuple[str, ...]
     sensitive_patterns: tuple[str, ...]
+    prompt_injection_patterns: Mapping[str, tuple[str, ...]]
 
 
 @dataclass(frozen=True)
@@ -120,6 +122,8 @@ class ServiceRule:
     default_for_kind: bool
     escalate_without_evidence: bool
     availability_source: Mapping[str, str] | None
+    venue_slot: Mapping[str, str] | None
+    description: str = ""
 
 
 @dataclass(frozen=True)

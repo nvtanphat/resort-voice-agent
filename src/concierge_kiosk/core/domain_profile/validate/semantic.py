@@ -51,6 +51,9 @@ def semantic_validate(payload: dict[str, Any]) -> None:
                          *service["optional_slots"])
         if len(slot_contract) != len(set(slot_contract)):
             raise ValueError(f"Service {code} repeats a slot across slot categories")
+        venue_slot = service.get("venue_slot")
+        if venue_slot is not None and venue_slot["name"] not in slot_contract:
+            raise ValueError(f"Service {code} venue_slot must be an accepted service slot")
         approval = service.get("approval", "staff")
         if approval == "none" and (service["risk"] != "low" or not service["reversible"]):
             raise ValueError(f"Approval-free service {code} must be low risk and reversible")
@@ -69,6 +72,12 @@ def semantic_validate(payload: dict[str, Any]) -> None:
     if missing_defaults:
         raise ValueError(
             "Missing default service for request kind(s): " + ", ".join(sorted(missing_defaults)))
+
+    configured_slots = {
+        slot for service in payload["services"]
+        for slot in (*service["required_slots"], *service["autonomous_required_slots"],
+                     *service["optional_slots"])
+    }
 
     for request_kind in payload["public_catalog_kinds"].values():
         if request_kind is not None and request_kind not in request_kinds:
@@ -96,6 +105,12 @@ def semantic_validate(payload: dict[str, Any]) -> None:
     if preferences["max_fields"] < len(fields):
         raise ValueError("Preference max_fields cannot be smaller than configured fields")
     for name, spec in fields.items():
+        applies_to_slot = spec.get("applies_to_slot")
+        if applies_to_slot is not None:
+            if not isinstance(applies_to_slot, str):
+                raise ValueError(f"Preference {name} applies_to_slot must be a string")
+            if applies_to_slot not in configured_slots:
+                raise ValueError(f"Preference {name} references unknown service slot")
         if spec["type"] == "integer" and spec["minimum"] > spec["maximum"]:
             raise ValueError(f"Invalid integer preference bounds for {name}")
         recognition = spec.get("recognition", {})

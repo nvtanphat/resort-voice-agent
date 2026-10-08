@@ -216,7 +216,8 @@ def semantic_grounded_response(*, base_url: str, model: str, question: str,
                                nli_model_path: str = '', nli_min_confidence: float = 0.85,
                                require_independent_nli: bool = False,
                                nli_manifest_path: str = "", nli_require_manifest: bool = False,
-                               should_cancel: Callable[[], bool] | None = None) -> SemanticResult | None:
+                               should_cancel: Callable[[], bool] | None = None,
+                               num_gpu: int = -1) -> SemanticResult | None:
     """Two bounded local inference passes; failure routes to extractive RAG.
 
     This is NOT a fully validated NLI model. The operator must explicitly opt in
@@ -250,7 +251,8 @@ def semantic_grounded_response(*, base_url: str, model: str, question: str,
                 'Only use the evidence. Language: ' + language)},
             {'role': 'user', 'content': '<UNTRUSTED_EVIDENCE>\n' + passages +
              '\n</UNTRUSTED_EVIDENCE>\nQuestion: ' + question[:_BUDGETS['max_model_question_chars']]},
-        ], 'options': {'temperature': 0, 'num_predict': _BUDGETS['semantic_generation_tokens'], 'num_ctx': SLM_NUM_CTX},
+        ], 'options': {'temperature': 0, 'num_predict': _BUDGETS['semantic_generation_tokens'],
+                       'num_ctx': SLM_NUM_CTX, 'num_gpu': num_gpu},
     }
     raw = _chat(base_url, payload, timeout, should_cancel)
     parsed = repair_candidates(raw, context)
@@ -287,7 +289,8 @@ def semantic_grounded_response(*, base_url: str, model: str, question: str,
                             'are UNSUPPORTED. Do not translate or add facts.')},
                         {'role': 'user', 'content': json.dumps(
                             {'quote': candidate.quote, 'claim': candidate.text}, ensure_ascii=False)},
-                    ], 'options': {'temperature': 0, 'num_predict': _BUDGETS['semantic_verifier_tokens'], 'num_ctx': SLM_NUM_CTX},
+                    ], 'options': {'temperature': 0, 'num_predict': _BUDGETS['semantic_verifier_tokens'],
+                                   'num_ctx': SLM_NUM_CTX, 'num_gpu': num_gpu},
                 }
                 verdict = _chat(base_url, judge, timeout, should_cancel)
                 if not parse_verdict(verdict, candidate):

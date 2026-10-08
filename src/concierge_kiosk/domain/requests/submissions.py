@@ -3,12 +3,66 @@ from __future__ import annotations
 import json
 import secrets
 import time
+from functools import lru_cache
+from collections.abc import Mapping
 from .base import InvalidTransition, KINDS, LANGUAGES, SENSITIVE, digest
-from concierge_kiosk.domain.service_registry import VERIFICATION_KINDS, default_service_for, service_definition
+from concierge_kiosk.domain.service_registry import (
+    SERVICE_DEFINITIONS, SERVICE_PAYLOAD_SLOTS, VERIFICATION_KINDS,
+    default_service_for, service_definition)
+from concierge_kiosk.domain.entity_resolver import property_entity_matches
+from concierge_kiosk.core.structured_loader import load_structured_dataset
 from concierge_kiosk.core.operational_policy import (
     dispatch_policy_for_service, service_catalog_entry, catalog_entry_for_details, service_window_state,
 )
 from concierge_kiosk.domain.public_reference import public_reference
+
+
+@lru_cache(maxsize=4)
+def _structured_venue_data(dataset_dir: str):
+    dataset = load_structured_dataset(dataset_dir)
+    return dataset.aliases, dataset.entities
+
+
+def _resolve_declared_venue(payload: dict, *, language: str, definition, cfg) -> dict:
+    """Canonicalize a client venue slot against the signed property dataset.
+
+    The client may provide a venue name, but it cannot create a new venue by
+    posting an arbitrary string.  The service declaration owns the slot and
+    entity type, so this remains generic for dining, spa, tour, or a future
+    configured venue-backed service.
+    """
+    venue_slot = definition.venue_slot if definition is not None else None
+    if not isinstance(venue_slot, Mapping) or not venue_slot:
+        return payload
+    slot_name = venue_slot.get('name')
+    entity_type = venue_slot.get('entity_type')
+    value = payload.get(slot_name) if isinstance(slot_name, str) else None
+    if value in (None, ''):
+        return payload
+    if (not isinstance(slot_name, str) or not slot_name
+            or not isinstance(entity_type, str) or not entity_type
+            or not isinstance(value, str)):
+        raise ValueError('Invalid configured venue payload')
+    dataset_dir = str(getattr(cfg, 'structured_dataset_dir', '') or 'datasets')
+    try:
+        aliases, entities = _structured_venue_data(dataset_dir)
+        matches = property_entity_matches(value, language, aliases)
+    except (OSError, TypeError, ValueError, KeyError) as exc:
+        raise ValueError('Configured venue data is unavailable') from exc
+    candidates = [entity_id for entity_id in matches
+                  if isinstance(entities.get(entity_id), dict)
+                  and entities[entity_id].get('entity_type') == entity_type]
+    if len(candidates) != 1:
+        raise ValueError('Configured venue was not found or is ambiguous')
+    entity = entities[candidates[0]]
+    localized = entity.get('names_by_locale')
+    canonical = localized.get(language) if isinstance(localized, dict) else None
+    canonical = canonical or entity.get('name')
+    if not isinstance(canonical, str) or not canonical.strip():
+        raise ValueError('Configured venue has no canonical name')
+    result = dict(payload)
+    result[slot_name] = canonical.strip()
+    return result
 
 class SubmissionWorkflowMixin:
     @staticmethod
@@ -139,6 +193,16 @@ class SubmissionWorkflowMixin:
         if service_code and (definition is None or definition.request_kind != kind):
             raise ValueError("Service does not match the request kind")
         service_code = definition.code if definition is not None else (default_service_for(kind) or '')
+        definition = service_definition(service_code) if service_code else None
+        venue_definition = definition
+        if venue_definition is None or venue_definition.venue_slot is None:
+            venue_definition = next((candidate for candidate in SERVICE_DEFINITIONS.values()
+                                     if candidate.request_kind == kind
+                                     and isinstance(candidate.venue_slot, Mapping)
+                                     and candidate.venue_slot.get('name') in payload), None)
+        if venue_definition is not None and service_code:
+            payload = _resolve_declared_venue(
+                dict(payload), language=language, definition=venue_definition, cfg=self.cfg)
         flags = self._service_flags(service_code, cfg=self.cfg, now=int(time.time()), details=details, language=language) if service_code else {}
         window = service_window_state(service_code, cfg=self.cfg) if service_code else {
             'within_hours': True, 'next_open_at': None, 'status': 'unknown'}
@@ -327,8 +391,7 @@ class SubmissionWorkflowMixin:
         payload = payload or {}
         if not isinstance(payload, dict):
             raise ValueError('Invalid change payload')
-        allowed = {'room_number', 'quantity', 'preferred_time', 'party_size', 'note', 'price_acknowledged'}
-        if any(key not in allowed for key in payload):
+        if any(key not in SERVICE_PAYLOAD_SLOTS for key in payload):
             raise ValueError('Unsupported change field')
         cleaned = {key: value for key, value in payload.items() if value not in (None, '')}
         self._validate_quantity(cleaned)

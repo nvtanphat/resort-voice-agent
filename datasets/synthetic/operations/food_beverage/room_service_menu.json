@@ -1,0 +1,206 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "service_hours_anchor": {
+    "furama_published": "06:30-00:00 with late-night dishes 22:30-06:00",
+    "source_refs": [
+      "furama_room_service"
+    ]
+  },
+  "currency": "VND",
+  "price_semantics": "product-authored prototype prices; tax and service-charge treatment is not verified and must be staff-confirmed before any charge",
+  "items": [
+    {
+      "item_id": "pho_beef",
+      "category": "vietnamese",
+      "name_en": "Furama-style beef pho",
+      "name_vi": "Phở bò kiểu Furama",
+      "price_vnd": 285000,
+      "availability": "06:30-22:30",
+      "dietary": [],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "mi_quang_chicken",
+      "category": "vietnamese",
+      "name_en": "Chicken Mi Quang",
+      "name_vi": "Mì Quảng gà",
+      "price_vnd": 225000,
+      "availability": "06:30-22:30",
+      "dietary": [],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "seafood_fried_rice",
+      "category": "asian",
+      "name_en": "Seafood fried rice",
+      "name_vi": "Cơm chiên hải sản",
+      "price_vnd": 325000,
+      "availability": "11:00-22:30",
+      "dietary": [],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "club_sandwich",
+      "category": "western",
+      "name_en": "Club sandwich",
+      "name_vi": "Bánh mì kẹp Club",
+      "price_vnd": 310000,
+      "availability": "11:00-06:00",
+      "dietary": [],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "margherita_pizza",
+      "category": "western",
+      "name_en": "Margherita pizza",
+      "name_vi": "Pizza Margherita",
+      "price_vnd": 295000,
+      "availability": "11:00-22:30",
+      "dietary": [
+        "vegetarian"
+      ],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "caesar_chicken",
+      "category": "salad",
+      "name_en": "Chicken Caesar salad",
+      "name_vi": "Salad Caesar gà nướng",
+      "price_vnd": 255000,
+      "availability": "11:00-22:30",
+      "dietary": [],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "fruit_platter",
+      "category": "dessert",
+      "name_en": "Seasonal fruit platter",
+      "name_vi": "Đĩa trái cây theo mùa",
+      "price_vnd": 185000,
+      "availability": "06:30-00:00",
+      "dietary": [
+        "vegan",
+        "gluten_free"
+      ],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "late_night_noodles",
+      "category": "late_night",
+      "name_en": "Late-night noodle soup",
+      "name_vi": "Mì nước đêm khuya",
+      "price_vnd": 220000,
+      "availability": "22:30-06:00",
+      "dietary": [],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "late_night_soup",
+      "category": "late_night",
+      "name_en": "Soup of the night",
+      "name_vi": "Súp đêm",
+      "price_vnd": 180000,
+      "availability": "22:30-06:00",
+      "dietary": [],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    },
+    {
+      "item_id": "kids_fried_rice",
+      "category": "kids",
+      "name_en": "Kids chicken fried rice",
+      "name_vi": "Cơm chiên gà trẻ em",
+      "price_vnd": 165000,
+      "availability": "11:00-22:30",
+      "dietary": [],
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_room_service_demo_menu"
+      ],
+      "source_refs": [
+        "furama_room_service",
+        "prototype_fnb_design_2026"
+      ]
+    }
+  ],
+  "order_policy": {
+    "approval": "staff",
+    "kiosk_may_build_cart": true,
+    "kiosk_may_confirm_charge": false,
+    "allergy_note_required_when_mentioned": true
+  },
+  "source_refs": [
+    "furama_room_service",
+    "prototype_fnb_design_2026"
+  ],
+  "assumption_refs": [
+    "asm_room_service_demo_menu"
+  ],
+  "production_truth_usage": "synthetic_only",
+  "excluded_from_production_retrieval": true
+}

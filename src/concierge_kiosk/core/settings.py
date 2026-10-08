@@ -132,6 +132,7 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_model: str = ""
     llm_fallback_model: str = ""
+    slm_num_gpu: int = -1
     llm_model_digest: str = ""
     local_ai_strict_mode: bool = False
     semantic_generation_enabled: bool = False
@@ -674,6 +675,7 @@ def load_settings() -> Settings:
         "llm_base_url": str(slm_defaults["base_url"]),
         "llm_model": str(slm_defaults["primary_model"]),
         "llm_fallback_model": str(slm_defaults["fallback_model"]),
+        "slm_num_gpu": int(slm_defaults.get("num_gpu", -1)),
         "llm_model_digest": str(slm_defaults["digest"]),
         "local_ai_strict_mode": bool(slm_defaults["strict_mode"]),
         "semantic_generation_enabled": bool(features["semantic_generation"]),
@@ -739,6 +741,13 @@ def load_settings() -> Settings:
         "real_runtime_required": real_runtime,
     }
     cfg = Settings(**(base_values | profile_values))
+    # ``settings_customise_sources`` intentionally lets explicit environment
+    # values override profile/init values.  The development template contains
+    # an empty placeholder for this optional secret, however, and an empty
+    # environment value must not erase the safe development fallback after
+    # Pydantic has merged all sources.  Production still fails closed below.
+    if not cfg.status_token_secret and cfg.environment != "production":
+        object.__setattr__(cfg, "status_token_secret", status_token_secret)
     object.__setattr__(cfg, "_profile_override_keys",
                        _profile_env_overrides(set(profile_values)))
     from concierge_kiosk.runtime.local_http import configure_slm_circuit_cooldown

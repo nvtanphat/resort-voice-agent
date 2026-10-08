@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Unreviewed agent-written training example (CANDIDATE until a person promotes it to GOLD)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenario_id", "split", "language", "utterance", "expected_route", "commands",
+               "source_family", "source_id", "gold_status", "training_priority", "frame_id", "concept_key"],
+  "properties": {
+    "scenario_id": {"type": "string", "pattern": "^CAND-[A-Z0-9_-]+$"},
+    "split": {"const": "train"},
+    "language": {"enum": ["vi", "en", "zh", "ko"]},
+    "utterance": {"type": "string", "minLength": 1, "maxLength": 300},
+    "expected_route": {"enum": ["service", "knowledge", "navigation", "non_action", "escalation", "request_change",
+                                "status", "planning", "preference", "clarification", "language", "slot_reply",
+                                "multi_step", "availability", "emergency"]},
+    "service_code": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "commands": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "object", "required": ["type"]}},
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {"pending_field": {"type": "string"}}
+    },
+    "source_family": {"const": "assistant_generated"},
+    "source_id": {"type": "string", "minLength": 1},
+    "gold_status": {"const": "CANDIDATE"},
+    "training_priority": {"enum": ["primary", "support"]},
+    "frame_id": {"type": "string", "minLength": 1},
+    "concept_key": {"type": "string", "minLength": 1}
+  }
+}

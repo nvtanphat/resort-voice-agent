@@ -19,7 +19,7 @@ Vietnamese accent restoration, repeated-letter cleanup, and a unique fuzzy
 candidate only when the configured similarity threshold is met. The helper
 `normalize_intent_with_spans` exposes each rewrite for slot/evidence auditing.
 
-## Shadow semantic router
+## Shadow service selector
 
 Rebuild the reviewed route examples after the gold suite changes, then calibrate
 against a concept-held-out split:
@@ -28,7 +28,7 @@ against a concept-held-out split:
 $env:PYTHONPATH = 'src'
 python tools/nlu/build_route_examples.py
 python tools/manifest/refresh_property.py
-python tools/nlu/calibrate_router.py --output reports/nlu/nlu-router-calibration.json
+python tools/nlu/calibrate_service_fallback.py --output reports/nlu/nlu-router-calibration.json
 ```
 
 The checked-in calibration report is evidence for a later model/config decision,

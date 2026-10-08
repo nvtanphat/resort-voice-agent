@@ -1,0 +1,719 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_operational_assumptions",
+  "reviewed_at": "2026-10-03",
+  "purpose": "Single register of non-public operational assumptions used by the prototype. None of these values are asserted to be official Furama SOP/SLA unless separately backed by an official source.",
+  "production_rule": "Product-authored operational assumptions are approved for the production prototype as workflow policy, but must never be represented as official Furama facts. Authoritative hotel configuration may override them later without changing the dataset architecture.",
+  "assumptions": [
+    {
+      "assumption_id": "asm_amenity_delivery_timing",
+      "scope": "service_policies.amenity_delivery.timing",
+      "assumed_value": {
+        "staff_ack_target_min": 3,
+        "delivery_or_attendance_target_min": 15,
+        "expected_resolution_window_min": [
+          10,
+          20
+        ]
+      },
+      "rationale": "Luxury-resort benchmark calibration. Furama verifies Housekeeping routing for extra towels, but does not publish its internal SLA.",
+      "source_refs": [
+        "furama_bath_towels",
+        "benchmark_lqa_resort_delivery"
+      ],
+      "confidence": 0.82,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_housekeeping_response_timing",
+      "scope": "service_policies.housekeeping.timing",
+      "assumed_value": {
+        "staff_ack_target_min": 3,
+        "first_attendance_target_min": 15
+      },
+      "rationale": "Guest-request response target calibrated from luxury-resort digital/request delivery standards; not a room-clean completion promise.",
+      "source_refs": [
+        "furama_housekeeping",
+        "benchmark_lqa_resort_delivery"
+      ],
+      "confidence": 0.68,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_housekeeping_cleaning_duration",
+      "scope": "service_policies.housekeeping.operational_variants",
+      "assumed_value": {
+        "stayover_room_makeup_min": [
+          20,
+          30
+        ],
+        "departure_room_clean_min": [
+          30,
+          45
+        ]
+      },
+      "rationale": "Industry housekeeping benchmark; room size, occupancy and Furama staffing can materially change actual duration.",
+      "source_refs": [
+        "benchmark_housekeeping_cleaning"
+      ],
+      "confidence": 0.62,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_engineering_route",
+      "scope": "service_policies.maintenance.department_id",
+      "assumed_value": "ENGINEERING",
+      "rationale": "Hotels conventionally route guestroom AC/electrical/plumbing faults to Engineering, but Furama does not publish an internal engineering extension/routing SOP.",
+      "source_refs": [
+        "furama_room_features",
+        "benchmark_hotel_engineering_case"
+      ],
+      "confidence": 0.62,
+      "impact": "high",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_maintenance_response_timing",
+      "scope": "service_policies.maintenance.timing",
+      "assumed_value": {
+        "first_ack_target_min": 5,
+        "first_attendance_target_min": 15
+      },
+      "rationale": "Prototype response target chosen to surface urgent guestroom comfort issues quickly; no public Furama maintenance-response SLA exists.",
+      "source_refs": [
+        "benchmark_hotel_engineering_case"
+      ],
+      "confidence": 0.58,
+      "impact": "high",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_maintenance_resolution_window",
+      "scope": "service_policies.maintenance.timing.expected_resolution_window_min",
+      "assumed_value": [
+        30,
+        60
+      ],
+      "rationale": "Academic hotel-engineering case reports short preset limits around 30 minutes for common AC/electrical/plumbing work; a 30–60 minute prototype range allows diagnosis and common repair without promising completion.",
+      "source_refs": [
+        "benchmark_hotel_engineering_case"
+      ],
+      "confidence": 0.66,
+      "impact": "high",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_human_assistance_queue_target",
+      "scope": "service_policies.human_assistance.sla_minutes",
+      "assumed_value": 10,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_spa_reservation_queue_target",
+      "scope": "service_policies.spa_reservation.sla_minutes",
+      "assumed_value": 15,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [
+        "furama_spa"
+      ],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_dining_reservation_queue_target",
+      "scope": "service_policies.dining_reservation.sla_minutes",
+      "assumed_value": 10,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [
+        "furama_restaurant_reservations"
+      ],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_food_order_queue_target",
+      "scope": "service_policies.food_order.sla_minutes",
+      "assumed_value": 35,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [
+        "furama_room_service"
+      ],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_tour_reservation_queue_target",
+      "scope": "service_policies.tour_reservation.sla_minutes",
+      "assumed_value": 30,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_facility_request_queue_target",
+      "scope": "service_policies.facility_request.sla_minutes",
+      "assumed_value": 10,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_dining_request_queue_target",
+      "scope": "service_policies.dining_request.sla_minutes",
+      "assumed_value": 10,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [
+        "furama_restaurant_reservations",
+        "furama_room_service"
+      ],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_tour_request_queue_target",
+      "scope": "service_policies.tour_request.sla_minutes",
+      "assumed_value": 15,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_transport_request_queue_target",
+      "scope": "service_policies.transport_request.sla_minutes",
+      "assumed_value": 10,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [
+        "furama_taxi"
+      ],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_late_checkout_queue_target",
+      "scope": "service_policies.late_checkout.sla_minutes",
+      "assumed_value": 15,
+      "rationale": "Prototype queue/prioritisation target only; no official Furama response SLA was found. It must not be presented to guests as a guarantee.",
+      "source_refs": [
+        "furama_room_features"
+      ],
+      "confidence": 0.35,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_tour_desk_routing",
+      "scope": "service_policies.tour_request/tour_reservation.department_id",
+      "assumed_value": "TOUR_DESK",
+      "rationale": "Furama publicly names a Tour Desk and Ext 3777 for babysitting coordination. Routing general tour requests to that desk is plausible but is not explicitly proven by the public page.",
+      "source_refs": [
+        "furama_tour_desk_contact"
+      ],
+      "confidence": 0.58,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_wifi_guest_auth",
+      "scope": "synthetic-gap-fill.wifi",
+      "assumed_value": "No credential/authentication detail is assumed; use an authorized property channel or Front Desk handoff.",
+      "confidence": 1.0,
+      "rationale": "Security policy intentionally avoids inventing or storing live Wi-Fi credentials or authentication details.",
+      "source_refs": [],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_housekeeping_service_window",
+      "scope": "housekeeping-catalog.service_window",
+      "assumed_value": "06:00-22:00 routine; 22:00-06:00 essential-item requests handled via night team/front desk",
+      "confidence": 0.62,
+      "rationale": "Luxury resort simulation window; not a Furama public SOP.",
+      "source_refs": [
+        "benchmark_housekeeping_guest_requests_bali"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_turndown_window",
+      "scope": "housekeeping-catalog.turndown",
+      "assumed_value": "18:00-21:00 on request",
+      "confidence": 0.58,
+      "rationale": "Common luxury-hotel evening service pattern; not publicly verified for Furama.",
+      "source_refs": [
+        "benchmark_housekeeping_guest_requests_bali"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_minibar_catalog",
+      "scope": "minibar-catalog.items",
+      "assumed_value": "synthetic 2026 VND item list and prices",
+      "confidence": 0.6,
+      "rationale": "Product-authored synthetic minibar price band for prototype operations; not a current Furama minibar price list.",
+      "source_refs": [
+        "prototype_fnb_design_2026"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_airport_transfer_products",
+      "scope": "transport-products.airport_transfer",
+      "assumed_value": "synthetic sedan/SUV/van products and prices",
+      "confidence": 0.78,
+      "rationale": "Calibrated to current OTA Furama transfer listing and Vietnamese luxury-resort private-transfer benchmarks.",
+      "source_refs": [
+        "furama_airport_transfer",
+        "external_agoda_furama_transfer",
+        "external_expedia_furama_policy",
+        "benchmark_banyan_tree_airport_transfer"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_grab_pickup",
+      "scope": "transport-products.ride_hailing",
+      "assumed_value": "main lobby porte-cochere pickup with plate verification",
+      "confidence": 0.66,
+      "rationale": "Operationally realistic guest-safety guidance; not a Furama published SOP.",
+      "source_refs": [
+        "furama_taxi"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_ev_charging",
+      "scope": "guest-policy-overrides.ev_charging",
+      "assumed_value": "Availability, connector, power and price are not assumed; staff confirmation is required.",
+      "confidence": 1.0,
+      "rationale": "Safe workflow policy replaces the earlier invented facility details. Physical EV infrastructure must never be fabricated.",
+      "source_refs": [],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_engineering_shift_plan",
+      "scope": "staffing-capacity.ENGINEERING",
+      "assumed_value": "24/7 coverage with day/evening/night staffing model",
+      "confidence": 0.45,
+      "rationale": "Capacity model for queue simulation only, not a claim about Furama headcount.",
+      "source_refs": [
+        "benchmark_oxmaint_engineering"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_housekeeping_shift_plan",
+      "scope": "staffing-capacity.HOUSEKEEPING",
+      "assumed_value": "AM/PM/night runner staffing model",
+      "confidence": 0.45,
+      "rationale": "Derived from a 198-unit resort simulation and standard room-attendant workload assumptions; not real headcount.",
+      "source_refs": [
+        "external_hotels_furama_profile"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_front_office_shift_plan",
+      "scope": "staffing-capacity.FRONT_OFFICE",
+      "assumed_value": "24/7 front-office coverage simulation",
+      "confidence": 0.48,
+      "rationale": "Synthetic capacity model for load testing.",
+      "source_refs": [
+        "external_hotels_furama_profile"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_concierge_shift_plan",
+      "scope": "staffing-capacity.FO_CONCIERGE",
+      "assumed_value": "day/evening/night coverage simulation",
+      "confidence": 0.45,
+      "rationale": "Synthetic queue-capacity model.",
+      "source_refs": [
+        "furama_taxi"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_occupancy_model",
+      "scope": "property-ops-simulation.occupancy",
+      "assumed_value": "low/normal/high/sold-out bands and SLA multipliers",
+      "confidence": 0.4,
+      "rationale": "Seasonality, occupancy bands and load multipliers are deliberately synthetic stress-test parameters; no historical Furama occupancy is claimed. Official aggregate unit counts are used separately only to size the synthetic unit pool.",
+      "source_refs": [],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_amenity_inventory",
+      "scope": "amenity-inventory.items",
+      "assumed_value": "starting par levels and reorder points for guest amenities",
+      "confidence": 0.4,
+      "rationale": "Synthetic stock model for inventory-exhaustion scenarios.",
+      "source_refs": [
+        "benchmark_lqa_resort_delivery"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_room_access_sop",
+      "scope": "room-access-sop",
+      "assumed_value": "DND/contact/entry sequence",
+      "confidence": 0.55,
+      "rationale": "Conservative SOP simulation; kiosk never grants forced entry and all overrides remain human-authorized.",
+      "source_refs": [
+        "benchmark_lqa_resort_delivery"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_escalation_matrix",
+      "scope": "escalation-matrix",
+      "assumed_value": "department supervisor -> duty manager escalation roles",
+      "confidence": 0.5,
+      "rationale": "Synthetic internal hierarchy for demo/ops UI only.",
+      "source_refs": [
+        "benchmark_oxmaint_engineering"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_tour_catalog",
+      "scope": "tour-products",
+      "assumed_value": "synthetic tour products, durations and prices",
+      "confidence": 0.76,
+      "rationale": "Product packaging and 2026 prices remain synthetic, but order-of-magnitude/durations are calibrated from a 2024 VNBIKETOUR price list hosted on the Furama domain; current price, supplier and availability still require staff confirmation.",
+      "source_refs": [
+        "furama_hosted_tour_program_2024"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_room_service_demo_menu",
+      "scope": "room-service-synthetic-menu",
+      "assumed_value": "product-authored prototype menu and prices",
+      "confidence": 0.65,
+      "rationale": "Product-authored synthetic room-service menu and price band for prototype operations; not a current Furama room-service menu.",
+      "source_refs": [
+        "prototype_fnb_design_2026"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_request_history_model",
+      "scope": "synthetic-request-history",
+      "assumed_value": "90-day operational request history",
+      "confidence": 0.7,
+      "rationale": "Deterministic Monte Carlo simulation for dashboards/evaluation; never real guest data.",
+      "source_refs": [
+        "benchmark_housekeeping_guest_requests_bali"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_synthetic_unit_refs",
+      "scope": "synthetic-request-history.unit_ref/unit_type",
+      "assumed_value": "Opaque SIM-ROOM-* and SIM-VILLA-* identifiers drawn from the official aggregate inventory counts, never actual Furama room/villa numbers.",
+      "confidence": 0.97,
+      "rationale": "Privacy-safe synthetic room references deliberately not claiming real Furama room numbering.",
+      "source_refs": [
+        "furama_property_inventory"
+      ],
+      "classification": "synthetic_property_assumption",
+      "hotel_signoff_required": false,
+      "guest_answer_policy": "workflow_policy_only_not_official_fact",
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_department_directory",
+      "scope": "datasets/synthetic/operations/staffing/departments.json",
+      "assumed_value": "Complete role-based internal routing directory and demo extensions",
+      "rationale": "Provides a realistic property-operations directory for end-to-end demo dispatch without representing real Furama internal contacts.",
+      "source_refs": [],
+      "confidence": 0.8,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_fixed_shuttle_demo",
+      "scope": "datasets/synthetic/operations/transport/shuttle_schedule.json",
+      "assumed_value": "Daily Hoi An shuttle timetable, capacity, fare and cutoff",
+      "rationale": "The public property material confirms shuttle service but not a current timetable; product-authored prototype schedule values support workflow testing and must not be stated as the official current Furama timetable.",
+      "source_refs": [],
+      "confidence": 0.6,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_supplier_directory",
+      "scope": "datasets/synthetic/operations/suppliers/directory.json",
+      "assumed_value": "Role-based tour, transport, laundry and floral vendor fixtures",
+      "rationale": "Supplier records are required to demonstrate confirmation, inventory and fallback routing.",
+      "source_refs": [],
+      "confidence": 0.55,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_commercial_inventory",
+      "scope": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "assumed_value": "Deterministic availability snapshot for restaurant, spa, tour and transport products",
+      "rationale": "A full product demo needs positive, low-capacity, sold-out and waitlist states instead of every commercial action terminating at staff confirmation.",
+      "source_refs": [],
+      "confidence": 0.72,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_pms_stays",
+      "scope": "datasets/synthetic/operations/pms/stays.jsonl",
+      "assumed_value": "PII-free synthetic in-house, arrival and departure stay fixtures",
+      "rationale": "Guest verification, personalization, late checkout, room service and recovery flows need realistic stay context.",
+      "source_refs": [],
+      "confidence": 0.9,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_room_inventory",
+      "scope": "datasets/synthetic/operations/rooms/inventory.jsonl",
+      "assumed_value": "266 non-real unit references with room type and housekeeping/occupancy state",
+      "rationale": "Room-move, housekeeping, maintenance and late-checkout demonstrations need a deterministic inventory state while preserving the official aggregate 198 rooms/suites + 68 villas.",
+      "source_refs": [],
+      "confidence": 0.88,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_restaurant_capacity",
+      "scope": "datasets/synthetic/operations/food_beverage/restaurants.json",
+      "assumed_value": "Reservation capacity, turn time, group thresholds and demo slot inventory",
+      "rationale": "Reservation flows need operational capacity rules in addition to public venue facts.",
+      "source_refs": [],
+      "confidence": 0.66,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_spa_capacity",
+      "scope": "datasets/synthetic/operations/spa/operations.json",
+      "assumed_value": "Treatment-room and therapist capacity with bookable demo slots",
+      "rationale": "Spa booking demo requires realistic duration and availability constraints beyond public opening hours.",
+      "source_refs": [],
+      "confidence": 0.66,
+      "impact": "low",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_service_recovery",
+      "scope": "datasets/synthetic/operations/billing/service_recovery.json",
+      "assumed_value": "Complaint severity, recovery actions and approval thresholds",
+      "rationale": "A concierge demo should show recovery after a miss instead of only happy-path fulfillment.",
+      "source_refs": [],
+      "confidence": 0.62,
+      "impact": "medium",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    },
+    {
+      "assumption_id": "asm_demo_billing_rules",
+      "scope": "datasets/synthetic/operations/billing/charge_rules.json",
+      "assumed_value": "Demo charge codes, posting rules, deposits and synthetic tax/service-charge calculation",
+      "rationale": "Commercial demo flows need deterministic totals and folio posting behavior.",
+      "source_refs": [],
+      "confidence": 0.55,
+      "impact": "high",
+      "hotel_signoff_required": false,
+      "replacement_rule": "Override with authoritative property configuration if it becomes available.",
+      "product_policy_approved": true,
+      "official_claim_allowed": false
+    }
+  ],
+  "production_truth_usage": "workflow_policy_only",
+  "excluded_from_production_retrieval": true
+}

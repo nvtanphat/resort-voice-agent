@@ -1,0 +1,44 @@
+{
+  "schema_version": 4,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_simulation",
+  "simulation_seed": 20261003,
+  "row_count": 5000,
+  "status_distribution": {
+    "completed": 3960,
+    "reopened": 247,
+    "failed": 339,
+    "cancelled": 207,
+    "escalated": 247
+  },
+  "status_rates": {
+    "completed": 0.792,
+    "reopened": 0.0494,
+    "failed": 0.0678,
+    "cancelled": 0.0414,
+    "escalated": 0.0494
+  },
+  "service_distribution": {
+    "maintenance": 760,
+    "spa_reservation": 157,
+    "amenity_delivery": 1332,
+    "dining_request": 356,
+    "housekeeping": 780,
+    "food_order": 496,
+    "late_checkout": 283,
+    "dining_reservation": 199,
+    "tour_request": 106,
+    "transport_request": 352,
+    "tour_reservation": 92,
+    "human_assistance": 63,
+    "facility_request": 24
+  },
+  "agent_lifecycle_states": [
+    "completed",
+    "cancelled",
+    "failed",
+    "reopened",
+    "escalated"
+  ],
+  "note": "Final reconciled distribution with long-tail timings, explicit unresolved lifecycle states, semantically consistent terminal timestamps, and timestamp-derived SLA/duration metrics for agent behavior testing."
+}

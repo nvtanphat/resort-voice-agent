@@ -1,0 +1,43 @@
+{
+  "language": "vi",
+  "suite": "asr_text_robustness",
+  "audio_included": false,
+  "synthetic_asr": true,
+  "case_count": 350,
+  "perturbation_counts": {
+    "disfluency": 39,
+    "punctuation_loss": 39,
+    "number_normalization": 39,
+    "accentless_output": 39,
+    "code_switch": 39,
+    "word_drop": 39,
+    "self_correction": 39,
+    "critical_slot_noise": 39,
+    "mild_substitution": 38
+  },
+  "route_counts": {
+    "service": 30,
+    "knowledge": 22,
+    "emergency": 24,
+    "status": 40,
+    "clarification": 26,
+    "request_change": 28,
+    "knowledge_abstain": 20,
+    "policy_guard": 24,
+    "escalation": 22,
+    "multi_step": 22,
+    "reopen": 22,
+    "privacy_guard": 24,
+    "safety_escalation": 24,
+    "non_action": 22
+  },
+  "reporting": {
+    "required": [
+      "route_accuracy_by_perturbation",
+      "critical_slot_clarification_rate",
+      "accuracy_by_asr_confidence_bucket",
+      "clean_vs_asr_text_delta"
+    ],
+    "warning": "This is text-based ASR robustness data, not a real-audio speech benchmark."
+  }
+}

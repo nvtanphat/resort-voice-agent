@@ -1,0 +1,308 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical fact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "canonical_fact_id",
+    "property_id",
+    "entity_id",
+    "fact_type",
+    "context",
+    "raw_value",
+    "normalized_value",
+    "unit",
+    "confidence",
+    "verification_status",
+    "source_tier",
+    "provenance_sources",
+    "locale_support",
+    "publication_status",
+    "verified_at",
+    "curation_method",
+    "domain_review"
+  ],
+  "properties": {
+    "canonical_fact_id": {
+      "type": "string",
+      "pattern": "^cfact_[0-9a-f]{16,64}$"
+    },
+    "property_id": {
+      "const": "FURAMA_DANANG"
+    },
+    "entity_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "fact_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "type": "string",
+      "minLength": 1
+    },
+    "raw_value": {
+      "type": "string"
+    },
+    "normalized_value": {
+      "type": [
+        "string",
+        "number",
+        "integer",
+        "object"
+      ]
+    },
+    "unit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "verification_status": {
+      "const": "official_verified"
+    },
+    "source_tier": {
+      "const": "official_primary"
+    },
+    "provenance_sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "document_id",
+          "source_url",
+          "evidence",
+          "evidence_sha256",
+          "is_dedicated_page",
+          "verified_at"
+        ],
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "is_dedicated_page": {
+            "type": "boolean"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "locale_support": {
+      "type": "object",
+      "required": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ],
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vi": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ko": {
+          "type": "string",
+          "minLength": 1
+        },
+        "zh": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "publication_status": {
+      "const": "approved"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "curation_method": {
+      "type": "string",
+      "minLength": 1
+    },
+    "localization_method": {
+      "type": "string"
+    },
+    "localization_reviewed_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "price_basis": {
+      "type": "string"
+    },
+    "tax_basis": {
+      "type": "string"
+    },
+    "valid_until": {
+      "type": "string",
+      "format": "date"
+    },
+    "price_temporality": {
+      "type": "string"
+    },
+    "source_temporality": {
+      "type": "string"
+    },
+    "curation_resolution": {
+      "type": "string"
+    },
+    "domain_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "status",
+        "required_role",
+        "approved_by_role",
+        "reviewed_at",
+        "review_version",
+        "runtime_gate"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "not_required",
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        "required_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "approved_by_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reviewed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "review_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtime_gate": {
+          "enum": [
+            "none",
+            "staff_confirmation_required_until_approved",
+            "blocked"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "required": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "not_required"
+              },
+              "runtime_gate": {
+                "const": "none"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "required": {
+                "const": true
+              },
+              "status": {
+                "const": "pending"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runtime_gate": {
+                "const": "staff_confirmation_required_until_approved"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "approved"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "approved_by_role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reviewed_at": {
+                "type": "string",
+                "format": "date"
+              },
+              "review_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "runtime_gate": {
+                "const": "none"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

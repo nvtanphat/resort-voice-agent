@@ -42,11 +42,14 @@ def understand(monkeypatch):
 
     script: list[tuple[str, tuple]] = []
 
-    def scripted(self, query, language, session, *, enabled_request_kinds, voice_turn=False):
+    def scripted(self, query, language, session, *, enabled_request_kinds,
+                 pending_reply=None, voice_turn=False):
         for marker, commands in script:
             if marker in query:
                 return validate_commands(commands, query=query,
-                                         enabled_request_kinds=enabled_request_kinds)
+                                         enabled_request_kinds=enabled_request_kinds,
+                                         pending_reply=pending_reply,
+                                         language=language)
         return None
 
     monkeypatch.setattr(engine._TurnRuntimeSupport, 'command_for_session', scripted)

@@ -1,0 +1,226 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_operational_taxonomy",
+  "reviewed_at": "2026-10-03",
+  "purpose": "Synthetic evaluation/routing taxonomy for realistic guestroom faults. It covers comfort, convenience, security-sensitive and hazard exits without granting business authority.",
+  "default_department_id": "ENGINEERING",
+  "runtime_authority": "Only issues already allowed by domain policy can be auto-dispatched; taxonomy cannot grant authority.",
+  "issue_families": [
+    {
+      "family": "air_conditioning",
+      "normal_examples": [
+        "not cooling",
+        "too warm",
+        "too cold",
+        "weak airflow",
+        "unusual noise",
+        "water dripping from AC"
+      ],
+      "normal_severity": "guest_comfort",
+      "expected_resolution_window_min": [
+        30,
+        60
+      ],
+      "source_refs": [
+        "furama_room_features",
+        "benchmark_hotel_engineering_case"
+      ],
+      "hazard_escalation": [
+        "smoke",
+        "burning smell",
+        "sparking",
+        "electric shock",
+        "fire"
+      ]
+    },
+    {
+      "family": "minor_electrical",
+      "normal_examples": [
+        "lamp not working",
+        "light switch not working",
+        "one outlet not working"
+      ],
+      "normal_severity": "low_only_if_no_hazard",
+      "expected_resolution_window_min": [
+        30,
+        60
+      ],
+      "source_refs": [
+        "benchmark_hotel_engineering_case"
+      ],
+      "hazard_escalation": [
+        "sparking",
+        "smoke",
+        "burning smell",
+        "electric shock",
+        "exposed live wire",
+        "water near electricity"
+      ]
+    },
+    {
+      "family": "minor_plumbing",
+      "normal_examples": [
+        "slow drain",
+        "weak water pressure",
+        "tap dripping",
+        "toilet not flushing normally"
+      ],
+      "normal_severity": "low_only_if_contained",
+      "expected_resolution_window_min": [
+        30,
+        60
+      ],
+      "source_refs": [
+        "benchmark_hotel_engineering_case"
+      ],
+      "hazard_escalation": [
+        "major flooding",
+        "ceiling collapse risk",
+        "water near electricity",
+        "injury"
+      ]
+    },
+    {
+      "family": "room_fixture",
+      "normal_examples": [
+        "loose non-security fixture",
+        "stuck drawer",
+        "minor furniture fitting issue"
+      ],
+      "normal_severity": "low_or_staff_review",
+      "expected_resolution_window_min": null,
+      "source_refs": [
+        "benchmark_hotel_engineering_case"
+      ],
+      "hazard_escalation": [
+        "door cannot lock",
+        "broken glass",
+        "sharp exposed edge",
+        "structural instability"
+      ]
+    },
+    {
+      "family": "television_media",
+      "normal_examples": [
+        "TV has no signal",
+        "remote not working",
+        "casting not connecting"
+      ],
+      "normal_severity": "guest_convenience",
+      "expected_resolution_window_min": [
+        20,
+        45
+      ],
+      "source_refs": [
+        "benchmark_hotel_engineering_case"
+      ],
+      "hazard_escalation": [
+        "burning smell",
+        "smoke",
+        "sparking",
+        "electric shock"
+      ]
+    },
+    {
+      "family": "internet_in_room",
+      "normal_examples": [
+        "Wi-Fi weak in room",
+        "cannot join guest Wi-Fi",
+        "internet drops repeatedly"
+      ],
+      "normal_severity": "guest_convenience",
+      "expected_resolution_window_min": [
+        15,
+        45
+      ],
+      "source_refs": [
+        "furama_room_features"
+      ],
+      "hazard_escalation": [
+        "none_physical; route security concerns separately"
+      ]
+    },
+    {
+      "family": "door_lock_access",
+      "normal_examples": [
+        "key card does not open door",
+        "door latch sticks"
+      ],
+      "normal_severity": "security_sensitive_staff_review",
+      "expected_resolution_window_min": [
+        15,
+        30
+      ],
+      "source_refs": [
+        "benchmark_oxmaint_engineering"
+      ],
+      "hazard_escalation": [
+        "guest locked inside",
+        "suspected unauthorized entry",
+        "door cannot secure",
+        "child trapped"
+      ]
+    },
+    {
+      "family": "safe",
+      "normal_examples": [
+        "safe will not open",
+        "safe keypad battery low"
+      ],
+      "normal_severity": "security_sensitive_staff_review",
+      "expected_resolution_window_min": [
+        20,
+        45
+      ],
+      "source_refs": [],
+      "hazard_escalation": [
+        "suspected theft",
+        "tampering",
+        "guest valuables dispute"
+      ]
+    },
+    {
+      "family": "hot_water",
+      "normal_examples": [
+        "no hot water",
+        "water not getting warm"
+      ],
+      "normal_severity": "guest_comfort_high",
+      "expected_resolution_window_min": [
+        30,
+        60
+      ],
+      "source_refs": [
+        "benchmark_oxmaint_engineering"
+      ],
+      "hazard_escalation": [
+        "scalding water",
+        "steam burn",
+        "major leak"
+      ]
+    },
+    {
+      "family": "refrigerator_minibar",
+      "normal_examples": [
+        "minibar fridge not cold",
+        "fridge noisy"
+      ],
+      "normal_severity": "guest_convenience",
+      "expected_resolution_window_min": [
+        30,
+        60
+      ],
+      "source_refs": [
+        "furama_room_features"
+      ],
+      "hazard_escalation": [
+        "burning smell",
+        "smoke",
+        "sparking",
+        "electric shock"
+      ]
+    }
+  ],
+  "truth_note": "Time windows are synthetic/industry-calibrated planning ranges and are never official Furama SLAs."
+}

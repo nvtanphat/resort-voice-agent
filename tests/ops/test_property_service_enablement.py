@@ -87,10 +87,8 @@ def test_catalog_maps_nlu_transport_and_front_office_to_enabled_request_kinds():
     catalog_backed_nlu_kinds = {
         "housekeeping", "facilities", "dining", "human", "transport", "front_office"
     }
-    # Service identity is understood from the catalog, not from NLU phrases:
-    # the agent profile keeps only navigation grammar.
-    assert all(set(phrases) == {"directions"}
-               for phrases in domain["nlu"]["intent"]["action_phrases"].values())
+    # Service identity and read/navigation intent are model-command driven.
+    assert "action_phrases" not in domain["nlu"]["intent"]
     assert catalog_backed_nlu_kinds <= mapped_kinds
 
     assert builder.request_kind_for_catalog_service(by_id["transportation.taxi"]) == "transport"

@@ -11,21 +11,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from functools import lru_cache
+import json
+from pathlib import Path
 import re
 import unicodedata
 from typing import Any, Iterable
 
 from concierge_kiosk.agent.understanding.domain_nlu import (
     MEMORY_VOCABULARY,
-    READ_INTENT,
     ROUTING,
     SLOTS,
     TIME_EXPRESSIONS,
     DISCOURSE_TERMS,
-    INTENT,
     NORMALIZATION,
 )
 from concierge_kiosk.core.domain_profile import supported_languages, voice_policy
+from concierge_kiosk.core.dataset_layout import (TRAIN_AGENT_CANDIDATES, TRAIN_AGENT_MULTILINGUAL,
+                                                  TRAIN_AGENT_VI_GOLD, dataset_path)
 from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
 from concierge_kiosk.core.terminology import normalize_terminology
 
@@ -51,7 +53,7 @@ _LATIN_WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
 _PROFILE_LANGUAGES = frozenset(supported_languages())
 _SKIP_KEYS = frozenset({
     "patterns", "emergency_text", "emergency_contacts", "static_text",
-    "qualifier_patterns", "next_pattern", "deny_pattern",
+    "qualifier_patterns",
 })
 
 
@@ -94,15 +96,12 @@ def _language_strings(value: Any, language: str | None = None) -> Iterable[tuple
 @lru_cache(maxsize=8)
 def _profile_terms(language: str | None) -> tuple[tuple[str, str], ...]:
     sources = (
-        INTENT["action_phrases"],
-        INTENT["info_only"],
         ROUTING["greeting_terms"],
         ROUTING["courtesy_particles"],
         ROUTING["confirmation_terms"],
         ROUTING["affirm_terms"],
         ROUTING["deny_terms"],
         ROUTING["bare_topic_terms"],
-        ROUTING["request_status_terms"],
         ROUTING["language_switch_terms"],
         SLOTS["quantity_nouns"],
         SLOTS["number_words"],
@@ -110,10 +109,6 @@ def _profile_terms(language: str | None) -> tuple[tuple[str, str], ...]:
         SLOTS["clock_dayparts"],
         MEMORY_VOCABULARY["subject_aliases"],
         MEMORY_VOCABULARY["focus_aliases"],
-        READ_INTENT["info_terms"],
-        READ_INTENT["route_terms"],
-        READ_INTENT["info_more_terms"],
-        READ_INTENT["composite_information_terms"],
         TIME_EXPRESSIONS,
         DISCOURSE_TERMS,
         voice_policy()["service_names"],
@@ -146,6 +141,28 @@ def _profile_terms(language: str | None) -> tuple[tuple[str, str], ...]:
 
 
 @lru_cache(maxsize=8)
+def _data_derived_terms(language: str | None) -> frozenset[tuple[str, str]]:
+    """Build the repair lexicon from reviewed utterances and the pinned release."""
+    values: set[tuple[str, str]] = set()
+    for path in (dataset_path(TRAIN_AGENT_VI_GOLD), dataset_path(TRAIN_AGENT_MULTILINGUAL),
+                 dataset_path(TRAIN_AGENT_CANDIDATES)):
+        for line in path.read_text(encoding='utf-8').splitlines():
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            code = str(row.get('language') or '')
+            utterance = row.get('utterance')
+            if code in _PROFILE_LANGUAGES and isinstance(utterance, str) and (language is None or code == language):
+                values.update((code, token.casefold()) for token in _LATIN_WORD.findall(utterance))
+    release = Path(__file__).resolve().parents[4] / 'releases' / 'domain-vocab.json'
+    payload = json.loads(release.read_text(encoding='utf-8'))
+    values.update((code, term) for code, term in _language_strings(payload)
+                  if language is None or code == language)
+    return frozenset(values)
+
+
+@lru_cache(maxsize=8)
 def _phrase_map(language: str | None) -> dict[str, str]:
     candidates: dict[str, set[str]] = {}
     for _, term in _profile_terms(language):
@@ -168,7 +185,7 @@ def _phrase_matcher(language: str | None) -> tuple[re.Pattern[str], dict[str, st
 @lru_cache(maxsize=8)
 def _token_map(language: str | None) -> dict[str, frozenset[str]]:
     candidates: dict[str, set[str]] = {}
-    for _, term in _profile_terms(language):
+    for _, term in (*_profile_terms(language), *_data_derived_terms(language)):
         for token in _LATIN_WORD.findall(term):
             base = _strip_marks(token)
             candidates.setdefault(base, set()).add(token)

@@ -1,0 +1,28 @@
+{
+  "dataset_id": "furama-concierge-dataset",
+  "version": "1.0.3-data-consistency-fix",
+  "released_at": "2026-10-05",
+  "property_id": "FURAMA_DANANG",
+  "status": "dataset_valid_runtime_contract_blocked",
+  "canonical_truth_policy": "official_public_furama_only",
+  "operational_policy_mode": "product_authored_with_safe_staff_gates",
+  "open_fix_items": 2,
+  "counts": {
+    "canonical_facts": 366,
+    "canonical_entities": 119,
+    "canonical_relations": 273,
+    "agent_vi_train": 709,
+    "rag_vi_train": 565
+  },
+  "hardening": {
+    "contract_coverage": "complete",
+    "map_planning_schema_drift": "fixed",
+    "source_evidence_snapshots": "immutable_curated_evidence_bundles",
+    "historical_raw_archive": "unavailable_for_v1.0.0; mandatory_on_next_refresh",
+    "domain_review": "explicit_pending_gate_no_fabricated_approvals",
+    "voice_audio": "out_of_scope_by_user_decision",
+    "runtime_contract_status": "BLOCKED on exact service-policy parity and route/command ontology parity with current code; dataset must not replace config/agent-domain.json until those two contracts are reconciled.",
+    "retrieval_fact_coverage": "366/366 canonical facts represented across train/seen/entity-holdout/fact-holdout fixtures",
+    "service_action_balance": "60 per language; 10 each create/modify/cancel/info/hours/info_and_hours; concrete preconditions policy-valid"
+  }
+}

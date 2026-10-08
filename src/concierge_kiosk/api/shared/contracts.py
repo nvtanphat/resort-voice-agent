@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Literal
 from pydantic import BaseModel, Field, ConfigDict, StrictBool, field_validator
 from concierge_kiosk.domain.service_registry import LANGUAGES, REQUEST_KINDS
+from concierge_kiosk.domain.service_registry import SERVICE_PAYLOAD_TEXT_SLOTS
 
 class StrictRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -34,10 +35,11 @@ class ServicePayload(StrictRequest):
     quantity: int | None = Field(default=None, ge=1, le=20)
     preferred_time: str | None = Field(default=None, max_length=40)
     party_size: int | None = Field(default=None, ge=1, le=30)
+    restaurant_name: str | None = Field(default=None, max_length=120)
     note: str = Field(default="", max_length=500)
     price_acknowledged: StrictBool = False
 
-    @field_validator('room_number', 'preferred_time', 'note')
+    @field_validator(*SERVICE_PAYLOAD_TEXT_SLOTS)
     @classmethod
     def strip_text(cls, value: str | None):
         return value.strip() if isinstance(value, str) else value

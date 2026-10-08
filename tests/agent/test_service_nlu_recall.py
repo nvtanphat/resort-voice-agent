@@ -10,24 +10,6 @@ import pytest
 from concierge_kiosk.agent.understanding.intent import normalize_intent_text
 
 
-@pytest.mark.parametrize(("query", "language"), [
-    ("What is the cancellation policy?", "en"),
-    ("Can I cancel my dinner booking tomorrow?", "en"),
-    ("Chính sách hủy phòng thế nào?", "vi"),
-])
-def test_questions_containing_cancel_words_do_not_cancel_a_pending_draft(query, language):
-    from concierge_kiosk.agent.tools.service_slots import is_cancel_pending
-    assert is_cancel_pending(query, language) is False
-
-
-@pytest.mark.parametrize(("query", "language"), [
-    ("cancel", "en"), ("please cancel", "en"), ("never mind", "en"),
-    ("hủy", "vi"), ("hủy ạ", "vi"), ("vui lòng hủy", "vi"),
-    ("取消", "zh"), ("请取消", "zh"), ("취소", "ko"), ("취소해 주세요", "ko"),
-])
-def test_whole_utterance_cancel_commands_still_cancel(query, language):
-    from concierge_kiosk.agent.tools.service_slots import is_cancel_pending
-    assert is_cancel_pending(query, language) is True
 
 
 def test_voice_room_readback_speaks_digits_without_touching_times_or_quantities():
@@ -53,6 +35,24 @@ def test_voice_service_readback_uses_catalog_name_and_structured_slots():
     assert 'ba không năm' in spoken
 
 
+def test_dining_readback_resolves_one_named_restaurant_from_dataset():
+    from concierge_kiosk.application.service_actions import (
+        _canonical_service_review, _configured_venue_name,
+    )
+    from concierge_kiosk.core.settings import Settings
+
+    cfg = Settings(environment='test', structured_dataset_dir='datasets')
+    query = 'Đặt bàn Don Cipriani cho 4 người lúc 19h'
+    assert _configured_venue_name(query, 'vi', cfg) == 'Nhà hàng Ý Don Cipriani'
+    review = _canonical_service_review(
+        mode='dining_reservation', language='vi',
+        slots={'restaurant_name': 'Nhà hàng Ý Don Cipriani', 'party_size': 4,
+               'preferred_time': '19:00'},
+        fallback_details=query,
+    )
+    assert 'Nhà hàng Ý Don Cipriani' in review
+
+
 @pytest.mark.parametrize(('query', 'language', 'room'), [
     ('phòng ba không năm', 'vi', '305'),
     ('phòng ba trăm lẻ năm', 'vi', '305'),
@@ -61,9 +61,14 @@ def test_voice_service_readback_uses_catalog_name_and_structured_slots():
     ('my room number is 305', 'en', '305'),
 ])
 def test_spoken_room_numbers_are_accepted_as_slot_replies(query, language, room):
-    from concierge_kiosk.agent.tools.service_slots import _room_number, looks_like_slot_reply
+    from concierge_kiosk.agent.tools.service_slots import _room_number
     assert _room_number(query, language) == room
-    assert looks_like_slot_reply(query, language, ('room_number',)) is True
+
+
+
+def test_room_digits_with_transcript_spacing_are_compacted():
+    from concierge_kiosk.agent.tools.service_slots import _room_number
+    assert _room_number('12 03', 'vi') == '1203'
 
 
 @pytest.mark.parametrize("query", [
@@ -80,9 +85,16 @@ def test_vietnamese_until_what_time_questions_are_opening_hours_queries(query):
     ("Alo", "vi"), ("a lô", "vi"), ("alô xin chào", "vi"), ("Alo, xin chào!", "vi"),
     ("hello hi", "en"), ("chào bạn nha", "vi"),
 ])
-def test_greetings_including_chained_ones_are_routed_as_greeting(query, language):
+def test_greetings_do_not_bypass_command_understanding(query, language):
     from concierge_kiosk.agent.understanding.routing import classify_dialogue
-    assert classify_dialogue(query, language).branch == "greeting"
+    assert classify_dialogue(query, language).branch == "knowledge"
+
+
+def test_compound_action_is_not_mistaken_for_a_knowledge_followup():
+    from concierge_kiosk.agent.memory.heuristics import is_followup
+    assert is_followup(
+        'bring 2 towels and 3 bottles of water to room 2108, and also book a taxi at 6am',
+        'en') is False
 
 
 @pytest.mark.parametrize(("query", "language", "branch"), [
@@ -94,9 +106,9 @@ def test_greeting_followed_by_a_real_request_is_not_swallowed(query, language, b
 
 
 @pytest.mark.parametrize(('query', 'language', 'branch'), [
-    ('where is the spa', 'en', 'navigation'),
+    ('where is the spa', 'en', 'knowledge'),
 ])
-def test_navigation_requests_do_not_fall_into_knowledge(query, language, branch):
+def test_navigation_requests_wait_for_command_understanding(query, language, branch):
     from concierge_kiosk.agent.understanding.routing import classify_dialogue
     assert classify_dialogue(query, language).branch == branch
 

@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Service action contract evaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "classification",
+    "language",
+    "utterance",
+    "interaction_type",
+    "expected_route",
+    "expected_service_id",
+    "expected_department_id",
+    "expected_category",
+    "expected_operating_hours",
+    "expected_contact_extension",
+    "must_not_claim_completed",
+    "must_not_5xx",
+    "truth_status",
+    "origin",
+    "acceptable_tools",
+    "interaction_subtype",
+    "preconditions"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "classification": {
+      "const": "synthetic_service_contract_evaluation"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 2
+    },
+    "interaction_type": {
+      "type": "string"
+    },
+    "expected_route": {
+      "enum": [
+        "service",
+        "knowledge",
+        "emergency",
+        "status",
+        "knowledge_abstain",
+        "non_action",
+        "clarification",
+        "multi_step",
+        "privacy_guard",
+        "safety_escalation",
+        "request_change"
+      ]
+    },
+    "expected_service_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "expected_department_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "expected_category": {
+      "type": "string"
+    },
+    "expected_operating_hours": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_contact_extension": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "must_not_claim_completed": {
+      "type": "boolean"
+    },
+    "must_not_5xx": {
+      "const": true
+    },
+    "truth_status": {
+      "const": "catalog_grounded"
+    },
+    "origin": {
+      "type": "string"
+    },
+    "acceptable_tools": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Concrete runtime tool names accepted by the current evaluator/runtime registry.",
+      "items": {
+        "enum": [
+          "hotel_info_search",
+          "hotel_hours_get",
+          "service_request_create",
+          "service_request_update",
+          "service_request_cancel"
+        ]
+      }
+    },
+    "interaction_subtype": {
+      "type": "string",
+      "description": "Fine-grained interaction intent used by tool evaluation; interaction_type remains the legacy coarse class for backward compatibility.",
+      "enum": [
+        "info",
+        "hours",
+        "info_and_hours",
+        "create",
+        "modify",
+        "cancel"
+      ]
+    },
+    "preconditions": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Concrete prior service-request fixtures required before the expected action is valid. Empty means no prior service-request state is required.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "service_code",
+          "service_id",
+          "status",
+          "slots"
+        ],
+        "properties": {
+          "service_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "service_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "approved",
+              "pending_staff"
+            ]
+          },
+          "slots": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

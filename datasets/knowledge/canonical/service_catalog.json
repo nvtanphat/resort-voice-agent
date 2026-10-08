@@ -1,0 +1,492 @@
+[
+  {
+    "service_id": "service.in_room_dining",
+    "entity_id": "service.in_room_dining",
+    "name": "In-Room Dining (Room Service)",
+    "service_type": "actionable_service",
+    "category": "dining",
+    "department_id": "FNB_ROOM_SERVICE",
+    "contact_extension": "10",
+    "operating_hours": "06:30 - 00:00",
+    "is_complimentary": null,
+    "description": "In-room dining is available 06:30–midnight; the current Room Service page directs guests to Front Desk Ext 10. Late-night dishes are listed 22:30–06:00.",
+    "names_by_locale": {
+      "en": "In-Room Dining (Room Service)",
+      "vi": "Dịch vụ Ăn uống tại phòng (Room Service)",
+      "ko": "인룸 다이닝 (룸서비스)",
+      "zh": "客房送餐服务"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/room-facilities-services/room-service/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.room_cleaning",
+    "entity_id": "service.room_cleaning",
+    "name": "Room Make-Up & Cleaning Service",
+    "service_type": "actionable_service",
+    "category": "housekeeping",
+    "department_id": "HOUSEKEEPING",
+    "contact_extension": null,
+    "operating_hours": "08:00 - 17:00",
+    "is_complimentary": null,
+    "description": "Room cleaning is arranged daily 08:00–17:00; guests may contact Housekeeping to request a special time. Housekeeping can also supply extra blankets, pillows, coat hangers and related items.",
+    "names_by_locale": {
+      "en": "Room Cleaning & Make-Up",
+      "vi": "Dọn phòng & Dịch vụ Buồng phòng",
+      "ko": "객실 정비 및 청소 서비스",
+      "zh": "客房打扫与客房服务"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/room-facilities-services/room-cleaning-service/",
+      "https://furamavietnam.com/room-directory/room-facilities-services/housekeeping/"
+    ],
+    "verified_at": "2026-10-03",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.bath_towels",
+    "entity_id": "service.bath_towels",
+    "name": "Fresh Bath Towel Replenishment",
+    "service_type": "actionable_service",
+    "category": "housekeeping",
+    "department_id": "HOUSEKEEPING",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Additional towels are available through Housekeeping; no public service hours or extension are stated on the current page.",
+    "names_by_locale": {
+      "en": "Fresh Bath Towels",
+      "vi": "Khăn tắm sạch bổ sung",
+      "ko": "추가 목욕 수건 요청",
+      "zh": "补充干净浴巾"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/room-facilities-services/bath-towels/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.adapters",
+    "entity_id": "service.adapters",
+    "name": "Multi-Plug Electrical Adapter Request",
+    "service_type": "actionable_service",
+    "category": "housekeeping",
+    "department_id": "HOUSEKEEPING",
+    "contact_extension": "13",
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "An adapter is available in-room; transformers are available from Housekeeping. The official page is titled Adapters – Ext 13.",
+    "names_by_locale": {
+      "en": "Electrical Adapters",
+      "vi": "Ổ cắm chuyển đổi đa năng",
+      "ko": "멀티 어댑터 대여",
+      "zh": "多功能电源适配器"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/room-facilities-services/adapters-ext-13/",
+      "https://furamavietnam.com/room-directory/room-facilities-services/electricity/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.extra_bed",
+    "entity_id": "service.extra_bed",
+    "name": "Extra Rollaway Bed Setup",
+    "service_type": "actionable_service",
+    "category": "housekeeping",
+    "department_id": "HOUSEKEEPING",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": false,
+    "description": "Extra bed in the resort or folded mattress in a Villa can be requested from Front Desk; additional charges apply. No public hours are stated.",
+    "names_by_locale": {
+      "en": "Extra Bed Setup",
+      "vi": "Kê thêm giường phụ",
+      "ko": "엑스트라 베드 설치",
+      "zh": "加床服务"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/room-facilities-services/extra-bed/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.luggage",
+    "entity_id": "service.luggage",
+    "name": "Luggage Pickup & Storage Service",
+    "service_type": "actionable_service",
+    "category": "front_desk",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Concierge assists with luggage and related services, including assistance with luggage lost from a flight. No public hours or extension are stated.",
+    "names_by_locale": {
+      "en": "Luggage Pickup & Storage",
+      "vi": "Hỗ trợ hành lý & Giữ hành lý",
+      "ko": "수하물 운반 및 보관",
+      "zh": "行李运送与寄存"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/baggage-service/luggage-service/",
+      "https://furamavietnam.com/room-directory/baggage-service/lost-luggage/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "transportation.taxi",
+    "entity_id": "transportation.taxi",
+    "name": "Taxi Arrangement & Calling",
+    "service_type": "actionable_service",
+    "category": "transportation",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": "24/7",
+    "is_complimentary": null,
+    "description": "Taxis are available 24 hours at Resort and Villa entrances; Concierge can arrange a taxi.",
+    "names_by_locale": {
+      "en": "Taxi Calling Service",
+      "vi": "Gọi xe Taxi",
+      "ko": "택시 호출 서비스",
+      "zh": "叫车与出租车服务"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/baggage-service/taxi/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.wake_up_calls",
+    "entity_id": "service.wake_up_calls",
+    "name": "Wake-Up Call Service",
+    "service_type": "actionable_service",
+    "category": "front_desk",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": "0",
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Wake-up calls can be requested through the Telephone Operator. Operator extension 0 is independently published on the Medical Service page.",
+    "names_by_locale": {
+      "en": "Wake-Up Call",
+      "vi": "Báo thức buổi sáng",
+      "ko": "모닝콜 서비스",
+      "zh": "叫醒服务"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/other-services/wake-up-calls/",
+      "https://furamavietnam.com/room-directory/security-safety/medical-service/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.currency_exchange",
+    "entity_id": "service.currency_exchange",
+    "name": "Currency Exchange Counter",
+    "service_type": "actionable_service",
+    "category": "front_desk",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Foreign currencies can be exchanged at Front Desk at normal bank rates; no public service hours are stated.",
+    "names_by_locale": {
+      "en": "Currency Exchange",
+      "vi": "Đổi ngoại tệ",
+      "ko": "환전 서비스",
+      "zh": "外币兑换"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/other-services/currency-exchange/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.first_aid",
+    "entity_id": "service.first_aid",
+    "name": "First Aid & Medical Assistance",
+    "service_type": "actionable_service",
+    "category": "guest_services",
+    "department_id": "MEDICAL_CENTRE",
+    "contact_extension": "0",
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "For first aid, contact the Operator. The official First Aid page does not claim 24/7 nurse coverage.",
+    "names_by_locale": {
+      "en": "First Aid & Medical Support",
+      "vi": "Sơ cấp cứu & Hỗ trợ Y tế",
+      "ko": "응급 처치 및 의료 지원",
+      "zh": "急救与医疗协助"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/security-safety/first-aid/",
+      "https://furamavietnam.com/room-directory/security-safety/medical-service/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "spa.booking",
+    "entity_id": "spa.v_senses_wellness",
+    "name": "V-Senses Spa Treatment Reservation",
+    "service_type": "staff_request",
+    "category": "spa",
+    "department_id": "SPA_WELLNESS",
+    "contact_extension": "16",
+    "operating_hours": "09:00 - 22:00",
+    "is_complimentary": null,
+    "description": "V-Senses Spa is open 09:00–22:00; bookings are accepted until 20:30 and treatments should be scheduled 24 hours in advance. Dial Ext 16.",
+    "names_by_locale": {
+      "en": "Spa Treatment Reservation",
+      "vi": "Đặt lịch dịch vụ Spa V-Senses",
+      "ko": "스파 트리트먼트 예약 요청",
+      "zh": "水疗护理预约"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/v-senses-wellness-spa-services/the-v-senses-wellness-and-spa/",
+      "https://furamavietnam.com/page/14/?id=307&l=en&p=newsdetail"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "dining.restaurant_reservation",
+    "entity_id": "dining.restaurant_reservation",
+    "name": "Restaurant Table Reservation Request",
+    "service_type": "staff_request",
+    "category": "dining",
+    "department_id": "FNB_ROOM_SERVICE",
+    "contact_extension": "12",
+    "operating_hours": "06:00 - 00:00",
+    "is_complimentary": null,
+    "description": "Restaurant & bar reservations can be requested through Room Service between 06:00 and midnight at Ext 12.",
+    "names_by_locale": {
+      "en": "Restaurant Table Reservation",
+      "vi": "Đặt bàn Nhà hàng ẩm thực",
+      "ko": "레스토랑 테이블 예약 요청",
+      "zh": "餐厅订位预约"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/fb-services/restaurants-bars/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.babysitting",
+    "entity_id": "service.babysitting",
+    "name": "Babysitting Service Request",
+    "service_type": "staff_request",
+    "category": "guest_services",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": "3777",
+    "operating_hours": null,
+    "is_complimentary": false,
+    "description": "Babysitting should be booked one day in advance through Tour Desk/Kids Club; additional charges apply. Tour Desk extension 3777 is published on the Kids Club page.",
+    "names_by_locale": {
+      "en": "Babysitting Service",
+      "vi": "Dịch vụ Trông trẻ",
+      "ko": "베이비시팅 서비스 요청",
+      "zh": "托儿保姆服务"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/other-services/babysitting-services/",
+      "https://furamavietnam.com/room-directory/recreation/kids-club/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "transportation.car_rental",
+    "entity_id": "transportation.car_rental",
+    "name": "Private Car Rental",
+    "service_type": "staff_request",
+    "category": "transportation",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Private car rental can be arranged through Concierge in the resort lobby; airport transfer is represented by the separate transportation.airport_transfer service. No public operating hours or extension are stated on the car-rental page.",
+    "names_by_locale": {
+      "en": "Private Car Rental",
+      "vi": "Thuê xe riêng",
+      "ko": "전용 차량 렌탈",
+      "zh": "包车服务"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/baggage-service/car-rental/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.late_checkout",
+    "entity_id": "property.furama_resort_danang",
+    "name": "Late Check-Out Inquiry",
+    "service_type": "staff_request",
+    "category": "front_desk",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": false,
+    "description": "Standard check-out is 11:00. Late check-out is subject to availability; 50% of daily room rate applies until 18:00 and one night after 18:00.",
+    "names_by_locale": {
+      "en": "Late Check-Out Inquiry",
+      "vi": "Yêu cầu Trả phòng trễ",
+      "ko": "레이트 체크아웃 문의",
+      "zh": "延迟退房咨询"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/resorts-policies/check-out-time/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.lost_and_found",
+    "entity_id": "service.lost_and_found",
+    "name": "Lost & Found Inquiry",
+    "service_type": "staff_request",
+    "category": "front_desk",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "For Lost & Found assistance, the official page directs guests to Housekeeping; no public hours or extension are stated.",
+    "names_by_locale": {
+      "en": "Lost & Found Inquiry",
+      "vi": "Tra cứu Thất lạc & Tìm kiếm",
+      "ko": "분실물 센터 문의",
+      "zh": "失物招领咨询"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/baggage-service/lost-found/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.courier",
+    "entity_id": "service.courier",
+    "name": "Courier & Mail Handling Service",
+    "service_type": "staff_request",
+    "category": "guest_services",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Courier service can be arranged through the Business Centre in the Resort Lobby; no public hours are stated.",
+    "names_by_locale": {
+      "en": "Courier & Mail Handling",
+      "vi": "Chuyển phát bưu phẩm & Thư tín",
+      "ko": "우편 및 택배 발송 서비스",
+      "zh": "快递与信件代发"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/other-services/courier-service/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.flight_reconfirmation",
+    "entity_id": "service.flight_reconfirmation",
+    "name": "Flight Information & Reconfirmation",
+    "service_type": "staff_request",
+    "category": "guest_services",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Flight information, reconfirmation and change assistance is available through the Business Centre in the Resort Lobby; no public hours are stated.",
+    "names_by_locale": {
+      "en": "Flight Reconfirmation & Info",
+      "vi": "Xác nhận chuyến bay & Thông tin vé",
+      "ko": "항공편 정보 및 예약 확인",
+      "zh": "航班信息确认与协助"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/other-services/flight-information-reconfirmation-change/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "transportation.airport_transfer",
+    "entity_id": "transportation.airport_transfer",
+    "name": "Airport Transfer Arrangement",
+    "service_type": "staff_request",
+    "category": "transportation",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": null,
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Concierge can arrange airport transport. For early-morning departures, the official page asks guests to book before 21:00 the day before.",
+    "names_by_locale": {
+      "en": "Airport Transfer Arrangement",
+      "vi": "Sắp xếp đưa đón sân bay",
+      "ko": "공항 이동 서비스 요청",
+      "zh": "机场接送安排"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/baggage-service/airport-transfer/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.medical_centre",
+    "entity_id": "service.medical_centre",
+    "name": "Medical Centre Assistance",
+    "service_type": "staff_request",
+    "category": "guest_services",
+    "department_id": "MEDICAL_CENTRE",
+    "contact_extension": "3420",
+    "operating_hours": "08:00 - 17:00 except Saturday afternoon and Sunday",
+    "is_complimentary": null,
+    "description": "Medical Centre staffed 08:00–17:00 except Saturday afternoon and Sunday; contact Ext 3420 or Operator 0.",
+    "names_by_locale": {
+      "en": "Medical Centre Assistance",
+      "vi": "Hỗ trợ Trung tâm Y tế",
+      "ko": "의료 센터 지원",
+      "zh": "医疗中心协助"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/room-directory/security-safety/medical-service/"
+    ],
+    "verified_at": "2026-10-01",
+    "verification_status": "official_web_reviewed"
+  },
+  {
+    "service_id": "service.tour_reservation",
+    "entity_id": "service.tour_reservation",
+    "name": "Tour Desk Reservation Assistance",
+    "service_type": "staff_request",
+    "category": "guest_services",
+    "department_id": "FO_CONCIERGE",
+    "contact_extension": "3777",
+    "operating_hours": null,
+    "is_complimentary": null,
+    "description": "Tour Desk can assist with tour reservation requests; itinerary, capacity and price remain subject to staff confirmation.",
+    "names_by_locale": {
+      "en": "Tour Desk Reservation Assistance",
+      "vi": "Hỗ trợ đặt tour tại Tour Desk",
+      "ko": "투어 데스크 예약 지원",
+      "zh": "旅游服务台预订协助"
+    },
+    "source_urls": [
+      "https://furamavietnam.com/recreations/private-tour/"
+    ],
+    "verified_at": "2026-10-05",
+    "verification_status": "official_web_reviewed"
+  }
+]

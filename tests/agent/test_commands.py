@@ -8,11 +8,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'src'))
 
 from concierge_kiosk.agent.understanding.commands import (
-    Command, CommandSlot, command_schema,
+    Command, command_schema,
     model_commands, parse_commands, validate_commands,
 )
 from concierge_kiosk.agent.understanding.service_selector import (
-    CommandExample, ServiceSelector, load_command_examples,
+    CommandExample, ServiceSelector, load_command_examples, normalized_situation_group,
 )
 from concierge_kiosk.core.dataset_layout import SERVICE_CATALOG, dataset_path
 
@@ -21,6 +21,11 @@ def test_command_schema_is_closed():
     schema = command_schema({'amenity_delivery': ['room_number', 'quantity']})
     assert schema['additionalProperties'] is False
     assert schema['properties']['commands']['maxItems'] >= 1
+
+
+def test_situation_group_normalizes_legacy_frame_and_concept_keys():
+    assert normalized_situation_group('FRAME-COLLAPSED', None) == 'collapsed'
+    assert normalized_situation_group(None, 'collapsed') == 'collapsed'
 
 
 def test_model_command_cannot_invent_a_slot_value():
@@ -43,6 +48,29 @@ def test_commands_keep_confirmation_and_cancel_non_authoritative():
     assert validate_commands([Command('Cancel')], query='cancel')
     assert validate_commands([Command('Confirm', confirmed=True)], query='yes',
                              pending_reply='room_number') is None
+    assert validate_commands([Command('Modify')], query='change it to six')
+
+
+def test_command_schema_exposes_explicit_request_change_verbs():
+    variants = command_schema({'amenity_delivery': ['room_number']})[
+        'properties']['commands']['items']['anyOf']
+    types = {item['properties']['type']['const'] for item in variants}
+    assert {'Cancel', 'Modify'} <= types
+
+
+def test_conditional_start_goal_is_closed_and_preserved():
+    raw = json.dumps({'commands': [{
+        'type': 'StartGoal', 'goal': 'dining_reservation', 'slots': [],
+        'conditional': True,
+    }]})
+    commands = parse_commands(
+        raw, query='if available, book a table',
+        enabled_request_kinds=frozenset({'dining'}))
+    assert commands and commands[0].conditional is True
+    start = next(item for item in command_schema({'dining_reservation': []})
+                 ['properties']['commands']['items']['anyOf']
+                 if item['properties']['type']['const'] == 'StartGoal')
+    assert start['properties']['conditional']['type'] == 'boolean'
 
 
 class _ServiceEmbedder:
@@ -63,6 +91,14 @@ def test_service_selector_returns_catalog_candidates_and_registry_slots():
     assert towels['catalog_service_id'] == 'service.bath_towels'
     assert towels['accepted_slots'] == ['room_number', 'quantity']
     assert len(candidates) <= 3
+
+
+def test_service_selector_does_not_bypass_embedding_margin_for_catalog_alias():
+    selector = ServiceSelector(dataset_path(SERVICE_CATALOG), _ServiceEmbedder(), top_k=3)
+    assert selector.fallback_commands(
+        "xin gia hạn thời gian lưu trú", language="vi",
+        enabled_request_kinds=frozenset({"front_office"}),
+        min_score=0.99, min_margin=0.99) is None
 
 
 def test_model_command_prompt_rechecks_selector_candidates_against_registry(monkeypatch):
@@ -193,6 +229,25 @@ def test_load_command_examples_keeps_train_rows_and_literal_slots(tmp_path):
     # quantity 2 is not literally in the utterance ("two"), so it is not shown.
     assert examples[0].commands[0]['slots'] == [{'name': 'room_number', 'text': '305'}]
     assert examples[1].commands[0] == {'type': 'AskInfo', 'query': 'pool hours'}
+
+
+def test_load_command_examples_keeps_reviewed_multi_step_commands(tmp_path):
+    path = tmp_path / 'multi.jsonl'
+    path.write_text(json.dumps({
+        'split': 'train', 'language': 'en',
+        'utterance': 'send towels to room 305 and book a taxi at 6am',
+        'expected_route': 'multi_step', 'frame_id': 'FRAME-MULTI',
+        'commands': [
+            {'type': 'StartGoal', 'goal': 'amenity_delivery',
+             'slots': [{'name': 'room_number', 'text': '305'}]},
+            {'type': 'StartGoal', 'goal': 'transport_request',
+             'slots': [{'name': 'preferred_time', 'text': '6am'}]},
+        ],
+    }), encoding='utf-8')
+    examples = load_command_examples([path])
+    assert len(examples) == 1
+    assert [item['goal'] for item in examples[0].commands] == [
+        'amenity_delivery', 'transport_request']
 
 
 def test_availability_mode_uses_only_the_best_semantic_match():

@@ -46,9 +46,18 @@ def _command_requirement(state, command: Command, candidate) -> str | None:
             if (requirement.service_candidate_id == candidate.id
                     and requirement.outcome.startswith('service:')):
                 return requirement.id
+    outcome = {
+        'AskInfo': 'verified_answer',
+        'Navigate': 'verified_route_guidance',
+        'CheckAvailability': 'availability_checked',
+    }.get(command.type, f'command:{command.type}')
+    topic = (command.goal or 'schedule' if command.type == 'CheckAvailability'
+             else command.query or state.original_query[:80])
     for requirement in state.goal_contract.requirements:
-        if (requirement.outcome == f'command:{command.type}'
-                and requirement.id not in state.command_satisfied_requirements):
+        if (requirement.outcome == outcome
+                and requirement.id not in state.command_satisfied_requirements
+                and (command.type not in {'AskInfo', 'Navigate', 'CheckAvailability'}
+                     or requirement.topic == topic)):
             return requirement.id
     return None
 
@@ -72,6 +81,16 @@ def _command_action(state, index: int, command: Command) -> tuple[NextAction | N
     if command.type in {'StartGoal', 'SetSlot', 'CorrectSlot', 'Confirm'}:
         if candidate is None or requirement_id is None:
             return None, requirement_id
+        if command.type == 'StartGoal' and candidate.conditional:
+            availability = next((item for item in state.goal_contract.requirements
+                                 if item.outcome == 'availability_checked'
+                                 and item.id not in state.satisfied_requirements), None)
+            if availability is not None:
+                return NextAction(
+                    'tool', capability='check_schedule', objective_id=objective_id,
+                    requirement_id=availability.id, query=state.original_query,
+                    service_candidate_id=candidate.id,
+                    planner='conditional_command'), availability.id
         return NextAction(
             'tool', capability='service_action', objective_id=objective_id,
             requirement_id=requirement_id, service_candidate_id=candidate.id,
@@ -81,12 +100,18 @@ def _command_action(state, index: int, command: Command) -> tuple[NextAction | N
             'tool', capability='knowledge', objective_id=objective_id,
             requirement_id=requirement_id, query=command.query or state.original_query,
             planner='command_semantics'), requirement_id
+    if command.type == 'CheckAvailability':
+        return NextAction(
+            'tool', capability='check_schedule', objective_id=objective_id,
+            requirement_id=requirement_id, query=command.query or state.original_query,
+            service_candidate_id=candidate.id if candidate else None,
+            planner='command_semantics'), requirement_id
     if command.type == 'Navigate':
         return NextAction(
             'tool', capability='navigation', objective_id=objective_id,
             requirement_id=requirement_id, query=command.query or state.original_query,
             planner='command_semantics'), requirement_id
-    if command.type == 'Cancel':
+    if command.type in {'Cancel', 'Modify'}:
         return NextAction(
             'tool', capability='manage_request', objective_id=objective_id,
             requirement_id=requirement_id, query=state.original_query,
@@ -96,8 +121,19 @@ def _command_action(state, index: int, command: Command) -> tuple[NextAction | N
             'tool', capability='handoff_staff', objective_id=objective_id,
             requirement_id=requirement_id, query=command.reason or state.original_query,
             planner='command_semantics'), requirement_id
-    # ChitChat and a non-bound Confirm/slot correction are explicit no-op
-    # semantics. They cannot accidentally turn into a knowledge read or write.
+    if command.type == 'Plan':
+        return NextAction(
+            'tool', capability='planning', objective_id=objective_id,
+            requirement_id=requirement_id, query=command.query or state.original_query,
+            planner='command_semantics'), requirement_id
+    if command.type == 'AskStatus':
+        return NextAction(
+            'tool', capability='request_status', objective_id=objective_id,
+            requirement_id=requirement_id, query=state.original_query,
+            planner='command_semantics'), requirement_id
+    # ChitChat, SwitchLanguage, SetPreference, Clarify and unbound Confirm/slot
+    # corrections are explicit no-op semantics in the agent execution loop.
+    # They cannot accidentally turn into a knowledge read or write.
     return None, requirement_id
 
 

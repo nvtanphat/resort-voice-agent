@@ -1,0 +1,4340 @@
+{
+  "schema_version": 2,
+  "languages": [
+    "en",
+    "vi",
+    "ko",
+    "zh"
+  ],
+  "labels": {
+    "a_la_carte_dinner": {
+      "en": "à-la-carte dinner",
+      "vi": "bữa tối gọi món",
+      "ko": "알라카르트 디너",
+      "zh": "单点晚餐",
+      "aliases": {
+        "en": [
+          "à-la-carte dinner",
+          "a la carte dinner"
+        ],
+        "vi": [
+          "bữa tối gọi món",
+          "bua toi goi mon"
+        ],
+        "ko": [
+          "알라카르트 디너"
+        ],
+        "zh": [
+          "单点晚餐"
+        ]
+      }
+    },
+    "a_la_carte_lunch": {
+      "en": "à-la-carte lunch",
+      "vi": "bữa trưa gọi món",
+      "ko": "알라카르트 런치",
+      "zh": "单点午餐",
+      "aliases": {
+        "en": [
+          "à-la-carte lunch",
+          "a la carte lunch"
+        ],
+        "vi": [
+          "bữa trưa gọi món",
+          "bua trua goi mon"
+        ],
+        "ko": [
+          "알라카르트 런치"
+        ],
+        "zh": [
+          "单点午餐"
+        ]
+      }
+    },
+    "accepted_cards": {
+      "en": "accepted cards",
+      "vi": "thẻ được chấp nhận",
+      "ko": "사용 가능한 카드",
+      "zh": "可用信用卡",
+      "aliases": {
+        "en": [
+          "accepted cards",
+          "credit cards accepted",
+          "which cards"
+        ],
+        "vi": [
+          "thẻ được chấp nhận",
+          "thẻ tín dụng",
+          "quẹt thẻ",
+          "the duoc chap nhan",
+          "the tin dung",
+          "quet the"
+        ],
+        "ko": [
+          "사용 가능한 카드",
+          "신용카드"
+        ],
+        "zh": [
+          "可用信用卡",
+          "信用卡"
+        ]
+      }
+    },
+    "accessible_rooms": {
+      "en": "wheelchair-accessible rooms",
+      "vi": "phòng cho xe lăn",
+      "ko": "휠체어 객실",
+      "zh": "无障碍客房",
+      "aliases": {
+        "en": [
+          "wheelchair-accessible rooms",
+          "accessible room",
+          "wheelchair room"
+        ],
+        "vi": [
+          "phòng cho xe lăn",
+          "phòng người khuyết tật",
+          "phong cho xe lan",
+          "phong nguoi khuyet tat"
+        ],
+        "ko": [
+          "휠체어 객실",
+          "장애인 객실"
+        ],
+        "zh": [
+          "无障碍客房",
+          "轮椅客房"
+        ]
+      }
+    },
+    "adapter_transformer_availability": {
+      "en": "Adapter Transformer Availability",
+      "vi": "Khả dụng bộ chuyển đổi",
+      "ko": "어댑터 이용 가능",
+      "zh": "转换插头可用",
+      "aliases": {
+        "en": [
+          "adapter transformer availability"
+        ],
+        "vi": [
+          "khả dụng bộ chuyển đổi",
+          "kha dung bo chuyen doi"
+        ],
+        "ko": [
+          "어댑터 이용 가능"
+        ],
+        "zh": [
+          "转换插头可用"
+        ]
+      }
+    },
+    "additional_towels": {
+      "en": "Additional Towels",
+      "vi": "Khăn tắm bổ sung",
+      "ko": "추가 수건",
+      "zh": "额外毛巾",
+      "aliases": {
+        "en": [
+          "additional towels"
+        ],
+        "vi": [
+          "khăn tắm bổ sung",
+          "khan tam bo sung"
+        ],
+        "ko": [
+          "추가 수건"
+        ],
+        "zh": [
+          "额外毛巾"
+        ]
+      }
+    },
+    "adult_price": {
+      "en": "Adult Price",
+      "vi": "Giá người lớn",
+      "ko": "성인 요금",
+      "zh": "成人价格",
+      "aliases": {
+        "en": [
+          "adult price",
+          "adult",
+          "adult rate",
+          "adult ticket price"
+        ],
+        "vi": [
+          "giá người lớn",
+          "gia nguoi lon",
+          "người lớn",
+          "giá vé người lớn"
+        ],
+        "ko": [
+          "성인 요금",
+          "성인",
+          "성인 가격"
+        ],
+        "zh": [
+          "成人价格",
+          "成人",
+          "成人票价"
+        ]
+      }
+    },
+    "advance_booking_notice": {
+      "en": "Advance Booking Notice",
+      "vi": "Thời hạn đặt trước",
+      "ko": "사전 예약 안내",
+      "zh": "提前预订要求",
+      "aliases": {
+        "en": [
+          "advance booking notice"
+        ],
+        "vi": [
+          "thời hạn đặt trước",
+          "thoi han dat truoc"
+        ],
+        "ko": [
+          "사전 예약 안내"
+        ],
+        "zh": [
+          "提前预订要求"
+        ]
+      }
+    },
+    "afternoon_tea_dessert_buffet_offer": {
+      "en": "Afternoon Tea Dessert Buffet Offer",
+      "vi": "Afternoon Tea Dessert Buffet Offer",
+      "ko": "Afternoon Tea Dessert Buffet Offer",
+      "zh": "Afternoon Tea Dessert Buffet Offer",
+      "proper_name": true,
+      "aliases": {
+        "en": [
+          "afternoon tea dessert buffet offer"
+        ],
+        "vi": [
+          "afternoon tea dessert buffet offer"
+        ],
+        "ko": [
+          "Afternoon Tea Dessert Buffet Offer"
+        ],
+        "zh": [
+          "Afternoon Tea Dessert Buffet Offer"
+        ]
+      }
+    },
+    "all_rooms_non_smoking": {
+      "en": "non-smoking rooms",
+      "vi": "phòng không hút thuốc",
+      "ko": "금연 객실",
+      "zh": "禁烟客房",
+      "aliases": {
+        "en": [
+          "non-smoking rooms",
+          "smoking",
+          "non smoking"
+        ],
+        "vi": [
+          "phòng không hút thuốc",
+          "hút thuốc",
+          "phong khong hut thuoc",
+          "hut thuoc"
+        ],
+        "ko": [
+          "금연 객실",
+          "흡연",
+          "금연"
+        ],
+        "zh": [
+          "禁烟客房",
+          "吸烟",
+          "禁烟"
+        ]
+      }
+    },
+    "assistance_scope": {
+      "en": "services offered",
+      "vi": "phạm vi hỗ trợ",
+      "ko": "지원 범위",
+      "zh": "服务范围",
+      "aliases": {
+        "en": [
+          "services offered",
+          "what can concierge do"
+        ],
+        "vi": [
+          "phạm vi hỗ trợ",
+          "hỗ trợ những gì",
+          "pham vi ho tro",
+          "ho tro nhung gi"
+        ],
+        "ko": [
+          "지원 범위",
+          "도움 범위"
+        ],
+        "zh": [
+          "服务范围",
+          "能帮什么"
+        ]
+      }
+    },
+    "availability": {
+      "en": "Availability",
+      "vi": "Tình trạng sẵn có",
+      "ko": "이용 가능 여부",
+      "zh": "可用情况",
+      "aliases": {
+        "en": [
+          "availability",
+          "available",
+          "is it available"
+        ],
+        "vi": [
+          "tình trạng sẵn có",
+          "tinh trang san co",
+          "còn không",
+          "có sẵn không",
+          "có không",
+          "khả dụng"
+        ],
+        "ko": [
+          "이용 가능 여부",
+          "이용 가능",
+          "가능한가요"
+        ],
+        "zh": [
+          "可用情况",
+          "有吗",
+          "可用吗",
+          "是否提供"
+        ]
+      }
+    },
+    "balcony_area": {
+      "en": "Balcony Area",
+      "vi": "Diện tích ban công",
+      "ko": "발코니 면적",
+      "zh": "阳台面积",
+      "redundant_with_label": true,
+      "aliases": {
+        "en": [
+          "balcony area"
+        ],
+        "vi": [
+          "diện tích ban công",
+          "dien tich ban cong"
+        ],
+        "ko": [
+          "발코니 면적"
+        ],
+        "zh": [
+          "阳台面积"
+        ]
+      }
+    },
+    "balcony_door_auto_off": {
+      "en": "switches off when balcony door opens",
+      "vi": "tự tắt khi mở cửa ban công",
+      "ko": "발코니 문 열면 자동 꺼짐",
+      "zh": "阳台门打开时自动关闭",
+      "aliases": {
+        "en": [
+          "switches off when balcony door opens",
+          "balcony door"
+        ],
+        "vi": [
+          "tự tắt khi mở cửa ban công",
+          "cửa ban công",
+          "tu tat khi mo cua ban cong",
+          "cua ban cong"
+        ],
+        "ko": [
+          "발코니 문 열면 자동 꺼짐",
+          "발코니 문"
+        ],
+        "zh": [
+          "阳台门打开时自动关闭",
+          "阳台门"
+        ]
+      }
+    },
+    "banquet": {
+      "en": "banquet",
+      "vi": "tiệc",
+      "ko": "연회",
+      "zh": "宴会",
+      "aliases": {
+        "en": [
+          "banquet",
+          "banquet style",
+          "banquet seating"
+        ],
+        "vi": [
+          "tiệc",
+          "tiec",
+          "kiểu tiệc",
+          "bố trí tiệc"
+        ],
+        "ko": [
+          "연회",
+          "연회식",
+          "연회 배치"
+        ],
+        "zh": [
+          "宴会",
+          "宴会式",
+          "宴会摆台"
+        ]
+      }
+    },
+    "beach_length": {
+      "en": "Beach Length",
+      "vi": "Chiều dài bãi biển",
+      "ko": "해변 길이",
+      "zh": "海滩长度",
+      "aliases": {
+        "en": [
+          "beach length"
+        ],
+        "vi": [
+          "chiều dài bãi biển",
+          "chieu dai bai bien"
+        ],
+        "ko": [
+          "해변 길이"
+        ],
+        "zh": [
+          "海滩长度"
+        ]
+      }
+    },
+    "beachfront_private_pool": {
+      "en": "beachfront with private pool",
+      "vi": "sát biển có hồ bơi riêng",
+      "ko": "해변 앞 전용 수영장",
+      "zh": "海滨私人泳池",
+      "aliases": {
+        "en": [
+          "beachfront with private pool",
+          "private pool",
+          "beach access"
+        ],
+        "vi": [
+          "sát biển có hồ bơi riêng",
+          "hồ bơi riêng",
+          "sat bien co ho boi rieng",
+          "ho boi rieng"
+        ],
+        "ko": [
+          "해변 앞 전용 수영장",
+          "전용 수영장"
+        ],
+        "zh": [
+          "海滨私人泳池",
+          "私人泳池"
+        ]
+      }
+    },
+    "bed_configuration": {
+      "en": "Bed Configuration",
+      "vi": "Bố trí giường",
+      "ko": "침대 구성",
+      "zh": "床铺配置",
+      "aliases": {
+        "en": [
+          "bed configuration"
+        ],
+        "vi": [
+          "bố trí giường",
+          "bo tri giuong"
+        ],
+        "ko": [
+          "침대 구성"
+        ],
+        "zh": [
+          "床铺配置"
+        ]
+      }
+    },
+    "bedroom_availability": {
+      "en": "available in each bedroom",
+      "vi": "có trong mỗi phòng ngủ",
+      "ko": "각 침실 비치",
+      "zh": "每间卧室提供",
+      "aliases": {
+        "en": [
+          "available in each bedroom",
+          "in the bedroom"
+        ],
+        "vi": [
+          "có trong mỗi phòng ngủ",
+          "trong phòng ngủ",
+          "co trong moi phong ngu",
+          "trong phong ngu"
+        ],
+        "ko": [
+          "각 침실 비치",
+          "침실"
+        ],
+        "zh": [
+          "每间卧室提供",
+          "卧室"
+        ]
+      }
+    },
+    "boardroom": {
+      "en": "boardroom",
+      "vi": "phòng họp",
+      "ko": "회의실",
+      "zh": "董事会会议室",
+      "aliases": {
+        "en": [
+          "boardroom"
+        ],
+        "vi": [
+          "phòng họp",
+          "phong hop"
+        ],
+        "ko": [
+          "회의실"
+        ],
+        "zh": [
+          "董事会会议室"
+        ]
+      }
+    },
+    "booking_contact": {
+      "en": "Booking Contact",
+      "vi": "Liên hệ đặt chỗ",
+      "ko": "예약 연락처",
+      "zh": "预订联系人",
+      "aliases": {
+        "en": [
+          "booking contact",
+          "reservation contact",
+          "booking number"
+        ],
+        "vi": [
+          "liên hệ đặt chỗ",
+          "lien he dat cho",
+          "số đặt chỗ",
+          "liên hệ đặt bàn",
+          "liên hệ đặt dịch vụ"
+        ],
+        "ko": [
+          "예약 연락처",
+          "예약 문의"
+        ],
+        "zh": [
+          "预订联系人",
+          "预订联系方式",
+          "预约电话"
+        ]
+      }
+    },
+    "books": {
+      "en": "Books",
+      "vi": "Sách",
+      "ko": "도서",
+      "zh": "书籍",
+      "aliases": {
+        "en": [
+          "books"
+        ],
+        "vi": [
+          "sách",
+          "sach"
+        ],
+        "ko": [
+          "도서"
+        ],
+        "zh": [
+          "书籍"
+        ]
+      }
+    },
+    "breakfast_hours": {
+      "en": "breakfast",
+      "vi": "bữa sáng",
+      "ko": "조식",
+      "zh": "早餐",
+      "aliases": {
+        "en": [
+          "breakfast",
+          "breakfast hours",
+          "breakfast time"
+        ],
+        "vi": [
+          "bữa sáng",
+          "bua sang",
+          "giờ ăn sáng",
+          "mấy giờ ăn sáng",
+          "thời gian ăn sáng"
+        ],
+        "ko": [
+          "조식",
+          "조식 시간",
+          "아침 식사 시간"
+        ],
+        "zh": [
+          "早餐",
+          "早餐时间",
+          "几点吃早餐"
+        ]
+      }
+    },
+    "business_centre_arrangement": {
+      "en": "Business Centre Arrangement",
+      "vi": "Sắp xếp tại Trung tâm Kinh doanh",
+      "ko": "비즈니스 센터 이용 안내",
+      "zh": "商务中心安排",
+      "aliases": {
+        "en": [
+          "business centre arrangement"
+        ],
+        "vi": [
+          "sắp xếp tại trung tâm kinh doanh",
+          "sap xep tai trung tam kinh doanh"
+        ],
+        "ko": [
+          "비즈니스 센터 이용 안내"
+        ],
+        "zh": [
+          "商务中心安排"
+        ]
+      }
+    },
+    "business_centre_assistance": {
+      "en": "Business Centre Assistance",
+      "vi": "Hỗ trợ Trung tâm Kinh doanh",
+      "ko": "비즈니스 센터 지원",
+      "zh": "商务中心协助",
+      "aliases": {
+        "en": [
+          "business centre assistance"
+        ],
+        "vi": [
+          "hỗ trợ trung tâm kinh doanh",
+          "ho tro trung tam kinh doanh"
+        ],
+        "ko": [
+          "비즈니스 센터 지원"
+        ],
+        "zh": [
+          "商务中心协助"
+        ]
+      }
+    },
+    "business_centre_contact": {
+      "en": "via Business Centre",
+      "vi": "qua Trung tâm Thương vụ",
+      "ko": "비즈니스 센터 문의",
+      "zh": "通过商务中心",
+      "aliases": {
+        "en": [
+          "via Business Centre",
+          "business center"
+        ],
+        "vi": [
+          "qua Trung tâm Thương vụ",
+          "business centre",
+          "trung tâm thương vụ",
+          "qua Trung tam Thuong vu",
+          "trung tam thuong vu"
+        ],
+        "ko": [
+          "비즈니스 센터 문의",
+          "비즈니스 센터"
+        ],
+        "zh": [
+          "通过商务中心",
+          "商务中心"
+        ]
+      }
+    },
+    "butler_availability": {
+      "en": "Butler Availability",
+      "vi": "Dịch vụ quản gia",
+      "ko": "버틀러 이용 가능 여부",
+      "zh": "管家服务可用情况",
+      "aliases": {
+        "en": [
+          "butler availability"
+        ],
+        "vi": [
+          "dịch vụ quản gia",
+          "dich vu quan gia"
+        ],
+        "ko": [
+          "버틀러 이용 가능 여부"
+        ],
+        "zh": [
+          "管家服务可用情况"
+        ]
+      }
+    },
+    "butler_desk": {
+      "en": "Butler Desk",
+      "vi": "Bàn quản gia",
+      "ko": "버틀러 데스크",
+      "zh": "管家服务台",
+      "aliases": {
+        "en": [
+          "butler desk"
+        ],
+        "vi": [
+          "bàn quản gia",
+          "ban quan gia"
+        ],
+        "ko": [
+          "버틀러 데스크"
+        ],
+        "zh": [
+          "管家服务台"
+        ]
+      }
+    },
+    "butler_hotline": {
+      "en": "Butler Hotline",
+      "vi": "Hotline quản gia",
+      "ko": "버틀러 핫라인",
+      "zh": "管家热线",
+      "aliases": {
+        "en": [
+          "butler hotline"
+        ],
+        "vi": [
+          "hotline quản gia",
+          "hotline quan gia"
+        ],
+        "ko": [
+          "버틀러 핫라인"
+        ],
+        "zh": [
+          "管家热线"
+        ]
+      }
+    },
+    "ceiling_height": {
+      "en": "Ceiling Height",
+      "vi": "Chiều cao trần",
+      "ko": "천장 높이",
+      "zh": "层高",
+      "redundant_with_label": true,
+      "aliases": {
+        "en": [
+          "ceiling height"
+        ],
+        "vi": [
+          "chiều cao trần",
+          "chieu cao tran"
+        ],
+        "ko": [
+          "천장 높이"
+        ],
+        "zh": [
+          "层高"
+        ]
+      }
+    },
+    "check_in_time": {
+      "en": "check-in",
+      "vi": "nhận phòng",
+      "ko": "체크인",
+      "zh": "入住",
+      "aliases": {
+        "en": [
+          "check-in",
+          "check in time",
+          "check-in time",
+          "when can i check in"
+        ],
+        "vi": [
+          "nhận phòng",
+          "nhan phong",
+          "giờ nhận phòng",
+          "mấy giờ check in",
+          "giờ check-in"
+        ],
+        "ko": [
+          "체크인",
+          "체크인 시간"
+        ],
+        "zh": [
+          "入住",
+          "入住时间",
+          "几点入住"
+        ]
+      }
+    },
+    "check_out_time": {
+      "en": "check-out",
+      "vi": "trả phòng",
+      "ko": "체크아웃",
+      "zh": "退房",
+      "aliases": {
+        "en": [
+          "check-out",
+          "check out time",
+          "check-out time",
+          "when do i check out"
+        ],
+        "vi": [
+          "trả phòng",
+          "tra phong",
+          "giờ trả phòng",
+          "mấy giờ check out",
+          "giờ check-out"
+        ],
+        "ko": [
+          "체크아웃",
+          "체크아웃 시간"
+        ],
+        "zh": [
+          "退房",
+          "退房时间",
+          "几点退房"
+        ]
+      }
+    },
+    "child_price_6_12": {
+      "en": "Child Price 6 12",
+      "vi": "Giá trẻ em 6–12 tuổi",
+      "ko": "6~12세 아동 요금",
+      "zh": "6至12岁儿童价格",
+      "aliases": {
+        "en": [
+          "child price 6 12",
+          "child price",
+          "kids price",
+          "age 6 to 12"
+        ],
+        "vi": [
+          "giá trẻ em 6–12 tuổi",
+          "gia tre em 6–12 tuoi",
+          "giá trẻ em",
+          "trẻ 6 đến 12 tuổi",
+          "vé trẻ em"
+        ],
+        "ko": [
+          "6~12세 아동 요금",
+          "아동 요금",
+          "어린이 가격",
+          "6~12세"
+        ],
+        "zh": [
+          "6至12岁儿童价格",
+          "儿童价格",
+          "儿童票价",
+          "6至12岁"
+        ]
+      }
+    },
+    "children_activities": {
+      "en": "Children Activities",
+      "vi": "Hoạt động trẻ em",
+      "ko": "어린이 활동",
+      "zh": "儿童活动",
+      "aliases": {
+        "en": [
+          "children activities"
+        ],
+        "vi": [
+          "hoạt động trẻ em",
+          "hoat dong tre em"
+        ],
+        "ko": [
+          "어린이 활동"
+        ],
+        "zh": [
+          "儿童活动"
+        ]
+      }
+    },
+    "classroom": {
+      "en": "classroom",
+      "vi": "phòng học",
+      "ko": "교실",
+      "zh": "教室",
+      "aliases": {
+        "vi": [
+          "lớp học",
+          "phòng học",
+          "phong hoc",
+          "kiểu lớp học",
+          "bố trí lớp học"
+        ],
+        "en": [
+          "classroom",
+          "classroom style",
+          "classroom seating"
+        ],
+        "ko": [
+          "교실",
+          "교실형",
+          "강의실형"
+        ],
+        "zh": [
+          "教室",
+          "课堂式",
+          "教室式"
+        ]
+      }
+    },
+    "cocktail": {
+      "en": "cocktail",
+      "vi": "Tiệc cocktail",
+      "ko": "칵테일 행사",
+      "zh": "鸡尾酒会",
+      "aliases": {
+        "en": [
+          "cocktail"
+        ],
+        "vi": [
+          "tiệc cocktail",
+          "tiec cocktail"
+        ],
+        "ko": [
+          "칵테일 행사"
+        ],
+        "zh": [
+          "鸡尾酒会"
+        ]
+      }
+    },
+    "company_vat_invoice_details": {
+      "en": "company VAT invoice",
+      "vi": "hoá đơn VAT công ty",
+      "ko": "회사 VAT 영수증",
+      "zh": "公司增值税发票",
+      "aliases": {
+        "en": [
+          "company VAT invoice",
+          "vat invoice",
+          "company invoice"
+        ],
+        "vi": [
+          "hoá đơn VAT công ty",
+          "hóa đơn đỏ",
+          "xuất hoá đơn",
+          "hoa don VAT cong ty",
+          "hoa don do",
+          "xuat hoa don"
+        ],
+        "ko": [
+          "회사 VAT 영수증",
+          "세금계산서"
+        ],
+        "zh": [
+          "公司增值税发票",
+          "增值税发票",
+          "发票"
+        ]
+      }
+    },
+    "complimentary_bottled_water": {
+      "en": "free bottled water",
+      "vi": "nước đóng chai miễn phí",
+      "ko": "무료 생수",
+      "zh": "免费瓶装水",
+      "aliases": {
+        "en": [
+          "free bottled water",
+          "free water",
+          "bottled water"
+        ],
+        "vi": [
+          "nước đóng chai miễn phí",
+          "nước suối miễn phí",
+          "nước uống miễn phí",
+          "nuoc dong chai mien phi",
+          "nuoc suoi mien phi",
+          "nuoc uong mien phi"
+        ],
+        "ko": [
+          "무료 생수",
+          "생수"
+        ],
+        "zh": [
+          "免费瓶装水",
+          "矿泉水"
+        ]
+      }
+    },
+    "complimentary_in_room": {
+      "en": "free in-room",
+      "vi": "miễn phí trong phòng",
+      "ko": "객실 내 무료",
+      "zh": "房内免费",
+      "aliases": {
+        "en": [
+          "free in-room",
+          "complimentary"
+        ],
+        "vi": [
+          "miễn phí trong phòng",
+          "miễn phí",
+          "mien phi trong phong",
+          "mien phi"
+        ],
+        "ko": [
+          "객실 내 무료",
+          "무료"
+        ],
+        "zh": [
+          "房内免费",
+          "免费"
+        ]
+      }
+    },
+    "complimentary_registered_guests": {
+      "en": "free for registered guests",
+      "vi": "miễn phí cho khách lưu trú",
+      "ko": "투숙객 무료",
+      "zh": "住客免费",
+      "aliases": {
+        "en": [
+          "free for registered guests",
+          "free parking"
+        ],
+        "vi": [
+          "miễn phí cho khách lưu trú",
+          "gửi xe miễn phí",
+          "mien phi cho khach luu tru",
+          "gui xe mien phi"
+        ],
+        "ko": [
+          "투숙객 무료",
+          "무료 주차"
+        ],
+        "zh": [
+          "住客免费",
+          "免费停车"
+        ]
+      }
+    },
+    "concierge_arrangement": {
+      "en": "Concierge Arrangement",
+      "vi": "Sắp xếp bởi Concierge",
+      "ko": "컨시어지 준비",
+      "zh": "礼宾安排",
+      "aliases": {
+        "en": [
+          "concierge arrangement"
+        ],
+        "vi": [
+          "sắp xếp bởi concierge",
+          "sap xep boi concierge"
+        ],
+        "ko": [
+          "컨시어지 준비"
+        ],
+        "zh": [
+          "礼宾安排"
+        ]
+      }
+    },
+    "concierge_assistance": {
+      "en": "concierge assistance",
+      "vi": "hỗ trợ từ Concierge",
+      "ko": "컨시어지 지원",
+      "zh": "礼宾协助",
+      "aliases": {
+        "en": [
+          "concierge assistance",
+          "concierge help"
+        ],
+        "vi": [
+          "hỗ trợ từ Concierge",
+          "concierge hỗ trợ",
+          "ho tro tu Concierge",
+          "concierge ho tro"
+        ],
+        "ko": [
+          "컨시어지 지원",
+          "컨시어지"
+        ],
+        "zh": [
+          "礼宾协助",
+          "礼宾部"
+        ]
+      }
+    },
+    "concierge_luggage_assistance": {
+      "en": "Concierge Luggage Assistance",
+      "vi": "Hỗ trợ hành lý của Concierge",
+      "ko": "컨시어지 수하물 지원",
+      "zh": "礼宾行李协助",
+      "aliases": {
+        "en": [
+          "concierge luggage assistance"
+        ],
+        "vi": [
+          "hỗ trợ hành lý của concierge",
+          "ho tro hanh ly cua concierge"
+        ],
+        "ko": [
+          "컨시어지 수하물 지원"
+        ],
+        "zh": [
+          "礼宾行李协助"
+        ]
+      }
+    },
+    "contact": {
+      "en": "Contact",
+      "vi": "Liên hệ",
+      "ko": "연락처",
+      "zh": "联系",
+      "aliases": {
+        "en": [
+          "contact",
+          "phone contact",
+          "contact details"
+        ],
+        "vi": [
+          "liên hệ",
+          "lien he",
+          "số liên hệ",
+          "liên lạc",
+          "gọi số nào"
+        ],
+        "ko": [
+          "연락처",
+          "전화번호"
+        ],
+        "zh": [
+          "联系",
+          "联系方式",
+          "联系电话"
+        ]
+      }
+    },
+    "cooking_class_1100": {
+      "en": "Cooking Class 1100",
+      "vi": "Lớp học nấu ăn 11:00",
+      "ko": "쿠킹 클래스 11:00",
+      "zh": "烹饪课 11:00",
+      "aliases": {
+        "en": [
+          "cooking class 1100"
+        ],
+        "vi": [
+          "lớp học nấu ăn 11:00",
+          "lop hoc nau an 11:00"
+        ],
+        "ko": [
+          "쿠킹 클래스 11:00"
+        ],
+        "zh": [
+          "烹饪课 11:00"
+        ]
+      }
+    },
+    "cooking_class_1400": {
+      "en": "Cooking Class 1400",
+      "vi": "Lớp học nấu ăn 14:00",
+      "ko": "쿠킹 클래스 14:00",
+      "zh": "烹饪课 14:00",
+      "aliases": {
+        "en": [
+          "cooking class 1400"
+        ],
+        "vi": [
+          "lớp học nấu ăn 14:00",
+          "lop hoc nau an 14:00"
+        ],
+        "ko": [
+          "쿠킹 클래스 14:00"
+        ],
+        "zh": [
+          "烹饪课 14:00"
+        ]
+      }
+    },
+    "cooking_class_offer": {
+      "en": "Cooking Class Offer",
+      "vi": "Cooking Class Offer",
+      "ko": "Cooking Class Offer",
+      "zh": "Cooking Class Offer",
+      "proper_name": true,
+      "aliases": {
+        "en": [
+          "cooking class offer"
+        ],
+        "vi": [
+          "cooking class offer"
+        ],
+        "ko": [
+          "Cooking Class Offer"
+        ],
+        "zh": [
+          "Cooking Class Offer"
+        ]
+      }
+    },
+    "course_address": {
+      "en": "Course Address",
+      "vi": "Địa chỉ sân",
+      "ko": "코스 주소",
+      "zh": "球场地址",
+      "aliases": {
+        "en": [
+          "course address"
+        ],
+        "vi": [
+          "địa chỉ sân",
+          "dia chi san"
+        ],
+        "ko": [
+          "코스 주소"
+        ],
+        "zh": [
+          "球场地址"
+        ]
+      }
+    },
+    "daily_access_window": {
+      "en": "daily access",
+      "vi": "khung giờ sử dụng hằng ngày",
+      "ko": "일일 이용 시간",
+      "zh": "每日使用时段",
+      "aliases": {
+        "en": [
+          "daily access",
+          "daily access window"
+        ],
+        "vi": [
+          "khung giờ sử dụng hằng ngày",
+          "khung gio su dung hang ngay"
+        ],
+        "ko": [
+          "일일 이용 시간"
+        ],
+        "zh": [
+          "每日使用时段"
+        ]
+      }
+    },
+    "daily_dinner": {
+      "en": "Daily Dinner",
+      "vi": "Bữa tối hằng ngày",
+      "ko": "매일 저녁",
+      "zh": "每日晚餐",
+      "aliases": {
+        "en": [
+          "daily dinner"
+        ],
+        "vi": [
+          "bữa tối hằng ngày",
+          "bua toi hang ngay"
+        ],
+        "ko": [
+          "매일 저녁"
+        ],
+        "zh": [
+          "每日晚餐"
+        ]
+      }
+    },
+    "daily_hours": {
+      "en": "daily",
+      "vi": "hằng ngày",
+      "ko": "매일",
+      "zh": "每日",
+      "aliases": {
+        "en": [
+          "daily",
+          "daily hours"
+        ],
+        "vi": [
+          "hằng ngày",
+          "hang ngay"
+        ],
+        "ko": [
+          "매일"
+        ],
+        "zh": [
+          "每日"
+        ]
+      }
+    },
+    "daily_lunch": {
+      "en": "Daily Lunch",
+      "vi": "Bữa trưa hằng ngày",
+      "ko": "매일 점심",
+      "zh": "每日午餐",
+      "aliases": {
+        "en": [
+          "daily lunch"
+        ],
+        "vi": [
+          "bữa trưa hằng ngày",
+          "bua trua hang ngay"
+        ],
+        "ko": [
+          "매일 점심"
+        ],
+        "zh": [
+          "每日午餐"
+        ]
+      }
+    },
+    "daily_movie_projection": {
+      "en": "Daily Movie Projection",
+      "vi": "Chiếu phim hằng ngày",
+      "ko": "매일 영화 상영",
+      "zh": "每日电影放映",
+      "aliases": {
+        "en": [
+          "daily movie projection"
+        ],
+        "vi": [
+          "chiếu phim hằng ngày",
+          "chieu phim hang ngay"
+        ],
+        "ko": [
+          "매일 영화 상영"
+        ],
+        "zh": [
+          "每日电影放映"
+        ]
+      }
+    },
+    "desk_location": {
+      "en": "desk location",
+      "vi": "vị trí quầy",
+      "ko": "데스크 위치",
+      "zh": "服务台位置",
+      "aliases": {
+        "en": [
+          "desk location",
+          "where is the desk"
+        ],
+        "vi": [
+          "vị trí quầy",
+          "quầy ở đâu",
+          "vi tri quay",
+          "quay o dau"
+        ],
+        "ko": [
+          "데스크 위치",
+          "데스크 어디"
+        ],
+        "zh": [
+          "服务台位置",
+          "服务台在哪"
+        ]
+      }
+    },
+    "dinner_hours": {
+      "en": "dinner",
+      "vi": "bữa tối",
+      "ko": "저녁",
+      "zh": "晚餐",
+      "aliases": {
+        "en": [
+          "dinner",
+          "dinner hours",
+          "dinner time"
+        ],
+        "vi": [
+          "bữa tối",
+          "bua toi",
+          "giờ ăn tối",
+          "mấy giờ ăn tối"
+        ],
+        "ko": [
+          "저녁",
+          "저녁 식사 시간"
+        ],
+        "zh": [
+          "晚餐",
+          "晚餐时间",
+          "几点吃晚餐"
+        ]
+      }
+    },
+    "early_bird_yoga": {
+      "en": "Early Bird Yoga",
+      "vi": "Yoga sáng sớm",
+      "ko": "얼리버드 요가",
+      "zh": "早鸟瑜伽",
+      "aliases": {
+        "en": [
+          "early bird yoga"
+        ],
+        "vi": [
+          "yoga sáng sớm",
+          "yoga sang som"
+        ],
+        "ko": [
+          "얼리버드 요가"
+        ],
+        "zh": [
+          "早鸟瑜伽"
+        ]
+      }
+    },
+    "early_departure_booking": {
+      "en": "Early Departure Booking",
+      "vi": "Đặt chuyến đi sớm",
+      "ko": "이른 출발 예약",
+      "zh": "早班出行预订",
+      "aliases": {
+        "en": [
+          "early departure booking"
+        ],
+        "vi": [
+          "đặt chuyến đi sớm",
+          "dat chuyen di som"
+        ],
+        "ko": [
+          "이른 출발 예약"
+        ],
+        "zh": [
+          "早班出行预订"
+        ]
+      }
+    },
+    "early_departure_booking_deadline": {
+      "en": "Early Departure Booking Deadline",
+      "vi": "Hạn đặt chuyến đi sớm",
+      "ko": "이른 출발 예약 마감",
+      "zh": "早班出行预订截止时间",
+      "aliases": {
+        "en": [
+          "early departure booking deadline"
+        ],
+        "vi": [
+          "hạn đặt chuyến đi sớm",
+          "han dat chuyen di som"
+        ],
+        "ko": [
+          "이른 출발 예약 마감"
+        ],
+        "zh": [
+          "早班出行预订截止时间"
+        ]
+      }
+    },
+    "equipment_rental": {
+      "en": "equipment rental",
+      "vi": "thuê thiết bị",
+      "ko": "장비 대여",
+      "zh": "设备租赁",
+      "aliases": {
+        "en": [
+          "equipment rental",
+          "rent a computer"
+        ],
+        "vi": [
+          "thuê thiết bị",
+          "thuê máy tính",
+          "thue thiet bi",
+          "thue may tinh"
+        ],
+        "ko": [
+          "장비 대여",
+          "컴퓨터 대여"
+        ],
+        "zh": [
+          "设备租赁",
+          "租电脑"
+        ]
+      }
+    },
+    "event_types_and_venues": {
+      "en": "event types and venues",
+      "vi": "loại sự kiện và địa điểm",
+      "ko": "행사 유형과 장소",
+      "zh": "活动类型与场地",
+      "aliases": {
+        "en": [
+          "event types and venues",
+          "events",
+          "venues"
+        ],
+        "vi": [
+          "loại sự kiện và địa điểm",
+          "tổ chức sự kiện",
+          "tiệc cưới",
+          "loai su kien va dia diem",
+          "to chuc su kien",
+          "tiec cuoi"
+        ],
+        "ko": [
+          "행사 유형과 장소",
+          "행사",
+          "연회장"
+        ],
+        "zh": [
+          "活动类型与场地",
+          "活动",
+          "场地"
+        ]
+      }
+    },
+    "exercise_equipment": {
+      "en": "Exercise Equipment",
+      "vi": "Thiết bị tập luyện",
+      "ko": "운동 장비",
+      "zh": "健身设备",
+      "aliases": {
+        "en": [
+          "exercise equipment"
+        ],
+        "vi": [
+          "thiết bị tập luyện",
+          "thiet bi tap luyen"
+        ],
+        "ko": [
+          "운동 장비"
+        ],
+        "zh": [
+          "健身设备"
+        ]
+      }
+    },
+    "extra_bed_request": {
+      "en": "Extra Bed Request",
+      "vi": "Yêu cầu giường phụ",
+      "ko": "추가 침대 요청",
+      "zh": "加床请求",
+      "aliases": {
+        "en": [
+          "extra bed request"
+        ],
+        "vi": [
+          "yêu cầu giường phụ",
+          "yeu cau giuong phu"
+        ],
+        "ko": [
+          "추가 침대 요청"
+        ],
+        "zh": [
+          "加床请求"
+        ]
+      }
+    },
+    "extra_room_items": {
+      "en": "Extra Room Items",
+      "vi": "Vật dụng bổ sung trong phòng",
+      "ko": "객실 추가 비품",
+      "zh": "客房额外用品",
+      "aliases": {
+        "en": [
+          "extra room items"
+        ],
+        "vi": [
+          "vật dụng bổ sung trong phòng",
+          "vat dung bo sung trong phong"
+        ],
+        "ko": [
+          "객실 추가 비품"
+        ],
+        "zh": [
+          "客房额外用品"
+        ]
+      }
+    },
+    "fax": {
+      "en": "Fax",
+      "vi": "Số fax",
+      "ko": "팩스",
+      "zh": "传真",
+      "aliases": {
+        "en": [
+          "fax"
+        ],
+        "vi": [
+          "số fax",
+          "so fax"
+        ],
+        "ko": [
+          "팩스"
+        ],
+        "zh": [
+          "传真"
+        ]
+      }
+    },
+    "floor_area": {
+      "en": "Floor Area",
+      "vi": "Diện tích sàn",
+      "ko": "바닥 면적",
+      "zh": "建筑面积",
+      "redundant_with_label": true,
+      "aliases": {
+        "en": [
+          "floor area"
+        ],
+        "vi": [
+          "diện tích sàn",
+          "dien tich san"
+        ],
+        "ko": [
+          "바닥 면적"
+        ],
+        "zh": [
+          "建筑面积"
+        ]
+      }
+    },
+    "fnb_hotline": {
+      "en": "Fnb Hotline",
+      "vi": "Hotline ẩm thực",
+      "ko": "식음료 핫라인",
+      "zh": "餐饮热线",
+      "aliases": {
+        "en": [
+          "fnb hotline"
+        ],
+        "vi": [
+          "hotline ẩm thực",
+          "hotline am thuc"
+        ],
+        "ko": [
+          "식음료 핫라인"
+        ],
+        "zh": [
+          "餐饮热线"
+        ]
+      }
+    },
+    "fnb_reservation": {
+      "en": "Fnb Reservation",
+      "vi": "Đặt chỗ ẩm thực",
+      "ko": "식음료 예약",
+      "zh": "餐饮预订",
+      "aliases": {
+        "en": [
+          "fnb reservation"
+        ],
+        "vi": [
+          "đặt chỗ ẩm thực",
+          "dat cho am thuc"
+        ],
+        "ko": [
+          "식음료 예약"
+        ],
+        "zh": [
+          "餐饮预订"
+        ]
+      }
+    },
+    "free_basic_coaching": {
+      "en": "Free Basic Coaching",
+      "vi": "Hướng dẫn cơ bản miễn phí",
+      "ko": "무료 기본 코칭",
+      "zh": "免费基础指导",
+      "aliases": {
+        "en": [
+          "free basic coaching"
+        ],
+        "vi": [
+          "hướng dẫn cơ bản miễn phí",
+          "huong dan co ban mien phi"
+        ],
+        "ko": [
+          "무료 기본 코칭"
+        ],
+        "zh": [
+          "免费基础指导"
+        ]
+      }
+    },
+    "friday_saturday_hours": {
+      "en": "Friday and Saturday",
+      "vi": "Thứ Sáu và Thứ Bảy",
+      "ko": "금요일 및 토요일",
+      "zh": "周五及周六",
+      "aliases": {
+        "en": [
+          "friday and saturday",
+          "friday saturday hours"
+        ],
+        "vi": [
+          "thứ sáu và thứ bảy",
+          "thu sau va thu bay"
+        ],
+        "ko": [
+          "금요일 및 토요일"
+        ],
+        "zh": [
+          "周五及周六"
+        ]
+      }
+    },
+    "from_resort_approx": {
+      "en": "From Resort Approx",
+      "vi": "Thời gian ước tính từ khu nghỉ dưỡng",
+      "ko": "리조트에서 예상 소요 시간",
+      "zh": "从度假村出发的预计时间",
+      "aliases": {
+        "en": [
+          "from resort approx"
+        ],
+        "vi": [
+          "thời gian ước tính từ khu nghỉ dưỡng",
+          "thoi gian uoc tinh tu khu nghi duong"
+        ],
+        "ko": [
+          "리조트에서 예상 소요 시간"
+        ],
+        "zh": [
+          "从度假村出发的预计时间"
+        ]
+      }
+    },
+    "front_desk_contact": {
+      "en": "Front Desk Contact",
+      "vi": "Liên hệ lễ tân",
+      "ko": "프런트 데스크 연락처",
+      "zh": "前台联系方式",
+      "aliases": {
+        "en": [
+          "front desk contact",
+          "front desk number",
+          "reception contact"
+        ],
+        "vi": [
+          "liên hệ lễ tân",
+          "lien he le tan",
+          "số lễ tân",
+          "gọi lễ tân",
+          "liên hệ quầy lễ tân"
+        ],
+        "ko": [
+          "프런트 데스크 연락처",
+          "프런트 전화",
+          "리셉션 연락처"
+        ],
+        "zh": [
+          "前台联系方式",
+          "前台电话",
+          "联系前台"
+        ]
+      }
+    },
+    "front_desk_exchange": {
+      "en": "Front Desk Exchange",
+      "vi": "Đổi tiền tại lễ tân",
+      "ko": "프런트 데스크 환전",
+      "zh": "前台兑换外币",
+      "aliases": {
+        "en": [
+          "front desk exchange"
+        ],
+        "vi": [
+          "đổi tiền tại lễ tân",
+          "doi tien tai le tan"
+        ],
+        "ko": [
+          "프런트 데스크 환전"
+        ],
+        "zh": [
+          "前台兑换外币"
+        ]
+      }
+    },
+    "general_manager_office": {
+      "en": "General Manager office",
+      "vi": "văn phòng Tổng Giám đốc",
+      "ko": "총지배인실",
+      "zh": "总经理办公室",
+      "aliases": {
+        "en": [
+          "General Manager office",
+          "general manager",
+          "gm office"
+        ],
+        "vi": [
+          "văn phòng Tổng Giám đốc",
+          "tổng giám đốc",
+          "van phong Tong Giam doc",
+          "tong giam doc"
+        ],
+        "ko": [
+          "총지배인실",
+          "총지배인"
+        ],
+        "zh": [
+          "总经理办公室",
+          "总经理"
+        ]
+      }
+    },
+    "guestroom_availability": {
+      "en": "available in all guestrooms",
+      "vi": "có trong mọi phòng",
+      "ko": "모든 객실 비치",
+      "zh": "所有客房提供",
+      "aliases": {
+        "en": [
+          "available in all guestrooms",
+          "in every room"
+        ],
+        "vi": [
+          "có trong mọi phòng",
+          "phòng nào cũng có",
+          "co trong moi phong",
+          "phong nao cung co"
+        ],
+        "ko": [
+          "모든 객실 비치",
+          "객실마다"
+        ],
+        "zh": [
+          "所有客房提供",
+          "每间客房"
+        ]
+      }
+    },
+    "healthy_drinks_snack": {
+      "en": "Healthy Drinks Snack",
+      "vi": "Đồ uống và đồ ăn nhẹ lành mạnh",
+      "ko": "건강 음료 및 간식",
+      "zh": "健康饮品和小食",
+      "aliases": {
+        "en": [
+          "healthy drinks snack"
+        ],
+        "vi": [
+          "đồ uống và đồ ăn nhẹ lành mạnh",
+          "do uong va do an nhe lanh manh"
+        ],
+        "ko": [
+          "건강 음료 및 간식"
+        ],
+        "zh": [
+          "健康饮品和小食"
+        ]
+      }
+    },
+    "heavy_typhoon_management_instructions": {
+      "en": "heavy typhoon instructions",
+      "vi": "hướng dẫn khi có bão lớn",
+      "ko": "강한 태풍 시 안내",
+      "zh": "强台风指引",
+      "aliases": {
+        "en": [
+          "heavy typhoon instructions",
+          "typhoon",
+          "storm"
+        ],
+        "vi": [
+          "hướng dẫn khi có bão lớn",
+          "bão",
+          "bão lớn",
+          "huong dan khi co bao lon",
+          "bao",
+          "bao lon"
+        ],
+        "ko": [
+          "강한 태풍 시 안내",
+          "태풍"
+        ],
+        "zh": [
+          "强台风指引",
+          "台风"
+        ]
+      }
+    },
+    "hollow_square_double_triple": {
+      "en": "Hollow Square Double Triple",
+      "vi": "Bố trí vuông rỗng đôi/ba",
+      "ko": "더블·트리플 중공형 배치",
+      "zh": "双列/三列空心方形布局",
+      "aliases": {
+        "en": [
+          "hollow square double triple"
+        ],
+        "vi": [
+          "bố trí vuông rỗng đôi/ba",
+          "bo tri vuong rong doi/ba"
+        ],
+        "ko": [
+          "더블·트리플 중공형 배치"
+        ],
+        "zh": [
+          "双列/三列空心方形布局"
+        ]
+      }
+    },
+    "hollow_square_single": {
+      "en": "Hollow Square Single",
+      "vi": "Bố trí vuông rỗng một dãy",
+      "ko": "단일 중공형 배치",
+      "zh": "单列空心方形布局",
+      "aliases": {
+        "en": [
+          "hollow square single"
+        ],
+        "vi": [
+          "bố trí vuông rỗng một dãy",
+          "bo tri vuong rong mot day"
+        ],
+        "ko": [
+          "단일 중공형 배치"
+        ],
+        "zh": [
+          "单列空心方形布局"
+        ]
+      }
+    },
+    "hours_exception": {
+      "en": "Hours Exception",
+      "vi": "Ngoại lệ về giờ hoạt động",
+      "ko": "운영 시간 예외",
+      "zh": "营业时间例外",
+      "aliases": {
+        "en": [
+          "hours exception"
+        ],
+        "vi": [
+          "ngoại lệ về giờ hoạt động",
+          "ngoai le ve gio hoat dong"
+        ],
+        "ko": [
+          "운영 시간 예외"
+        ],
+        "zh": [
+          "营业时间例外"
+        ]
+      }
+    },
+    "housekeeping_assistance": {
+      "en": "Housekeeping Assistance",
+      "vi": "Hỗ trợ bộ phận Buồng phòng",
+      "ko": "하우스키핑 지원",
+      "zh": "客房服务部协助",
+      "aliases": {
+        "en": [
+          "housekeeping assistance"
+        ],
+        "vi": [
+          "hỗ trợ bộ phận buồng phòng",
+          "ho tro bo phan buong phong"
+        ],
+        "ko": [
+          "하우스키핑 지원"
+        ],
+        "zh": [
+          "客房服务部协助"
+        ]
+      }
+    },
+    "housekeeping_contact": {
+      "en": "Housekeeping Contact",
+      "vi": "Liên hệ Buồng phòng",
+      "ko": "하우스키핑 연락처",
+      "zh": "客房服务部联系方式",
+      "aliases": {
+        "en": [
+          "housekeeping contact",
+          "housekeeping number"
+        ],
+        "vi": [
+          "liên hệ buồng phòng",
+          "lien he buong phong",
+          "số buồng phòng",
+          "gọi buồng phòng"
+        ],
+        "ko": [
+          "하우스키핑 연락처",
+          "하우스키핑 전화"
+        ],
+        "zh": [
+          "客房服务部联系方式",
+          "客房服务部电话"
+        ]
+      }
+    },
+    "housekeeping_items": {
+      "en": "Housekeeping Items",
+      "vi": "Vật dụng do Buồng phòng cung cấp",
+      "ko": "하우스키핑 제공 물품",
+      "zh": "客房服务部提供的用品",
+      "aliases": {
+        "en": [
+          "housekeeping items"
+        ],
+        "vi": [
+          "vật dụng do buồng phòng cung cấp",
+          "vat dung do buong phong cung cap"
+        ],
+        "ko": [
+          "하우스키핑 제공 물품"
+        ],
+        "zh": [
+          "客房服务部提供的用品"
+        ]
+      }
+    },
+    "in_room_yukata": {
+      "en": "in-room yukata",
+      "vi": "áo yukata trong phòng",
+      "ko": "객실 유카타",
+      "zh": "房内浴衣",
+      "aliases": {
+        "en": [
+          "in-room yukata",
+          "yukata",
+          "robe"
+        ],
+        "vi": [
+          "áo yukata trong phòng",
+          "yukata",
+          "áo choàng",
+          "ao yukata trong phong",
+          "ao choang"
+        ],
+        "ko": [
+          "객실 유카타",
+          "유카타"
+        ],
+        "zh": [
+          "房内浴衣",
+          "浴衣"
+        ]
+      }
+    },
+    "included_access": {
+      "en": "Included Access",
+      "vi": "Quyền sử dụng bao gồm",
+      "ko": "포함 이용 혜택",
+      "zh": "包含的使用权益",
+      "aliases": {
+        "en": [
+          "included access"
+        ],
+        "vi": [
+          "quyền sử dụng bao gồm",
+          "quyen su dung bao gom"
+        ],
+        "ko": [
+          "포함 이용 혜택"
+        ],
+        "zh": [
+          "包含的使用权益"
+        ]
+      }
+    },
+    "incoming_calls_opt_out": {
+      "en": "block incoming calls",
+      "vi": "chặn cuộc gọi đến",
+      "ko": "수신 전화 차단",
+      "zh": "拒接来电",
+      "aliases": {
+        "en": [
+          "block incoming calls",
+          "no incoming calls"
+        ],
+        "vi": [
+          "chặn cuộc gọi đến",
+          "không nhận cuộc gọi",
+          "chan cuoc goi den",
+          "khong nhan cuoc goi"
+        ],
+        "ko": [
+          "수신 전화 차단",
+          "전화 차단"
+        ],
+        "zh": [
+          "拒接来电",
+          "不接电话"
+        ]
+      }
+    },
+    "individual_room_control": {
+      "en": "individual room control",
+      "vi": "điều chỉnh riêng từng phòng",
+      "ko": "객실별 개별 조절",
+      "zh": "客房独立控制",
+      "aliases": {
+        "en": [
+          "individual room control",
+          "adjust temperature"
+        ],
+        "vi": [
+          "điều chỉnh riêng từng phòng",
+          "chỉnh nhiệt độ",
+          "dieu chinh rieng tung phong",
+          "chinh nhiet do"
+        ],
+        "ko": [
+          "객실별 개별 조절",
+          "온도 조절"
+        ],
+        "zh": [
+          "客房独立控制",
+          "调节温度"
+        ]
+      }
+    },
+    "information_via_concierge": {
+      "en": "information at Concierge",
+      "vi": "thông tin tại Concierge",
+      "ko": "컨시어지 안내",
+      "zh": "礼宾部提供信息",
+      "aliases": {
+        "en": [
+          "information at Concierge",
+          "ask concierge"
+        ],
+        "vi": [
+          "thông tin tại Concierge",
+          "hỏi concierge",
+          "thong tin tai Concierge",
+          "hoi concierge"
+        ],
+        "ko": [
+          "컨시어지 안내",
+          "컨시어지 문의"
+        ],
+        "zh": [
+          "礼宾部提供信息",
+          "询问礼宾部"
+        ]
+      }
+    },
+    "international_breakfast_buffet_offer": {
+      "en": "International Breakfast Buffet Offer",
+      "vi": "International Breakfast Buffet Offer",
+      "ko": "International Breakfast Buffet Offer",
+      "zh": "International Breakfast Buffet Offer",
+      "proper_name": true,
+      "aliases": {
+        "en": [
+          "international breakfast buffet offer"
+        ],
+        "vi": [
+          "international breakfast buffet offer"
+        ],
+        "ko": [
+          "International Breakfast Buffet Offer"
+        ],
+        "zh": [
+          "International Breakfast Buffet Offer"
+        ]
+      }
+    },
+    "last_appointment": {
+      "en": "Last Appointment",
+      "vi": "Lịch hẹn cuối",
+      "ko": "마지막 예약 가능 시간",
+      "zh": "最晚预约时间",
+      "aliases": {
+        "en": [
+          "last appointment"
+        ],
+        "vi": [
+          "lịch hẹn cuối",
+          "lich hen cuoi"
+        ],
+        "ko": [
+          "마지막 예약 가능 시간"
+        ],
+        "zh": [
+          "最晚预约时间"
+        ]
+      }
+    },
+    "late_checkout_after_18": {
+      "en": "Late Checkout After 18",
+      "vi": "Trả phòng sau 18:00",
+      "ko": "18:00 이후 체크아웃",
+      "zh": "18:00后退房",
+      "aliases": {
+        "en": [
+          "late checkout after 18"
+        ],
+        "vi": [
+          "trả phòng sau 18:00",
+          "tra phong sau 18:00"
+        ],
+        "ko": [
+          "18:00 이후 체크아웃"
+        ],
+        "zh": [
+          "18:00后退房"
+        ]
+      }
+    },
+    "late_checkout_policy": {
+      "en": "Late Checkout Policy",
+      "vi": "Quy định trả phòng muộn",
+      "ko": "레이트 체크아웃 정책",
+      "zh": "延迟退房政策",
+      "aliases": {
+        "en": [
+          "late checkout policy",
+          "late checkout rules",
+          "late checkout fee"
+        ],
+        "vi": [
+          "quy định trả phòng muộn",
+          "quy dinh tra phong muon",
+          "quy định trả phòng trễ",
+          "phí trả phòng muộn",
+          "xin trả phòng trễ"
+        ],
+        "ko": [
+          "레이트 체크아웃 정책",
+          "레이트 체크아웃 규정",
+          "레이트 체크아웃 요금"
+        ],
+        "zh": [
+          "延迟退房政策",
+          "延迟退房规定",
+          "延迟退房费用"
+        ]
+      }
+    },
+    "late_checkout_until_18": {
+      "en": "Late Checkout Until 18",
+      "vi": "Trả phòng muộn đến 18:00",
+      "ko": "18:00까지 레이트 체크아웃",
+      "zh": "延迟退房至18:00",
+      "aliases": {
+        "en": [
+          "late checkout until 18"
+        ],
+        "vi": [
+          "trả phòng muộn đến 18:00",
+          "tra phong muon den 18:00"
+        ],
+        "ko": [
+          "18:00까지 레이트 체크아웃"
+        ],
+        "zh": [
+          "延迟退房至18:00"
+        ]
+      }
+    },
+    "late_night_dishes": {
+      "en": "Late Night Dishes",
+      "vi": "Món ăn đêm",
+      "ko": "심야 메뉴",
+      "zh": "深夜餐食",
+      "aliases": {
+        "en": [
+          "late night dishes"
+        ],
+        "vi": [
+          "món ăn đêm",
+          "mon an dem"
+        ],
+        "ko": [
+          "심야 메뉴"
+        ],
+        "zh": [
+          "深夜餐食"
+        ]
+      }
+    },
+    "lifeguard_hours": {
+      "en": "Lifeguard Hours",
+      "vi": "Giờ trực cứu hộ",
+      "ko": "인명 구조원 근무 시간",
+      "zh": "救生员值班时间",
+      "aliases": {
+        "en": [
+          "lifeguard hours"
+        ],
+        "vi": [
+          "giờ trực cứu hộ",
+          "gio truc cuu ho"
+        ],
+        "ko": [
+          "인명 구조원 근무 시간"
+        ],
+        "zh": [
+          "救生员值班时间"
+        ]
+      }
+    },
+    "long_distance_call_charge": {
+      "en": "long-distance call charge",
+      "vi": "phí gọi đường dài",
+      "ko": "장거리 전화 요금",
+      "zh": "长途电话费",
+      "aliases": {
+        "en": [
+          "long-distance call charge",
+          "long distance call"
+        ],
+        "vi": [
+          "phí gọi đường dài",
+          "gọi đường dài",
+          "phi goi duong dai",
+          "goi duong dai"
+        ],
+        "ko": [
+          "장거리 전화 요금",
+          "장거리 전화"
+        ],
+        "zh": [
+          "长途电话费",
+          "长途电话"
+        ]
+      }
+    },
+    "lost_airline_luggage": {
+      "en": "Lost Airline Luggage",
+      "vi": "Hành lý thất lạc trên chuyến bay",
+      "ko": "항공 수하물 분실 지원",
+      "zh": "航班行李遗失",
+      "aliases": {
+        "en": [
+          "lost airline luggage"
+        ],
+        "vi": [
+          "hành lý thất lạc trên chuyến bay",
+          "hanh ly that lac tren chuyen bay"
+        ],
+        "ko": [
+          "항공 수하물 분실 지원"
+        ],
+        "zh": [
+          "航班行李遗失"
+        ]
+      }
+    },
+    "mailing_and_shipping": {
+      "en": "mailing and shipping",
+      "vi": "gửi thư và hàng",
+      "ko": "우편 및 배송",
+      "zh": "邮寄与运送",
+      "aliases": {
+        "en": [
+          "mailing and shipping",
+          "send a parcel",
+          "post a letter"
+        ],
+        "vi": [
+          "gửi thư và hàng",
+          "gửi bưu kiện",
+          "gửi thư",
+          "gui thu va hang",
+          "gui buu kien",
+          "gui thu"
+        ],
+        "ko": [
+          "우편 및 배송",
+          "소포 발송"
+        ],
+        "zh": [
+          "邮寄与运送",
+          "寄包裹"
+        ]
+      }
+    },
+    "main_phone": {
+      "en": "Main Phone",
+      "vi": "Số điện thoại chính",
+      "ko": "대표 전화",
+      "zh": "主要电话",
+      "aliases": {
+        "en": [
+          "main phone"
+        ],
+        "vi": [
+          "số điện thoại chính",
+          "so dien thoai chinh"
+        ],
+        "ko": [
+          "대표 전화"
+        ],
+        "zh": [
+          "主要电话"
+        ]
+      }
+    },
+    "main_property": {
+      "en": "Main Property",
+      "vi": "Khu nghỉ dưỡng chính",
+      "ko": "주요 리조트",
+      "zh": "主要度假村",
+      "aliases": {
+        "en": [
+          "main property"
+        ],
+        "vi": [
+          "khu nghỉ dưỡng chính",
+          "khu nghi duong chinh"
+        ],
+        "ko": [
+          "주요 리조트"
+        ],
+        "zh": [
+          "主要度假村"
+        ]
+      }
+    },
+    "max_occupancy": {
+      "en": "Max Occupancy",
+      "vi": "Sức chứa tối đa",
+      "ko": "최대 수용 인원",
+      "zh": "最大容纳人数",
+      "aliases": {
+        "en": [
+          "max occupancy"
+        ],
+        "vi": [
+          "sức chứa tối đa",
+          "suc chua toi da"
+        ],
+        "ko": [
+          "최대 수용 인원"
+        ],
+        "zh": [
+          "最大容纳人数"
+        ]
+      }
+    },
+    "maximum_guests": {
+      "en": "maximum guests",
+      "vi": "số khách tối đa",
+      "ko": "최대 인원",
+      "zh": "最多容纳人数",
+      "aliases": {
+        "en": [
+          "maximum guests",
+          "max capacity",
+          "how many guests"
+        ],
+        "vi": [
+          "số khách tối đa",
+          "tối đa bao nhiêu khách",
+          "sức chứa tối đa",
+          "so khach toi da",
+          "toi da bao nhieu khach",
+          "suc chua toi da"
+        ],
+        "ko": [
+          "최대 인원",
+          "최대 수용"
+        ],
+        "zh": [
+          "最多容纳人数",
+          "最多多少人"
+        ]
+      }
+    },
+    "medical_or_operator": {
+      "en": "Medical Or Operator",
+      "vi": "Số Trung tâm Y tế hoặc tổng đài",
+      "ko": "의료 센터 또는 교환원 번호",
+      "zh": "医疗中心或总机号码",
+      "aliases": {
+        "en": [
+          "medical or operator"
+        ],
+        "vi": [
+          "số trung tâm y tế hoặc tổng đài",
+          "so trung tam y te hoac tong dai"
+        ],
+        "ko": [
+          "의료 센터 또는 교환원 번호"
+        ],
+        "zh": [
+          "医疗中心或总机号码"
+        ]
+      }
+    },
+    "minibar_availability": {
+      "en": "Minibar Availability",
+      "vi": "Minibar trong phòng",
+      "ko": "객실 미니바 이용",
+      "zh": "客房迷你吧",
+      "aliases": {
+        "en": [
+          "minibar availability"
+        ],
+        "vi": [
+          "minibar trong phòng",
+          "minibar trong phong"
+        ],
+        "ko": [
+          "객실 미니바 이용"
+        ],
+        "zh": [
+          "客房迷你吧"
+        ]
+      }
+    },
+    "night_swimming": {
+      "en": "Night Swimming",
+      "vi": "Bơi ban đêm",
+      "ko": "야간 수영",
+      "zh": "夜间游泳",
+      "aliases": {
+        "en": [
+          "night swimming"
+        ],
+        "vi": [
+          "bơi ban đêm",
+          "boi ban dem"
+        ],
+        "ko": [
+          "야간 수영"
+        ],
+        "zh": [
+          "夜间游泳"
+        ]
+      }
+    },
+    "occupancy_policy": {
+      "en": "Occupancy Policy",
+      "vi": "Quy định số khách",
+      "ko": "투숙 인원 정책",
+      "zh": "入住人数规定",
+      "aliases": {
+        "en": [
+          "occupancy policy"
+        ],
+        "vi": [
+          "quy định số khách",
+          "quy dinh so khach"
+        ],
+        "ko": [
+          "투숙 인원 정책"
+        ],
+        "zh": [
+          "入住人数规定"
+        ]
+      }
+    },
+    "office_address": {
+      "en": "Office Address",
+      "vi": "Địa chỉ văn phòng",
+      "ko": "사무실 주소",
+      "zh": "办公室地址",
+      "aliases": {
+        "en": [
+          "office address"
+        ],
+        "vi": [
+          "địa chỉ văn phòng",
+          "dia chi van phong"
+        ],
+        "ko": [
+          "사무실 주소"
+        ],
+        "zh": [
+          "办公室地址"
+        ]
+      }
+    },
+    "operating_hours": {
+      "en": "operating hours",
+      "vi": "giờ hoạt động",
+      "ko": "운영 시간",
+      "zh": "营业时段",
+      "aliases": {
+        "en": [
+          "operating hours",
+          "hours",
+          "opening hours",
+          "business hours",
+          "when open"
+        ],
+        "vi": [
+          "giờ hoạt động",
+          "gio hoat dong",
+          "giờ mở cửa",
+          "mấy giờ mở cửa",
+          "mấy giờ đóng cửa",
+          "thời gian hoạt động"
+        ],
+        "ko": [
+          "운영 시간",
+          "영업시간",
+          "몇 시에 열어요",
+          "몇 시에 닫아요"
+        ],
+        "zh": [
+          "营业时段",
+          "营业时间",
+          "几点开门",
+          "几点关门",
+          "开放时间"
+        ]
+      }
+    },
+    "operator_contact": {
+      "en": "Operator Contact",
+      "vi": "Liên hệ tổng đài",
+      "ko": "교환원 연락처",
+      "zh": "总机联系方式",
+      "aliases": {
+        "en": [
+          "operator contact"
+        ],
+        "vi": [
+          "liên hệ tổng đài",
+          "lien he tong dai"
+        ],
+        "ko": [
+          "교환원 연락처"
+        ],
+        "zh": [
+          "总机联系方式"
+        ]
+      }
+    },
+    "operator_request": {
+      "en": "Operator Request",
+      "vi": "Yêu cầu tổng đài",
+      "ko": "교환원 요청",
+      "zh": "总机服务请求",
+      "aliases": {
+        "en": [
+          "operator request"
+        ],
+        "vi": [
+          "yêu cầu tổng đài",
+          "yeu cau tong dai"
+        ],
+        "ko": [
+          "교환원 요청"
+        ],
+        "zh": [
+          "总机服务请求"
+        ]
+      }
+    },
+    "outside_food_policy": {
+      "en": "Outside Food Policy",
+      "vi": "Quy định về đồ ăn bên ngoài",
+      "ko": "외부 음식 반입 정책",
+      "zh": "外带食品规定",
+      "aliases": {
+        "en": [
+          "outside food policy"
+        ],
+        "vi": [
+          "quy định về đồ ăn bên ngoài",
+          "quy dinh ve do an ben ngoai"
+        ],
+        "ko": [
+          "외부 음식 반입 정책"
+        ],
+        "zh": [
+          "外带食品规定"
+        ]
+      }
+    },
+    "personal_cheques_not_accepted": {
+      "en": "personal cheques not accepted",
+      "vi": "không nhận séc cá nhân",
+      "ko": "개인 수표 불가",
+      "zh": "不接受个人支票",
+      "aliases": {
+        "en": [
+          "personal cheques not accepted",
+          "cheque",
+          "check payment"
+        ],
+        "vi": [
+          "không nhận séc cá nhân",
+          "séc",
+          "thanh toán bằng séc",
+          "khong nhan sec ca nhan",
+          "sec",
+          "thanh toan bang sec"
+        ],
+        "ko": [
+          "개인 수표 불가",
+          "수표"
+        ],
+        "zh": [
+          "不接受个人支票",
+          "支票"
+        ]
+      }
+    },
+    "pet_prohibition": {
+      "en": "Pet Prohibition",
+      "vi": "Quy định không mang vật nuôi",
+      "ko": "반려동물 출입 금지",
+      "zh": "禁止携带宠物",
+      "aliases": {
+        "en": [
+          "pet prohibition"
+        ],
+        "vi": [
+          "quy định không mang vật nuôi",
+          "quy dinh khong mang vat nuoi"
+        ],
+        "ko": [
+          "반려동물 출입 금지"
+        ],
+        "zh": [
+          "禁止携带宠物"
+        ]
+      }
+    },
+    "pickup_locations": {
+      "en": "pickup locations",
+      "vi": "nơi nhận",
+      "ko": "수령 장소",
+      "zh": "领取地点",
+      "aliases": {
+        "en": [
+          "pickup locations",
+          "where to get"
+        ],
+        "vi": [
+          "nơi nhận",
+          "lấy ở đâu",
+          "noi nhan",
+          "lay o dau"
+        ],
+        "ko": [
+          "수령 장소",
+          "어디서 받나요"
+        ],
+        "zh": [
+          "领取地点",
+          "在哪里领"
+        ]
+      }
+    },
+    "primary_cuisine": {
+      "en": "Primary Cuisine",
+      "vi": "Ẩm thực chính",
+      "ko": "대표 요리",
+      "zh": "主要菜系",
+      "aliases": {
+        "en": [
+          "primary cuisine"
+        ],
+        "vi": [
+          "ẩm thực chính",
+          "am thuc chinh"
+        ],
+        "ko": [
+          "대표 요리"
+        ],
+        "zh": [
+          "主要菜系"
+        ]
+      }
+    },
+    "privacy_sign": {
+      "en": "privacy sign",
+      "vi": "biển xin đừng làm phiền",
+      "ko": "방해 금지 표지",
+      "zh": "请勿打扰牌",
+      "aliases": {
+        "en": [
+          "privacy sign",
+          "do not disturb sign",
+          "dnd"
+        ],
+        "vi": [
+          "biển xin đừng làm phiền",
+          "đừng làm phiền",
+          "biển dnd",
+          "bien xin dung lam phien",
+          "dung lam phien",
+          "bien dnd"
+        ],
+        "ko": [
+          "방해 금지 표지",
+          "방해 금지"
+        ],
+        "zh": [
+          "请勿打扰牌",
+          "请勿打扰"
+        ]
+      }
+    },
+    "private_pool_and_modern_amenities": {
+      "en": "private pool and modern amenities",
+      "vi": "hồ bơi riêng và tiện nghi hiện đại",
+      "ko": "전용 수영장과 현대식 시설",
+      "zh": "私人泳池与现代设施",
+      "aliases": {
+        "en": [
+          "private pool and modern amenities",
+          "private pool"
+        ],
+        "vi": [
+          "hồ bơi riêng và tiện nghi hiện đại",
+          "hồ bơi riêng",
+          "ho boi rieng va tien nghi hien dai",
+          "ho boi rieng"
+        ],
+        "ko": [
+          "전용 수영장과 현대식 시설",
+          "전용 수영장"
+        ],
+        "zh": [
+          "私人泳池与现代设施",
+          "私人泳池"
+        ]
+      }
+    },
+    "private_pool_villas": {
+      "en": "Private Pool Villas",
+      "vi": "Số biệt thự có hồ bơi riêng",
+      "ko": "프라이빗 풀 빌라 수",
+      "zh": "私人泳池别墅数量",
+      "aliases": {
+        "en": [
+          "private pool villas"
+        ],
+        "vi": [
+          "số biệt thự có hồ bơi riêng",
+          "so biet thu co ho boi rieng"
+        ],
+        "ko": [
+          "프라이빗 풀 빌라 수"
+        ],
+        "zh": [
+          "私人泳池别墅数量"
+        ]
+      }
+    },
+    "purchase_location": {
+      "en": "where to buy",
+      "vi": "nơi mua",
+      "ko": "구매 장소",
+      "zh": "购买地点",
+      "aliases": {
+        "en": [
+          "where to buy",
+          "buy stamps"
+        ],
+        "vi": [
+          "nơi mua",
+          "mua tem",
+          "noi mua"
+        ],
+        "ko": [
+          "구매 장소",
+          "우표 구매"
+        ],
+        "zh": [
+          "购买地点",
+          "买邮票"
+        ]
+      }
+    },
+    "regular_hours": {
+      "en": "regular hours",
+      "vi": "giờ thông thường",
+      "ko": "일반 운영 시간",
+      "zh": "常规时段",
+      "aliases": {
+        "en": [
+          "regular hours"
+        ],
+        "vi": [
+          "giờ thông thường",
+          "gio thong thuong"
+        ],
+        "ko": [
+          "일반 운영 시간"
+        ],
+        "zh": [
+          "常规时段"
+        ]
+      }
+    },
+    "relaxing_yoga": {
+      "en": "Relaxing Yoga",
+      "vi": "Yoga thư giãn",
+      "ko": "릴랙싱 요가",
+      "zh": "放松瑜伽",
+      "aliases": {
+        "en": [
+          "relaxing yoga"
+        ],
+        "vi": [
+          "yoga thư giãn",
+          "yoga thu gian"
+        ],
+        "ko": [
+          "릴랙싱 요가"
+        ],
+        "zh": [
+          "放松瑜伽"
+        ]
+      }
+    },
+    "rental_activities": {
+      "en": "rental activities",
+      "vi": "hoạt động cho thuê",
+      "ko": "대여 활동",
+      "zh": "租赁活动",
+      "aliases": {
+        "en": [
+          "rental activities",
+          "water sports",
+          "kayak"
+        ],
+        "vi": [
+          "hoạt động cho thuê",
+          "thể thao dưới nước",
+          "chèo thuyền kayak",
+          "hoat dong cho thue",
+          "the thao duoi nuoc",
+          "cheo thuyen kayak"
+        ],
+        "ko": [
+          "대여 활동",
+          "수상 스포츠"
+        ],
+        "zh": [
+          "租赁活动",
+          "水上运动"
+        ]
+      }
+    },
+    "room_area": {
+      "en": "Room Area",
+      "vi": "Diện tích phòng",
+      "ko": "객실 면적",
+      "zh": "客房面积",
+      "redundant_with_label": true,
+      "aliases": {
+        "en": [
+          "room area"
+        ],
+        "vi": [
+          "diện tích phòng",
+          "dien tich phong"
+        ],
+        "ko": [
+          "객실 면적"
+        ],
+        "zh": [
+          "客房面积"
+        ]
+      }
+    },
+    "room_delivery": {
+      "en": "Room Delivery",
+      "vi": "Giao món đến phòng",
+      "ko": "객실 배달",
+      "zh": "客房送餐",
+      "aliases": {
+        "en": [
+          "room delivery"
+        ],
+        "vi": [
+          "giao món đến phòng",
+          "giao mon den phong"
+        ],
+        "ko": [
+          "객실 배달"
+        ],
+        "zh": [
+          "客房送餐"
+        ]
+      }
+    },
+    "room_double_lock_security": {
+      "en": "double-lock security",
+      "vi": "khoá kép an toàn",
+      "ko": "이중 잠금 보안",
+      "zh": "双重门锁安全",
+      "aliases": {
+        "en": [
+          "double-lock security",
+          "double lock"
+        ],
+        "vi": [
+          "khoá kép an toàn",
+          "khóa kép",
+          "khoá cửa",
+          "khoa kep an toan",
+          "khoa kep",
+          "khoa cua"
+        ],
+        "ko": [
+          "이중 잠금 보안",
+          "이중 잠금"
+        ],
+        "zh": [
+          "双重门锁安全",
+          "双重锁"
+        ]
+      }
+    },
+    "room_reservation": {
+      "en": "Room Reservation",
+      "vi": "Đặt phòng",
+      "ko": "객실 예약",
+      "zh": "客房预订",
+      "aliases": {
+        "en": [
+          "room reservation"
+        ],
+        "vi": [
+          "đặt phòng",
+          "dat phong"
+        ],
+        "ko": [
+          "객실 예약"
+        ],
+        "zh": [
+          "客房预订"
+        ]
+      }
+    },
+    "room_service_contact": {
+      "en": "Room Service Contact",
+      "vi": "Liên hệ dịch vụ phòng",
+      "ko": "룸서비스 연락처",
+      "zh": "客房送餐服务联系方式",
+      "aliases": {
+        "en": [
+          "room service contact",
+          "room service number"
+        ],
+        "vi": [
+          "liên hệ dịch vụ phòng",
+          "lien he dich vu phong",
+          "số room service",
+          "gọi dịch vụ phòng"
+        ],
+        "ko": [
+          "룸서비스 연락처",
+          "룸서비스 전화"
+        ],
+        "zh": [
+          "客房送餐服务联系方式",
+          "客房送餐电话"
+        ]
+      }
+    },
+    "room_service_reservation_desk": {
+      "en": "Room Service Reservation Desk",
+      "vi": "Quầy đặt dịch vụ phòng",
+      "ko": "룸서비스 예약 데스크",
+      "zh": "客房送餐预订台",
+      "aliases": {
+        "en": [
+          "room service reservation desk"
+        ],
+        "vi": [
+          "quầy đặt dịch vụ phòng",
+          "quay dat dich vu phong"
+        ],
+        "ko": [
+          "룸서비스 예약 데스크"
+        ],
+        "zh": [
+          "客房送餐预订台"
+        ]
+      }
+    },
+    "rooms_and_suites": {
+      "en": "Rooms And Suites",
+      "vi": "Phòng và suite",
+      "ko": "객실 및 스위트",
+      "zh": "客房和套房",
+      "aliases": {
+        "en": [
+          "rooms and suites"
+        ],
+        "vi": [
+          "phòng và suite",
+          "phong va suite"
+        ],
+        "ko": [
+          "객실 및 스위트"
+        ],
+        "zh": [
+          "客房和套房"
+        ]
+      }
+    },
+    "sales_department_contact": {
+      "en": "via Sales Department",
+      "vi": "qua Phòng Kinh doanh",
+      "ko": "영업부 문의",
+      "zh": "通过销售部",
+      "aliases": {
+        "en": [
+          "via Sales Department",
+          "sales department"
+        ],
+        "vi": [
+          "qua Phòng Kinh doanh",
+          "phòng kinh doanh",
+          "qua Phong Kinh doanh",
+          "phong kinh doanh"
+        ],
+        "ko": [
+          "영업부 문의",
+          "영업부"
+        ],
+        "zh": [
+          "通过销售部",
+          "销售部"
+        ]
+      }
+    },
+    "sales_office": {
+      "en": "Sales Office",
+      "vi": "Văn phòng kinh doanh",
+      "ko": "영업 사무소",
+      "zh": "销售办公室",
+      "aliases": {
+        "en": [
+          "sales office"
+        ],
+        "vi": [
+          "văn phòng kinh doanh",
+          "van phong kinh doanh"
+        ],
+        "ko": [
+          "영업 사무소"
+        ],
+        "zh": [
+          "销售办公室"
+        ]
+      }
+    },
+    "sales_phone_1": {
+      "en": "Sales Phone 1",
+      "vi": "Số điện thoại kinh doanh",
+      "ko": "영업 전화",
+      "zh": "销售电话",
+      "aliases": {
+        "en": [
+          "sales phone 1"
+        ],
+        "vi": [
+          "số điện thoại kinh doanh",
+          "so dien thoai kinh doanh"
+        ],
+        "ko": [
+          "영업 전화"
+        ],
+        "zh": [
+          "销售电话"
+        ]
+      }
+    },
+    "salon_location": {
+      "en": "salon location",
+      "vi": "vị trí salon",
+      "ko": "살롱 위치",
+      "zh": "沙龙位置",
+      "aliases": {
+        "en": [
+          "salon location",
+          "nail salon"
+        ],
+        "vi": [
+          "vị trí salon",
+          "làm móng",
+          "tiệm nail",
+          "vi tri salon",
+          "lam mong",
+          "tiem nail"
+        ],
+        "ko": [
+          "살롱 위치",
+          "네일 살롱"
+        ],
+        "zh": [
+          "沙龙位置",
+          "美甲"
+        ]
+      }
+    },
+    "seafood_steak_buffet_dinner": {
+      "en": "Seafood Steak Buffet Dinner",
+      "vi": "Bữa tối buffet hải sản và bít tết",
+      "ko": "해산물·스테이크 디너 뷔페",
+      "zh": "海鲜牛排自助晚餐",
+      "aliases": {
+        "en": [
+          "seafood steak buffet dinner"
+        ],
+        "vi": [
+          "bữa tối buffet hải sản và bít tết",
+          "bua toi buffet hai san va bit tet"
+        ],
+        "ko": [
+          "해산물·스테이크 디너 뷔페"
+        ],
+        "zh": [
+          "海鲜牛排自助晚餐"
+        ]
+      }
+    },
+    "seafood_steak_buffet_offer": {
+      "en": "Seafood Steak Buffet Offer",
+      "vi": "Seafood Steak Buffet Offer",
+      "ko": "Seafood Steak Buffet Offer",
+      "zh": "Seafood Steak Buffet Offer",
+      "proper_name": true,
+      "aliases": {
+        "en": [
+          "seafood steak buffet offer"
+        ],
+        "vi": [
+          "seafood steak buffet offer"
+        ],
+        "ko": [
+          "Seafood Steak Buffet Offer"
+        ],
+        "zh": [
+          "Seafood Steak Buffet Offer"
+        ]
+      }
+    },
+    "secondary_phone": {
+      "en": "Secondary Phone",
+      "vi": "Số điện thoại phụ",
+      "ko": "보조 전화",
+      "zh": "备用电话",
+      "aliases": {
+        "en": [
+          "secondary phone"
+        ],
+        "vi": [
+          "số điện thoại phụ",
+          "so dien thoai phu"
+        ],
+        "ko": [
+          "보조 전화"
+        ],
+        "zh": [
+          "备用电话"
+        ]
+      }
+    },
+    "smart_casual_attire": {
+      "en": "smart casual attire",
+      "vi": "trang phục lịch sự",
+      "ko": "스마트 캐주얼 복장",
+      "zh": "商务休闲着装",
+      "aliases": {
+        "en": [
+          "smart casual attire",
+          "dress code"
+        ],
+        "vi": [
+          "trang phục lịch sự",
+          "quy định trang phục",
+          "mặc gì",
+          "trang phuc lich su",
+          "quy dinh trang phuc",
+          "mac gi"
+        ],
+        "ko": [
+          "스마트 캐주얼 복장",
+          "복장 규정"
+        ],
+        "zh": [
+          "商务休闲着装",
+          "着装要求"
+        ]
+      }
+    },
+    "sound_therapy_ritual": {
+      "en": "Sound Therapy Ritual",
+      "vi": "Nghi thức trị liệu âm thanh",
+      "ko": "사운드 테라피 프로그램",
+      "zh": "声音疗愈仪式",
+      "aliases": {
+        "en": [
+          "sound therapy ritual"
+        ],
+        "vi": [
+          "nghi thức trị liệu âm thanh",
+          "nghi thuc tri lieu am thanh"
+        ],
+        "ko": [
+          "사운드 테라피 프로그램"
+        ],
+        "zh": [
+          "声音疗愈仪式"
+        ]
+      }
+    },
+    "spa_reception": {
+      "en": "Spa Reception",
+      "vi": "Lễ tân Spa",
+      "ko": "스파 리셉션",
+      "zh": "水疗前台",
+      "aliases": {
+        "en": [
+          "spa reception"
+        ],
+        "vi": [
+          "lễ tân spa",
+          "le tan spa"
+        ],
+        "ko": [
+          "스파 리셉션"
+        ],
+        "zh": [
+          "水疗前台"
+        ]
+      }
+    },
+    "staffed_hours": {
+      "en": "staffed hours",
+      "vi": "giờ có nhân viên trực",
+      "ko": "직원 상주 시간",
+      "zh": "值班时段",
+      "aliases": {
+        "en": [
+          "staffed hours"
+        ],
+        "vi": [
+          "giờ có nhân viên trực",
+          "gio co nhan vien truc"
+        ],
+        "ko": [
+          "직원 상주 시간"
+        ],
+        "zh": [
+          "值班时段"
+        ]
+      }
+    },
+    "standard_supply_frequency": {
+      "en": "Standard Supply Frequency",
+      "vi": "Tần số điện tiêu chuẩn",
+      "ko": "표준 전원 주파수",
+      "zh": "标准供电频率",
+      "aliases": {
+        "en": [
+          "standard supply frequency"
+        ],
+        "vi": [
+          "tần số điện tiêu chuẩn",
+          "tan so dien tieu chuan"
+        ],
+        "ko": [
+          "표준 전원 주파수"
+        ],
+        "zh": [
+          "标准供电频率"
+        ]
+      }
+    },
+    "standard_supply_voltage": {
+      "en": "Standard Supply Voltage",
+      "vi": "Điện áp tiêu chuẩn",
+      "ko": "표준 전원 전압",
+      "zh": "标准供电电压",
+      "aliases": {
+        "en": [
+          "standard supply voltage"
+        ],
+        "vi": [
+          "điện áp tiêu chuẩn",
+          "dien ap tieu chuan"
+        ],
+        "ko": [
+          "표준 전원 전압"
+        ],
+        "zh": [
+          "标准供电电压"
+        ]
+      }
+    },
+    "swimwear_areas": {
+      "en": "where swimwear is allowed",
+      "vi": "nơi được mặc đồ bơi",
+      "ko": "수영복 착용 구역",
+      "zh": "泳装着装区域",
+      "aliases": {
+        "en": [
+          "where swimwear is allowed",
+          "swimwear",
+          "bathing suit"
+        ],
+        "vi": [
+          "nơi được mặc đồ bơi",
+          "đồ bơi",
+          "noi duoc mac do boi",
+          "do boi"
+        ],
+        "ko": [
+          "수영복 착용 구역",
+          "수영복"
+        ],
+        "zh": [
+          "泳装着装区域",
+          "泳衣"
+        ]
+      }
+    },
+    "tap_water_treatment": {
+      "en": "tap water treatment",
+      "vi": "xử lý nước máy",
+      "ko": "수돗물 처리",
+      "zh": "自来水处理",
+      "aliases": {
+        "en": [
+          "tap water treatment",
+          "tap water",
+          "is the water safe"
+        ],
+        "vi": [
+          "xử lý nước máy",
+          "nước máy",
+          "uống nước máy",
+          "xu ly nuoc may",
+          "nuoc may",
+          "uong nuoc may"
+        ],
+        "ko": [
+          "수돗물 처리",
+          "수돗물"
+        ],
+        "zh": [
+          "自来水处理",
+          "自来水"
+        ]
+      }
+    },
+    "taxi_availability": {
+      "en": "taxi availability",
+      "vi": "thời gian có taxi",
+      "ko": "택시 이용 시간",
+      "zh": "出租车服务时段",
+      "aliases": {
+        "en": [
+          "taxi availability"
+        ],
+        "vi": [
+          "thời gian có taxi",
+          "thoi gian co taxi"
+        ],
+        "ko": [
+          "택시 이용 시간"
+        ],
+        "zh": [
+          "出租车服务时段"
+        ]
+      }
+    },
+    "theatre": {
+      "en": "theatre",
+      "vi": "nhà hát",
+      "ko": "극장식",
+      "zh": "剧院式",
+      "aliases": {
+        "en": [
+          "theatre",
+          "theater style",
+          "theatre seating"
+        ],
+        "vi": [
+          "nhà hát",
+          "nha hat",
+          "kiểu rạp hát",
+          "bố trí nhà hát"
+        ],
+        "ko": [
+          "극장식",
+          "극장형",
+          "극장식 배치"
+        ],
+        "zh": [
+          "剧院式",
+          "剧院式摆台"
+        ]
+      }
+    },
+    "tour_desk_contact": {
+      "en": "Tour Desk Contact",
+      "vi": "Liên hệ Tour Desk",
+      "ko": "투어 데스크 연락처",
+      "zh": "旅游服务台联系方式",
+      "aliases": {
+        "en": [
+          "tour desk contact"
+        ],
+        "vi": [
+          "liên hệ tour desk",
+          "lien he tour desk"
+        ],
+        "ko": [
+          "투어 데스크 연락처"
+        ],
+        "zh": [
+          "旅游服务台联系方式"
+        ]
+      }
+    },
+    "treatment_categories": {
+      "en": "treatment categories",
+      "vi": "các loại liệu trình",
+      "ko": "트리트먼트 종류",
+      "zh": "护理项目类别",
+      "aliases": {
+        "en": [
+          "treatment categories",
+          "spa treatments",
+          "massage types"
+        ],
+        "vi": [
+          "các loại liệu trình",
+          "liệu trình spa",
+          "các loại massage",
+          "cac loai lieu trinh",
+          "lieu trinh spa",
+          "cac loai massage"
+        ],
+        "ko": [
+          "트리트먼트 종류",
+          "스파 트리트먼트"
+        ],
+        "zh": [
+          "护理项目类别",
+          "水疗项目"
+        ]
+      }
+    },
+    "u_shape": {
+      "en": "U-shape",
+      "vi": "chữ U",
+      "ko": "U자형",
+      "zh": "U形",
+      "aliases": {
+        "en": [
+          "u-shape",
+          "u shape",
+          "u-shaped seating"
+        ],
+        "vi": [
+          "chữ u",
+          "chu u",
+          "kiểu chữ u",
+          "bố trí chữ u"
+        ],
+        "ko": [
+          "U자형",
+          "U자 배치"
+        ],
+        "zh": [
+          "U形",
+          "U形摆台",
+          "U字形"
+        ]
+      }
+    },
+    "u_shape_double_triple": {
+      "en": "U-shape double/triple",
+      "vi": "chữ U đôi/ba",
+      "ko": "U자형 2/3열",
+      "zh": "双/三人U形",
+      "aliases": {
+        "en": [
+          "u-shape double/triple",
+          "u shape double triple"
+        ],
+        "vi": [
+          "chữ u đôi/ba",
+          "chu u doi/ba"
+        ],
+        "ko": [
+          "U자형 2/3열"
+        ],
+        "zh": [
+          "双/三人U形"
+        ]
+      }
+    },
+    "u_shape_single": {
+      "en": "U-shape single",
+      "vi": "chữ U đơn",
+      "ko": "U자형 1열",
+      "zh": "单人U形",
+      "aliases": {
+        "en": [
+          "u-shape single",
+          "u shape single"
+        ],
+        "vi": [
+          "chữ u đơn",
+          "chu u don"
+        ],
+        "ko": [
+          "U자형 1열"
+        ],
+        "zh": [
+          "单人U形"
+        ]
+      }
+    },
+    "vehicle_item_liability": {
+      "en": "items left in vehicles",
+      "vi": "đồ để trong xe",
+      "ko": "차량 내 물품 책임",
+      "zh": "车内物品责任",
+      "aliases": {
+        "en": [
+          "items left in vehicles",
+          "left in car"
+        ],
+        "vi": [
+          "đồ để trong xe",
+          "để đồ trong xe",
+          "do de trong xe",
+          "de do trong xe"
+        ],
+        "ko": [
+          "차량 내 물품 책임",
+          "차량 물품"
+        ],
+        "zh": [
+          "车内物品责任",
+          "车内物品"
+        ]
+      }
+    },
+    "vietnamese_copper_tray_offer": {
+      "en": "Vietnamese Copper Tray Offer",
+      "vi": "Vietnamese Copper Tray Offer",
+      "ko": "Vietnamese Copper Tray Offer",
+      "zh": "Vietnamese Copper Tray Offer",
+      "proper_name": true,
+      "aliases": {
+        "en": [
+          "vietnamese copper tray offer"
+        ],
+        "vi": [
+          "vietnamese copper tray offer"
+        ],
+        "ko": [
+          "Vietnamese Copper Tray Offer"
+        ],
+        "zh": [
+          "Vietnamese Copper Tray Offer"
+        ]
+      }
+    },
+    "wifi_availability": {
+      "en": "Wifi Availability",
+      "vi": "Khả dụng Wi-Fi",
+      "ko": "Wi-Fi 이용 가능 여부",
+      "zh": "Wi-Fi 可用情况",
+      "aliases": {
+        "en": [
+          "wifi availability"
+        ],
+        "vi": [
+          "khả dụng wi-fi",
+          "kha dung wi-fi"
+        ],
+        "ko": [
+          "Wi-Fi 이용 가능 여부"
+        ],
+        "zh": [
+          "Wi-Fi 可用情况"
+        ]
+      }
+    }
+  },
+  "fact_types": {
+    "opening_hours": {
+      "en": "Opening hours",
+      "vi": "Giờ hoạt động",
+      "ko": "운영 시간",
+      "zh": "营业时间",
+      "aliases": {
+        "en": [
+          "hours",
+          "opening time",
+          "closing time",
+          "business hours",
+          "when is it open",
+          "opening hours"
+        ],
+        "vi": [
+          "giờ mở cửa",
+          "giờ đóng cửa",
+          "mấy giờ mở cửa",
+          "mấy giờ đóng cửa",
+          "thời gian hoạt động",
+          "giờ hoạt động",
+          "gio hoat dong"
+        ],
+        "ko": [
+          "영업시간",
+          "오픈 시간",
+          "마감 시간",
+          "몇 시에 열어요",
+          "운영 시간"
+        ],
+        "zh": [
+          "开放时间",
+          "开门时间",
+          "关门时间",
+          "几点开门",
+          "几点关门",
+          "营业时间"
+        ]
+      }
+    },
+    "price_vnd": {
+      "en": "Price",
+      "vi": "Giá",
+      "ko": "가격",
+      "zh": "价格",
+      "aliases": {
+        "en": [
+          "price",
+          "cost",
+          "rate",
+          "how much",
+          "fee"
+        ],
+        "vi": [
+          "giá tiền",
+          "bao nhiêu tiền",
+          "chi phí",
+          "phí",
+          "mức giá",
+          "giá",
+          "gia"
+        ],
+        "ko": [
+          "요금",
+          "비용",
+          "얼마",
+          "가격"
+        ],
+        "zh": [
+          "多少钱",
+          "费用",
+          "价钱",
+          "收费",
+          "价格"
+        ]
+      }
+    },
+    "phone": {
+      "en": "Phone",
+      "vi": "Số điện thoại",
+      "ko": "전화번호",
+      "zh": "电话号码",
+      "aliases": {
+        "en": [
+          "phone number",
+          "contact number",
+          "telephone",
+          "hotline",
+          "phone"
+        ],
+        "vi": [
+          "số liên hệ",
+          "số điện thoại",
+          "gọi số nào",
+          "hotline",
+          "so dien thoai"
+        ],
+        "ko": [
+          "연락처",
+          "전화",
+          "대표번호",
+          "전화번호"
+        ],
+        "zh": [
+          "联系电话",
+          "电话",
+          "热线",
+          "电话号码"
+        ]
+      }
+    },
+    "address": {
+      "en": "Location / address",
+      "vi": "Vị trí / địa chỉ",
+      "ko": "위치 / 주소",
+      "zh": "位置 / 地址",
+      "aliases": {
+        "en": [
+          "location",
+          "address",
+          "where is it",
+          "where",
+          "location / address"
+        ],
+        "vi": [
+          "vị trí",
+          "địa chỉ",
+          "ở đâu",
+          "nằm ở đâu",
+          "chỗ nào",
+          "vị trí / địa chỉ",
+          "vi tri / dia chi"
+        ],
+        "ko": [
+          "위치",
+          "주소",
+          "어디예요",
+          "어디에 있어요",
+          "위치 / 주소"
+        ],
+        "zh": [
+          "位置",
+          "地址",
+          "在哪里",
+          "怎么走",
+          "位置 / 地址"
+        ]
+      }
+    },
+    "capacity": {
+      "en": "Capacity",
+      "vi": "Sức chứa",
+      "ko": "수용 인원",
+      "zh": "容纳人数",
+      "aliases": {
+        "en": [
+          "capacity",
+          "how many people",
+          "seats"
+        ],
+        "vi": [
+          "sức chứa",
+          "bao nhiêu người",
+          "chứa được mấy người",
+          "suc chua"
+        ],
+        "ko": [
+          "수용 인원",
+          "몇 명",
+          "정원"
+        ],
+        "zh": [
+          "容纳人数",
+          "能坐多少人",
+          "人数上限"
+        ]
+      }
+    },
+    "area_sqm": {
+      "en": "Area",
+      "vi": "Diện tích",
+      "ko": "면적",
+      "zh": "面积",
+      "aliases": {
+        "en": [
+          "area",
+          "size",
+          "square meters",
+          "sqm"
+        ],
+        "vi": [
+          "diện tích",
+          "rộng bao nhiêu",
+          "bao nhiêu mét vuông",
+          "m2",
+          "dien tich"
+        ],
+        "ko": [
+          "면적",
+          "몇 제곱미터",
+          "크기"
+        ],
+        "zh": [
+          "面积",
+          "多少平方米",
+          "大小"
+        ]
+      }
+    },
+    "policy_rule": {
+      "en": "Policy",
+      "vi": "Quy định",
+      "ko": "정책",
+      "zh": "规定",
+      "aliases": {
+        "en": [
+          "policy",
+          "rule",
+          "allowed",
+          "restriction"
+        ],
+        "vi": [
+          "quy định",
+          "chính sách",
+          "được phép không",
+          "có được không",
+          "quy dinh"
+        ],
+        "ko": [
+          "규정",
+          "정책",
+          "가능한가요",
+          "제한"
+        ],
+        "zh": [
+          "规定",
+          "政策",
+          "可以吗",
+          "限制"
+        ]
+      }
+    },
+    "service_feature": {
+      "en": "Service feature",
+      "vi": "Đặc điểm dịch vụ",
+      "ko": "서비스 특징",
+      "zh": "服务特点",
+      "aliases": {
+        "en": [
+          "service feature",
+          "service details",
+          "what is included"
+        ],
+        "vi": [
+          "dịch vụ có gì",
+          "đặc điểm dịch vụ",
+          "bao gồm gì",
+          "dac diem dich vu"
+        ],
+        "ko": [
+          "서비스 내용",
+          "포함 사항",
+          "서비스 특징"
+        ],
+        "zh": [
+          "服务内容",
+          "包含什么",
+          "服务特点"
+        ]
+      }
+    },
+    "height_m": {
+      "en": "Height",
+      "vi": "Chiều cao",
+      "ko": "높이",
+      "zh": "高度",
+      "aliases": {
+        "en": [
+          "height",
+          "ceiling height",
+          "meters high"
+        ],
+        "vi": [
+          "chiều cao",
+          "cao bao nhiêu",
+          "trần cao",
+          "chieu cao"
+        ],
+        "ko": [
+          "높이",
+          "천장 높이"
+        ],
+        "zh": [
+          "高度",
+          "层高",
+          "天花板高度"
+        ]
+      }
+    },
+    "activity_schedule": {
+      "en": "Activity schedule",
+      "vi": "Lịch hoạt động",
+      "ko": "활동 일정",
+      "zh": "活动时间表",
+      "aliases": {
+        "en": [
+          "schedule",
+          "activity time",
+          "when is the activity",
+          "activity schedule"
+        ],
+        "vi": [
+          "lịch hoạt động",
+          "lịch chương trình",
+          "mấy giờ có hoạt động",
+          "lich hoat dong"
+        ],
+        "ko": [
+          "활동 일정",
+          "프로그램 시간"
+        ],
+        "zh": [
+          "活动安排",
+          "活动时间",
+          "活动时间表"
+        ]
+      }
+    },
+    "balcony_area_sqm": {
+      "en": "Balcony area",
+      "vi": "Diện tích ban công",
+      "ko": "발코니 면적",
+      "zh": "阳台面积",
+      "aliases": {
+        "en": [
+          "balcony size",
+          "balcony area"
+        ],
+        "vi": [
+          "diện tích ban công",
+          "ban công rộng bao nhiêu",
+          "dien tich ban cong"
+        ],
+        "ko": [
+          "발코니 크기",
+          "발코니 면적"
+        ],
+        "zh": [
+          "阳台大小",
+          "阳台面积"
+        ]
+      }
+    },
+    "bed_type": {
+      "en": "Bed type",
+      "vi": "Loại giường",
+      "ko": "침대 유형",
+      "zh": "床型",
+      "aliases": {
+        "en": [
+          "bed type",
+          "bed configuration",
+          "what bed"
+        ],
+        "vi": [
+          "loại giường",
+          "giường gì",
+          "kiểu giường",
+          "loai giuong"
+        ],
+        "ko": [
+          "침대 종류",
+          "베드 타입",
+          "침대 유형"
+        ],
+        "zh": [
+          "床型",
+          "什么床",
+          "床铺类型"
+        ]
+      }
+    },
+    "extension": {
+      "en": "Extension",
+      "vi": "Số máy lẻ",
+      "ko": "내선 번호",
+      "zh": "分机号",
+      "aliases": {
+        "en": [
+          "extension",
+          "extension number",
+          "dial"
+        ],
+        "vi": [
+          "máy lẻ",
+          "số nội bộ",
+          "bấm số mấy",
+          "số máy lẻ",
+          "so may le"
+        ],
+        "ko": [
+          "내선",
+          "내선 번호"
+        ],
+        "zh": [
+          "分机",
+          "分机号"
+        ]
+      }
+    },
+    "email": {
+      "en": "Email",
+      "vi": "Email",
+      "ko": "이메일",
+      "zh": "电子邮箱",
+      "aliases": {
+        "en": [
+          "email",
+          "email address",
+          "mail"
+        ],
+        "vi": [
+          "email",
+          "địa chỉ email",
+          "mail"
+        ],
+        "ko": [
+          "이메일",
+          "메일 주소"
+        ],
+        "zh": [
+          "邮箱",
+          "电子邮件",
+          "邮件地址",
+          "电子邮箱"
+        ]
+      }
+    },
+    "travel_time_min": {
+      "en": "Travel time",
+      "vi": "Thời gian di chuyển",
+      "ko": "이동 시간",
+      "zh": "行程时间",
+      "aliases": {
+        "en": [
+          "travel time",
+          "how long does it take",
+          "minutes away"
+        ],
+        "vi": [
+          "mất bao lâu",
+          "đi bao lâu",
+          "thời gian di chuyển",
+          "thoi gian di chuyen"
+        ],
+        "ko": [
+          "얼마나 걸려요",
+          "이동 시간"
+        ],
+        "zh": [
+          "要多久",
+          "车程多久",
+          "行程时间"
+        ]
+      }
+    },
+    "amenity_feature": {
+      "en": "Amenity",
+      "vi": "Tiện nghi",
+      "ko": "편의시설",
+      "zh": "便利设施",
+      "aliases": {
+        "en": [
+          "amenity",
+          "room amenity",
+          "facility"
+        ],
+        "vi": [
+          "tiện nghi",
+          "đồ dùng",
+          "trang bị",
+          "tien nghi"
+        ],
+        "ko": [
+          "편의시설",
+          "객실 비품"
+        ],
+        "zh": [
+          "设施",
+          "客房用品",
+          "便利设施"
+        ]
+      }
+    },
+    "service_window": {
+      "en": "Service window",
+      "vi": "Khung giờ phục vụ",
+      "ko": "서비스 시간대",
+      "zh": "服务时段",
+      "aliases": {
+        "en": [
+          "service hours",
+          "service window",
+          "available time"
+        ],
+        "vi": [
+          "khung giờ phục vụ",
+          "giờ phục vụ",
+          "thời gian phục vụ",
+          "khung gio phuc vu"
+        ],
+        "ko": [
+          "서비스 시간",
+          "이용 시간대",
+          "서비스 시간대"
+        ],
+        "zh": [
+          "服务时间",
+          "服务时段"
+        ]
+      }
+    },
+    "electricity_frequency": {
+      "en": "Electricity frequency",
+      "vi": "Tần số điện",
+      "ko": "전원 주파수",
+      "zh": "电源频率",
+      "aliases": {
+        "en": [
+          "frequency",
+          "hz",
+          "electric frequency",
+          "electricity frequency"
+        ],
+        "vi": [
+          "tần số điện",
+          "bao nhiêu hz",
+          "hz",
+          "tan so dien"
+        ],
+        "ko": [
+          "주파수",
+          "헤르츠",
+          "전원 주파수"
+        ],
+        "zh": [
+          "频率",
+          "赫兹",
+          "电源频率"
+        ]
+      }
+    },
+    "electricity_voltage": {
+      "en": "Electricity voltage",
+      "vi": "Điện áp",
+      "ko": "전압",
+      "zh": "电压",
+      "aliases": {
+        "en": [
+          "voltage",
+          "volts",
+          "power voltage",
+          "electricity voltage"
+        ],
+        "vi": [
+          "điện áp",
+          "bao nhiêu vôn",
+          "bao nhiêu volt",
+          "dien ap"
+        ],
+        "ko": [
+          "전압",
+          "볼트"
+        ],
+        "zh": [
+          "电压",
+          "多少伏",
+          "伏特"
+        ]
+      }
+    },
+    "room_count": {
+      "en": "Room count",
+      "vi": "Số lượng phòng",
+      "ko": "객실 수",
+      "zh": "客房数量",
+      "aliases": {
+        "en": [
+          "number of rooms",
+          "room count",
+          "how many rooms"
+        ],
+        "vi": [
+          "bao nhiêu phòng",
+          "số phòng",
+          "số lượng phòng",
+          "so luong phong"
+        ],
+        "ko": [
+          "객실 수",
+          "방이 몇 개"
+        ],
+        "zh": [
+          "多少间房",
+          "客房数量"
+        ]
+      }
+    },
+    "villa_count": {
+      "en": "Villa count",
+      "vi": "Số lượng biệt thự",
+      "ko": "빌라 수",
+      "zh": "别墅数量",
+      "aliases": {
+        "en": [
+          "number of villas",
+          "villa count",
+          "how many villas"
+        ],
+        "vi": [
+          "bao nhiêu villa",
+          "bao nhiêu biệt thự",
+          "số villa",
+          "số lượng biệt thự",
+          "so luong biet thu"
+        ],
+        "ko": [
+          "빌라 수",
+          "빌라가 몇 채"
+        ],
+        "zh": [
+          "多少栋别墅",
+          "别墅数量"
+        ]
+      }
+    },
+    "distance_km": {
+      "en": "Distance",
+      "vi": "Khoảng cách",
+      "ko": "거리",
+      "zh": "距离",
+      "aliases": {
+        "en": [
+          "distance",
+          "how far",
+          "kilometers away"
+        ],
+        "vi": [
+          "cách bao xa",
+          "bao nhiêu km",
+          "khoảng cách",
+          "khoang cach"
+        ],
+        "ko": [
+          "거리",
+          "얼마나 멀어요"
+        ],
+        "zh": [
+          "多远",
+          "多少公里",
+          "距离"
+        ]
+      }
+    },
+    "cuisine_type": {
+      "en": "Cuisine",
+      "vi": "Loại ẩm thực",
+      "ko": "요리 종류",
+      "zh": "菜系",
+      "aliases": {
+        "en": [
+          "cuisine",
+          "food style",
+          "what cuisine"
+        ],
+        "vi": [
+          "ẩm thực gì",
+          "món gì",
+          "loại ẩm thực",
+          "đồ ăn kiểu gì",
+          "loai am thuc"
+        ],
+        "ko": [
+          "요리 종류",
+          "무슨 음식"
+        ],
+        "zh": [
+          "什么菜",
+          "菜系",
+          "哪种料理"
+        ]
+      }
+    }
+  }
+}

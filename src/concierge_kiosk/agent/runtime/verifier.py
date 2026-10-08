@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import unicodedata
-import time
 
 from .state import AgentState, GoalRequirement
 from concierge_kiosk.rag.text.tokenization import tokens
@@ -70,6 +69,10 @@ def _planning_gaps_resolved(state: AgentState, planning_index: int, missing_topi
 def _matching_observations(state: AgentState, req: GoalRequirement) -> list[tuple[int, dict]]:
     out = []
     for index, item in enumerate(state.observations):
+        if req.outcome.startswith('command:'):
+            if item.get('requirement_id') == req.id:
+                out.append((index, item))
+            continue
         if req.service_candidate_id:
             if item.get('capability') == 'service_action' and item.get('service_candidate_id') == req.service_candidate_id:
                 out.append((index, item))
@@ -77,55 +80,24 @@ def _matching_observations(state: AgentState, req: GoalRequirement) -> list[tupl
         if item.get('requirement_id') == req.id:
             out.append((index, item))
             continue
-        if item.get('capability') in req.preferred_capabilities:
+        # An observation explicitly bound to another read cannot satisfy this
+        # requirement merely because both reads used the same capability.
+        if item.get('requirement_id') is None and item.get('capability') in req.preferred_capabilities:
             out.append((index, item))
     return out
 
 
-_GENERIC_TOPICS = {'', 'guest question', 'hotel facts', 'route guidance',
-                   'distance or location', 'current request status', 'itinerary',
-                   'resumed goal'}
-
-def _memory_supports_requirement(state: AgentState, req: GoalRequirement) -> bool:
-    """Allow only fresh, source-bound semantic facts to satisfy specific read goals.
-
-    Generic labels intentionally do not match memory; otherwise a fact from an old
-    topic could incorrectly satisfy an unrelated new guest question.
-    """
-    if req.outcome not in {'verified_answer', 'supporting_hotel_facts'}:
-        return False
-    if req.topic in _GENERIC_TOPICS:
-        return False
-    wanted = _terms(req.topic, state.language)
-    if not wanted:
-        return False
-    now = int(time.time())
-    for fact in state.verified_facts:
-        if fact.fact_type != 'evidence_summary' or fact.expires_at <= now:
-            continue
-        if fact.confidence != 'verified' or fact.sensitivity != 'public':
-            continue
-        if fact.provenance.get('source_type') != 'rag':
-            continue
-        citations = fact.provenance.get('citations')
-        if not isinstance(citations, list) or not citations:
-            continue
-        topic = fact.value.get('topic') if isinstance(fact.value, dict) else ''
-        got = _terms(topic, state.language)
-        if wanted & got:
-            return True
-    return False
-
 def _requirement_status(state: AgentState, req: GoalRequirement) -> tuple[bool, str]:
     if req.outcome.startswith('command:') and req.id in state.command_satisfied_requirements:
         return True, 'command_semantics_completed'
-    if _memory_supports_requirement(state, req):
-        return True, 'fresh_source_bound_memory'
+    # Memory is context, not a current read observation. A new read must
+    # revalidate its source evidence and bind it to this requirement.
     matches = _matching_observations(state, req)
     if not matches:
         return False, 'not_observed'
 
-    if req.outcome.startswith('service:') or req.outcome in {'command:Cancel', 'command:Handoff'}:
+    if req.outcome.startswith('service:') or req.outcome in {
+            'command:Cancel', 'command:Modify', 'command:Handoff'}:
         terminal = {
             'confirmation_required', 'needs_user_input', 'denied',
             'action_ready', 'completed', 'safe_fallback', 'unavailable',

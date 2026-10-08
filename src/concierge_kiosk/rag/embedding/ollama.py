@@ -46,7 +46,7 @@ class OllamaEmbedder:
     backend = 'ollama'
 
     def __init__(self, model: str = 'bge-m3', base_url: str = 'http://127.0.0.1:11434',
-                 timeout: float = 15.0, manifest_path: str = '') -> None:
+                 timeout: float = 15.0, manifest_path: str = '', num_gpu: int = -1) -> None:
         if not model or len(model) > 128 or any(char in model for char in '\r\n'):
             raise ValueError('Invalid Ollama embedding model')
         parsed = urlsplit(base_url.rstrip('/'))
@@ -57,6 +57,9 @@ class OllamaEmbedder:
         self.model = model
         self.base_url = base_url.rstrip('/')
         self.timeout = max(0.05, min(float(timeout), 30.0))
+        if type(num_gpu) is not int or not -1 <= num_gpu <= 64:
+            raise ValueError('Invalid Ollama GPU layer count')
+        self.num_gpu = num_gpu
         self.manifest = validate_ollama_manifest(manifest_path, model) if manifest_path else None
         self.model_name = f'ollama:{model}'
 
@@ -74,7 +77,8 @@ class OllamaEmbedder:
         if (not texts or len(texts) > 32
                 or any(not isinstance(text, str) or not text.strip() or len(text) > 4000 for text in texts)):
             raise ValueError('Invalid embedding input')
-        payload = json.dumps({'model': self.model, 'input': [text.strip() for text in texts]},
+        payload = json.dumps({'model': self.model, 'input': [text.strip() for text in texts],
+                             'options': {'num_gpu': self.num_gpu}},
                              ensure_ascii=False).encode('utf-8')
         request = Request(self.base_url + '/api/embed', data=payload,
                           headers={'Content-Type': 'application/json'}, method='POST')

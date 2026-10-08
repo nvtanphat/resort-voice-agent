@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Synthetic historical service request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "classification",
+    "simulation_seed",
+    "session_id",
+    "unit_ref",
+    "unit_type",
+    "room_verified",
+    "language",
+    "channel",
+    "service_code",
+    "department_id",
+    "approval",
+    "created_at",
+    "acknowledged_at",
+    "sla_clock_basis",
+    "sla_clock_started_at",
+    "queued_until_open",
+    "queue_wait_minutes",
+    "staff_confirmation_at",
+    "first_attendance_at",
+    "completed_at",
+    "cancelled_at",
+    "status",
+    "occupancy_pct_simulated",
+    "occupancy_band",
+    "daypart",
+    "base_sla_min",
+    "effective_sla_min_simulated",
+    "ack_minutes",
+    "sla_elapsed_to_attendance_min",
+    "first_attendance_minutes",
+    "resolution_minutes",
+    "sla_met",
+    "automatic_escalations",
+    "staff_confirmation_minutes",
+    "truth_status",
+    "failure_reason",
+    "reopen_count",
+    "escalation_reason",
+    "agent_next_action"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "pattern": "^SIM-REQ-[0-9]{6}$"
+    },
+    "classification": {
+      "const": "synthetic_simulation"
+    },
+    "simulation_seed": {
+      "type": "integer"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^SIM-S[0-9]{5}$"
+    },
+    "unit_ref": {
+      "type": "string",
+      "pattern": "^SIM-(?:ROOM|VILLA)-[0-9]{4}$"
+    },
+    "unit_type": {
+      "enum": [
+        "room",
+        "villa"
+      ]
+    },
+    "room_verified": {
+      "type": "boolean"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "vi",
+        "ko",
+        "zh"
+      ]
+    },
+    "channel": {
+      "enum": [
+        "kiosk_text",
+        "kiosk_voice",
+        "mobile_web"
+      ]
+    },
+    "service_code": {
+      "enum": [
+        "amenity_delivery",
+        "housekeeping",
+        "maintenance",
+        "human_assistance",
+        "spa_reservation",
+        "dining_reservation",
+        "food_order",
+        "tour_reservation",
+        "facility_request",
+        "dining_request",
+        "tour_request",
+        "transport_request",
+        "late_checkout"
+      ]
+    },
+    "department_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "approval": {
+      "enum": [
+        "none",
+        "staff"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sla_clock_basis": {
+      "enum": [
+        "wall_clock",
+        "business_hours"
+      ]
+    },
+    "sla_clock_started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "queued_until_open": {
+      "type": "boolean"
+    },
+    "queue_wait_minutes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "staff_confirmation_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "first_attendance_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "cancelled_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "cancelled",
+        "failed",
+        "reopened",
+        "escalated"
+      ]
+    },
+    "occupancy_pct_simulated": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "occupancy_band": {
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "sold_out_like"
+      ]
+    },
+    "daypart": {
+      "enum": [
+        "overnight",
+        "morning_peak",
+        "midday",
+        "evening_peak",
+        "late_evening"
+      ]
+    },
+    "base_sla_min": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "effective_sla_min_simulated": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "ack_minutes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sla_elapsed_to_attendance_min": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "first_attendance_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "resolution_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "sla_met": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "automatic_escalations": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "staff_confirmation_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "truth_status": {
+      "const": "synthetic_simulation"
+    },
+    "failure_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reopen_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "escalation_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agent_next_action": {
+      "enum": [
+        "report_verified_completion_only",
+        "confirm_cancellation_state",
+        "explain_failure_and_offer_retry_or_handoff",
+        "resume_request_without_duplicate_creation",
+        "surface_escalation_and_await_staff_confirmation"
+      ]
+    }
+  }
+}

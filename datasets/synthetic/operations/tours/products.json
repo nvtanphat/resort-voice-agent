@@ -1,0 +1,237 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_property_assumption",
+  "reviewed_at": "2026-10-03",
+  "currency": "VND",
+  "approval": "staff",
+  "live_availability": "always_staff_confirmed",
+  "products": [
+    {
+      "product_id": "hoi_an_evening",
+      "name": "Hoi An Evening",
+      "destination": "Hoi An Ancient Town",
+      "duration_hours": [
+        6,
+        8
+      ],
+      "synthetic_price_vnd_per_adult": 1950000,
+      "pickup_window": "15:00-16:30",
+      "booking_cutoff_hours": 6,
+      "cancellation": "staff_confirmed",
+      "includes": [
+        "round-trip transport",
+        "guide",
+        "basic admission where applicable"
+      ],
+      "source_refs": [
+        "furama_hosted_tour_program_2024"
+      ],
+      "reference_party_size": "3-4 guests",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_tour_catalog"
+      ],
+      "price_basis": "synthetic 2026 calibration from historical 2024 vendor price for 3-4 pax; live quote required",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "demo_cancellation_policy": {
+        "more_than_24h": "no_charge",
+        "6_to_24h": "50_percent",
+        "under_6h_or_no_show": "100_percent"
+      },
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    },
+    {
+      "product_id": "my_son_half_day",
+      "name": "My Son Half-Day",
+      "destination": "My Son Sanctuary",
+      "duration_hours": [
+        6,
+        7
+      ],
+      "synthetic_price_vnd_per_adult": 1700000,
+      "pickup_window": "07:00-08:00",
+      "booking_cutoff_hours": 12,
+      "cancellation": "staff_confirmed",
+      "includes": [
+        "round-trip transport",
+        "guide",
+        "standard admission"
+      ],
+      "source_refs": [
+        "furama_hosted_tour_program_2024"
+      ],
+      "reference_party_size": "3-4 guests",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_tour_catalog"
+      ],
+      "price_basis": "synthetic 2026 calibration from historical 2024 vendor price for 3-4 pax; live quote required",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "demo_cancellation_policy": {
+        "more_than_24h": "no_charge",
+        "6_to_24h": "50_percent",
+        "under_6h_or_no_show": "100_percent"
+      },
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    },
+    {
+      "product_id": "hue_full_day",
+      "name": "Hue Imperial City Full-Day",
+      "destination": "Hue",
+      "duration_hours": [
+        10,
+        12
+      ],
+      "synthetic_price_vnd_per_adult": 3000000,
+      "pickup_window": "07:00-07:30",
+      "booking_cutoff_hours": 18,
+      "cancellation": "staff_confirmed",
+      "includes": [
+        "round-trip transport",
+        "guide",
+        "selected admissions",
+        "lunch"
+      ],
+      "source_refs": [
+        "furama_hosted_tour_program_2024"
+      ],
+      "reference_party_size": "3-4 guests",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_tour_catalog"
+      ],
+      "price_basis": "synthetic 2026 calibration from historical 2024 vendor price for 3-4 pax; live quote required",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "demo_cancellation_policy": {
+        "more_than_24h": "no_charge",
+        "6_to_24h": "50_percent",
+        "under_6h_or_no_show": "100_percent"
+      },
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    },
+    {
+      "product_id": "ba_na_hills",
+      "name": "Ba Na Hills Full-Day",
+      "destination": "Ba Na Hills",
+      "duration_hours": [
+        9,
+        11
+      ],
+      "synthetic_price_vnd_per_adult": 2750000,
+      "pickup_window": "07:30-08:30",
+      "booking_cutoff_hours": 18,
+      "cancellation": "staff_confirmed",
+      "includes": [
+        "round-trip transport",
+        "guide",
+        "standard cable-car ticket estimate"
+      ],
+      "source_refs": [
+        "furama_hosted_tour_program_2024"
+      ],
+      "reference_party_size": "3-4 guests",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_tour_catalog"
+      ],
+      "price_basis": "synthetic 2026 calibration from historical 2024 vendor price for 3-4 pax; live quote required",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "demo_cancellation_policy": {
+        "more_than_24h": "no_charge",
+        "6_to_24h": "50_percent",
+        "under_6h_or_no_show": "100_percent"
+      },
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    },
+    {
+      "product_id": "marble_hoi_an_combo",
+      "name": "Marble Mountains + Hoi An",
+      "destination": "Marble Mountains & Hoi An",
+      "duration_hours": [
+        6,
+        7
+      ],
+      "synthetic_price_vnd_per_adult": 1850000,
+      "pickup_window": "13:30-14:30",
+      "booking_cutoff_hours": 8,
+      "cancellation": "staff_confirmed",
+      "includes": [
+        "round-trip transport",
+        "guide",
+        "selected admissions"
+      ],
+      "source_refs": [
+        "furama_hosted_tour_program_2024"
+      ],
+      "reference_party_size": "3-4 guests",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_tour_catalog"
+      ],
+      "price_basis": "synthetic 2026 calibration from historical 2024 vendor price for 3-4 pax; live quote required",
+      "supplier_id": "SYN-SUP-TOUR-01",
+      "demo_cancellation_policy": {
+        "more_than_24h": "no_charge",
+        "6_to_24h": "50_percent",
+        "under_6h_or_no_show": "100_percent"
+      },
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    },
+    {
+      "product_id": "son_tra_marble",
+      "name": "Son Tra + Marble Mountains",
+      "destination": "Son Tra Peninsula & Marble Mountains",
+      "duration_hours": [
+        6,
+        7
+      ],
+      "synthetic_price_vnd_per_adult": 1550000,
+      "pickup_window": "08:00-09:00",
+      "booking_cutoff_hours": 6,
+      "cancellation": "staff_confirmed",
+      "includes": [
+        "round-trip transport",
+        "guide"
+      ],
+      "source_refs": [
+        "furama_hosted_tour_program_2024"
+      ],
+      "reference_party_size": "3-4 guests",
+      "truth_status": "synthetic_property_assumption",
+      "assumption_refs": [
+        "asm_tour_catalog"
+      ],
+      "price_basis": "synthetic 2026 calibration from historical 2024 vendor price for 3-4 pax; live quote required",
+      "supplier_id": "SYN-SUP-TOUR-02",
+      "demo_cancellation_policy": {
+        "more_than_24h": "no_charge",
+        "6_to_24h": "50_percent",
+        "under_6h_or_no_show": "100_percent"
+      },
+      "demo_inventory_source": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+      "demo_auto_confirm_if_available": true
+    }
+  ],
+  "assumption_refs": [
+    "asm_tour_catalog"
+  ],
+  "guest_answer_policy": "All products, prices, pickup times and cancellation terms are prototype-only until Tour Desk confirms.",
+  "price_basis": "synthetic_2026_estimate_calibrated_from_2024_vendor_price_list_hosted_on_furama; reference party size 3-4; not current Furama pricing",
+  "historical_benchmark_source_ref": "furama_hosted_tour_program_2024",
+  "historical_vendor_cancellation_reference": {
+    "handling_fee_after_confirmation": "10%",
+    "2_to_1_days_before": "50%",
+    "within_24h": "75%",
+    "last_minute_or_no_show": "100%",
+    "truth_status": "historical_vendor_reference_only",
+    "current_policy": "staff_confirmed"
+  },
+  "demo_live_availability": "datasets/synthetic/operations/inventory/commercial_snapshot.json",
+  "demo_booking_mode": "auto_confirm_if_snapshot_capacity_and_cutoff_pass"
+}

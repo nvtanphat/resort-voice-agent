@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "property_id": "FURAMA_DANANG",
+  "classification": "synthetic_operational_with_public_destination_anchors",
+  "booking_rule": "staff_confirmation_required",
+  "department_id": "TOUR_DESK",
+  "contact_extension": "3777",
+  "inventory_and_price_status": "staff_confirmation_required",
+  "destinations": [
+    {
+      "destination": "Hoi An Ancient Town",
+      "approx_transfer_time_from_resort": "30 minutes",
+      "transfer_time_basis": "furama_public_directions",
+      "price": null,
+      "availability": "staff_confirmed",
+      "confidence": "public_property_guidance",
+      "pickup_time": null,
+      "supplier": null,
+      "booking_cutoff": null
+    },
+    {
+      "destination": "My Son Sanctuary",
+      "approx_transfer_time_from_resort": "90 minutes",
+      "transfer_time_basis": "furama_public_directions",
+      "price": null,
+      "availability": "staff_confirmed",
+      "confidence": "public_property_guidance",
+      "pickup_time": null,
+      "supplier": null,
+      "booking_cutoff": null
+    },
+    {
+      "destination": "Hue",
+      "approx_transfer_time_from_resort": "2 hours",
+      "transfer_time_basis": "furama_public_directions",
+      "price": null,
+      "availability": "staff_confirmed",
+      "confidence": "public_property_guidance",
+      "pickup_time": null,
+      "supplier": null,
+      "booking_cutoff": null
+    }
+  ],
+  "public_anchors": [
+    "https://furamavietnam.com/room-directory/recreation/kids-club/",
+    "https://furamavietnam.com/vi/rooms/"
+  ],
+  "truth_note": "Destination and travel-time guidance may use verified public Furama material. Live supplier inventory, pickup time and prices require staff confirmation and are never inferred from static public knowledge.",
+  "reviewed_at": "2026-10-03",
+  "production_status": "destination_guidance_only_until_staff_confirmation"
+}

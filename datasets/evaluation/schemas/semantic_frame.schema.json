@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semantic_frame.schema.json",
+  "type": "object",
+  "required": [
+    "frame_id",
+    "concept_key",
+    "intent_or_route",
+    "expected_slots",
+    "truth_boundary",
+    "status"
+  ],
+  "properties": {
+    "frame_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "concept_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "intent_or_route": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "service_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "approval_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_staff_review": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "expected_slots": {
+      "type": "object"
+    },
+    "context_requirements": {
+      "type": "array"
+    },
+    "execution_guards": {
+      "type": "array"
+    },
+    "truth_boundary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "vi",
+          "en",
+          "ko",
+          "zh"
+        ]
+      }
+    },
+    "status": {
+      "const": "authoritative_frame"
+    }
+  },
+  "additionalProperties": true
+}

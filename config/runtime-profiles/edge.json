@@ -6,6 +6,7 @@
       "base_url": "http://127.0.0.1:11434",
       "primary_model": "qwen2.5:1.5b",
       "fallback_model": "",
+      "num_gpu": 0,
       "digest": "",
       "strict_mode": false
     },
@@ -139,8 +140,8 @@
     "tts_seconds": 20.0,
     "goal_interpreter_seconds": 2.5,
     "reference_resolver_seconds": 1.8,
-    "intent_parser_seconds": 3.0,
-    "text_generation_seconds": 3.0,
+    "intent_parser_seconds": 10.0,
+    "text_generation_seconds": 5.0,
     "slm_generation_seconds": 6.0,
     "slm_probe_seconds": 1.5
   }
