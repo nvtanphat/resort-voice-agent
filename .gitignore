@@ -9,6 +9,9 @@ __pycache__/
 /models/embeddings/*
 # Small, non-secret embedding pins the data audit and runtime check against.
 !/models/embeddings/*.ollama.manifest.json
+# The hash embedder is a 74-byte stub the hermetic tests load from disk.
+!/models/embeddings/hash-multilingual/
+!/models/embeddings/hash-multilingual.manifest.json
 *.sqlite3*
 !/data/concierge.sqlite3
 !/data/concierge-graph.sqlite3
