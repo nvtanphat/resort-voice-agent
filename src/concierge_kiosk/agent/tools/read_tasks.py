@@ -24,6 +24,17 @@ def read_only_task_graph(commands: tuple[Command, ...] | None) -> dict | None:
         'execution': 'read_only_no_business_writes'}
 
 
+def read_task_available(kind: str, meta: dict, raw: dict) -> bool:
+    """Whether one read task's own observation carries verified evidence."""
+    if meta.get('status') != 'completed' or meta.get('verified') is not True:
+        return False
+    if kind == 'knowledge':
+        return bool(raw.get('citations'))
+    if kind == 'navigation':
+        return raw.get('map_guidance', {}).get('status') == 'verified'
+    return raw.get('schedule_verified') is True or bool(raw.get('citations'))
+
+
 def validate_read_only_result(result: dict, *, expected_graph: dict | None = None,
                               expected_reads: list[tuple[dict, dict]] | None = None) -> None:
     """Reject graphs or execution state not reconstructed from server commands."""
@@ -53,10 +64,6 @@ def validate_read_only_result(result: dict, *, expected_graph: dict | None = Non
             raise RuntimeError('Invalid read-only task schema')
         if any(step[key] != task[key] for key in task):
             raise RuntimeError('Read-only task mutated')
-        available = (meta.get('status') == 'completed' and meta.get('verified') is True
-                     and (bool(raw.get('citations')) if task['kind'] == 'knowledge' else
-                          raw.get('map_guidance', {}).get('status') == 'verified'
-                          if task['kind'] == 'navigation' else
-                          raw.get('schedule_verified') is True or bool(raw.get('citations'))))
+        available = read_task_available(task['kind'], meta, raw)
         if step['status'] != ('verified' if available else 'unavailable'):
             raise RuntimeError('Read-only result status does not match evidence')

@@ -62,7 +62,6 @@ services:
       CONCIERGE_ENV: production
       CONCIERGE_RUNTIME_PROFILE_PATH: /app/config/runtime-profiles/production.json
       CONCIERGE_RUNTIME_PROFILE_SHA256: 8ce1a7629b33a07cf2b50027944f894408937edecbe90c888e9981fa425406fb
-      CONCIERGE_ORCHESTRATOR: langgraph
       LANGGRAPH_STRICT_MSGPACK: "true"
       CONCIERGE_LLM_BASE_URL: http://127.0.0.1:11434
       CONCIERGE_DB_PATH: /data/concierge.sqlite3

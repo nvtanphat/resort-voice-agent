@@ -15,15 +15,12 @@ from dataclasses import dataclass, field
 
 from concierge_kiosk.agent.tools.service_slots import extract_slots
 from concierge_kiosk.agent.understanding.routing import RouteDecision
-from concierge_kiosk.agent.orchestration.composite_tasks import wants_knowledge_read
 from concierge_kiosk.domain.service_registry import (accepted_slots, route_branch_for_request_kind,
                                                      service_definition, service_tool)
 from .catalog import service_risk_tier
 from .world import VerifiedFact, AgentUnknown, AgentFailure
 from concierge_kiosk.agent.understanding.commands import Command
-from concierge_kiosk.core.domain_profile import preference_policy, ui_policy
-
-_PRESENTATION_LIMITS = ui_policy().presentation_limits
+from concierge_kiosk.core.domain_profile import preference_policy
 
 
 @dataclass(frozen=True)
@@ -308,44 +305,22 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
             elif command.type in {'SwitchLanguage', 'SetPreference', 'Clarify'}:
                 add(f'command:{command.type}', ('command_noop',))
 
-    wants_navigation = any(command.type == 'Navigate' for command in (commands or ()))
-    if commands is not None:
-        # Command mode must not derive a second goal from the deterministic
-        # route.  The route remains attached to the request for safety checks.
-        pass
-    elif decision.branch == 'request_status':
-        add('authoritative_request_status', ('request_status',), topic='current request status')
-    elif decision.branch == 'navigation':
-        add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
-    elif decision.branch == 'planning':
-        add('evidence_backed_itinerary', ('planning', 'knowledge'), topic='itinerary')
-        if wants_knowledge_read(commands):
-            add('supporting_hotel_facts', ('knowledge',), topic='hotel facts')
-        if wants_navigation:
-            add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
-    elif decision.branch == 'knowledge':
-        add('verified_answer', ('knowledge',), topic='guest question')
-        if wants_navigation:
-            add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
-    elif decision.branch == 'check_schedule':
-        # This tool is intentionally release-bound.  Falling through to RAG
-        # would answer an availability question with ordinary knowledge text
-        # and could imply live inventory that the release does not verify.
-        add('verified_answer', ('check_schedule',), topic='schedule')
-    elif decision.branch == 'find_place':
-        add('verified_route_guidance', ('find_place', 'navigation', 'knowledge'), topic='place')
-    elif decision.branch == 'guest_context':
-        add('session_context_verified', ('guest_context',), topic='session context')
-    elif decision.branch == 'multi_task':
-        plan_questions = [item.query for item in (commands or ())
-                          if item.type == 'AskInfo' and item.query]
-        if plan_questions:
-            for question in plan_questions[:_PRESENTATION_LIMITS['max_plan_items']]:
-                add('verified_answer', ('knowledge',), topic=question[:80])
-        elif wants_knowledge_read(commands):
-            add('verified_answer', ('knowledge',), topic='guest question')
-        if wants_navigation:
-            add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
+    if commands is None:
+        # Without validated commands the server route alone names the read.
+        route_reads = {
+            'request_status': ('authoritative_request_status', ('request_status',), 'current request status'),
+            'navigation': ('verified_route_guidance', ('navigation', 'knowledge'), 'route guidance'),
+            'planning': ('evidence_backed_itinerary', ('planning', 'knowledge'), 'itinerary'),
+            'knowledge': ('verified_answer', ('knowledge',), 'guest question'),
+            # Release-bound: falling through to RAG could imply live inventory
+            # that the release does not verify.
+            'check_schedule': ('verified_answer', ('check_schedule',), 'schedule'),
+            'find_place': ('verified_route_guidance', ('find_place', 'navigation', 'knowledge'), 'place'),
+            'guest_context': ('session_context_verified', ('guest_context',), 'session context'),
+        }
+        read = route_reads.get(decision.branch)
+        if read is not None:
+            add(read[0], read[1], topic=read[2])
 
     if not reqs:
         add('verified_answer', ('knowledge',), topic='guest question')

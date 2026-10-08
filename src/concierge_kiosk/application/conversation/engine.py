@@ -9,7 +9,6 @@ from contextvars import ContextVar
 from typing import Callable
 from fastapi import HTTPException
 
-from concierge_kiosk.agent.core.capabilities import CapabilityRequest
 from concierge_kiosk.agent.core.concierge import BoundedToolRegistry, AgentToolRequest, ACTION_TOOL
 from concierge_kiosk.agent.core.tool_contracts import (authorized_tool_result, contract_failure_result,
                                                        no_evidence_handoff_details, tool_error_observation,
@@ -43,7 +42,7 @@ from concierge_kiosk.agent.runtime.presentation.turn import (
 from concierge_kiosk.agent.runtime.persistence import checkpoint_projection, semantic_memory_projection
 from concierge_kiosk.api.shared.contracts import Ask
 from concierge_kiosk.application.service_actions import ServiceActionService
-from concierge_kiosk.application import KnowledgeService, TurnCoordinator, CoordinatedTurn
+from concierge_kiosk.application import TurnCoordinator, CoordinatedTurn
 from concierge_kiosk.domain.service_registry import route_branch_for_request_kind
 from concierge_kiosk.agent.understanding.domain_nlu import (
     AFFIRM_TERMS, TIME_EXPRESSIONS, DENY_TERMS,
@@ -164,7 +163,6 @@ def preferences_from_commands(commands) -> dict:
 @dataclass(frozen=True)
 class ConversationEngine:
     answer: Callable[..., dict]
-    specialist_answer: Callable[..., dict]
     service_actions: ServiceActionService
     concierge_agent: object
     turn_support: object = None
@@ -623,44 +621,6 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         if cache is not None:
             cache[key] = copy.deepcopy(result)
         return result
-
-    def _knowledge_capability(request: CapabilityRequest) -> dict:
-        return _turn_grounded_answer(request.query, request.language, request.session,
-                                     effective_date=request.effective_date,
-                                     question_type=request.decision.question_type,
-                                     facet=request.decision.facet)
-
-    def _navigation_capability(request: CapabilityRequest) -> dict:
-        result = _turn_grounded_answer(request.query, request.language, request.session,
-                                       effective_date=request.effective_date,
-                                       question_type=request.decision.question_type)
-        map_query = request.query
-        map_query = localized_map_query(
-            store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256,
-            property_id=cfg.property_id, query=map_query, language=request.language,
-            anchor=conversations.resolve(request.session, request.query, request.language),
-            as_of=request.effective_date)
-        result['map_guidance'] = map_guidance(
-            store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256,
-            property_id=cfg.property_id, query=map_query, language=request.language,
-            as_of=request.effective_date)
-        return apply_verified_map_answer(result, request.language, request.query,
-                                         has_navigate_command=True)
-
-    def _planning_capability(request: CapabilityRequest) -> dict:
-        return planning_answer(request.query, request.language, request.session,
-                               effective_date=request.effective_date,
-                               preferences=preference_memory.load(request.session))
-
-    knowledge_service = KnowledgeService(
-        knowledge=_knowledge_capability, navigation=_navigation_capability,
-        planning=_planning_capability)
-
-    def specialist_answer(query: str, language: str, session: str,
-                          decision: RouteDecision, effective_date: str) -> dict:
-        return knowledge_service.answer(CapabilityRequest(
-            query=query, language=language, session=session,
-            effective_date=effective_date, decision=decision))
 
     def _agent_knowledge(request: AgentToolRequest) -> dict:
         return _turn_grounded_answer(request.query, request.language, request.session,
@@ -1212,6 +1172,6 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
 
 
 
-    return ConversationEngine(answer=answer, specialist_answer=specialist_answer,
+    return ConversationEngine(answer=answer,
                               service_actions=service_actions, concierge_agent=concierge_agent,
                               turn_support=turn_support, emergency_gate=emergency_gate)

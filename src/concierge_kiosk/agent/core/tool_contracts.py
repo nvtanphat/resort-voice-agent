@@ -283,7 +283,7 @@ def no_evidence_handoff_details(query: str, language: str) -> str:
 
 def authorized_tool_result(decision: RouteDecision, query: str, language: str,
                            result: dict) -> dict:
-    """Keep legacy and LangGraph routes on the same consent-only tool contract."""
+    """Hold every routed tool result to the consent-only tool contract."""
     if decision.fast:
         return result
     clean = dict(result)

@@ -1,4 +1,4 @@
-"""Governed concierge runtime with pluggable control-loop execution."""
+"""Governed concierge runtime; the turn loop is the LangGraph adapter in ``langgraph_loop``."""
 from __future__ import annotations
 
 from dataclasses import replace
@@ -11,7 +11,7 @@ from concierge_kiosk.i18n import text as i18n_text
 
 from concierge_kiosk.agent.core.concierge import (
     AgentToolRequest, BoundedToolRegistry, READ_TOOLS, ACTION_TOOL,
-    MANAGE_REQUEST_TOOL, HANDOFF_TOOL, ConciergeAgent,
+    MANAGE_REQUEST_TOOL, HANDOFF_TOOL, tool_status, tool_verified,
 )
 from concierge_kiosk.domain.service_registry import service_definition
 from .planner import ActionPlan, NextAction
@@ -97,19 +97,7 @@ class AutonomousConciergeRuntime:
     def _tool_error_observation(request: AgentToolRequest, action: NextAction,
                                 step_id: str, exc: BaseException) -> tuple[dict, dict]:
         error = tool_error_observation(exc, hint='retry_or_staff_handoff')
-        raw = {
-            'status': 'unavailable', **error,
-            'answer': i18n_text('runtime.unavailable', request.language),
-            'sources': [], 'citations': [], 'suggested_action': None,
-            'request_completed': False, 'requires_staff_review': False,
-            'grounding': 'safe_fallback', 'evidence_status': 'UNAVAILABLE',
-        }
-        if action.capability in {'navigation', 'find_place'}:
-            raw['map_guidance'] = {'status': 'unavailable'}
-        if action.capability in {'planning', 'check_schedule'}:
-            raw.update({'plan_is_draft': True, 'plan_topics': [], 'missing_topics': []})
-        if action.capability in {'service_action', 'manage_request', 'handoff_staff'}:
-            raw['agent_action'] = {'status': 'unavailable', 'business_writes': 0}
+        raw = AutonomousConciergeRuntime._unavailable_raw(request.language, action.capability or '', error)
         meta = {
             'step_id': step_id,
             'objective_id': action.objective_id,
@@ -123,6 +111,24 @@ class AutonomousConciergeRuntime:
                 exc, action.capability or '', 'unavailable') or 'internal_tool_error',
         }
         return meta, raw
+
+    @staticmethod
+    def _unavailable_raw(language: str, capability: str, error: dict) -> dict:
+        """The single fail-closed observation for a tool that could not run."""
+        raw = {
+            'status': 'unavailable', **error,
+            'answer': i18n_text('runtime.unavailable', language),
+            'sources': [], 'citations': [], 'suggested_action': None,
+            'request_completed': False, 'requires_staff_review': False,
+            'grounding': 'safe_fallback', 'evidence_status': 'UNAVAILABLE',
+        }
+        if capability in {'navigation', 'find_place'}:
+            raw['map_guidance'] = {'status': 'unavailable'}
+        if capability in {'planning', 'check_schedule'}:
+            raw.update({'plan_is_draft': True, 'plan_topics': [], 'missing_topics': []})
+        if capability in {ACTION_TOOL, MANAGE_REQUEST_TOOL, HANDOFF_TOOL}:
+            raw['agent_action'] = {'status': 'unavailable', 'business_writes': 0}
+        return raw
 
     def _execute_inner(self, request: AgentToolRequest, state: AgentState,
                        action: NextAction, step_id: str) -> tuple[dict, dict]:
@@ -234,11 +240,11 @@ class AutonomousConciergeRuntime:
                     },
                 }
                 verified = True
-                status = ConciergeAgent._status(tool, raw, verified)
+                status = tool_status(tool, raw, verified)
             else:
                 raw = self._registry.call(tool, child)
-                verified = ConciergeAgent._verified(tool, raw)
-                status = ConciergeAgent._status(tool, raw, verified)
+                verified = tool_verified(tool, raw)
+                status = tool_status(tool, raw, verified)
         except Exception as exc:
             caught = exc
             LOGGER.exception(
@@ -246,20 +252,7 @@ class AutonomousConciergeRuntime:
                 capability, type(exc).__name__,
             )
             error = tool_error_observation(exc, hint='retry_or_staff_handoff')
-            unavailable = i18n_text('runtime.unavailable', request.language)
-            raw = {
-                'status': 'unavailable', **error,
-                'answer': unavailable, 'sources': [], 'citations': [],
-                'suggested_action': None, 'request_completed': False,
-                'requires_staff_review': False, 'grounding': 'safe_fallback',
-                'evidence_status': 'UNAVAILABLE',
-            }
-            if capability in {'navigation', 'find_place'}:
-                raw['map_guidance'] = {'status': 'unavailable'}
-            if capability in {'planning', 'check_schedule'}:
-                raw.update({'plan_is_draft': True, 'plan_topics': [], 'missing_topics': []})
-            if capability in {ACTION_TOOL, MANAGE_REQUEST_TOOL, HANDOFF_TOOL}:
-                raw['agent_action'] = {'status': 'unavailable', 'business_writes': 0}
+            raw = self._unavailable_raw(request.language, capability, error)
             verified = False
             status = 'unavailable'
 

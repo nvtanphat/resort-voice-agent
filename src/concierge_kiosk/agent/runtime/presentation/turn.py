@@ -6,7 +6,7 @@ answer. They consume verified observations and never choose a business tool.
 from __future__ import annotations
 
 from concierge_kiosk.agent.understanding.routing import directions_request
-from concierge_kiosk.agent.tools.read_tasks import validate_read_only_result
+from concierge_kiosk.agent.tools.read_tasks import read_task_available, validate_read_only_result
 from concierge_kiosk.i18n import text as i18n_text
 
 
@@ -67,11 +67,7 @@ def project_read_workflow(*, result: dict, agent_run, query: str, language: str,
         raise RuntimeError('Read tasks do not match command requirements')
     result['task_plan'] = []
     for task, (meta, raw) in zip(read_graph['tasks'], expected_reads):
-        available = (meta.get('status') == 'completed' and meta.get('verified') is True
-                     and (bool(raw.get('citations')) if task['kind'] == 'knowledge' else
-                          raw.get('map_guidance', {}).get('status') == 'verified'
-                          if task['kind'] == 'navigation' else
-                          raw.get('schedule_verified') is True or bool(raw.get('citations'))))
+        available = read_task_available(task['kind'], meta, raw)
         result['task_plan'].append({**task, 'status': 'verified' if available else 'unavailable'})
     validate_read_only_result(result, expected_graph=read_graph, expected_reads=expected_reads)
 

@@ -1,9 +1,7 @@
 """Shared semantics for the governed agent control loop.
 
 This module is the single implementation of verify -> plan -> execute -> observe.
-Execution adapters (LangGraph or the dependency-free Python loop) own only
-control-flow mechanics. Keeping business/agent semantics here prevents the two
-backends from drifting when policy, budgets or world-state updates change.
+The LangGraph adapter (``langgraph_loop.py``) owns only control-flow mechanics.
 """
 from __future__ import annotations
 

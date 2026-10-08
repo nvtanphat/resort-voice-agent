@@ -1,8 +1,7 @@
 """LangGraph adapter for the governed concierge agent.
 
-The graph owns only per-turn control flow. Authoritative verify/plan/execute
-semantics are implemented once in ``loop_semantics.py`` and shared with the
-framework-neutral fallback, preventing behavioral drift between backends.
+The graph owns only per-turn control flow and is the only turn loop.
+Authoritative verify/plan/execute semantics live in ``loop_semantics.py``.
 
 The graph is intentionally in-memory for a guest turn. Durable service-request
 authority remains in the separate SQLite-backed workflow graph and business DB.
