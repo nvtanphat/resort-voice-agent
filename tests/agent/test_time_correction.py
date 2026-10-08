@@ -44,3 +44,29 @@ def test_languages_without_daypart_grammar_are_unchanged(language: str):
     # No profile grammar for dayparts: behaviour must equal the plain parser (no crash, no guess).
     text = "7 pm, I mean 8"
     assert preferred_time(text, language) == _preferred_time_core(text, language)
+
+
+@pytest.mark.parametrize("text,previous,expected", [
+    # a correction in a later turn keeps the half of the day of the open draft
+    ("đổi thành 8 giờ", "19:00", "20:00"),
+    ("đổi thành 9 giờ", "07:00", "09:00"),
+    # an explicit daypart, a written minute or a 24-hour clock is taken as stated
+    ("đổi thành 8 giờ sáng", "19:00", "08:00"),
+    ("đổi thành 8:30", "19:00", "08:30"),
+    ("đổi thành 20 giờ", "07:00", "20:00"),
+    # nothing to inherit from
+    ("đổi thành 8 giờ", None, "08:00"),
+])
+def test_a_later_correction_keeps_the_draft_daypart(text, previous, expected):
+    from concierge_kiosk.agent.tools.numerals import corrected_time
+
+    assert corrected_time(text, "vi", previous) == expected
+
+
+def test_a_multi_word_minus_marker_never_matches_without_an_hour():
+    # "to" is one of several "minus" markers ("ten to eight"); an ungrouped
+    # alternation once matched a bare "to 8" with no hour and raised TypeError.
+    from concierge_kiosk.agent.tools.numerals import preferred_time
+
+    assert preferred_time("change it to 8", "en") is None
+    assert preferred_time("8h to 10", "en") == "07:50"

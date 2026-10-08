@@ -17,7 +17,7 @@ from typing import Mapping
 
 from concierge_kiosk.i18n import text as i18n_text
 from concierge_kiosk.agent.understanding.domain_nlu import PARTY_SIZE_FULL_PATTERNS as _PARTY_SIZE_FULL_PATTERNS, PARTY_SIZE_PATTERNS as _PARTY_SIZE_PATTERNS, QUANTITY_NOUNS as _QUANTITY_NOUNS, ROOM_PATTERNS as _ROOM_PATTERNS, SLOT_LABELS as _SLOT_LABELS
-from concierge_kiosk.agent.tools.numerals import normalize_number_words, preferred_time
+from concierge_kiosk.agent.tools.numerals import corrected_time, normalize_number_words
 from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVICE_SLOTS, accepted_slots,
                                                      required_slots, service_definition)
 
@@ -99,10 +99,6 @@ def _party_size(text: str, language: str) -> int | None:
     return None
 
 
-def _preferred_time(text: str, language: str) -> str | None:
-    return preferred_time(text, language)
-
-
 def extract_slots(query: str, language: str, kind: str, *, mode: str,
                   existing: Mapping[str, str | int] | None = None) -> dict[str, str | int]:
     if kind not in _SERVICE_KINDS:
@@ -124,7 +120,7 @@ def extract_slots(query: str, language: str, kind: str, *, mode: str,
         if party is not None:
             slots['party_size'] = party
     if 'preferred_time' in supported:
-        preferred = _preferred_time(query, language)
+        preferred = corrected_time(query, language, slots.get('preferred_time'))
         if preferred:
             slots['preferred_time'] = preferred
     return slots

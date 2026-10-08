@@ -151,7 +151,7 @@ def _marked_clock(text: str, language: str) -> str | None:
     minute = r'(?P<minute>[0-5]?\d)'
 
     minus_pattern = re.compile(
-        rf'(?<!\d){hour}\s*(?:{hour_marker})\s*{minus_marker}\s*{minute}\s*(?:{minute_marker})?',
+        rf'(?<!\d){hour}\s*(?:{hour_marker})\s*(?:{minus_marker})\s*{minute}\s*(?:{minute_marker})?',
         flags=re.IGNORECASE,
     )
     match = minus_pattern.search(text)
@@ -213,6 +213,25 @@ def preferred_time(text: str, language: str) -> str | None:
     if len(periods) != 1:
         return value
     return f'{_hour_for_period(hour, next(iter(periods))):02d}:{minute}'
+
+
+def corrected_time(text: str, language: str, previous: object) -> str | None:
+    """Parse a time that replaces ``previous`` in an open draft.
+
+    "Change it to 8" after 19:00 means 20:00: a bare 12-hour clock with no
+    daypart of its own keeps the half of the day of the time it replaces.
+    An explicit daypart or a written minute (8:30) is taken as stated.
+    """
+    value = preferred_time(text, language)
+    if (value is None or not re.fullmatch(r'\d{2}:\d{2}', value)
+            or not isinstance(previous, str) or not re.fullmatch(r'\d{2}:\d{2}', previous)):
+        return value
+    hour = int(value[:2])
+    pattern = _CLOCK_DAYPART_PATTERNS.get(language)
+    if (not 1 <= hour <= 11 or ':' in _normalize_number_words(text, language)
+            or (pattern is not None and pattern.search(normalize_with_spans(text, language).text))):
+        return value
+    return f'{hour + 12:02d}:{value[3:]}' if int(previous[:2]) >= 12 else value
 
 
 def _preferred_time_core(text: str, language: str) -> str | None:
