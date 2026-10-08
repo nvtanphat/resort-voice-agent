@@ -11,26 +11,7 @@ def validate_rag(payload: dict[str, Any], languages: set[str]) -> None:
     fallback_order = rag["cross_language_fallback_order"]
     if len(fallback_order) != len(set(fallback_order)) or not set(fallback_order).issubset(languages):
         raise ValueError("RAG cross-language fallback order contains unsupported or duplicate languages")
-    validate_language_keys(rag["query_rewrites"], languages, label="rag.query_rewrites", require_all=True)
-    validate_language_keys(rag["query_fillers"], languages, label="rag.query_fillers", require_all=True)
-    validate_language_keys(rag["compound_terms"], languages, label="rag.compound_terms", require_all=False)
-    validate_language_keys(rag["explicit_topic_patterns"], languages, label="rag.explicit_topic_patterns", require_all=True)
-    for language, rewrites in rag["query_rewrites"].items():
-        for index, rewrite in enumerate(rewrites):
-            compile_regex(rewrite["pattern"], label=f"rag.query_rewrites.{language}.{index}")
-    for index, facet in enumerate(rag["concrete_facets"]):
-        compile_regex(facet["question_pattern"], label=f"rag.concrete_facets.{index}.question_pattern")
-        compile_regex(facet["source_pattern"], label=f"rag.concrete_facets.{index}.source_pattern")
-    for language, pattern in rag["explicit_topic_patterns"].items():
-        compile_regex(pattern, label=f"rag.explicit_topic_patterns.{language}")
-    domains = rag["document_domains"]
-    if domains["default"] not in domains["markers"]:
-        raise ValueError("RAG default document domain must exist in document domain markers")
     compile_regex(rag["opening_hours"]["time_range_pattern"], label="rag.opening_hours.time_range_pattern")
-    validate_language_keys(rag["explain_patterns"], languages,
-                            label="rag.explain_patterns", require_all=True)
-    for language, pattern in rag["explain_patterns"].items():
-        compile_regex(pattern, label=f"rag.explain_patterns.{language}")
     tokenization = rag["tokenization"]
     segmentation = tokenization["segmentation"]
     if not set(segmentation).issubset(languages):

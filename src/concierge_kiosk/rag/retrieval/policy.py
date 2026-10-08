@@ -184,17 +184,9 @@ def _fuse_rerank(subset: list[str], rrf: dict[str, float], rerank: dict[str, flo
 def abstention_answer(language: str) -> str:
     return i18n_text('knowledge.abstain', language)
 
-_EXPLAIN_BY_LANGUAGE = {
-    language: re.compile(pattern, re.I)
-    for language, pattern in domain_rag_policy().explain_patterns.items()
-}
-_EXPLAIN = _EXPLAIN_BY_LANGUAGE.get('en', re.compile(r'(?!)'))
 _NEGATION = re.compile('|'.join(nlu_policy().intent['negation_patterns'].values()), re.I)
 
 
-def explain_requested(query: str, language: str) -> bool:
-    pattern = _EXPLAIN_BY_LANGUAGE.get(language)
-    return bool(pattern and pattern.search(query))
 
 
 def _policy_conflict(rows: list[dict], query: str) -> bool:

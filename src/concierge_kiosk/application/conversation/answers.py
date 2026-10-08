@@ -13,14 +13,11 @@ from concierge_kiosk.agent.understanding.intent import (
 from concierge_kiosk.agent.orchestration.grounding import grounded_response
 from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS
 from concierge_kiosk.agent.understanding.semantic import semantic_grounded_response, SemanticResult
-from concierge_kiosk.agent.tools.planning import (advisory_topics, itinerary_topics,
-                                                  planning_search, planning_query_expansions,
-                                                  draft_plan)
+from concierge_kiosk.agent.tools.planning import draft_plan
 from concierge_kiosk.agent.tools.scheduling import approved_schedule, ScheduleUnavailable
 from concierge_kiosk.domain.entity_resolver import record_alias_matches
 from concierge_kiosk.domain.entity_resolver import property_entity_matches
 from concierge_kiosk.core.structured_loader import load_structured_dataset
-from concierge_kiosk.agent.understanding.domain_nlu import FACET_FACT_TYPES
 from concierge_kiosk.agent.core.tool_contracts import no_evidence_handoff_details
 from concierge_kiosk.core.domain_profile import ui_policy
 from concierge_kiosk.core.context_labels import context_terms
@@ -30,8 +27,7 @@ from concierge_kiosk.rag.retrieval import (
     Retrieval, abstention_answer, retrieve, retrieve_context, retrieve_localized_anchor,
 )
 
-from concierge_kiosk.rag.grounding.relevance import (
-    answerable, has_explicit_topic, normalized_query, requested_facets)
+from concierge_kiosk.rag.grounding.relevance import answerable
 from .recovery import load_support_directory, recovery_metadata
 from concierge_kiosk.i18n import text as i18n_text
 
@@ -194,38 +190,6 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
     except (FileNotFoundError, OSError, ValueError, TypeError):
         structured_dataset = None
 
-    def query_keys(query: str, language: str) -> dict[str, tuple[str, ...]]:
-        facets = requested_facets(query, language)
-        fact_types = tuple(dict.fromkeys(
-            fact_type for facet in facets for fact_type in FACET_FACT_TYPES.get(facet, ())
-        ))
-        return {'facets': facets, 'fact_types': fact_types,
-                'contexts': _mentioned_contexts(query, language)}
-
-    def structured_selectors(query: str, language: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
-        """Return an exact entity/facet key only for an unambiguous question."""
-        if structured_dataset is None:
-            return (), ()
-        entities = property_entity_matches(query, language, structured_dataset.aliases)
-        facets = query_keys(query, language)['facets']
-        contexts = _mentioned_contexts(query, language)
-        if len(entities) != 1:
-            return (), ()
-        if len(facets) == 1:
-            fact_types = FACET_FACT_TYPES.get(facets[0], ())
-        elif len(contexts) == 1:
-            fact_types = tuple(dict.fromkeys(
-                str(fact.get('fact_type')) for fact in structured_dataset.facts
-                if isinstance(fact, dict)
-                and fact.get('entity_id') == entities[0]
-                and fact.get('context') == contexts[0]
-                and isinstance(fact.get('fact_type'), str)
-            ))
-        else:
-            return (), ()
-        if not fact_types:
-            return (), ()
-        return entities, tuple(fact_types)
 
     def structured_context_selector(query: str, language: str) -> tuple[str, ...]:
         """Return one data-owned context when the question names it exactly."""
@@ -296,8 +260,6 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         anchor, context_mode = memory_snapshot.anchor, memory_snapshot.context_mode
         search_query = memory_snapshot.retrieval_query
         query_rewritten = memory_snapshot.query_rewritten
-        keys = query_keys(q, language)
-        structured_entities, structured_fact_types = structured_selectors(q, language)
         if structured_entities and structured_fact_types:
             record_metric('rag.structured_lookup_candidate', language)
         contextual = False
@@ -306,7 +268,6 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         if len(compound_queries) > 1 and anchor is None:
             pieces = []
             for part in compound_queries:
-                part_entities, part_fact_types = structured_selectors(part, language)
                 pieces.append(retrieve(
                     store, property_id=cfg.property_id, language=language, query=part,
                     embedder=embedder, reranker=reranker, vector_store=vector_store,
@@ -349,13 +310,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                 # A specific newly named topic may start a fresh authorized
                 # search. A bare "and its hours?" must NOT borrow a different
                 # document merely because the translated anchor is missing.
-                if has_explicit_topic(q):
-                    result = retrieve(store, property_id=cfg.property_id, language=language,
-                                      query=search_query, embedder=embedder, reranker=reranker,
-                                      vector_store=vector_store,
-                                      effective_date=effective_date, policy=rag_policy, expand_parent=True)
-                else:
-                    result.answer = abstention_answer(language)
+                pass
         else:
             revoked_anchor = None
             result = retrieve(store, property_id=cfg.property_id, language=language,
@@ -377,20 +332,8 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                 if not filtered_sources:
                     result.mode = 'context_filter_abstention'
                     contextual = False
-            anchored_hours_followup = (
-                anchor is not None
-                and result.sources[0].get('fact_type') == 'opening_hours'
-                and 'operating hours' in normalized_query(q, language))
-            if (result.sources and not answerable(
-                    keys, q, result.sources[0], language=language,
-                    dense_threshold=cfg.rag_min_dense_similarity)
-                    and not anchored_hours_followup):
-                # Keep no adjacent evidence alive for generation/citation. The
-                # recovery layer can still expose safe related topics below.
-                answerability_failure = {
-                    'requested_facets': list(keys['facets']),
-                    'source_fact_type': result.sources[0].get('fact_type', ''),
-                }
+            if result.sources and (not answerable(keys, q, result.sources[0], language=language, dense_threshold=cfg.rag_min_dense_similarity)):
+                answerability_failure = {'requested_facets': list(keys['facets']), 'source_fact_type': result.sources[0].get('fact_type', '')}
                 result.sources = []
                 result.answer = abstention_answer(language)
                 result.mode = 'answerability_abstention'
@@ -611,7 +554,6 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         The response metadata labels the result as advisory for the UI; every
         spoken claim must be an exact current citation in the business DB.
         """
-        topics = itinerary_topics(query, language) or advisory_topics(query, language)
         if not topics:
             raise RuntimeError('Planning route requires an explicit multi-domain request')
         claims, candidate_sources, missing, selected = [], [], [], []
@@ -648,9 +590,6 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                     continue
             # Use the extractive retrieval specialist, not three serial local
             # SLM generations. This keeps the Edge planning branch bounded.
-            search_query = planning_search(topic, language)
-            prefs = preferences if isinstance(preferences, dict) else {}
-            additions = planning_query_expansions(topic, prefs, language)
             if additions:
                 search_query = ' '.join((search_query, *additions))
             retrieved = retrieve(store, property_id=cfg.property_id, language=language,

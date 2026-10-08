@@ -13,12 +13,9 @@ from concierge_kiosk.rag.rerank.local import LocalReranker
 from concierge_kiosk.rag.retrieval.evidence import evidence_passage, retrieve_parent_context
 from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
 from concierge_kiosk.rag.text.tokenization import tokens
-from concierge_kiosk.rag.grounding.relevance import (candidate_relevant, concrete_facets_supported, evidence_relevant, fts_query,
-                                            is_opening_hours_query, query_terms as meaningful_query_terms)
+from concierge_kiosk.rag.grounding.relevance import candidate_relevant, evidence_relevant, fts_query, query_terms as meaningful_query_terms
 from concierge_kiosk.core.domain_profile import rag_policy as domain_rag_policy
-from .policy import (RAGPolicy, Retrieval, abstention_answer, _bounded_query_embedding,
-                     _bounded_rerank, _fuse_rerank, _policy_conflict, _deadline_ns, _remaining_ms,
-                     _clock_ns, explain_requested)
+from .policy import RAGPolicy, Retrieval, abstention_answer, _bounded_query_embedding, _bounded_rerank, _fuse_rerank, _policy_conflict, _deadline_ns, _remaining_ms, _clock_ns
 from concierge_kiosk.rag.vectorstore import VectorStore, VectorStoreError
 LOGGER = logging.getLogger(__name__)
 
@@ -88,7 +85,6 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
     params = (property_id, language, today, today)
     expression = fts_query(query, language)
     query_terms = meaningful_query_terms(query, language)
-    opening_hours_query = is_opening_hours_query(query, language)
     # Guest-supplied numbers are not a candidate-stage hard filter. Party size,
     # child age and natural times such as ``3pm`` may be absent or formatted as
     # ``15:00`` in the approved policy. Numeric truth is enforced by grounding.
@@ -147,18 +143,12 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                 if remaining_ms <= 0:
                     raise TimeoutError('Dense retrieval budget exhausted before embedding')
                 vector = _bounded_query_embedding(embedder, query, remaining_ms)
-                filters = {
-                    'property_id': property_id, 'language': language,
-                    'classification': 'public', 'active': 1,
-                    'embedding_model': embedder.model_name, 'effective_on': today,
-                }
+                filters = {'property_id': property_id, 'language': language, 'classification': 'public', 'active': 1, 'embedding_model': embedder.model_name, 'effective_on': today}
                 allowed_dense_languages = {language}
                 matches = vector_store.query(vector, k=policy.dense_top_k, filters=filters)
-                if (not matches and _allow_language_fallback and _clock_ns() < shared_deadline_ns):
-                    fallback_order = policy.cross_language_fallback_order or tuple(
-                        domain_rag_policy().cross_language_fallback_order)
-                    allowed_dense_languages = set(dict.fromkeys(
-                        [language, *[item for item in fallback_order if item in LANGUAGES]]))
+                if not matches and _allow_language_fallback and (_clock_ns() < shared_deadline_ns):
+                    fallback_order = policy.cross_language_fallback_order or tuple(domain_rag_policy().cross_language_fallback_order)
+                    allowed_dense_languages = set(dict.fromkeys([language, *[item for item in fallback_order if item in LANGUAGES]]))
                     filters['language'] = tuple(allowed_dense_languages)
                     matches = vector_store.query(vector, k=policy.dense_top_k, filters=filters)
                     cross_language_dense = bool(matches)
@@ -169,26 +159,17 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                     match_language = str(match.metadata.get('language') or '')
                     if not doc_id or not revision or match_language not in allowed_dense_languages:
                         continue
-                    row = con.execute(
-                        f"SELECT k.* FROM knowledge k WHERE {where} AND k.id=? AND k.revision=? "  # nosec B608  # where is assembled from fixed clauses; all values are bound
-                        "AND k.embedding_model=? AND k.embedding IS NOT NULL",
-                        (property_id, match_language, today, today,
-                         doc_id, revision, embedder.model_name),
-                    ).fetchone()
+                    row = con.execute(f'SELECT k.* FROM knowledge k WHERE {where} AND k.id=? AND k.revision=? AND k.embedding_model=? AND k.embedding IS NOT NULL', (property_id, match_language, today, today, doc_id, revision, embedder.model_name)).fetchone()
                     if row is None or unsafe_knowledge_text(row['body']):
                         continue
                     score = max(-1.0, min(1.0, 1.0 - float(match.distance)))
                     match_rows.append((score, row))
-                learned_dense = bool(getattr(embedder, "is_learned", False))
+                learned_dense = bool(getattr(embedder, 'is_learned', False))
                 dense_threshold = policy.min_dense_similarity if learned_dense else 0.0
-                dense = [(score, row) for score, row in match_rows
-                         if score > 0 and score >= dense_threshold]
+                dense = [(score, row) for score, row in match_rows if score > 0 and score >= dense_threshold]
                 for score, row in dense:
-                    if evidence_relevant(query, language, row['body'], row['title'], row['heading'],
-                                         threshold=policy.lexical_coverage):
+                    if evidence_relevant(query, language, row['body'], row['title'], row['heading'], threshold=policy.lexical_coverage):
                         conflict_candidates[row['id']] = dict(row)
-                valid_dense = [(score, row) for score, row in dense
-                               if concrete_facets_supported(query, row['body'], row['title'], row['heading'])]
                 dense_candidates = []
                 for score, row in valid_dense:
                     candidate = dict(row)
@@ -196,7 +177,7 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                     dense_candidates.append((score, candidate))
                 valid_dense = dense_candidates
                 if learned_dense:
-                    semantic_candidate_ids.update(row['id'] for score, row in valid_dense)
+                    semantic_candidate_ids.update((row['id'] for score, row in valid_dense))
                 rankings.append([row['id'] for score, row in valid_dense])
                 candidates.update({row['id']: dict(row) for score, row in valid_dense})
                 dense_succeeded = bool(valid_dense)
@@ -273,35 +254,7 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                 return Retrieval('rerank_unavailable', [], abstention_answer(language),
                                  rerank_status=rerank_status, evidence_quality='ambiguous',
                                  rerank_ms=rerank_ms)
-    sources = [{"chunk_id": key, "source_id": candidates[key]["source"],
-                "revision": candidates[key]["revision"], "language": candidates[key]["language"],
-                "title": candidates[key]["title"],
-                "heading": candidates[key]["heading"], "domain": candidates[key]["domain"],
-                "entity_id": candidates[key].get("entity_id", ""),
-                "fact_type": candidates[key].get("fact_type", ""),
-                "fact_context": candidates[key].get("fact_context", ""),
-                "canonical_fact_id": candidates[key].get("canonical_fact_id", ""),
-                "chunk_kind": _chunk_metadata(candidates[key]).get("chunk_kind", "fact"),
-                "entity_card": bool(_chunk_metadata(candidates[key]).get("entity_card", False)),
-                "context_text": candidates[key].get("context_text", ""),
-                "dense_similarity": candidates[key].get("_dense_similarity"),
-                "domain_review": _domain_review(candidates[key]),
-                "parent_id": candidates[key]["parent_id"], "section_id": candidates[key]["section_id"],
-                "section_ordinal": candidates[key]["section_ordinal"],
-                "content": evidence_passage(
-                    candidates[key]["body"], query, language=language,
-                    max_chars=policy.max_evidence_chars,
-                    # Opening-hours candidates have already passed the strict
-                    # relevance gate, which requires a concrete clock range and
-                    # a matching subject label. The child fact line may therefore
-                    # contain only the locale-native facet label (Schedule/일정/
-                    # 活动时间) rather than repeating the guest's subject words.
-                    require_term_overlap=(key not in semantic_candidate_ids and
-                                          not opening_hours_query)),
-                "score": round(scores[key], 6),
-                **({"requested_language": language}
-                   if candidates[key]["language"] != language else {})}
-               for key in ordered[:top_k]]
+    sources = [{'chunk_id': key, 'source_id': candidates[key]['source'], 'revision': candidates[key]['revision'], 'language': candidates[key]['language'], 'title': candidates[key]['title'], 'heading': candidates[key]['heading'], 'domain': candidates[key]['domain'], 'entity_id': candidates[key].get('entity_id', ''), 'fact_type': candidates[key].get('fact_type', ''), 'fact_context': candidates[key].get('fact_context', ''), 'canonical_fact_id': candidates[key].get('canonical_fact_id', ''), 'chunk_kind': _chunk_metadata(candidates[key]).get('chunk_kind', 'fact'), 'entity_card': bool(_chunk_metadata(candidates[key]).get('entity_card', False)), 'context_text': candidates[key].get('context_text', ''), 'dense_similarity': candidates[key].get('_dense_similarity'), 'domain_review': _domain_review(candidates[key]), 'parent_id': candidates[key]['parent_id'], 'section_id': candidates[key]['section_id'], 'section_ordinal': candidates[key]['section_ordinal'], 'content': evidence_passage(candidates[key]['body'], query, language=language, max_chars=policy.max_evidence_chars, require_term_overlap=key not in semantic_candidate_ids), 'score': round(scores[key], 6), **({'requested_language': language} if candidates[key]['language'] != language else {})} for key in ordered[:top_k]]
     sources = [source for source in sources if source['content'] and
                not unsafe_knowledge_text(source['content'])]
     if not sources:
@@ -338,15 +291,6 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
                           if mode == 'dense' else 'hybrid' if dense_succeeded else 'lexical'),
                          [], abstention_answer(language), rerank_status=rerank_status,
                          evidence_quality='unsupported', rerank_ms=rerank_ms)
-    if expand_parent and explain_requested(query, language):
-        for source in sources:
-            # Parent is *optional* context. It cannot change the child citation
-            # or create a business/LLM claim; generation still verifies child spans.
-            source['parent_context'] = retrieve_parent_context(
-                store, property_id=property_id, language=language,
-                source_id=source['source_id'], revision=source['revision'],
-                effective_date=today, parent_id=source.get('parent_id', ''),
-                section_id=source.get('section_id', ''), heading=source['heading'], max_chars=2400)
     return Retrieval('structured' if structured_succeeded else
                      (('cross_language_dense' if cross_language_dense else 'dense')
                       if mode == 'dense' else 'hybrid' if dense_succeeded else 'lexical'),

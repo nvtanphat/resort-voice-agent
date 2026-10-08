@@ -47,7 +47,6 @@ class SessionTopics:
     turns: deque[EvidenceAnchor] = field(default_factory=lambda: deque(maxlen=MAX_TURNS))
     summary: TopicSummary = field(default_factory=TopicSummary)
     total_turns: int = 0
-    last_facet: str | None = None
     proposal_id: str | None = None
     service_kind: str | None = None
     workflow_status: str | None = None

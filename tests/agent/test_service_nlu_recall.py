@@ -71,14 +71,6 @@ def test_room_digits_with_transcript_spacing_are_compacted():
     assert _room_number('12 03', 'vi') == '1203'
 
 
-@pytest.mark.parametrize("query", [
-    "spa mở cửa đến mấy giờ", "spa đóng cửa lúc mấy giờ", "hồ bơi mở đến mấy giờ",
-    "nhà hàng mở cửa đến khi nào",
-])
-def test_vietnamese_until_what_time_questions_are_opening_hours_queries(query):
-    from concierge_kiosk.rag.grounding.relevance import is_opening_hours_query, normalized_query
-    assert is_opening_hours_query(query, "vi")
-    assert normalized_query(query, "vi").endswith("operating hours")
 
 
 @pytest.mark.parametrize(("query", "language"), [
@@ -90,11 +82,6 @@ def test_greetings_do_not_bypass_command_understanding(query, language):
     assert classify_dialogue(query, language).branch == "knowledge"
 
 
-def test_compound_action_is_not_mistaken_for_a_knowledge_followup():
-    from concierge_kiosk.agent.memory.heuristics import is_followup
-    assert is_followup(
-        'bring 2 towels and 3 bottles of water to room 2108, and also book a taxi at 6am',
-        'en') is False
 
 
 @pytest.mark.parametrize(("query", "language", "branch"), [

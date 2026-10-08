@@ -11,8 +11,7 @@ from concierge_kiosk.agent.memory.task_memory import AgentTaskMemory
 from concierge_kiosk.agent.runtime.persistence import AgentCheckpointStore, SessionSemanticMemoryStore
 from concierge_kiosk.agent.runtime.state import build_initial_state
 from concierge_kiosk.agent.understanding.routing import RouteDecision
-from concierge_kiosk.agent.tools.planning import itinerary_topics
-from concierge_kiosk.agent.tools.scheduling import guest_preferred_window, approved_schedule, proposed_slots
+from concierge_kiosk.agent.tools.scheduling import approved_schedule, proposed_slots
 from concierge_kiosk.agent.tools.service_slots import assess_service
 from concierge_kiosk.domain.requests.workflows import Workflows
 from concierge_kiosk.persistence.sqlite_store import Store
@@ -40,12 +39,6 @@ class UserJourneyTests(unittest.TestCase):
         self.assertEqual(result.slots['preferred_time'], '19:00')
         self.assertEqual(result.slots['party_size'], 2)
 
-    def test_practical_evening_plan_cues_and_window(self):
-        topics = itinerary_topics('Từ 5 giờ chiều đến 9 giờ tối, sắp xếp giúp tôi ăn tối rồi đi spa', 'vi')
-        self.assertEqual(topics, ('dining', 'facilities'))
-        self.assertEqual(guest_preferred_window(
-            'Từ 5 giờ chiều đến 9 giờ tối, sắp xếp giúp tôi ăn tối rồi đi spa', 'vi'),
-            (17 * 60, 21 * 60))
 
     def test_evening_dinner_then_spa_can_receive_source_bound_slots(self):
         release = Path(__file__).resolve().parents[2] / 'releases/planning-release.json'
@@ -63,18 +56,6 @@ class UserJourneyTests(unittest.TestCase):
         self.assertLessEqual(slots['v_senses_spa']['suggested_time']['end'], '21:00')
         self.assertFalse(slots['don_cipriani_dinner']['verified_availability'])
 
-    def test_verified_entity_can_resolve_navigation_followup(self):
-        memory = ConversationMemory()
-        version = memory.topic_version('S1')
-        ok, _ = memory.commit_topic(
-            'S1', 'vi', expected_version=version,
-            sources=[{'source_id': 'kb_restaurant_don_cipriani', 'revision': 'r1',
-                      'chunk_id': 'c1', 'title': 'Nhà hàng Ý Don Cipriani',
-                      'heading': 'Ẩm thực', 'section_id': 'restaurant'}],
-            query='Nhà hàng Ý nào mở tối nay?')
-        self.assertTrue(ok)
-        rewritten = memory.reference_query('S1', 'Dẫn tôi đến nhà hàng đó', 'vi')
-        self.assertIn('Nhà hàng Ý Don Cipriani', rewritten)
 
     def test_guest_cancel_is_staff_reviewed(self):
         row = self._submitted()

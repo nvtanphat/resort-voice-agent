@@ -16,17 +16,7 @@ import re
 from typing import Mapping
 
 from concierge_kiosk.agent.understanding.intent import normalize_intent_text
-from concierge_kiosk.agent.understanding.domain_nlu import (
-    COURTESY_PARTICLES as _COURTESY_PARTICLES,
-    CLARIFICATION_TEXT as _CLARIFICATION_TEXT,
-    NUMBER_WORDS as _NUMBER_WORDS,
-    PARTY_SIZE_FULL_PATTERNS as _PARTY_SIZE_FULL_PATTERNS,
-    PARTY_SIZE_PATTERNS as _PARTY_SIZE_PATTERNS,
-    QUANTITY_NOUNS as _QUANTITY_NOUNS,
-    ROOM_PATTERNS as _ROOM_PATTERNS,
-    READY_TEXT as _READY_TEXT,
-    SLOT_LABELS as _SLOT_LABELS,
-)
+from concierge_kiosk.agent.understanding.domain_nlu import CLARIFICATION_TEXT as _CLARIFICATION_TEXT, NUMBER_WORDS as _NUMBER_WORDS, PARTY_SIZE_FULL_PATTERNS as _PARTY_SIZE_FULL_PATTERNS, PARTY_SIZE_PATTERNS as _PARTY_SIZE_PATTERNS, QUANTITY_NOUNS as _QUANTITY_NOUNS, ROOM_PATTERNS as _ROOM_PATTERNS, READY_TEXT as _READY_TEXT, SLOT_LABELS as _SLOT_LABELS
 from concierge_kiosk.agent.tools.numerals import normalize_number_words, preferred_time
 from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVICE_SLOTS, accepted_slots,
                                                      required_slots, service_definition)

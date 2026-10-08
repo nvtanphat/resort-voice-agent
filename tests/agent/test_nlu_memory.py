@@ -20,7 +20,6 @@ def test_profile_owns_nlu_and_memory_policy():
     profile = load_domain_profile(path, sha)
     assert profile.schema_version == 5
     assert profile.nlu.intent["emergency_event_patterns"]["en"]
-    assert profile.nlu.memory_vocabulary["followup_markers"]["vi"]
     assert profile.memory_policy.conversation_ttl_seconds == CONTEXT_TTL_SECONDS
     assert profile.memory_policy.max_turns == MAX_TURNS
     assert profile.memory_policy.max_topics == MAX_TOPICS

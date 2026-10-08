@@ -142,19 +142,6 @@ class FaissVectorStore:
                     break
             return matches
 
-    def delete_release(self, release_version: int | str) -> int:
-        value = int(release_version)
-        with self._lock:
-            keep = [item for item in self._records
-                    if item.get("metadata", {}).get("release_version") != value]
-            removed = len(self._records) - len(keep)
-            if removed:
-                self._rebuild([
-                    VectorRecord(str(item["key"]), tuple(float(value) for value in item["vector"]),
-                                 item["metadata"])
-                    for item in keep
-                ])
-            return removed
 
     def stats(self) -> dict[str, Any]:
         with self._lock:

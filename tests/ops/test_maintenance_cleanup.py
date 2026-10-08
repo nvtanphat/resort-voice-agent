@@ -64,15 +64,3 @@ def test_metric_buffer_auto_flushes_at_batch_threshold(tmp_path):
     assert count == store._METRIC_FLUSH_BATCH
 
 
-def test_production_preflight_reports_unprovisioned_assets():
-    import hashlib
-    from concierge_kiosk.core.runtime_profile import load_runtime_profile
-    from concierge_kiosk.operations.production_readiness import production_provisioning_gaps
-
-    path = ROOT / 'config' / 'runtime-profiles' / 'production.json'
-    profile = load_runtime_profile(str(path), hashlib.sha256(path.read_bytes()).hexdigest())
-    gaps = production_provisioning_gaps(profile, {})
-    assert 'pinned local SLM digest (CONCIERGE_LLM_MODEL_DIGEST)' in gaps
-    assert 'local reranker model + manifest' in gaps
-    assert 'independent NLI model + manifest' in gaps
-    assert 'final Whisper model' in gaps

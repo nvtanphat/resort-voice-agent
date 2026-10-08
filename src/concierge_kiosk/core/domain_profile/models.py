@@ -39,13 +39,9 @@ class MemoryPolicy:
 @dataclass(frozen=True)
 class NluPolicy:
     intent: Mapping[str, Any]
-    authority: Mapping[str, Any]
     routing: Mapping[str, Any]
     slots: Mapping[str, Any]
-    memory_vocabulary: Mapping[str, Any]
-    read_intent: Mapping[str, Any]
     time_expressions: Mapping[str, Mapping[str, str]]
-    discourse_terms: Mapping[str, tuple[str, ...]]
     qualifier_patterns: Mapping[str, str]
     normalization: Mapping[str, Any]
     numerals: Mapping[str, Any]
@@ -55,11 +51,7 @@ class NluPolicy:
 
 @dataclass(frozen=True)
 class PlanningPolicy:
-    max_query_chars: int
-    minimum_categories: int
     default_max_activities_per_day: int
-    intent_cues: Mapping[str, tuple[str, ...]]
-    categories: Mapping[str, Any]
     constraints: Mapping[str, Any]
 
 
@@ -72,16 +64,10 @@ class SecurityPolicy:
 
 @dataclass(frozen=True)
 class RagPolicy:
-    query_rewrites: Mapping[str, Any]
-    query_fillers: Mapping[str, tuple[str, ...]]
-    compound_terms: Mapping[str, tuple[str, ...]]
-    concrete_facets: tuple[Mapping[str, Any], ...]
-    explicit_topic_patterns: Mapping[str, str]
     opening_hours: Mapping[str, Any]
     document_domains: Mapping[str, Any]
     token_stopwords: frozenset[str]
     cross_language_fallback_order: tuple[str, ...]
-    explain_patterns: Mapping[str, str]
     tokenization: Mapping[str, Any]
     grounding_budgets: Mapping[str, Any]
 

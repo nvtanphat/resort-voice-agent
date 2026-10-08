@@ -628,7 +628,6 @@ def validate() -> dict[str, int]:
         raise ValueError('synthetic history uses more units than official aggregate inventory')
 
     # Summary must be reproducible from the actual history, not hand-edited.
-    completed_rows = [row for row in history if row.get('status') != 'cancelled']
     if history_summary.get('row_count') != len(history):
         raise ValueError('synthetic history summary row count does not match history')
     status_counts = {}

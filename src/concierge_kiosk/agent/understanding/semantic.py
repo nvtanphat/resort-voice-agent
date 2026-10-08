@@ -108,37 +108,6 @@ def _safe_claim(text: str, quote: str, original: str) -> bool:
     return True
 
 
-def parse_candidates(raw: str, evidence: list[dict]) -> tuple[SemanticClaim, ...] | None:
-    """Reject schema drift and unsupported or duplicate source/quote pairs."""
-    if not isinstance(raw, str) or len(raw) > _MAX_JSON:
-        return None
-    try:
-        data = json.loads(raw)
-    except (ValueError, TypeError):
-        return None
-    if not isinstance(data, dict) or set(data) != {'claims'} or not isinstance(data['claims'], list):
-        return None
-    if not 1 <= len(data['claims']) <= _BUDGETS['semantic_max_claims']:
-        return None
-    chosen: list[SemanticClaim] = []
-    seen: set[str] = set()
-    for item in data['claims']:
-        if not isinstance(item, dict) or set(item) != {'source', 'quote', 'text'}:
-            return None
-        ref, quote, phrase = item['source'], item['quote'], item['text']
-        if not isinstance(ref, str) or not _SOURCE_REF.fullmatch(ref):
-            return None
-        index = int(ref[1:]) - 1
-        if index >= len(evidence) or not _safe_claim(phrase, quote, evidence[index]['content']):
-            return None
-        key = ' '.join(phrase.casefold().split())
-        if key in seen:
-            return None
-        seen.add(key)
-        chosen.append(SemanticClaim(index, quote, phrase))
-    if len('\n'.join(row.text for row in chosen)) > _BUDGETS['semantic_answer_chars']:
-        return None
-    return tuple(chosen)
 
 
 def repair_candidates(raw: str, evidence: list[dict]) -> tuple[tuple[SemanticClaim, ...], int] | None:

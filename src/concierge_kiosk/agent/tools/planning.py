@@ -11,72 +11,14 @@ from datetime import date
 from uuid import uuid4
 from concierge_kiosk.agent.understanding.intent import normalize_intent_text
 from concierge_kiosk.core.domain_profile import planning_policy
-from concierge_kiosk.core.domain_vocab import category_terms
 from concierge_kiosk.domain.entity_resolver import alias_present
-from concierge_kiosk.agent.tools.scheduling import proposed_slots, guest_preferred_window, guest_budget, guest_daily_limit, guest_activity_preferences
+from concierge_kiosk.agent.tools.scheduling import proposed_slots, guest_daily_limit
 
 
 _PLANNING = planning_policy()
 _ARRIVAL = re.compile(_PLANNING.constraints['arrival_date_pattern'], re.I)
 
 
-def _category_terms(topic: str, language: str) -> tuple[str, ...]:
-    spec = _PLANNING.categories.get(topic)
-    if not isinstance(spec, dict):
-        return ()
-    return tuple(dict.fromkeys((*spec.get('match_terms', {}).get(language, ()),
-                               *category_terms(topic, language))))
-
-
-def planning_query_expansions(topic: str, preferences: dict | None, language: str) -> tuple[str, ...]:
-    """Return profile-owned retrieval hints for explicitly stored guest preferences."""
-    if not isinstance(preferences, dict):
-        return ()
-    spec = _PLANNING.categories.get(topic)
-    if not isinstance(spec, dict):
-        return ()
-    additions: list[str] = []
-    for rule in spec.get('preference_expansions', ()):
-        value = preferences.get(rule.get('preference'))
-        operator = rule.get('operator')
-        matched = (operator == 'enum_in' and value in rule.get('values', ())) or (
-            operator == 'positive_integer' and isinstance(value, int) and not isinstance(value, bool) and value > 0)
-        term = rule.get('terms', {}).get(language) if matched else None
-        if isinstance(term, str) and term.strip():
-            additions.append(term.strip())
-    return tuple(additions)
-
-
-def itinerary_topics(query: str, language: str) -> tuple[str, ...]:
-    """Only explicit multi-category planning requests qualify, never booking verbs alone."""
-    cues = _PLANNING.intent_cues.get(language, ())
-    if not cues or len(query) > _PLANNING.max_query_chars:
-        return ()
-    normalized = normalize_intent_text(query)
-    if not any(cue in normalized for cue in cues):
-        return ()
-    found = tuple(topic for topic in _PLANNING.categories
-                  if any(alias in normalized for alias in _category_terms(topic, language)))
-    return found if len(found) >= _PLANNING.minimum_categories else ()
-
-
-def advisory_topics(query: str, language: str) -> tuple[str, ...]:
-    """Resolve read-only recommendation domains, including one-domain asks."""
-    if not isinstance(query, str) or len(query) > _PLANNING.max_query_chars:
-        return ()
-    normalized = normalize_intent_text(query)
-    cues = _PLANNING.intent_cues.get(language, ())
-    if not any(cue in normalized for cue in cues):
-        return ()
-    return tuple(topic for topic in _PLANNING.categories
-                 if any(alias in normalized for alias in _category_terms(topic, language)))
-
-
-def planning_search(topic: str, language: str) -> str:
-    spec = _PLANNING.categories.get(topic)
-    if not isinstance(spec, dict):
-        raise KeyError(topic)
-    return spec['search_query'][language]
 
 
 def draft_plan(query: str, language: str, topics: tuple[str, ...],
@@ -107,20 +49,9 @@ def draft_plan(query: str, language: str, topics: tuple[str, ...],
                                 'origin': 'guest_request'})
     requested_days = next((item['value'] for item in constraints
                            if item['kind'] == 'requested_days'), None)
-    preferred_window = guest_preferred_window(query, language)
-    budget = guest_budget(query, language)
     daily_limit = guest_daily_limit(query, language)
-    if budget is not None:
-        constraints.append({'kind': 'advisory_budget',
-                            'value': {'amount_units': budget[0], 'currency': budget[1]},
-                            'origin': 'guest_request'})
     if daily_limit is not None:
         constraints.append({'kind': 'max_activities_per_day', 'value': daily_limit,
-                            'origin': 'guest_request'})
-    if preferred_window:
-        constraints.append({'kind': 'preferred_window', 'value':
-                            {'start': f'{preferred_window[0] // 60:02d}:{preferred_window[0] % 60:02d}',
-                             'end': f'{preferred_window[1] // 60:02d}:{preferred_window[1] % 60:02d}'},
                             'origin': 'guest_request'})
     arrival_match = _ARRIVAL.search(query)
     arrival = None
@@ -159,20 +90,12 @@ def draft_plan(query: str, language: str, topics: tuple[str, ...],
         matches.append((topic, statement, citation, chosen_key))
         if chosen_key and chosen_key not in requested_keys:
             requested_keys.append(chosen_key)
-    preferences = guest_activity_preferences(query, language, verified_schedule or {})
-    if preferences:
-        constraints.append({'kind': 'preferred_activity_id', 'value': next(iter(preferences)),
-                            'origin': 'guest_request'})
     try:
         as_of = date.fromisoformat(effective_date) if effective_date else None
     except ValueError:
         as_of = None
     schedule_days = requested_days or (1 if requested_keys else None)
-    slot_plan = proposed_slots(tuple(requested_keys), schedule_days,
-                               verified_schedule or {}, preferred_window=preferred_window,
-                               start_date=arrival, budget=budget,
-                               max_activities_per_day=daily_limit or _PLANNING.default_max_activities_per_day,
-                               preferences=preferences, as_of=as_of) if schedule_days else {}
+    slot_plan = proposed_slots(tuple(requested_keys), schedule_days, verified_schedule or {}, start_date=arrival, max_activities_per_day=daily_limit or _PLANNING.default_max_activities_per_day, as_of=as_of) if schedule_days else {}
     activities = []
     for topic, statement, citation, key in matches:
         reference = {field: citation[field] for field in ('source_id', 'revision', 'chunk_id', 'citation_id')}
@@ -191,42 +114,4 @@ def draft_plan(query: str, language: str, topics: tuple[str, ...],
             'requires_booking_confirmation': True,
             'source_references': [reference],
         })
-    known_costs = [activity['advisory_cost']['amount_units'] for activity in activities
-                   if budget is not None and activity['suggested_time'] and
-                   activity['advisory_cost'] and activity['advisory_cost']['currency'] == budget[1]]
-    unpriced = sum(bool(activity['suggested_time']) and
-                   (not activity['advisory_cost'] or activity['advisory_cost']['currency'] != budget[1])
-                   for activity in activities) if budget is not None else 0
-    return {
-        'plan_id': uuid4().hex, 'status': 'draft', 'language': language,
-        # Day grouping is an editorial suggestion, NOT a time slot, availability
-        # assertion, travel estimate or booking. No unsupported facts in speech.
-        'days': [{'day_index': day, 'activity_indices': [i for i, activity in enumerate(activities)
-                  if activity['day_index'] == day], 'scheduled': False}
-                 for day in range(1, schedule_days + 1)] if schedule_days else [],
-        'activities': activities, 'constraints': constraints,
-        'budget_evaluation': ({'status': 'incomplete_costs' if unpriced else 'known_subtotal_only',
-                               'known_subtotal_units': sum(known_costs), 'currency': budget[1],
-                               'unpriced_activity_count': unpriced, 'not_final_price': True}
-                              if budget is not None else None),
-        'source_references': [reference for item in activities for reference in item['source_references']],
-        'unverified_items': list(dict.fromkeys([
-            *missing,
-            *(['schedule_source_unmatched'] if any(
-                (activity['topic'] in (verified_schedule or {}) or any(
-                    spec.get('topic') == activity['topic'] for spec in (verified_schedule or {}).values()))
-                and activity['suggested_time'] is None
-                for activity in activities) else []),
-            *(['live_availability'] if any(activity['suggested_time'] for activity in activities) else []),
-            *(['budget_not_fully_verifiable'] if budget is not None and any(
-                activity['suggested_time'] and (
-                    not activity['advisory_cost'] or
-                    activity['advisory_cost']['currency'] != budget[1])
-                for activity in activities) else []),
-            *(['operating_hours_need_confirmation'] if any(
-                activity['suggested_time'] and not activity['operating_hours_source_verified']
-                for activity in activities) else []),
-        ])),
-        'requires_confirmation': True, 'booking_status': 'not_booked',
-        'note': 'Proposed slots use a pinned, source-bound operating-window release only; live availability and reservations are never asserted.',
-    }
+    return {'plan_id': uuid4().hex, 'status': 'draft', 'language': language, 'days': [{'day_index': day, 'activity_indices': [i for i, activity in enumerate(activities) if activity['day_index'] == day], 'scheduled': False} for day in range(1, schedule_days + 1)] if schedule_days else [], 'activities': activities, 'constraints': constraints, 'source_references': [reference for item in activities for reference in item['source_references']], 'requires_confirmation': True, 'booking_status': 'not_booked', 'note': 'Proposed slots use a pinned, source-bound operating-window release only; live availability and reservations are never asserted.'}

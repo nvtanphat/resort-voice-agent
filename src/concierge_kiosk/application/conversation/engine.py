@@ -42,8 +42,6 @@ from concierge_kiosk.agent.runtime.presentation.turn import (
 )
 from concierge_kiosk.agent.runtime.persistence import checkpoint_projection, semantic_memory_projection
 from concierge_kiosk.agent.memory.reference_resolver import model_reference_choice
-from concierge_kiosk.agent.memory.heuristics import (is_followup, is_pending_answer,
-                                                         needs_model_reference_resolution)
 from concierge_kiosk.api.shared.contracts import Ask
 from concierge_kiosk.application.service_actions import ServiceActionService
 from concierge_kiosk.application import KnowledgeService, TurnCoordinator, CoordinatedTurn
@@ -457,31 +455,6 @@ class _TurnRuntimeSupport:
                                   decision: RouteDecision, *, voice_turn: bool = False):
         """Resolve public-memory references without inheriting write authority."""
         execution_query = query
-        if is_followup(query, language):
-            anchor, context_mode = self.conversations.resolve_with_mode(session, query, language)
-            candidates = self.conversations.candidate_anchors(session, language)
-            if (candidates and needs_model_reference_resolution(query, language, context_mode)
-                    and self.cfg.agent_planner_enabled and self.slm_permitted()
-                    and self.audio_admission.try_enter_slm(session)):
-                try:
-                    selected = None
-                    for model in self.cfg.llm_candidates():
-                        selected = model_reference_choice(
-                            query=query, language=language, candidates=candidates,
-                            base_url=self.cfg.llm_base_url, model=model,
-                            should_cancel=lambda: self.audio_admission.slm_cancelled(session),
-                            num_gpu=self.cfg.slm_num_gpu,
-                            timeout_seconds=(min(self.cfg.reference_resolver_timeout_seconds,
-                                                 self.cfg.voice_slm_caps["reference"])
-                                             if voice_turn else self.cfg.reference_resolver_timeout_seconds))
-                        if selected is not None:
-                            break
-                    if selected is not None:
-                        anchor = selected
-                finally:
-                    self.audio_admission.leave_slm()
-            if anchor is not None:
-                execution_query = self.conversations.reference_query_from_anchor(query, anchor, language)
         return execution_query, decision
 
     def planner_for_session(self, session: str, *, voice_turn: bool = False, skip: bool = False,
@@ -588,7 +561,6 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         result = _turn_grounded_answer(request.query, request.language, request.session,
                                        effective_date=request.effective_date,
                                        question_type=request.decision.question_type)
-        map_query = conversations.reference_query(request.session, request.query, request.language)
         map_query = localized_map_query(
             store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256,
             property_id=cfg.property_id, query=map_query, language=request.language,
@@ -626,18 +598,9 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                                        effective_date=request.effective_date,
                                        question_type=request.decision.question_type)
         try:
-            map_query = conversations.reference_query(request.session, request.query, request.language)
-            map_query = localized_map_query(
-                store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256,
-                property_id=cfg.property_id, query=map_query, language=request.language,
-                anchor=conversations.resolve(request.session, request.query, request.language),
-                as_of=request.effective_date)
-            result['map_guidance'] = map_guidance(
-                store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256,
-                property_id=cfg.property_id, query=map_query, language=request.language,
-                start_id=request.start_location, as_of=request.effective_date)
-            result = apply_verified_map_answer(result, request.language, request.query,
-                                               has_navigate_command=True)
+            map_query = localized_map_query(store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256, property_id=cfg.property_id, query=map_query, language=request.language, anchor=conversations.resolve(request.session, request.query, request.language), as_of=request.effective_date)
+            result['map_guidance'] = map_guidance(store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256, property_id=cfg.property_id, query=map_query, language=request.language, start_id=request.start_location, as_of=request.effective_date)
+            result = apply_verified_map_answer(result, request.language, request.query, has_navigate_command=True)
         except (MapUnavailable, OSError, RuntimeError, ValueError):
             result['map_guidance'] = {'status': 'unavailable'}
         return result
@@ -895,11 +858,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                 verification=({'room_number': body.verification_room_number, 'room_qr_token': body.room_qr_token}
                               if body.room_qr_token else None))
             checkpoint = agent_checkpoints.load(session, body.language)
-            followup = is_followup(query, body.language)
             pending_question = (checkpoint.get('pending_question')
                                 if isinstance(checkpoint, dict) else None)
-            resume_projection = (checkpoint if (followup or is_pending_answer(
-                query, body.language, pending_question)) else None)
             memory_facts = agent_memory.load(session, body.language)
             voice_token = voice_input_context.set(voice_input)
             try:

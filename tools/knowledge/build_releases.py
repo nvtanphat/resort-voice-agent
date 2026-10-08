@@ -167,7 +167,6 @@ def build_releases():
     property_source = "kb_property_furama_resort_danang"
     property_revs = revisions(property_source)
     cafe_source = "kb_restaurant_cafe_indochine"
-    cafe_revs = revisions(cafe_source)
     don_source = "kb_restaurant_don_cipriani"
     don_revs = revisions(don_source)
     spa_source = "kb_spa_v_senses_wellness"

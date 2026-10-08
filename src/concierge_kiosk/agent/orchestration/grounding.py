@@ -26,7 +26,6 @@ MAX_EVIDENCE_SOURCES = _BUDGETS['max_evidence_sources']
 MAX_STREAM_BYTES = 40_000
 MAX_STREAM_EVENTS = 256
 MAX_GENERATED_CHARS = _BUDGETS['max_generated_chars']
-_EXPLAIN = re.compile('|'.join(f'(?:{pattern})' for pattern in rag_policy().explain_patterns.values()), re.I)
 
 # A condition/exception must travel with the claim it qualifies. If an entire
 # policy paragraph cannot fit, leave it out of the SLM context and use the
@@ -74,7 +73,6 @@ def is_supported_answer(answer: str, evidence: list[dict]) -> bool:
     """Conservative exact evidence-span check, not semantic entailment."""
     if not 0 < len(answer) <= MAX_GENERATED_CHARS or not evidence:
         return False
-    normal = lambda s: " ".join(s.casefold().split())
     source_numbers = set(re.findall(r'\d+(?:[.,:]\d+)*', " ".join(r['content'] for r in evidence[:MAX_EVIDENCE_SOURCES])))
     if not set(re.findall(r'\d+(?:[.,:]\d+)*', answer)).issubset(source_numbers):
         return False

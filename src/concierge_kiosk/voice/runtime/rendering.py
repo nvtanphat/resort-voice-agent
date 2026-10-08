@@ -22,15 +22,11 @@ def speech_rendering(text: str, language: str) -> str:
     policy = voice_policy()
     steps = tuple((policy.get('normalization') or {}).get(language, ()))
     if not steps:
-        steps = ('pronunciation_aliases', 'email_rendering', 'number_rendering',
-                 'domain_money', 'quantity_rendering')
+        steps = ('email_rendering', 'number_rendering', 'domain_money', 'quantity_rendering')
     result = normalize_terminology(_strip_markdown(text), language)
     # One pass, so a spoken range is never re-parsed as single clock times.
     if 'clock_rendering' in steps or not steps:
         result = _CLOCK_RANGE.sub(lambda m: _spoken_time(m, language), result)
-    if 'pronunciation_aliases' in steps:
-        for alias in (policy.get('pronunciation_aliases', {}) or {}).get(language, ()):
-            result = re.sub(alias['pattern'], alias['replacement'], result, flags=re.I)
     if 'email_rendering' in steps:
         result = _render_emails(result, language)
     if 'number_rendering' in steps:

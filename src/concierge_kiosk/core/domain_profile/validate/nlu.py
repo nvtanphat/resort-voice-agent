@@ -56,11 +56,6 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     similarity = normalization.get("fuzzy_similarity")
     if not isinstance(similarity, (int, float)) or isinstance(similarity, bool) or not 0.5 <= similarity <= 1:
         raise ValueError("nlu.normalization.fuzzy_similarity must be in 0.5..1")
-    validate_language_keys(normalization["phrase_terms"], languages,
-                            label="nlu.normalization.phrase_terms", require_all=False)
-    for language, terms in normalization["phrase_terms"].items():
-        if not isinstance(terms, list) or any(not isinstance(term, str) or not term.strip() for term in terms):
-            raise ValueError(f"nlu.normalization.phrase_terms.{language} contains an invalid term")
     intent = nlu["intent"]
     validate_language_keys(intent["emergency_text"], languages, label="nlu.intent.emergency_text", require_all=True)
     # The structured SOS numbers and the spoken safety text must never drift.
@@ -84,24 +79,12 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
         for language, pattern in intent[key].items():
             compile_regex(pattern, label=f"nlu.intent.{key}.{language}")
 
-    authority = nlu["authority"]
-    for key in ("tentative_terms", "explicit_terms", "restricted_terms"):
-        validate_language_keys(authority[key], languages, label=f"nlu.authority.{key}", require_all=True)
-    validate_language_keys(authority["imperative_patterns"], languages, label="nlu.authority.imperative_patterns")
-    for language, pattern in authority["imperative_patterns"].items():
-        compile_regex(pattern, label=f"nlu.authority.imperative_patterns.{language}")
 
     routing = nlu["routing"]
-    for key in ("greeting_terms", "courtesy_particles", "confirmation_terms", "affirm_terms",
-                "deny_terms", "bare_topic_terms", "language_switch_terms",
-                "switch_command_patterns"):
-        validate_language_keys(routing[key], languages, label=f"nlu.routing.{key}", require_all=True)
+    for key in ('confirmation_terms', 'affirm_terms', 'deny_terms'):
+        validate_language_keys(routing[key], languages, label=f'nlu.routing.{key}', require_all=True)
     for category, values in routing["static_text"].items():
         validate_language_keys(values, languages, label=f"nlu.routing.static_text.{category}", require_all=True)
-    for language, pattern in routing["switch_command_patterns"].items():
-        compile_regex(pattern, label=f"nlu.routing.switch_command_patterns.{language}")
-    compile_regex(routing["korean_target_first_pattern"], label="nlu.routing.korean_target_first_pattern")
-    compile_regex(routing["sequence_pattern"], label="nlu.routing.sequence_pattern")
 
     slots = nlu["slots"]
     for key in ("number_words", "number_connectors", "room_patterns", "relative_time_terms", "quantity_nouns",
@@ -130,22 +113,9 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for language, pattern in slots["clock_daypart_patterns"].items():
         compile_regex(pattern, label=f"nlu.slots.clock_daypart_patterns.{language}")
 
-    memory = nlu["memory_vocabulary"]
-    for key in ("action_followup_terms", "followup_markers", "ambiguous_reference_markers", "pending_question_start_patterns"):
-        validate_language_keys(memory[key], languages, label=f"nlu.memory_vocabulary.{key}", require_all=True)
-    for language, pattern in memory["pending_question_start_patterns"].items():
-        compile_regex(pattern, label=f"nlu.memory_vocabulary.pending_question_start_patterns.{language}")
-    facets = set(memory["facet_aliases"] )
-    if set(memory["facet_search"]) != facets:
-        raise ValueError("Facet search terms must cover every configured facet exactly")
-    for facet, terms in memory["facet_search"].items():
-        validate_language_keys(terms, languages, label=f"nlu.memory_vocabulary.facet_search.{facet}", require_all=True)
 
-    for key in ("time_expressions", "discourse_terms"):
-        validate_language_keys(nlu[key], languages, label=f"nlu.{key}", require_all=True)
+    for key in ('time_expressions',):
+        validate_language_keys(nlu[key], languages, label=f'nlu.{key}', require_all=True)
     for language, expressions in nlu["time_expressions"].items():
         if not expressions:
             raise ValueError(f"nlu.time_expressions.{language} must not be empty")
-    for language, terms in nlu["discourse_terms"].items():
-        if not terms or any(not isinstance(term, str) or not term.strip() for term in terms):
-            raise ValueError(f"nlu.discourse_terms.{language} contains an invalid term")

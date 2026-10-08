@@ -5,7 +5,7 @@ answer. They consume verified observations and never choose a business tool.
 """
 from __future__ import annotations
 
-from concierge_kiosk.agent.understanding.routing import is_location_question, directions_request
+from concierge_kiosk.agent.understanding.routing import directions_request
 from concierge_kiosk.agent.tools.read_tasks import validate_read_only_result
 from concierge_kiosk.i18n import text as i18n_text
 
@@ -32,11 +32,8 @@ def apply_verified_map_answer(result: dict, language: str, query: str, *,
                 result['support_contact'] = None
                 result['recovery_mode'] = 'not_needed'
         return result
-    if (isinstance(guidance, dict) and guidance.get('status') == 'verified'
-            and (result.get('grounding') == 'no_evidence' or is_location_question(query, language))
-            and isinstance(guidance.get('destination'), str)):
-        result['answer'] = i18n_text('navigation.map_verified', language,
-                                     destination=guidance['destination'])
+    if isinstance(guidance, dict) and guidance.get('status') == 'verified' and (result.get('grounding') == 'no_evidence') and isinstance(guidance.get('destination'), str):
+        result['answer'] = i18n_text('navigation.map_verified', language, destination=guidance['destination'])
         result['sources'] = []
         result['citations'] = []
         result['grounding'] = 'map_verified'
@@ -44,8 +41,7 @@ def apply_verified_map_answer(result: dict, language: str, query: str, *,
         result['related_topics'] = []
         result['support_contact'] = None
         result['recovery_mode'] = 'not_needed'
-        result['suggested_action'] = directions_request(
-            query, has_navigate_command=has_navigate_command)
+        result['suggested_action'] = directions_request(query, has_navigate_command=has_navigate_command)
         result['requires_staff_review'] = True
     return result
 

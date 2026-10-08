@@ -8,10 +8,7 @@ from contextlib import contextmanager
 from typing import Iterator
 from .models import (CONTEXT_TTL_SECONDS, MAX_TOPICS, MAX_SESSIONS, MAX_TURNS,
                      ConversationSnapshot, EvidenceAnchor, SessionTopics, _SessionGate)
-from .heuristics import (_FACET_SEARCH, _anchor_subject, _focuses, _subjects,
-                         is_followup, question_facet)
 from concierge_kiosk.domain.service_registry import ACTION_REQUEST_KINDS
-from concierge_kiosk.rag.grounding.relevance import has_explicit_topic
 
 class ConversationMemory:
     """Short-lived, per-session public source references only; no guest text."""
@@ -84,60 +81,11 @@ class ConversationMemory:
             self._sessions.move_to_end(session)
         return current
 
-    @staticmethod
-    def _resolve_current(current: SessionTopics | None, query: str,
-                         language: str) -> tuple[EvidenceAnchor | None, str]:
-        if current is None or not is_followup(query, language):
-            return None, "none"
-        focus = _focuses(query)
-        if len(focus) > 1:
-            return None, "ambiguous"
-        if focus:
-            wanted = next(iter(focus))
-            for anchor in reversed(current.turns):
-                if anchor.focus == wanted:
-                    return anchor, "recent"
-            for anchor in reversed(list(current.summary.values())):
-                if anchor.focus == wanted:
-                    return anchor, "topic_summary"
-            if any(item.focus is not None for item in current.turns):
-                return None, "new_topic"
-        subjects = _subjects(query)
-        if len(subjects) > 1:
-            return None, "ambiguous"
-        if subjects:
-            subject = next(iter(subjects))
-            for anchor in reversed(current.turns):
-                if _anchor_subject(anchor) == subject:
-                    return anchor, "recent"
-            for anchor in reversed(list(current.summary.values())):
-                if _anchor_subject(anchor) == subject:
-                    return anchor, "topic_summary"
-            return None, "none"
-        # Generic follow-up markers ("what time", "mấy giờ", "几点") also start
-        # fresh questions. A query naming its own topic that the focus/subject
-        # vocabulary does not cover must not inherit an unrelated last anchor.
-        if has_explicit_topic(query):
-            return None, "new_topic"
-        return (current.turns[-1], "recent") if current.turns else (None, "none")
-
-    @staticmethod
-    def _retrieval_current(current: SessionTopics | None, query: str,
-                           language: str) -> tuple[str, bool]:
-        focus = _focuses(query)
-        if (current is None or not is_followup(query, language) or
-                len(focus) != 1 or question_facet(query) is not None or
-                current.last_facet not in _FACET_SEARCH):
-            return query, False
-        predicate = _FACET_SEARCH[current.last_facet][language]
-        return f"{query.strip()} {predicate}"[:500], True
 
     def snapshot(self, session: str, query: str, language: str) -> ConversationSnapshot:
         """Capture all read-only conversation inputs atomically, then unlock."""
         with self._lock:
             current = self._active(session, language, time.monotonic())
-            anchor, mode = self._resolve_current(current, query, language)
-            retrieval_query, rewritten = self._retrieval_current(current, query, language)
             return ConversationSnapshot(self._version_locked(session), anchor, mode,
                                         retrieval_query, rewritten)
 
@@ -161,61 +109,6 @@ class ConversationMemory:
             current = self._active(session, language, time.monotonic())
             return current.turns[-1] if current is not None and current.turns else None
 
-    def candidate_anchors(self, session: str, language: str, *, limit: int = 6) -> tuple[EvidenceAnchor, ...]:
-        """Return bounded verified anchors, newest first, independent of UI language.
-
-        These are public source pointers only. They are safe inputs for the bounded
-        local reference resolver and are re-authorized by the read tool before use.
-        """
-        if not 1 <= limit <= 8:
-            raise ValueError("Invalid reference candidate limit")
-        with self._lock:
-            current = self._active(session, language, time.monotonic())
-            if current is None:
-                return ()
-            out: list[EvidenceAnchor] = []
-            seen: set[tuple[str, str, str]] = set()
-            for anchor in reversed(current.turns):
-                key = (anchor.source_id, anchor.revision, anchor.chunk_id)
-                if key not in seen:
-                    out.append(anchor); seen.add(key)
-                if len(out) >= limit:
-                    return tuple(out)
-            for anchor in reversed(list(current.summary.values())):
-                key = (anchor.source_id, anchor.revision, anchor.chunk_id)
-                if key not in seen:
-                    out.append(anchor); seen.add(key)
-                if len(out) >= limit:
-                    break
-            return tuple(out)
-
-    @staticmethod
-    def reference_query_from_anchor(query: str, anchor: EvidenceAnchor | None,
-                                    language: str | None = None) -> str:
-        if anchor is None:
-            return query
-        # A title in another language than the question cannot help lexical
-        # retrieval and would corrupt it (e.g. a Vietnamese title appended to a
-        # Korean question).
-        if language is not None and anchor.language != language:
-            return query
-        title = ' '.join((anchor.title or '').split()).strip()
-        if not title or title.casefold() in query.casefold():
-            return query
-        return f"{query.strip()} {title}"[:500]
-
-    def reference_query(self, session: str, query: str, language: str) -> str:
-        """Attach one verified public entity title to a deictic follow-up.
-
-        This is intentionally narrow: only an already-authorized evidence anchor
-        can resolve words such as "there"/"đó". Guest free text is never
-        persisted and ambiguous context stays unchanged.
-        """
-        snap = self.snapshot(session, query, language)
-        anchor = snap.anchor
-        if anchor is None or not is_followup(query, language):
-            return query
-        return self.reference_query_from_anchor(query, anchor, language)
 
     def commit_topic(self, session: str, language: str, *, expected_version: int,
                      sources: list[dict] | None = None, query: str | None = None,
@@ -256,20 +149,10 @@ class ConversationMemory:
                 current.total_turns += 1
                 turn_number = current.total_turns
                 if not sources:
-                    current.last_facet = None
                     current.turns.clear()
                 else:
-                    current.last_facet = question_facet(query or '')
                     source = sources[0]
-                    focus_values = _focuses(query) if query else set()
-                    anchor = EvidenceAnchor(
-                        source_id=source["source_id"], revision=source["revision"],
-                        chunk_id=source["chunk_id"], title=source["title"],
-                        # The evidence row's own language: cross-language fallback
-                    # cites e.g. an English row for a Korean question.
-                    heading=source["heading"], language=source.get("language") or language,
-                        section_id=str(source.get("section_id", "")),
-                        focus=next(iter(focus_values)) if len(focus_values) == 1 else None)
+                    anchor = EvidenceAnchor(source_id=source['source_id'], revision=source['revision'], chunk_id=source['chunk_id'], title=source['title'], heading=source['heading'], language=source.get('language') or language, section_id=str(source.get('section_id', '')))
                     current.turns.append(anchor)
                     topic_key = (anchor.source_id, anchor.revision, anchor.section_id,
                                  anchor.chunk_id, anchor.focus)
@@ -413,8 +296,4 @@ class ConversationMemory:
 
 # Public compatibility exports from the former single-file module.
 from .models import TopicSummary
-__all__ = [
-    "ConversationMemory", "ConversationSnapshot", "EvidenceAnchor", "SessionTopics",
-    "TopicSummary", "CONTEXT_TTL_SECONDS", "MAX_TURNS", "MAX_TOPICS", "MAX_SESSIONS",
-    "is_followup", "question_facet",
-]
+__all__ = ['ConversationMemory', 'ConversationSnapshot', 'EvidenceAnchor', 'SessionTopics', 'TopicSummary', 'CONTEXT_TTL_SECONDS', 'MAX_TURNS', 'MAX_TOPICS', 'MAX_SESSIONS']

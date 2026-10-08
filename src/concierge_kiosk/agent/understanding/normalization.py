@@ -17,14 +17,7 @@ import re
 import unicodedata
 from typing import Any, Iterable
 
-from concierge_kiosk.agent.understanding.domain_nlu import (
-    MEMORY_VOCABULARY,
-    ROUTING,
-    SLOTS,
-    TIME_EXPRESSIONS,
-    DISCOURSE_TERMS,
-    NORMALIZATION,
-)
+from concierge_kiosk.agent.understanding.domain_nlu import SLOTS, TIME_EXPRESSIONS, NORMALIZATION
 from concierge_kiosk.core.domain_profile import supported_languages, voice_policy
 from concierge_kiosk.core.dataset_layout import (TRAIN_AGENT_CANDIDATES, TRAIN_AGENT_MULTILINGUAL,
                                                   TRAIN_AGENT_VI_GOLD, dataset_path)
@@ -95,35 +88,13 @@ def _language_strings(value: Any, language: str | None = None) -> Iterable[tuple
 
 @lru_cache(maxsize=8)
 def _profile_terms(language: str | None) -> tuple[tuple[str, str], ...]:
-    sources = (
-        ROUTING["greeting_terms"],
-        ROUTING["courtesy_particles"],
-        ROUTING["confirmation_terms"],
-        ROUTING["affirm_terms"],
-        ROUTING["deny_terms"],
-        ROUTING["bare_topic_terms"],
-        ROUTING["language_switch_terms"],
-        SLOTS["quantity_nouns"],
-        SLOTS["number_words"],
-        SLOTS["relative_time_terms"],
-        SLOTS["clock_dayparts"],
-        MEMORY_VOCABULARY["subject_aliases"],
-        MEMORY_VOCABULARY["focus_aliases"],
-        TIME_EXPRESSIONS,
-        DISCOURSE_TERMS,
-        voice_policy()["service_names"],
-    )
+    sources = (SLOTS['quantity_nouns'], SLOTS['number_words'], SLOTS['relative_time_terms'], SLOTS['clock_dayparts'], TIME_EXPRESSIONS)
     values = {
         (code, term)
         for source in sources
         for code, term in _language_strings(source)
         if language is None or code == language
     }
-    configured = NORMALIZATION.get("phrase_terms", {})
-    for code, terms in configured.items():
-        if language is None or code == language:
-            values.update((code, " ".join(unicodedata.normalize("NFKC", term).casefold().split()))
-                          for term in terms if str(term).strip())
     for code, words in SLOTS["number_words"].items():
         if language is None or code == language:
             values.update((code, " ".join(unicodedata.normalize("NFKC", word).casefold().split()))

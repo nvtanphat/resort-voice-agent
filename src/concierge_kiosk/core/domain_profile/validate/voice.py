@@ -49,20 +49,7 @@ def validate_voice(payload: dict[str, Any], languages: set[str]) -> None:
                                                    for value in values)
                for values in voice[key].values()):
             raise ValueError(f"voice.{key} contains an invalid language list")
-    for service, names in voice["service_names"].items():
-        if not isinstance(service, str) or not service.strip() or not isinstance(names, dict):
-            raise ValueError("voice.service_names contains an invalid service")
-        unknown = set(names) - languages
-        if unknown:
-            raise ValueError("voice.service_names contains unsupported languages: " + ", ".join(sorted(unknown)))
-        if any(not isinstance(value, str) or not value.strip() for value in names.values()):
-            raise ValueError("voice.service_names contains an invalid localized name")
     units = voice["quantity_units"]
     validate_language_keys(units, languages, label="voice.quantity_units", require_all=False)
     if any(not isinstance(value, str) or not value.strip() for value in units.values()):
         raise ValueError("voice.quantity_units contains an invalid unit")
-    aliases = voice["pronunciation_aliases"]
-    validate_language_keys(aliases, languages, label="voice.pronunciation_aliases", require_all=True)
-    for language, entries in aliases.items():
-        for index, entry in enumerate(entries):
-            compile_regex(entry["pattern"], label=f"voice.pronunciation_aliases.{language}.{index}")

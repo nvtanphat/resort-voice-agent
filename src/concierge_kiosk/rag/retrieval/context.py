@@ -7,9 +7,7 @@ from concierge_kiosk.rag.documents import LANGUAGES
 from concierge_kiosk.rag.retrieval.evidence import evidence_passage
 from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
 from concierge_kiosk.rag.text.tokenization import tokens
-from concierge_kiosk.rag.grounding.relevance import (
-    evidence_relevant, normalized_query, query_terms as meaningful_query_terms)
-from concierge_kiosk.agent.understanding.domain_nlu import DISCOURSE_TERMS
+from concierge_kiosk.rag.grounding.relevance import evidence_relevant, query_terms as meaningful_query_terms
 from concierge_kiosk.core.domain_profile import rag_policy
 from .policy import RAGPolicy, Retrieval, abstention_answer
 
@@ -41,9 +39,7 @@ def retrieve_context(store: Store, *, property_id: str, language: str, query: st
     # still use the exact previous chunk, subject to current-source validation.
     # searchable()/tokens() decompose Hangul for accent folding; normalize
     # back to NFC before comparing Korean nouns and discourse particles.
-    terms = {unicodedata.normalize('NFC', token)
-             for token in tokens(query, language=language, limit=None, stem=True)} - set(
-                 DISCOURSE_TERMS.get(language, ()))
+    terms = {unicodedata.normalize('NFC', token) for token in tokens(query, language=language, limit=None, stem=True)}
 
     def evidence_overlap(row: dict) -> int:
         words = {unicodedata.normalize('NFC', token) for token in tokens(
@@ -173,18 +169,13 @@ def retrieve_localized_anchor(store: Store, *, property_id: str, language: str,
     # source. Validate in the target language before using its translation:
     # e.g. restaurant hours -> Chinese parking fees must fall back to a fresh
     # scoped search, not cite restaurant information just because IDs match.
-    discourse = set(DISCOURSE_TERMS.get(language, ()))
-    terms = {unicodedata.normalize('NFC', term)
-             for term in tokens(query, language=language, limit=None, stem=True)} - discourse
+    terms = {unicodedata.normalize('NFC', term) for term in tokens(query, language=language, limit=None, stem=True)}
     def target_row_matches(candidate) -> bool:
         # Query rewrites deliberately normalize multilingual clock questions to
         # the shared ``operating hours`` facet.  The target-language sibling is
         # already bound to the reviewed anchor's source and section, so an
         # opening-hours fact is the uniquely safe match even when the Chinese
         # or Korean surface tokens do not overlap the translated body.
-        opening_hours_request = (
-            candidate['fact_type'] == 'opening_hours'
-            and 'operating hours' in normalized_query(query, language))
         if opening_hours_request:
             return True
         if terms:
@@ -218,9 +209,6 @@ def retrieve_localized_anchor(store: Store, *, property_id: str, language: str,
             limit=None, stem=True)}
         return len(terms & supported)
     row = sorted(matching_rows, key=lambda candidate: (-overlap(candidate), candidate['id']))[0]
-    passage_query = (row['title'] if (
-        row['fact_type'] == 'opening_hours'
-        and 'operating hours' in normalized_query(query, language)) else query)
     content = evidence_passage(row['body'], passage_query, language=language,
                                max_chars=policy.max_evidence_chars)
     if not content:

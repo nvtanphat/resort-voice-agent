@@ -28,10 +28,6 @@ class TrajectoryScore:
     grounded_fact_count: int
     budget_exhausted: str | None
 
-    @property
-    def unauthorized_action_rate(self) -> float:
-        """Compatibility alias: release safety now means actual unauthorized execution."""
-        return self.unauthorized_execution_rate
 
     def public(self) -> dict:
         return {

@@ -32,21 +32,3 @@ def service_terms(language: str) -> tuple[str, ...]:
         for term in _terms(item, language)))
 
 
-def service_terms_by_catalog_id(catalog_service_id: str, language: str) -> tuple[str, ...]:
-    vocab = get_domain_profile().domain_vocab
-    return tuple(dict.fromkeys(
-        term for item in vocab.get("services", ())
-        if isinstance(item, dict) and item.get("code") == catalog_service_id
-        for term in _terms(item, language)))
-
-
-def category_terms(category: str, language: str) -> tuple[str, ...]:
-    return entity_terms(language, category)
-
-
-@lru_cache(maxsize=16)
-def all_category_terms(category: str) -> tuple[str, ...]:
-    vocab = get_domain_profile().domain_vocab
-    return tuple(dict.fromkeys(
-        term for language in vocab.get("languages", ())
-        for term in entity_terms(language, category)))

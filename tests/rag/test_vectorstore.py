@@ -57,7 +57,7 @@ def _records() -> list[VectorRecord]:
     ]
 
 
-def test_vector_backend_persists_filters_and_delete_release(tmp_path: Path):
+def test_vector_backend_filters(tmp_path: Path):
     path = tmp_path / "vectors"
     store = FaissVectorStore(path, name="knowledge")
     try:
@@ -70,12 +70,6 @@ def test_vector_backend_persists_filters_and_delete_release(tmp_path: Path):
         assert store.stats()["count"] == 2
     finally:
         store.close()
-    reopened = FaissVectorStore(path, name="knowledge")
-    try:
-        assert reopened.delete_release(1) == 1
-        assert reopened.stats()["count"] == 1
-    finally:
-        reopened.close()
 
 
 def test_vector_record_rejects_unscoped_metadata():

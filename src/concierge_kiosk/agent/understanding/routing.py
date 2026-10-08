@@ -7,30 +7,12 @@ import re
 from concierge_kiosk.core.domain_profile import rag_policy
 from dataclasses import dataclass
 from concierge_kiosk.agent.understanding.intent import emergency_response, normalize_intent_text, EMERGENCY_TEXT
-from concierge_kiosk.agent.understanding.domain_nlu import (
-    ROUTING_STATIC_TEXT as STATIC_TEXT,
-    SEQUENCE_PATTERN as _SEQUENCE_PATTERN,
-    FACET_ALIASES,
-)
+from concierge_kiosk.agent.understanding.domain_nlu import ROUTING_STATIC_TEXT as STATIC_TEXT
 from concierge_kiosk.domain.service_registry import (
     route_branch_for_request_kind,
     service_definition,
 )
 
-_QUESTION_TYPE_PATTERNS = {
-    language: re.compile(pattern, re.I)
-    for language, pattern in rag_policy().explain_patterns.items()
-}
-def _read_question_type(query: str, language: str) -> str:
-    pattern = _QUESTION_TYPE_PATTERNS.get(language)
-    return 'explain' if pattern and pattern.search(query) else 'fact'
-
-
-def is_location_question(query: str, language: str) -> bool:
-    """Use the configured location facet for map-first questions."""
-    text = normalize_intent_text(query, language)
-    return any(normalize_intent_text(alias, language) in text
-               for alias in FACET_ALIASES.get('location', ()))
 
 def directions_request(query: str, *, has_navigate_command: bool) -> dict | None:
     """Return directions metadata only after validated command understanding."""
@@ -64,7 +46,7 @@ def classify_dialogue(query: str, language: str) -> RouteDecision:
     """
     if emergency_response(query, language):
         return RouteDecision("emergency", True)
-    return RouteDecision("knowledge", False, None, _read_question_type(query, language))
+    return RouteDecision('knowledge', False, None)
 
 
 def fast_response(decision: RouteDecision, query: str, language: str) -> dict:
@@ -117,17 +99,7 @@ def fast_response(decision: RouteDecision, query: str, language: str) -> dict:
         tasks: list[dict] = []
         # Explicit DAG metadata only; no agent/tool receives transaction authority.
         # An utterance containing "then" establishes review ordering, not a DB write.
-        sequential = bool(_SEQUENCE_PATTERN.search(normalize_intent_text(query, language)))
-        task_graph = {'tasks': [
-            {'id': f'T{i + 1}', 'kind': item['kind'], 'operation': item['operation'],
-             'depends_on': [f'T{i}'] if sequential and i else [],
-             'requires_confirmation': item['requires_confirmation']}
-            for i, item in enumerate(tasks)], 'execution': 'advisory_no_business_writes'}
-        return {"answer": STATIC_TEXT["clarification"][language], "sources": [], "citations": [],
-                "action_options": choices, "task_plan": tasks, "task_graph": task_graph,
-                "suggested_action": None, "retrieval_mode": "not_used",
-                "generation_mode": "deterministic", "request_completed": False,
-                "grounding": "not_required", "requires_staff_review": False, "fast_path": True}
+        return {'answer': STATIC_TEXT['clarification'][language], 'sources': [], 'citations': [], 'action_options': choices, 'task_plan': tasks, 'suggested_action': None, 'retrieval_mode': 'not_used', 'generation_mode': 'deterministic', 'request_completed': False, 'grounding': 'not_required', 'requires_staff_review': False, 'fast_path': True}
     if decision.branch == "confirmation":
         return {"answer": STATIC_TEXT["confirmation"][language], "sources": [], "suggested_action": None,
                 "retrieval_mode": "not_used", "generation_mode": "deterministic",

@@ -24,12 +24,8 @@ class ScheduleUnavailable(ValueError):
 _CLOCK = re.compile(r'^(?:[01]\d|2[0-3]):[0-5]\d$')
 _PLANNING = planning_policy()
 _CONSTRAINTS = _PLANNING.constraints
-_TOPICS = frozenset(_PLANNING.categories)
 _LANGUAGES = supported_languages()
-_BUDGET_POLICY = _CONSTRAINTS['budget']
 _PRESENTATION_LIMITS = ui_policy().presentation_limits
-_CURRENCIES = frozenset(_BUDGET_POLICY['currencies'])
-_MAX_BUDGET_UNITS = int(_BUDGET_POLICY['max_amount_units'])
 
 
 def _minutes(value: str) -> int:
@@ -79,8 +75,6 @@ def approved_schedule(store, *, path: str, expected_sha256: str,
     verified = {}
     with store.connection() as con:
         for entry in activities:
-            if not isinstance(entry, dict) or entry.get('topic') not in _TOPICS:
-                raise ScheduleUnavailable('Unknown activity topic')
             topic = entry['topic']
             activity_id = entry.get('activity_id', topic)
             if (not isinstance(activity_id, str) or
@@ -152,16 +146,6 @@ def approved_schedule(store, *, path: str, expected_sha256: str,
             # when the exact amount/currency token is present in this same
             # approved, activity-bound quote. It is not a live checkout price.
             cost = entry.get('advisory_cost')
-            if cost is not None:
-                if (not isinstance(cost, dict) or set(cost) !=
-                        {'amount_units', 'currency', 'evidence_text'} or
-                        type(cost.get('amount_units')) is not int or
-                        not 0 <= cost['amount_units'] <= _MAX_BUDGET_UNITS or
-                        cost.get('currency') not in _CURRENCIES or
-                        cost.get('evidence_text') !=
-                        f"{cost['amount_units']} {cost['currency']}" or
-                        cost['evidence_text'] not in source_quote):
-                    raise ScheduleUnavailable('Advisory cost is not supported by source quote')
             verified[activity_id] = {
                 'activity_id': activity_id, 'topic': topic,
                 'aliases': tuple(aliases), 'weekdays': frozenset(weekdays),
@@ -266,10 +250,6 @@ def proposed_slots(topics: tuple[str, ...], days: int, schedule: dict,
     """
     if (type(days) is not int or not 1 <= days <= 14 or
             type(max_activities_per_day) is not int or not 1 <= max_activities_per_day <= 6):
-        return {}
-    if budget is not None and (not isinstance(budget, tuple) or len(budget) != 2 or
-                               type(budget[0]) is not int or not 0 <= budget[0] <= _MAX_BUDGET_UNITS or
-                               budget[1] not in _CURRENCIES):
         return {}
     if preferences is not None and (not isinstance(preferences, dict) or
             any(not isinstance(key, str) or type(value) is not int or not 1 <= value <= 10
@@ -381,67 +361,6 @@ def proposed_slots(topics: tuple[str, ...], days: int, schedule: dict,
     return allocated
 
 
-def guest_preferred_window(query: str, language: str) -> tuple[int, int] | None:
-    """Recognize profile-defined guest time windows without asserting hotel facts."""
-    text = query.casefold()
-    preferred = _CONSTRAINTS['preferred_window']
-    pattern = preferred.get('range_patterns', {}).get(language)
-    if pattern:
-        match = re.search(pattern, text, re.I)
-        if match:
-            rules = preferred.get('marker_rules', {}).get(language, {})
-
-            def convert(hour: int, minute: int, marker: str | None) -> int:
-                semantic = rules.get((marker or '').casefold())
-                if semantic == 'pm' and hour < 12:
-                    hour += 12
-                elif semantic == 'am' and hour == 12:
-                    hour = 0
-                return hour * 60 + minute
-
-            start = convert(int(match.group(1)), int(match.group(2) or 0), match.group(3))
-            end = convert(int(match.group(4)), int(match.group(5) or 0), match.group(6))
-            if 0 <= start < end <= 24 * 60:
-                return start, end
-    dayparts = preferred.get('dayparts', {}).get(language, {})
-    found = [(len(cue), tuple(window)) for cue, window in dayparts.items() if cue.casefold() in text]
-    if not found:
-        return None
-    longest = max(length for length, _window in found)
-    windows = {window for length, window in found if length == longest}
-    return next(iter(windows)) if len(windows) == 1 else None
-
-
-def guest_budget(query: str, language: str) -> tuple[int, str] | None:
-    """Parse only profile-declared guest budget syntax; never convert currencies."""
-    prefix = _BUDGET_POLICY.get('prefix_patterns', {}).get(language)
-    if not prefix:
-        return None
-    currency_pattern = '|'.join(re.escape(item) for item in sorted(_CURRENCIES))
-    values: list[tuple[int, str]] = []
-    for match in re.finditer(prefix + rf'([0-9]{{1,9}})\s*({currency_pattern})\b', query, re.I):
-        values.append((int(match.group(1)), match.group(2).upper()))
-
-    units = _BUDGET_POLICY.get('magnitude_units', {}).get(language, {})
-    if units:
-        unit_pattern = '|'.join(re.escape(item) for item in sorted(units, key=len, reverse=True))
-        for match in re.finditer(prefix + rf'([0-9]{{1,3}})(?:[.,]([0-9]{{1,3}}))?\s*({unit_pattern})\b', query, re.I):
-            whole, fraction, unit = match.group(1), match.group(2), match.group(3).casefold()
-            multiplier = int(units[unit])
-            if fraction is not None and len(fraction) > 2:
-                return None
-            value = int(whole) * multiplier
-            if fraction:
-                value += int(fraction) * multiplier // (10 ** len(fraction))
-            # Magnitude syntax denotes the first currency declared by the domain profile;
-            # deployments that do not use magnitude words can omit these units entirely.
-            values.append((value, _BUDGET_POLICY['currencies'][0]))
-    separator = _BUDGET_POLICY.get('multi_value_separator_pattern')
-    if units and separator and re.search(separator, query, re.I):
-        return None
-    if len(values) != 1 or not 0 <= values[0][0] <= _MAX_BUDGET_UNITS:
-        return None
-    return values[0]
 
 
 def guest_daily_limit(query: str, language: str) -> int | None:
@@ -451,25 +370,3 @@ def guest_daily_limit(query: str, language: str) -> int | None:
     return int(hits[0]) if len(hits) == 1 else None
 
 
-def guest_activity_preferences(query: str, language: str, schedule: dict) -> dict[str, int]:
-    """Prioritize only an explicitly named, uniquely mapped approved activity.
-
-    A property operational alias is a *routing key*, not evidence that the guest
-    wants to book it. Returned weights affect tie-breaking only; they do not
-    override opening hours, provenance, budget or business consent.
-    """
-    cues = _CONSTRAINTS.get('activity_priority_cues', {}).get(language, ())
-    text = ' '.join(query.casefold().split())
-    tails = [text.split(cue.casefold(), 1)[1].lstrip() for cue in cues if cue.casefold() in text]
-    if len(tails) != 1:
-        return {}
-    tail = tails[0]
-    matches = []
-    for key, spec in schedule.items():
-        for alias in (spec.get('aliases') or ()):
-            normalized = ' '.join(alias.casefold().split())
-            if normalized and (tail == normalized or tail.startswith(normalized + ' ') or
-                               tail.startswith(normalized + ',') or tail.startswith(normalized + '.')):
-                matches.append(key)
-                break
-    return {matches[0]: 10} if len(matches) == 1 else {}

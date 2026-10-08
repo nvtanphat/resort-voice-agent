@@ -20,7 +20,6 @@ from concierge_kiosk.domain.service_registry import (accepted_slots, route_branc
                                                      service_definition, service_tool)
 from .catalog import service_risk_tier
 from .world import VerifiedFact, AgentUnknown, AgentFailure
-from .model import constraint_specs
 from concierge_kiosk.agent.understanding.commands import Command
 from concierge_kiosk.core.domain_profile import preference_policy, ui_policy
 
@@ -246,9 +245,6 @@ class AgentState:
         }
 
 
-def _constraint_models(query: str, language: str) -> tuple[GoalConstraint, ...]:
-    return tuple(GoalConstraint(f'C{i+1}', kind, value, hard)
-                 for i, (kind, value, hard) in enumerate(constraint_specs(query, language)))
 
 def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
                        candidates: list[ServiceCandidate], service_deps: list[tuple[str, ...]],
@@ -350,15 +346,6 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
             add('verified_answer', ('knowledge',), topic='guest question')
         if wants_navigation:
             add('verified_route_guidance', ('navigation', 'knowledge'), topic='route guidance')
-
-    # A hard minimal-travel constraint is a *goal property*, not a router branch.
-    # For planning/compound read goals the agent should attempt to obtain route or
-    # location evidence before declaring the whole goal satisfied.
-    constraints = _constraint_models(query, language)
-    if (commands is None and any(c.kind == 'minimal_travel' and c.hard for c in constraints)
-            and decision.branch in {
-            'planning', 'knowledge', 'multi_task'}):
-        add('minimal_travel_checked', ('navigation', 'knowledge'), topic='distance or location')
 
     if not reqs:
         add('verified_answer', ('knowledge',), topic='guest question')
@@ -481,7 +468,6 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                 candidates = []
         service_deps = [() for _ in candidates]
 
-    constraints = list(_constraint_models(query, language))
     clean_preferences: dict[str, str | int] = {}
     if isinstance(preferences, dict):
         for key in ('dietary', 'party_size', 'children', 'mobility', 'quiet'):

@@ -18,7 +18,6 @@ class Capability(StrEnum):
     KNOWLEDGE = "knowledge"
     NAVIGATION = "navigation"
     PLANNING = "planning"
-    SERVICE_REVIEW = "service_review"
 
 
 READ_ONLY_CAPABILITIES = frozenset({

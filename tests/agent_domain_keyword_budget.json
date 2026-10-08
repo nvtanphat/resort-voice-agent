@@ -1,5 +1,5 @@
 {
   "_comment": "Ratchet: these numbers may only go down. Lower them in the same change that removes phrases from config/agent-domain.json.",
-  "case_specific_strings": 1132,
-  "property_name_overlap": 29
+  "case_specific_strings": 182,
+  "property_name_overlap": 3
 }

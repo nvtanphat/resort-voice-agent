@@ -11,13 +11,7 @@ import re
 import unicodedata
 from functools import lru_cache
 
-from concierge_kiosk.agent.understanding.domain_nlu import (
-    EMERGENCY_EVENT_PATTERNS as _EMERGENCY_EVENT_PATTERNS,
-    EMERGENCY_TEXT,
-    FILLER_TERMS as _FILLER_TERMS,
-    SELF_CORRECTION_MARKERS as _SELF_CORRECTION_MARKERS,
-    NORMALIZATION,
-)
+from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_EVENT_PATTERNS as _EMERGENCY_EVENT_PATTERNS, EMERGENCY_TEXT, FILLER_TERMS as _FILLER_TERMS, SELF_CORRECTION_MARKERS as _SELF_CORRECTION_MARKERS
 from concierge_kiosk.agent.understanding.normalization import normalize_with_spans
 from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
 
@@ -160,15 +154,10 @@ def normalize_intent_text(text: str, language: str | None = None) -> str:
                 if suffix:
                     normalized = suffix
                     break
-        configured_noise = tuple(NORMALIZATION.get("noise_terms", {}).get(code, ()))
-        normalized = _remove_profile_terms(
-            normalized, (*_FILLER_TERMS.get(code, ()), *configured_noise))
+        normalized = _remove_profile_terms(normalized, _FILLER_TERMS.get(code, ()))
     return ' '.join(normalized.strip(' ,;:.-').split())
 
 
-def normalize_intent_with_spans(text: str, language: str | None = None):
-    """Return the robust transcript normalization and its auditable edits."""
-    return normalize_with_spans(text, language)
 
 
 
