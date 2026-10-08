@@ -12,6 +12,11 @@ def validate_rag(payload: dict[str, Any], languages: set[str]) -> None:
     if len(fallback_order) != len(set(fallback_order)) or not set(fallback_order).issubset(languages):
         raise ValueError("RAG cross-language fallback order contains unsupported or duplicate languages")
     compile_regex(rag["opening_hours"]["time_range_pattern"], label="rag.opening_hours.time_range_pattern")
+    seen: dict[str, str] = {}
+    for facet, fact_types in rag["facet_fact_types"].items():
+        for fact_type in fact_types:
+            if seen.setdefault(fact_type, facet) != facet:
+                raise ValueError(f"rag.facet_fact_types: {fact_type} is in both {seen[fact_type]} and {facet}")
     tokenization = rag["tokenization"]
     segmentation = tokenization["segmentation"]
     if not set(segmentation).issubset(languages):

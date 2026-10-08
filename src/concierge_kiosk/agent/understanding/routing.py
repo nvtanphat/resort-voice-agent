@@ -31,6 +31,8 @@ class RouteDecision:
     semantic_service_code: str | None = None
     # ChitChat sub-kind chosen by understanding; selects a fixed reply text.
     social_kind: str | None = None
+    # Facet of a single AskInfo (rag.facet_fact_types key); scopes retrieval, never routes.
+    facet: str | None = None
 
 
 # Routing vocabulary is profile-owned. Request changes and status checks are

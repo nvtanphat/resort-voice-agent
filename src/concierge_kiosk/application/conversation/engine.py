@@ -112,7 +112,9 @@ def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDe
     if any(item.type == 'Navigate' for item in commands):
         return RouteDecision('navigation', False)
     if any(item.type == 'AskInfo' for item in commands):
-        return RouteDecision('knowledge', False, None, fallback.question_type)
+        asks = [item for item in commands if item.type == 'AskInfo']
+        facet = asks[0].facet if len(asks) == 1 else None
+        return RouteDecision('knowledge', False, None, fallback.question_type, facet=facet)
     if any(item.type == 'AskStatus' for item in commands):
         return RouteDecision('request_status', False)
     if any(item.type == 'Plan' for item in commands):
@@ -404,7 +406,8 @@ class _TurnRuntimeSupport:
         if len(commands) == 1:
             command = commands[0]
             if command.type == 'AskInfo':
-                return RouteDecision('knowledge', False, None, decision.question_type), None, execution_query, commands
+                return (RouteDecision('knowledge', False, None, decision.question_type, facet=command.facet),
+                        None, execution_query, commands)
             if command.type == 'CheckAvailability':
                 return (RouteDecision('check_schedule', False),
                         {'availability_service_code': command.goal},
@@ -532,7 +535,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
     turn_read_cache: ContextVar[dict | None] = ContextVar('turn_read_cache', default=None)
 
     def _turn_grounded_answer(query: str, language: str, session: str, *, effective_date: str,
-                              question_type: str = 'fact') -> dict:
+                              question_type: str = 'fact', facet: str | None = None) -> dict:
         """One grounded read per (query, language) per turn.
 
         The knowledge and navigation tools often read the same question in one
@@ -541,12 +544,12 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         """
         voice_turn = voice_input_context.get()
         cache = turn_read_cache.get()
-        key = (query, language, session, effective_date, voice_turn, question_type)
+        key = (query, language, session, effective_date, voice_turn, question_type, facet)
         if cache is not None and key in cache:
             return copy.deepcopy(cache[key])
         result = grounded_answer(query, language, session,
                                  effective_date=effective_date, voice_turn=voice_turn,
-                                 question_type=question_type)
+                                 question_type=question_type, facet=facet)
         if cache is not None:
             cache[key] = copy.deepcopy(result)
         return result
@@ -554,7 +557,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
     def _knowledge_capability(request: CapabilityRequest) -> dict:
         return _turn_grounded_answer(request.query, request.language, request.session,
                                      effective_date=request.effective_date,
-                                     question_type=request.decision.question_type)
+                                     question_type=request.decision.question_type,
+                                     facet=request.decision.facet)
 
     def _navigation_capability(request: CapabilityRequest) -> dict:
         result = _turn_grounded_answer(request.query, request.language, request.session,
@@ -591,7 +595,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
     def _agent_knowledge(request: AgentToolRequest) -> dict:
         return _turn_grounded_answer(request.query, request.language, request.session,
                                      effective_date=request.effective_date,
-                                     question_type=request.decision.question_type)
+                                     question_type=request.decision.question_type,
+                                     facet=request.decision.facet)
 
     def _agent_navigation(request: AgentToolRequest) -> dict:
         result = _turn_grounded_answer(request.query, request.language, request.session,

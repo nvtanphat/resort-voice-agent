@@ -12,7 +12,7 @@ import unicodedata
 from typing import Any, Iterable, Mapping, Sequence
 
 from concierge_kiosk.agent.understanding.semantic import _chat
-from concierge_kiosk.core.domain_profile import preference_policy, supported_languages
+from concierge_kiosk.core.domain_profile import preference_policy, rag_policy, supported_languages
 from concierge_kiosk.core.settings import SLM_NUM_CTX
 from concierge_kiosk.domain.service_registry import accepted_slots, service_definition
 
@@ -54,6 +54,8 @@ class Command:
     reason: str | None = None
     kind: str | None = None
     target: str | None = None
+    # AskInfo only: closed facet name (rag.facet_fact_types key) the guest is asking about.
+    facet: str | None = None
 
     def public(self) -> dict[str, Any]:
         result: dict[str, Any] = {'type': self.type}
@@ -61,7 +63,8 @@ class Command:
                 ('goal', self.goal), ('query', self.query), ('field', self.field),
                 ('value', self.value), ('confirmed', self.confirmed),
                 ('conditional', self.conditional if self.conditional else None),
-                ('reason', self.reason), ('kind', self.kind), ('target', self.target)):
+                ('reason', self.reason), ('kind', self.kind), ('target', self.target),
+                ('facet', self.facet)):
             if value is not None:
                 result[key] = value
         if self.slots:
@@ -126,7 +129,9 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
                      variant('CorrectSlot', field=reply_name, value=text)]
     preferences = preference_policy().fields
     variants += [
-        variant('AskInfo', query=query),
+        {**variant('AskInfo', query=query), 'properties': {
+            **variant('AskInfo', query=query)['properties'],
+            'facet': {'type': 'string', 'enum': sorted(rag_policy().facet_fact_types)}}},
         variant('Navigate', query=query),
         variant('Confirm', confirmed={'type': 'boolean', 'const': True}),
         variant('Cancel'),
@@ -166,7 +171,7 @@ def _text(value: object, maximum: int) -> str | None:
     return cleaned if 1 <= len(cleaned) <= maximum else None
 
 
-_OPTIONAL_FIELDS = ('goal', 'query', 'field', 'value', 'confirmed', 'reason', 'kind', 'target')
+_OPTIONAL_FIELDS = ('goal', 'query', 'field', 'value', 'confirmed', 'reason', 'kind', 'target', 'facet')
 
 
 def _only(command: Command, *allowed: str) -> bool:
@@ -216,7 +221,8 @@ def validate_commands(commands: Iterable[Command], *, query: str,
         if any(not isinstance(slot, CommandSlot) for slot in command.slots):
             return None
         if ((command.kind is not None and command.type != 'ChitChat')
-                or (command.target is not None and command.type != 'SwitchLanguage')):
+                or (command.target is not None and command.type != 'SwitchLanguage')
+                or (command.facet is not None and command.type != 'AskInfo')):
             return None
 
         if command.type == 'StartGoal':
@@ -268,6 +274,9 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                     or command.slots or command.field is not None or command.value is not None
                     or command.confirmed is not None or command.reason is not None):
                 return None
+            if command.facet is not None and command.facet not in rag_policy().facet_fact_types:
+                # An unknown facet is dropped, not trusted: the read still runs unscoped.
+                command = replace(command, facet=None)
         elif command.type == 'Navigate':
             if (not _text(command.query, MAX_TEXT) or command.goal is not None
                     or command.slots or command.keys or command.field is not None
@@ -320,7 +329,7 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
     if not isinstance(raw_commands, list):
         return None
     allowed = {'type', 'goal', 'slots', 'query', 'keys', 'field', 'value',
-               'confirmed', 'conditional', 'reason', 'kind', 'target'}
+               'confirmed', 'conditional', 'reason', 'kind', 'target', 'facet'}
     commands: list[Command] = []
     for item in raw_commands:
         if not isinstance(item, dict) or 'type' not in item or set(item) - allowed:
@@ -346,7 +355,7 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
             query=item.get('query'), keys=tuple(keys), field=item.get('field'),
             value=item.get('value'), confirmed=item.get('confirmed'),
             conditional=item.get('conditional', False), reason=item.get('reason'),
-            kind=item.get('kind'), target=item.get('target')))
+            kind=item.get('kind'), target=item.get('target'), facet=item.get('facet')))
     return commands
 
 
@@ -450,7 +459,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                 'with the closest service_mode from AVAILABLE_SERVICES (match by meaning, using each '
                 'name and description) and put the details the guest stated into its slots. '
                 'Use CheckAvailability when the guest asks whether a slot/table/seat is free, without asking to book. '
-                'Use AskInfo for a factual hotel question (including price, opening-hours or policies), '
+                'Use AskInfo for a factual hotel question (including price, opening-hours or policies) and set its facet when the question asks about one aspect; '
                 'Navigate for directions, Plan when the guest asks for suggestions or an '
                 'itinerary, AskStatus when the guest asks how an earlier request is going, Cancel or Modify '
                 'when the guest withdraws or changes a pending or earlier request, Confirm only to approve '

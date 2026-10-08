@@ -1351,6 +1351,16 @@
     "document_domains": {
       "default": "general"
     },
+    "facet_fact_types": {
+      "hours": ["opening_hours", "activity_schedule", "service_window"],
+      "price": ["price_vnd"],
+      "contact": ["phone", "extension", "email"],
+      "location": ["address", "travel_time_min", "distance_km"],
+      "capacity": ["capacity", "room_count", "villa_count"],
+      "size": ["area_sqm", "balcony_area_sqm", "height_m"],
+      "policy": ["policy_rule"],
+      "feature": ["service_feature", "amenity_feature", "bed_type", "cuisine_type", "electricity_frequency", "electricity_voltage"]
+    },
     "token_stopwords": [
       "co",
       "khong",

@@ -15,10 +15,10 @@ from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS
 from concierge_kiosk.agent.understanding.semantic import semantic_grounded_response, SemanticResult
 from concierge_kiosk.agent.tools.planning import draft_plan
 from concierge_kiosk.agent.tools.scheduling import approved_schedule, ScheduleUnavailable
-from concierge_kiosk.domain.entity_resolver import record_alias_matches
+from concierge_kiosk.domain.entity_resolver import property_entity_matches, record_alias_matches
 from concierge_kiosk.core.structured_loader import load_structured_dataset
 from concierge_kiosk.agent.core.tool_contracts import no_evidence_handoff_details
-from concierge_kiosk.core.domain_profile import ui_policy
+from concierge_kiosk.core.domain_profile import rag_policy as profile_rag_policy, ui_policy
 from concierge_kiosk.core.context_labels import context_terms
 from concierge_kiosk.rag.grounding.citations import bind_citations, retain_live_semantic_claims
 from concierge_kiosk.rag.grounding.claims import extract_claims
@@ -190,6 +190,30 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         structured_dataset = None
 
 
+    def facet_fact_types(facet: str | None) -> tuple[str, ...]:
+        return tuple(profile_rag_policy().facet_fact_types.get(facet or '', ()))
+
+    def structured_selectors(query: str, language: str,
+                             facet: str | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """Exact entity/fact-type key, only when one entity is named and the facet is known.
+
+        The facet comes from the validated AskInfo command (never from the guest's
+        words); a data-owned context named exactly can stand in for it.
+        """
+        if structured_dataset is None:
+            return (), ()
+        entities = property_entity_matches(query, language, structured_dataset.aliases)
+        if len(entities) != 1:
+            return (), ()
+        fact_types = facet_fact_types(facet)
+        contexts = _mentioned_contexts(query, language)
+        if not fact_types and len(contexts) == 1:
+            fact_types = tuple(dict.fromkeys(
+                str(fact.get('fact_type')) for fact in structured_dataset.facts
+                if isinstance(fact, dict) and fact.get('entity_id') == entities[0]
+                and fact.get('context') == contexts[0] and isinstance(fact.get('fact_type'), str)))
+        return (entities, fact_types) if fact_types else ((), ())
+
     def structured_context_selector(query: str, language: str) -> tuple[str, ...]:
         """Return one data-owned context when the question names it exactly."""
         contexts = _mentioned_contexts(query, language)
@@ -250,7 +274,8 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                                  "numbers": dict(EMERGENCY_CONTACTS)}}
 
     def grounded_answer(query: str, language: str, session: str, *, effective_date: str,
-                        voice_turn: bool = False, question_type: str = 'fact') -> dict:
+                        voice_turn: bool = False, question_type: str = 'fact',
+                        facet: str | None = None) -> dict:
         ensure_active_context_session(session)
         q = query.strip()
         # Capture bounded public pointers/facet state under the memory lock.
@@ -259,11 +284,13 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         anchor, context_mode = memory_snapshot.anchor, memory_snapshot.context_mode
         search_query = memory_snapshot.retrieval_query
         query_rewritten = memory_snapshot.query_rewritten
-        # Facets and structured selectors are rebuilt from the validated AskInfo/Navigate
-        # command (plan.md "Facet"); until then retrieval is FTS + dense + rerank.
-        keys = {'facets': (), 'fact_types': (), 'contexts': _mentioned_contexts(q, language)}
-        structured_entities: tuple[str, ...] = ()
-        structured_fact_types: tuple[str, ...] = ()
+        # The facet is taken from the validated AskInfo command; without one,
+        # retrieval is FTS + dense + rerank and no typed fact is required.
+        keys = {'facets': (facet,) if facet else (), 'fact_types': facet_fact_types(facet),
+                'contexts': _mentioned_contexts(q, language)}
+        structured_entities, structured_fact_types = structured_selectors(q, language, facet)
+        if structured_entities and structured_fact_types:
+            record_metric('rag.structured_lookup_candidate', language)
         contextual = False
         retrieval_started = time.monotonic()
         if anchor is not None:

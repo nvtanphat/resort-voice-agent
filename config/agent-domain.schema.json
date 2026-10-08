@@ -1394,6 +1394,7 @@
       "required": [
         "opening_hours",
         "document_domains",
+        "facet_fact_types",
         "token_stopwords",
         "cross_language_fallback_order",
         "tokenization",
@@ -1422,6 +1423,24 @@
           ],
           "properties": {
             "default": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,47}$"
+            }
+          }
+        },
+        "facet_fact_types": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 16,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
               "type": "string",
               "pattern": "^[a-z][a-z0-9_]{0,47}$"
             }

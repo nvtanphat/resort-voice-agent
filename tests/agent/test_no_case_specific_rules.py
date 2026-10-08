@@ -33,7 +33,8 @@ KEEP_PREFIXES = (
     "nlu.routing.deny", "nlu.routing.confirmation", "nlu.slots.slot_labels",
     "nlu.slots.time_patterns", "nlu.slots.room_patterns", "nlu.slots.party_size",
     "nlu.slots.quantity", "nlu.slots.relative_time", "nlu.slots.number",
-    "rag.token_stopwords", "rag.tokenization", "preferences.max",
+    # facet_fact_types maps closed facet names to data fact types (an ontology table, no guest wording)
+    "rag.token_stopwords", "rag.tokenization", "rag.facet_fact_types", "preferences.max",
 )
 
 

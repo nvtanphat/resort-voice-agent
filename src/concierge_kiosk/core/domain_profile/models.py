@@ -66,6 +66,8 @@ class SecurityPolicy:
 class RagPolicy:
     opening_hours: Mapping[str, Any]
     document_domains: Mapping[str, Any]
+    # Closed facet name -> fact types it covers (names the command model may emit).
+    facet_fact_types: Mapping[str, tuple[str, ...]]
     token_stopwords: frozenset[str]
     cross_language_fallback_order: tuple[str, ...]
     tokenization: Mapping[str, Any]
