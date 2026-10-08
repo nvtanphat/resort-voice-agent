@@ -175,7 +175,7 @@ def test_sqlite_review_guard_is_built_from_domain_profile(tmp_path: Path):
 def test_preference_constraint_map_may_only_name_declared_values(tmp_path: Path):
     path, _ = default_domain_profile_binding()
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    payload["preferences"]["fields"]["mobility"]["constraints"]["stairs_only"] = "minimal_travel"
+    payload["preferences"]["constraints"]["mobility"]["stairs_only"] = "minimal_travel"
     target = tmp_path / "agent-domain.json"
     target.write_text(json.dumps(payload), encoding="utf-8")
     checksum = hashlib.sha256(target.read_bytes()).hexdigest()

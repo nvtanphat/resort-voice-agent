@@ -35,6 +35,8 @@ KEEP_PREFIXES = (
     "nlu.slots.quantity", "nlu.slots.relative_time", "nlu.slots.number",
     # facet_fact_types maps closed facet names to data fact types (an ontology table, no guest wording)
     "rag.token_stopwords", "rag.tokenization", "rag.facet_fact_types", "preferences.max",
+    # preference value -> closed planning constraint kind (an ontology table, no guest wording)
+    "preferences.constraints",
 )
 
 

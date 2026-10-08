@@ -60,7 +60,7 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
             preference_fields[name] = PreferenceField(
                 kind="enum", values=tuple(spec["values"]),
                 applies_to_slot=spec.get("applies_to_slot"),
-                constraints=tuple(spec.get("constraints", {}).items()))
+                constraints=tuple(payload["preferences"].get("constraints", {}).get(name, {}).items()))
         else:
             preference_fields[name] = PreferenceField(
                 kind="integer", minimum=spec["minimum"], maximum=spec["maximum"],

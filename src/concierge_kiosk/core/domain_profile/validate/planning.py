@@ -14,8 +14,11 @@ def validate_planning(payload: dict[str, Any], languages: set[str]) -> None:
     unknown_preferences = set(constraints["session_preference_fields"]) - preference_fields
     if unknown_preferences:
         raise ValueError("Planning references unknown preference field(s): " + ", ".join(sorted(unknown_preferences)))
-    for name, spec in payload['preferences']['fields'].items():
-        undeclared = set(spec.get('constraints', {})) - set(spec.get('values', ()))
+    fields = payload['preferences']['fields']
+    for name, mapping in payload['preferences'].get('constraints', {}).items():
+        if fields.get(name, {}).get('type') != 'enum':
+            raise ValueError(f"Preference constraints name a field that is not an enum preference: {name}")
+        undeclared = set(mapping) - set(fields[name]['values'])
         if undeclared:
             raise ValueError(f"Preference '{name}' maps undeclared value(s) to constraints: "
                              + ", ".join(sorted(undeclared)))
