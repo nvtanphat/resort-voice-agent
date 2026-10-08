@@ -338,6 +338,24 @@
                       "maxLength": 64
                     }
                   },
+                  "constraints": {
+                    "type": "object",
+                    "maxProperties": 32,
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "additionalProperties": {
+                      "enum": [
+                        "minimal_travel",
+                        "accessibility",
+                        "quiet_preference",
+                        "time_window",
+                        "date_window"
+                      ]
+                    }
+                  },
                   "applies_to_slot": {
                     "$ref": "#/$defs/identifier"
                   }

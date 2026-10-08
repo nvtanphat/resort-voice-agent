@@ -117,7 +117,6 @@ class Settings(BaseSettings):
     })
     stt_threads_max: int = 8
     stt_prompt_labels: int = 8
-    stt_prompt_languages: tuple[str, ...] = ("vi", "ko", "zh")
     stt_short_audio_seconds: float = 1.5
     stt_short_audio_temperature: float = 0.0
     voice_ws_idle_timeout_seconds: float = 5.0
@@ -395,9 +394,6 @@ class Settings(BaseSettings):
         if not 1 <= self.stt_threads_max <= 64 or not 0 <= self.stt_prompt_labels <= 32:
             raise ValueError("Invalid STT resource budget")
         from concierge_kiosk.core.domain_profile import supported_languages
-        if not self.stt_prompt_languages or any(language not in supported_languages()
-                                                for language in self.stt_prompt_languages):
-            raise ValueError("Invalid STT prompt languages")
         if not (0.1 <= self.stt_short_audio_seconds <= 10 and
                 0 <= self.stt_short_audio_temperature <= 1):
             raise ValueError("Invalid short-audio STT decode policy")
@@ -655,7 +651,6 @@ def load_settings() -> Settings:
         "voice_slm_caps": {key: float(value) for key, value in voice_budget_defaults["slm_caps"].items()},
         "stt_threads_max": int(voice_budget_defaults["stt_threads_max"]),
         "stt_prompt_labels": int(voice_budget_defaults["stt_prompt_labels"]),
-        "stt_prompt_languages": tuple(voice_budget_defaults["stt_prompt_languages"]),
         "stt_short_audio_seconds": float(voice_budget_defaults["stt_short_audio_seconds"]),
         "stt_short_audio_temperature": float(voice_budget_defaults["stt_short_audio_temperature"]),
         "voice_ws_idle_timeout_seconds": float(voice_budget_defaults["ws_idle_timeout_seconds"]),
@@ -754,7 +749,6 @@ def load_settings() -> Settings:
     configure_stt_runtime(
         threads_max=cfg.stt_threads_max,
         prompt_labels=cfg.stt_prompt_labels,
-        prompt_languages=cfg.stt_prompt_languages,
     )
     cfg.validate()
     return cfg

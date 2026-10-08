@@ -14,6 +14,8 @@ class PreferenceField:
     minimum: int | None = None
     maximum: int | None = None
     applies_to_slot: str | None = None
+    # Enum value -> goal constraint kind the planner must honour for it.
+    constraints: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

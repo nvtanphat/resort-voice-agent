@@ -10,7 +10,7 @@ from ..embedding.base import Embedder, valid_vector
 from ..text.safety import PROMPT_INJECTION_PATTERN, unsafe_knowledge_text
 from ..text.tokenization import search_index_text
 from .chunking import canonicalize_markdown, chunk_sections
-from .metadata import extract_doc_titles, frontmatter, prepare_chunk
+from .metadata import extract_doc_title, frontmatter, prepare_chunk
 
 
 def ingest_text(store: Store, raw: str, *, property_id: str, embedder: Embedder | None = None,
@@ -50,8 +50,8 @@ def ingest_text(store: Store, raw: str, *, property_id: str, embedder: Embedder 
         if date.fromisoformat(str(until)) < starts:
             raise ValueError("Document effective_to precedes effective_from")
     
-    titles = extract_doc_titles(raw, meta, body)
-    title = titles.get(language, titles["en"])[:160]
+    full_title = extract_doc_title(meta, body)
+    title = full_title[:160]
     domain = document_domain(meta)
     if not title or len(body.strip()) < 10:
         raise ValueError("Title and body required")
@@ -87,7 +87,7 @@ def ingest_text(store: Store, raw: str, *, property_id: str, embedder: Embedder 
     if not isinstance(extra_aliases, list) or len(extra_aliases) > 30 or any(
             not isinstance(alias, str) or not 1 <= len(alias) <= 80 for alias in extra_aliases):
         raise ValueError("search_aliases must be a bounded string list")
-    search_keywords = " ".join([titles['_vi_name'], titles['_en_name'], titles['_ko_name'], titles['_zh_name'], *extra_aliases])
+    search_keywords = " ".join([full_title, *extra_aliases])
     for position, (heading, section_id, section_ordinal, content, metadata,
                    context_text, chunk_effective, chunk_until) in enumerate(prepared_pieces):
         key = f"{doc_id}:{language}:{position}:{property_namespace}"

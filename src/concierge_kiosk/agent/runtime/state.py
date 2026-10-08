@@ -457,21 +457,19 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
     constraints: list[GoalConstraint] = []
     clean_preferences: dict[str, str | int] = {}
     if isinstance(preferences, dict):
-        for key in ('dietary', 'party_size', 'children', 'mobility', 'quiet'):
+        fields = preference_policy().fields
+        for key in fields:
             value = preferences.get(key)
             if isinstance(value, (str, int)) and not isinstance(value, bool):
                 clean_preferences[key] = value
         existing = {(item.kind, item.value) for item in constraints}
-        preference_specs: list[tuple[str, str]] = []
-        if clean_preferences.get('mobility') == 'minimal_walking':
-            preference_specs.append(('minimal_travel', 'minimal_walking'))
-        if clean_preferences.get('mobility') == 'wheelchair_access':
-            preference_specs.append(('accessibility', 'wheelchair_access'))
-        if clean_preferences.get('quiet') == 'quiet':
-            preference_specs.append(('quiet_preference', 'quiet'))
-        for key in ('dietary', 'party_size', 'children'):
-            if key in clean_preferences:
-                preference_specs.append(('preference', f'{key}:{clean_preferences[key]}'))
+        # A field the profile maps to planning constraints contributes only its
+        # mapped constraint; every other stated preference stays a soft preference.
+        constrained = [(dict(fields[key].constraints).get(str(value)), str(value))
+                       for key, value in clean_preferences.items() if fields[key].constraints]
+        preference_specs: list[tuple[str, str]] = [item for item in constrained if item[0] is not None]
+        preference_specs += [('preference', f'{key}:{value}')
+                             for key, value in clean_preferences.items() if not fields[key].constraints]
         for kind, value in preference_specs:
             if (kind, value) not in existing and len(constraints) < 8:
                 constraints.append(GoalConstraint(f'C{len(constraints)+1}', kind, value, hard=False))

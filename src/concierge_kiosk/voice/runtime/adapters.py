@@ -41,23 +41,18 @@ _stt_threads_max = 8
 _stt_prompt_labels = 8
 
 
-_stt_prompt_languages = frozenset({"vi", "ko", "zh"})
-
-
 _STT_DECODE_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix='stt-decode')
 
 
 _STT_DECODE_SLOT = BoundedSemaphore(1)
 
 
-def configure_stt_runtime(*, threads_max: int, prompt_labels: int,
-                          prompt_languages: tuple[str, ...]) -> None:
-    global _stt_threads_max, _stt_prompt_labels, _stt_prompt_languages
+def configure_stt_runtime(*, threads_max: int, prompt_labels: int) -> None:
+    global _stt_threads_max, _stt_prompt_labels
     if not 1 <= int(threads_max) <= 64 or not 0 <= int(prompt_labels) <= 32:
         raise ValueError("Invalid STT runtime budget")
     _stt_threads_max = int(threads_max)
     _stt_prompt_labels = int(prompt_labels)
-    _stt_prompt_languages = frozenset(prompt_languages)
 
 
 @dataclass(frozen=True)

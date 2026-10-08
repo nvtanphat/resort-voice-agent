@@ -410,13 +410,20 @@
         "values": [
           "minimal_walking",
           "wheelchair_access"
-        ]
+        ],
+        "constraints": {
+          "minimal_walking": "minimal_travel",
+          "wheelchair_access": "accessibility"
+        }
       },
       "quiet": {
         "type": "enum",
         "values": [
           "quiet"
-        ]
+        ],
+        "constraints": {
+          "quiet": "quiet_preference"
+        }
       }
     }
   },

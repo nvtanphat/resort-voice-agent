@@ -432,7 +432,6 @@
             "slm_caps",
             "stt_threads_max",
             "stt_prompt_labels",
-            "stt_prompt_languages",
             "stt_short_audio_seconds",
             "stt_short_audio_temperature",
             "ws_idle_timeout_seconds",
@@ -517,15 +516,6 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 32
-            },
-            "stt_prompt_languages": {
-              "type": "array",
-              "maxItems": 16,
-              "items": {
-                "type": "string",
-                "minLength": 2,
-                "maxLength": 16
-              }
             },
             "stt_short_audio_seconds": {
               "type": "number",

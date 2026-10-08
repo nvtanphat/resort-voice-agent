@@ -91,31 +91,16 @@ def prepare_chunk(content: str, *, meta: dict, title: str, heading: str,
     return clean, metadata, context_text, effective_from, effective_to
 
 
-def extract_doc_titles(raw: str, meta: dict, body: str) -> dict[str, str]:
-    """Extract canonical English title and localized titles from frontmatter or Markdown."""
-    en_title = str(meta.get("title", "")).strip()
-    if not en_title:
-        h1_match = re.search(r"^#\s+(.+)$", body, re.M)
-        if h1_match:
-            en_title = h1_match.group(1).strip()
-        else:
-            en_title = str(meta.get("document_id", "Hotel Information"))
-    loc_match = re.search(
-        r"\*\*Localizations\*\*:\s*Vietnamese:\s*\*(.+?)\*\s*\|\s*Korean:\s*\*(.+?)\*\s*\|\s*Chinese:\s*\*(.+?)\*",
-        body,
-    )
-    vi_name = loc_match.group(1).strip() if loc_match else ""
-    ko_name = loc_match.group(2).strip() if loc_match else ""
-    zh_name = loc_match.group(3).strip() if loc_match else ""
+def extract_doc_title(meta: dict, body: str) -> str:
+    """The document title: front-matter ``title``, else the first H1, else its id.
 
-    titles = {
-        "en": en_title,
-        "vi": f"{vi_name} ({en_title})" if vi_name and vi_name != en_title else (vi_name or en_title),
-        "ko": f"{ko_name} ({en_title})" if ko_name and ko_name != en_title else (ko_name or en_title),
-        "zh": f"{zh_name} ({en_title})" if zh_name and zh_name != en_title else (zh_name or en_title),
-        "_vi_name": vi_name,
-        "_ko_name": ko_name,
-        "_zh_name": zh_name,
-        "_en_name": en_title,
-    }
-    return titles
+    Each compiled document is already in its own language, so its title needs
+    no per-language variants.
+    """
+    title = str(meta.get("title", "")).strip()
+    if title:
+        return title
+    h1_match = re.search(r"^#\s+(.+)$", body, re.M)
+    if h1_match:
+        return h1_match.group(1).strip()
+    return str(meta.get("document_id", "Hotel Information"))

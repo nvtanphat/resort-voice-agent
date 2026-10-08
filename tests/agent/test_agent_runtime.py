@@ -404,3 +404,20 @@ def test_verifier_normalization_preserves_vietnamese_d_for_topic_matching():
         "điều hòa",
         {"facts": {"answer_excerpt": "Điều hòa phòng 305 đang hoạt động bình thường."}},
     ) is True
+
+
+def test_preference_constraints_come_from_the_profile_mapping():
+    from concierge_kiosk.core.domain_profile import preference_policy
+
+    fields = preference_policy().fields
+    mapped = next((name, value, kind) for name, spec in fields.items()
+                  for value, kind in spec.constraints)
+    soft = next(name for name, spec in fields.items() if spec.kind == "integer" and not spec.constraints)
+    soft_value = fields[soft].minimum + 1
+    state = build_initial_state(
+        query="plan my afternoon", language="en", decision=RouteDecision("planning"),
+        preferences={mapped[0]: mapped[1], soft: soft_value, "not_a_profile_field": "x"})
+    kinds = {(item.kind, item.value) for item in state.goal_contract.constraints}
+    assert (mapped[2], mapped[1]) in kinds
+    assert ("preference", f"{soft}:{soft_value}") in kinds
+    assert not any("not_a_profile_field" in value for _, value in kinds)

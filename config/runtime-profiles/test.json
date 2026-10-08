@@ -118,11 +118,6 @@
       },
       "stt_threads_max": 8,
       "stt_prompt_labels": 8,
-      "stt_prompt_languages": [
-        "vi",
-        "ko",
-        "zh"
-      ],
       "stt_short_audio_seconds": 1.5,
       "stt_short_audio_temperature": 0.0,
       "ws_idle_timeout_seconds": 5,
