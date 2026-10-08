@@ -376,31 +376,12 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
                     or result.get('emergency_ui', {}).get('normal_request_disabled') is not True):
                 raise RuntimeError('Emergency route must bypass the normal service-request queue')
         elif decision.branch == 'clarification':
-            # The graph may add read-only map status, but must not synthesize
-            # extra choices or promote a review form into a submitted action.
+            # Clarification is a fixed prompt: it offers no choices, plans no task and
+            # reads nothing.  Anything the tool layer adds to it is a contract violation.
             expected = fast_response(decision, query, language)
-            if result.get('task_graph') != expected['task_graph']:
-                raise RuntimeError('Combined intent dependency graph was modified')
-            if result.get('action_options') != expected['action_options']:
-                raise RuntimeError('Combined intent choices are not authorized')
-            tasks = result.get('task_plan')
-            expected_tasks = expected['task_plan']
-            if not isinstance(tasks, list) or len(tasks) != len(expected_tasks):
-                raise RuntimeError('Invalid combined intent execution plan')
-            for actual, planned in zip(tasks, expected_tasks):
-                if not isinstance(actual, dict) or set(actual) != set(planned):
-                    raise RuntimeError('Invalid combined intent task contract')
-                if any(actual[key] != planned[key] for key in planned if key != 'status'):
-                    raise RuntimeError('Combined intent task was modified')
-                if planned['kind'] != 'directions':
-                    if actual['status'] != 'awaiting_guest_choice':
-                        raise RuntimeError('Service task cannot bypass guest choice')
-                elif actual['status'] not in {'pending_read', 'verified', 'unavailable'}:
-                    raise RuntimeError('Navigation task has invalid status')
-                elif actual['status'] in {'verified', 'unavailable'}:
-                    map_status = result.get('map_guidance', {}).get('status')
-                    if (actual['status'] == 'verified') != (map_status == 'verified'):
-                        raise RuntimeError('Navigation status disagrees with approved map')
+            for key in ('task_graph', 'action_options', 'task_plan'):
+                if result.get(key) != expected.get(key):
+                    raise RuntimeError('Clarification result was modified')
         return
     if decision.branch == 'request_status':
         if (result.get('business_state_verified') is not True or
