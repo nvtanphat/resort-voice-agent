@@ -310,6 +310,8 @@ class AutonomousConciergeRuntime:
                 'answer_excerpt': str(raw.get('answer', ''))[:360],
                 'resolved_topics': [str(action.query)[:100]] if action.query else [],
             }
+            schedule = raw.get('schedule_result') if isinstance(raw.get('schedule_result'), dict) else {}
+            meta['facts']['availability'] = str(schedule.get('status') or '')[:40]
         elif capability == 'request_status':
             rows = raw.get('request_statuses') if isinstance(raw.get('request_statuses'), list) else []
             meta['summary'] = f'{len(rows)} request record(s)'

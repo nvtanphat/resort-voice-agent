@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import unicodedata
 
-from .state import AgentState, GoalRequirement
+from .state import AVAILABILITY_GATE, AgentState, GoalRequirement
 from concierge_kiosk.rag.text.tokenization import tokens
 
 
@@ -118,6 +118,16 @@ def _requirement_status(state: AgentState, req: GoalRequirement) -> tuple[bool, 
             if item.get('capability') in {'navigation', 'find_place'} and facts.get('status') == 'verified':
                 return True, 'travel_constraint_checked'
         return False, 'travel_constraint_unverified'
+
+    if req.outcome == AVAILABILITY_GATE:
+        # Only a read that reports availability opens a conditional booking;
+        # "unavailable", "ambiguous" or a schedule text without live status do not.
+        for _, item in matches:
+            facts = item.get('facts') if isinstance(item.get('facts'), dict) else {}
+            if (item.get('capability') == 'check_schedule' and item.get('verified')
+                    and facts.get('availability') == 'available'):
+                return True, 'availability_confirmed'
+        return False, 'availability_not_confirmed'
 
     if req.outcome == 'authoritative_request_status':
         return (any(item.get('capability') == 'request_status' and item.get('verified')

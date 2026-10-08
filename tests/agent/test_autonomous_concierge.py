@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -425,3 +426,34 @@ def test_unmatched_schedule_activity_abstains_without_rag_fallback(tmp_path: Pat
     assert body['schedule_result']['status'] == 'no_matching_activity'
     assert body['citations'] == []
     assert body['evidence_status'] == 'UNAVAILABLE'
+
+
+
+@pytest.mark.parametrize(('language', 'query', 'available'), [
+    ('en', 'if a table for 4 is available tonight at 19:00, book it', True),
+    ('vi', 'nếu còn bàn cho 4 người tối nay thì đặt giúp tôi', False),
+])
+def test_conditional_booking_is_proposed_only_when_availability_is_reported(
+        tmp_path: Path, understand, language: str, query: str, available: bool):
+    # "If there is a table, book it": the availability read gates the proposal,
+    # and a proposal still waits for the guest's confirmation.
+    understand(query, Command('StartGoal', goal='dining_reservation', conditional=True,
+                              slots=(CommandSlot('party_size', '4'),)))
+    app = _client(tmp_path, ('dining.restaurant_reservation',))
+    with TestClient(app, raise_server_exceptions=False) as client:
+        session = client.post('/api/session').json()
+        response = client.post('/api/ask', headers={'X-CSRF-Token': session['csrf_token']}, json={
+            'query': query, 'language': language, 'turn_nonce': f'conditional-{language}-12345678'})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    steps = [step['capability'] for step in body['agent_trace']['steps']]
+    assert steps[0] == 'check_schedule'
+    assert body['agent_action']['business_writes'] == 0
+    assert body['request_completed'] is False
+    proposed = [item['service_code'] for item in body.get('proposed_actions') or []]
+    assert proposed == (['dining_reservation'] if available else [])
+    con = sqlite3.connect(tmp_path / 'edge.sqlite3')
+    try:
+        assert con.execute('SELECT COUNT(*) FROM service_requests').fetchone()[0] == 0
+    finally:
+        con.close()

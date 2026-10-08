@@ -108,3 +108,28 @@ def test_an_invented_service_or_slot_never_survives(monkeypatch):
     assert seen == ["accepted"]
     kept = {slot.name: slot.text for slot in result[0].slots}
     assert kept == {"party_size": "4"}, "a slot the service does not accept, or the guest never said, is dropped"
+
+
+def test_one_invalid_command_is_dropped_alone():
+    # A directions StartGoal is never a valid service goal; the question beside it survives.
+    kept = validate_commands([Command("StartGoal", goal="directions"),
+                              Command("AskInfo", query="when does the spa close")],
+                             query="take me there and when does the spa close", enabled_request_kinds=KINDS)
+    assert _types(kept) == ["AskInfo"]
+
+
+def test_conditional_booking_runs_in_the_governed_loop():
+    from concierge_kiosk.application.conversation.engine import COMMAND_LOOP_BRANCHES
+
+    conditional = Command("StartGoal", goal="dining_reservation", conditional=True)
+    decision = _decision_from_commands((conditional,), RouteDecision("knowledge", False))
+    assert decision.branch in COMMAND_LOOP_BRANCHES
+    # Only checking ("tell me first, don't book") stays a read.
+    check = Command("CheckAvailability", goal="dining_reservation")
+    assert _decision_from_commands((check,), RouteDecision("knowledge", False)).branch == "check_schedule"
+
+
+def test_single_navigate_keeps_the_question_type():
+    fallback = RouteDecision("knowledge", False, None, "location")
+    decision = _decision_from_commands((Command("Navigate", query="spa"),), fallback)
+    assert (decision.branch, decision.question_type) == ("navigation", "location")

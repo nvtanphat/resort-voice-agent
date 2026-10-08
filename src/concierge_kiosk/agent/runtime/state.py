@@ -23,6 +23,14 @@ from concierge_kiosk.agent.understanding.commands import Command
 from concierge_kiosk.core.domain_profile import preference_policy
 
 
+AVAILABILITY_GATE = 'availability_confirmed'
+
+
+def availability_gate_topic(candidate_id: str) -> str:
+    """Topic binding one conditional service candidate to its own availability read."""
+    return f'conditional availability {candidate_id}'
+
+
 @dataclass(frozen=True)
 class ServiceCandidate:
     id: str
@@ -268,11 +276,12 @@ def _goal_requirements(*, query: str, language: str, decision: RouteDecision,
         if tool is None:
             continue
         if candidate.conditional:
-            add('availability_checked', ('check_schedule',), topic='conditional availability')
-            availability_id = next(req.id for req in reqs
-                                   if req.outcome == 'availability_checked'
-                                   and req.topic == 'conditional availability')
-            dep.insert(0, availability_id)
+            # "Book it if available": the proposal waits on a read that
+            # reports availability, not merely on a read having run.
+            gate_topic = availability_gate_topic(candidate.id)
+            add(AVAILABILITY_GATE, ('check_schedule',), topic=gate_topic)
+            dep.insert(0, next(req.id for req in reqs
+                               if req.outcome == AVAILABILITY_GATE and req.topic == gate_topic))
         add(f'service:{candidate.service_code}', (tool,),
             candidate_id=candidate.id, depends_on=tuple(dep))
 

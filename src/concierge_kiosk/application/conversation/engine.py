@@ -68,10 +68,12 @@ LOGGER = logging.getLogger(__name__)
 def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDecision:
     """Project a validated Command stream onto the bounded route vocabulary.
 
-    The model may propose intent, but it cannot create a new route or bypass
-    the server-owned registry.  This projection fixes the previous gap where a
-    valid ``StartGoal`` inside a command-mode availability turn was ignored and
-    the runtime kept executing the read-only schedule route.
+    This is the only command -> route projection.  The model may propose
+    intent, but it cannot create a new route or bypass the server-owned
+    registry.  ``CheckAvailability`` alone only reads availability; a
+    conditional ``StartGoal`` ("if there is a table, book it") runs in the
+    governed loop, where the availability read gates the proposal and the
+    guest still confirms before anything is written.
     """
     if not commands:
         return fallback
@@ -96,9 +98,7 @@ def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDe
         # of letting the navigation branch discard the information question.
         return RouteDecision('multi_task', False)
     if starts:
-        if len(starts) == 1 and not reads and len(commands) == 1:
-            if starts[0].conditional:
-                return RouteDecision('check_schedule', False)
+        if len(starts) == 1 and not reads and len(commands) == 1 and not starts[0].conditional:
             definition = service_definition(starts[0].goal or '')
             if definition is not None:
                 # The validated goal is the authority for which service the
@@ -110,7 +110,7 @@ def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDe
     if any(item.type == 'CheckAvailability' for item in commands):
         return RouteDecision('check_schedule', False)
     if any(item.type == 'Navigate' for item in commands):
-        return RouteDecision('navigation', False)
+        return RouteDecision('navigation', False, None, fallback.question_type)
     if any(item.type == 'AskInfo' for item in commands):
         asks = [item for item in commands if item.type == 'AskInfo']
         facet = asks[0].facet if len(asks) == 1 else None
@@ -450,37 +450,12 @@ class _TurnRuntimeSupport:
         if types <= {'SetSlot', 'CorrectSlot'}:
             # A bare value with no open question is read as an ordinary turn.
             return decision, None, execution_query, None
-        if len(commands) == 1:
-            command = commands[0]
-            if command.type == 'AskInfo':
-                return (RouteDecision('knowledge', False, None, decision.question_type, facet=command.facet),
-                        None, execution_query, commands)
-            if command.type == 'CheckAvailability':
-                return (RouteDecision('check_schedule', False),
-                        {'availability_service_code': command.goal},
-                        execution_query, commands)
-            if command.type == 'StartGoal':
-                if command.conditional:
-                    return (RouteDecision('check_schedule', False),
-                            {'availability_service_code': command.goal},
-                            execution_query, commands)
-                execution_query = self._anchor_venue(query, language, session, command, execution_query)
-            single_routes = {
-                'ChitChat': RouteDecision('greeting', True, social_kind=command.kind),
-                'SwitchLanguage': RouteDecision('language', True, command.target),
-                'Clarify': RouteDecision('clarification', True),
-                'AskStatus': RouteDecision('request_status', False),
-                'Plan': RouteDecision('planning', False),
-                'Navigate': RouteDecision('navigation', False, None, decision.question_type),
-                'SetPreference': RouteDecision('preference', True),
-            }
-            if command.type in single_routes:
-                return single_routes[command.type], None, execution_query, commands
+        if len(commands) == 1 and starts:
+            execution_query = self._anchor_venue(query, language, session, starts[0], execution_query)
         dec = _decision_from_commands(commands, decision)
         ctx = None
         if dec.branch == 'check_schedule':
-            chk = next((c for c in commands if c.type == 'CheckAvailability'
-                        or (c.type == 'StartGoal' and c.conditional)), None)
+            chk = next((c for c in commands if c.type == 'CheckAvailability'), None)
             if chk is not None and chk.goal:
                 ctx = {'availability_service_code': chk.goal}
         return dec, ctx, execution_query, commands
@@ -657,15 +632,18 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             meaning == 'date_window' and normalize_intent_text(term, request.language) in normalized_schedule_query
             for term, meaning in TIME_EXPRESSIONS.get(request.language, {}).items())
         try:
-            if unresolved_relative_date or service_selector is None:
+            requested_mode = (request.task_context.get('availability_service_code')
+                              if isinstance(request.task_context, dict) else None)
+            if unresolved_relative_date:
                 kind = mode = None
             else:
-                requested_mode = (request.task_context.get('availability_service_code')
-                                  if isinstance(request.task_context, dict) else None)
+                # A server-supplied service code needs no selector; the
+                # selector only picks one when the turn did not name it.
                 mode = (requested_mode if isinstance(requested_mode, str) else
                         service_selector.select_availability_mode(
                             request.query, language=request.language,
-                            enabled_request_kinds=frozenset(enabled_request_kinds)))
+                            enabled_request_kinds=frozenset(enabled_request_kinds))
+                        if service_selector is not None else None)
                 definition = service_definition(mode) if mode is not None else None
                 kind = definition.request_kind if definition is not None else None
             if kind is not None and mode is not None:

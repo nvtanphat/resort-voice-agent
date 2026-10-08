@@ -236,6 +236,10 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                       require_evidence: bool = True) -> tuple[Command, ...] | None:
     """Validate a command stream against guest text and server-owned registry.
 
+    A command that fails validation is dropped alone; the valid commands of the
+    same turn are kept, so one malformed clause never discards the guest's
+    other intents. ``None`` means no command survived.
+
     ``require_evidence=False`` is for reviewed training examples, which predate the
     ``SetPreference.evidence`` field; a model proposal always needs it.
     """
@@ -246,27 +250,27 @@ def validate_commands(commands: Iterable[Command], *, query: str,
     started: set[tuple] = set()
     for command in values:
         if not isinstance(command, Command) or command.type not in COMMAND_TYPES:
-            return None
+            continue
         if len(command.slots) > MAX_SLOTS:
-            return None
+            continue
         if any(not isinstance(slot, CommandSlot) for slot in command.slots):
-            return None
+            continue
         if ((command.kind is not None and command.type != 'ChitChat')
                 or (command.target is not None and command.type != 'SwitchLanguage')
                 or (command.facet is not None and command.type != 'AskInfo')
                 or (command.evidence is not None and command.type != 'SetPreference')
                 or (command.refers_to_context and command.type not in {'StartGoal', 'AskInfo', 'Navigate'})):
-            return None
+            continue
 
         if command.type == 'StartGoal':
             definition = service_definition(command.goal or '')
             if (definition is None or definition.request_kind not in enabled_request_kinds
                     or definition.request_kind == 'directions'):
-                return None
+                continue
             if any(value is not None for value in (command.query, command.field,
                                                     command.value, command.reason,
                                                     command.confirmed)) or command.keys:
-                return None
+                continue
             # A slot the guest did not literally state, or one the service
             # does not accept, is dropped rather than trusted. The goal is
             # kept so the runtime asks for the missing value instead of
@@ -287,11 +291,11 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             if (definition is None or definition.availability_source is None
                     or (enabled_request_kinds and definition.request_kind not in enabled_request_kinds)
                     or definition.request_kind == 'directions'):
-                return None
+                continue
             if any(value is not None for value in (command.query, command.field,
                                                     command.value, command.reason,
                                                     command.confirmed)) or command.keys or command.conditional:
-                return None
+                continue
             allowed = set(accepted_slots(command.goal or ''))
             kept = tuple(slot for slot in command.slots
                          if slot.name in allowed and _text(slot.name, 64)
@@ -300,18 +304,18 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                 command = replace(command, slots=kept)
         elif command.type in {'SetSlot', 'CorrectSlot'}:
             if command.goal is not None or command.query is not None or command.keys or command.slots:
-                return None
+                continue
             if (not _text(command.field, 64) or not _text(command.value, 120)
                     or not _verbatim(query, command.value)):
                 # An unstated value is never applied; the pending question stays open.
                 continue
         elif command.slots:
-            return None
+            continue
         elif command.type == 'AskInfo':
             if (not _text(command.query, MAX_TEXT) or command.goal is not None
                     or command.slots or command.field is not None or command.value is not None
                     or command.confirmed is not None or command.reason is not None):
-                return None
+                continue
             if command.facet is not None and command.facet not in rag_policy().facet_fact_types:
                 # An unknown facet is dropped, not trusted: the read still runs unscoped.
                 command = replace(command, facet=None)
@@ -320,7 +324,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                     or command.slots or command.keys or command.field is not None
                     or command.value is not None or command.confirmed is not None
                     or command.reason is not None):
-                return None
+                continue
         elif command.type == 'Confirm':
             if pending_reply != 'confirm':
                 # Nothing is waiting for a confirmation: drop the claim, keep the rest of the turn.
@@ -329,24 +333,24 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                     or command.goal is not None or command.slots or command.query is not None
                     or command.keys or command.field is not None or command.value is not None
                     or command.reason is not None):
-                return None
+                continue
         elif command.type in {'Cancel', 'Modify'}:
             if any(value is not None for value in (command.goal, command.query, command.field,
                                                     command.value, command.confirmed, command.reason)):
-                return None
+                continue
             if command.slots or command.keys:
-                return None
+                continue
         elif command.type == 'Handoff':
             if (not _text(command.reason, 160) or command.goal is not None or command.slots
                     or command.query is not None or command.keys or command.field is not None
                     or command.value is not None or command.confirmed is not None):
-                return None
+                continue
         elif command.type == 'Plan':
             if not _text(command.query, MAX_TEXT) or not _only(command, 'query'):
-                return None
+                continue
         elif command.type == 'SwitchLanguage':
             if command.target not in supported_languages() or not _only(command, 'target'):
-                return None
+                continue
         elif command.type == 'SetPreference':
             preference = _preference_value(command, query, language)
             grounded = (not require_evidence
@@ -358,10 +362,10 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             command = replace(command, value=str(preference))
         elif command.type in {'AskStatus', 'Clarify', 'Emergency'}:
             if not _only(command):
-                return None
+                continue
         else:  # ChitChat
             if not _only(command, 'kind') or command.kind not in (None, *CHITCHAT_KINDS):
-                return None
+                continue
             if command.kind is None:
                 command = replace(command, kind='smalltalk')
         validated.append(command)
@@ -446,7 +450,8 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
     ``on_outcome`` receives why a proposal was or was not produced, so that an unreachable
     model, an exhausted turn budget, unparseable output and a proposal the validator refused
     are told apart (all of them return ``None``): ``unavailable``, ``no_response``,
-    ``turn_budget_expired``, ``malformed_output``, ``rejected_by_validation``, ``accepted``.
+    ``turn_budget_expired``, ``malformed_output``, ``rejected_by_validation``,
+    ``partially_accepted`` (some proposed commands were dropped), ``accepted``.
     """
     def note(outcome: str) -> None:
         if on_outcome is not None:
@@ -574,8 +579,17 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
     if parsed is None:
         note('rejected_by_validation' if _is_json_object(raw) else 'malformed_output')
     else:
-        note('accepted')
+        note('partially_accepted' if len(parsed) < _proposed_count(raw) else 'accepted')
     return parsed
+
+
+def _proposed_count(raw: str) -> int:
+    """How many commands the model proposed (before validation)."""
+    try:
+        items = json.loads(raw).get('commands')
+    except (AttributeError, TypeError, ValueError):
+        return 0
+    return len(items) if isinstance(items, list) else 0
 
 
 def _is_json_object(raw: str) -> bool:

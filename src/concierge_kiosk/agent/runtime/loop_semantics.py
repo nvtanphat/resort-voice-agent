@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 from .planner import ActionBatch, ActionPlan, NextAction, deterministic_next_action
+from .state import AVAILABILITY_GATE, availability_gate_topic
 from .verifier import Verification, verify
 from .world import AgentFailure, AgentUnknown, facts_from_observation
 from concierge_kiosk.agent.understanding.commands import Command
@@ -80,8 +81,9 @@ def _command_action(state, index: int, command: Command) -> tuple[NextAction | N
         if candidate is None or requirement_id is None:
             return None, requirement_id
         if command.type == 'StartGoal' and candidate.conditional:
+            gate_topic = availability_gate_topic(candidate.id)
             availability = next((item for item in state.goal_contract.requirements
-                                 if item.outcome == 'availability_checked'
+                                 if item.outcome == AVAILABILITY_GATE and item.topic == gate_topic
                                  and item.id not in state.satisfied_requirements), None)
             if availability is not None:
                 return NextAction(
