@@ -234,3 +234,46 @@ def test_the_model_free_fallback_never_copies_a_followup_example():
                         topic="Hồ bơi Resort")
     selector = _selector([followup])
     assert selector.nearest("còn giá thì sao", min_score=0.0, min_margin=0.0) is None
+
+
+# --- the topic a flag points at must be recent, verified and the latest one ---
+
+def _source(title: str, chunk: str) -> dict:
+    return {"source_id": f"kb_{chunk}", "revision": "r1", "chunk_id": chunk, "title": title,
+            "heading": title, "language": "vi", "section_id": chunk}
+
+
+def test_an_expired_topic_is_not_inherited(monkeypatch):
+    import concierge_kiosk.agent.memory.conversation as conversation_module
+    from concierge_kiosk.agent.memory.conversation import ConversationMemory
+
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(conversation_module.time, "monotonic", lambda: clock["now"])
+    memory = ConversationMemory(ttl=60, max_sessions=4)
+    version = memory.snapshot("s1", "q", "vi").version
+    assert memory.commit_topic("s1", "vi", expected_version=version,
+                               sources=[_source("Nhà hàng A", "a")], query="q")[0]
+    assert memory.recent_anchor("s1", "vi").title == "Nhà hàng A"
+    clock["now"] += 61
+    assert memory.recent_anchor("s1", "vi") is None, "context past its TTL must not be inherited"
+
+
+def test_the_latest_verified_topic_wins_when_the_conversation_moves_on(monkeypatch):
+    from concierge_kiosk.agent.memory.conversation import ConversationMemory
+
+    memory = ConversationMemory(ttl=600, max_sessions=4)
+    for chunk, title in (("a", "Nhà hàng A"), ("b", "Hồ bơi B")):
+        version = memory.snapshot("s1", "q", "vi").version
+        memory.commit_topic("s1", "vi", expected_version=version, sources=[_source(title, chunk)], query="q")
+    assert memory.recent_anchor("s1", "vi").title == "Hồ bơi B"
+
+
+def test_a_turn_with_no_verified_evidence_leaves_no_topic_to_inherit():
+    from concierge_kiosk.agent.memory.conversation import ConversationMemory
+
+    memory = ConversationMemory(ttl=600, max_sessions=4)
+    version = memory.snapshot("s1", "q", "vi").version
+    memory.commit_topic("s1", "vi", expected_version=version, sources=[_source("Nhà hàng A", "a")], query="q")
+    version = memory.snapshot("s1", "q2", "vi").version
+    memory.commit_topic("s1", "vi", expected_version=version, sources=[], query="q2")  # abstained answer
+    assert memory.recent_anchor("s1", "vi") is None

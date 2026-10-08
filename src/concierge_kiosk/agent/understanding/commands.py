@@ -9,9 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import json
 import unicodedata
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from concierge_kiosk.agent.understanding.semantic import _chat
+from concierge_kiosk.runtime.local_http import slm_turn_expired
 from concierge_kiosk.core.domain_profile import preference_policy, rag_policy, supported_languages
 from concierge_kiosk.core.settings import SLM_NUM_CTX
 from concierge_kiosk.domain.service_registry import accepted_slots, service_definition
@@ -80,7 +81,8 @@ class Command:
 
 
 def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
-                   *, slot_reply: bool = True, context_topic: bool = False) -> dict[str, Any]:
+                   *, slot_reply: bool = True, context_topic: bool = False,
+                   confirm_pending: bool = False) -> dict[str, Any]:
     """Return the closed JSON schema used by an understanding model.
 
     Each command type is its own schema variant carrying only that type's
@@ -147,7 +149,6 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
             **variant('AskInfo', query=query)['properties'],
             'facet': {'type': 'string', 'enum': sorted(rag_policy().facet_fact_types)}}}),
         with_context_flag(variant('Navigate', query=query)),
-        variant('Confirm', confirmed={'type': 'boolean', 'const': True}),
         variant('Cancel'),
         variant('Modify'),
         variant('AskStatus'),
@@ -157,6 +158,9 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
         variant('ChitChat', kind={'type': 'string', 'enum': list(CHITCHAT_KINDS)}),
         variant('SwitchLanguage', target={'type': 'string', 'enum': sorted(supported_languages())}),
     ]
+    if confirm_pending:
+        # Offered only while the server is waiting for a confirmation, like slot replies.
+        variants.append(variant('Confirm', confirmed={'type': 'boolean', 'const': True}))
     for name, spec in preferences.items():
         value = ({'type': 'string', 'enum': list(spec.values)} if spec.kind == 'enum' else text)
         variants.append(variant('SetPreference', field={'type': 'string', 'const': name}, value=value))
@@ -228,6 +232,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
     if not query.strip() or not 1 <= len(values) <= MAX_COMMANDS:
         return None
     validated: list[Command] = []
+    started: set[tuple] = set()
     for command in values:
         if not isinstance(command, Command) or command.type not in COMMAND_TYPES:
             return None
@@ -260,6 +265,11 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                          and _text(slot.text, 120) and _verbatim(query, slot.text))
             if kept != command.slots:
                 command = replace(command, slots=kept)
+            signature = (command.goal, tuple((s.name, s.text) for s in command.slots),
+                         command.conditional, command.refers_to_context)
+            if signature in started:
+                continue  # the same request stated twice is one request
+            started.add(signature)
         elif command.type == 'CheckAvailability':
             definition = service_definition(command.goal or '')
             if (definition is None or definition.availability_source is None
@@ -300,7 +310,10 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                     or command.reason is not None):
                 return None
         elif command.type == 'Confirm':
-            if (command.confirmed is not True or pending_reply not in {None, 'confirm'}
+            if pending_reply != 'confirm':
+                # Nothing is waiting for a confirmation: drop the claim, keep the rest of the turn.
+                continue
+            if (command.confirmed is not True
                     or command.goal is not None or command.slots or command.query is not None
                     or command.keys or command.field is not None or command.value is not None
                     or command.reason is not None):
@@ -404,7 +417,8 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                    pending_reply: str | None = None,
                    context_topic: str | None = None,
                    should_cancel=None, timeout_seconds: float = 1.5,
-                   num_gpu: int = -1
+                   num_gpu: int = -1,
+                   on_outcome: Callable[[str], None] | None = None
                    ) -> tuple[Command, ...] | None:
     """Ask the local SLM for one closed command stream.
 
@@ -413,8 +427,18 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
     service, slot and verb against the original guest utterance before the
     runtime sees it.  A transport, timeout or schema failure returns ``None``
     so deterministic routing remains authoritative.
+
+    ``on_outcome`` receives why a proposal was or was not produced, so that an unreachable
+    model, an exhausted turn budget, unparseable output and a proposal the validator refused
+    are told apart (all of them return ``None``): ``unavailable``, ``no_response``,
+    ``turn_budget_expired``, ``malformed_output``, ``rejected_by_validation``, ``accepted``.
     """
+    def note(outcome: str) -> None:
+        if on_outcome is not None:
+            on_outcome(outcome)
+
     if not base_url or not model or not query.strip():
+        note('unavailable')
         return None
     from concierge_kiosk.domain.service_registry import SERVICE_DEFINITIONS
 
@@ -461,6 +485,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
             services.append(item)
             seen.add(definition.code)
         if not services:
+            note('unavailable')
             return None
     pending = pending_reply or 'none'
     payload = {
@@ -469,10 +494,12 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         'keep_alive': '5m',
         'format': command_schema(
             {item['service_mode']: item['accepted_slots'] for item in services},
-            slot_reply=pending_reply is not None, context_topic=bool(context_topic)),
+            slot_reply=pending_reply is not None, context_topic=bool(context_topic),
+            confirm_pending=pending_reply == 'confirm'),
         'messages': [
             {'role': 'system', 'content': (
-                'Interpret exactly one hotel concierge guest turn and return only the JSON schema. '
+                'Interpret exactly one hotel concierge guest turn and return only the JSON schema, written compactly '
+                'on a single line with no indentation or line breaks. '
                 'When the guest wants something done, brought, fixed, booked or arranged, emit StartGoal '
                 'with the closest service_mode from AVAILABLE_SERVICES (match by meaning, using each '
                 'name and description) and put the details the guest stated into its slots. '
@@ -521,10 +548,24 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                     'num_gpu': num_gpu},
     }
     raw = _chat(base_url, payload, min(10.0, max(0.05, timeout_seconds)), should_cancel)
-    return parse_commands(
+    if not raw:
+        note('turn_budget_expired' if slm_turn_expired() else 'no_response')
+        return None
+    parsed = parse_commands(
         raw, query=query, enabled_request_kinds=enabled_request_kinds,
-        pending_reply=pending_reply, language=language,
-    ) if raw else None
+        pending_reply=pending_reply, language=language)
+    if parsed is None:
+        note('rejected_by_validation' if _is_json_object(raw) else 'malformed_output')
+    else:
+        note('accepted')
+    return parsed
+
+
+def _is_json_object(raw: str) -> bool:
+    try:
+        return isinstance(json.loads(raw), dict)
+    except (TypeError, ValueError):
+        return False
 
 
 __all__ = [

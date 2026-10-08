@@ -263,6 +263,7 @@ class _TurnRuntimeSupport:
                 service_candidates=candidates, examples=examples,
                 pending_reply=pending_reply,
                 context_topic=context_topic,
+                on_outcome=lambda outcome: LOGGER.info('slm_commands outcome=%s language=%s', outcome, language),
                 should_cancel=lambda: self.audio_admission.slm_cancelled(session),
                 num_gpu=self.cfg.slm_num_gpu,
                 timeout_seconds=(min(self.cfg.intent_parser_timeout_seconds,
