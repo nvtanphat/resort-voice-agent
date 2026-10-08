@@ -43,8 +43,11 @@ class UserJourneyTests(unittest.TestCase):
     def test_evening_dinner_then_spa_can_receive_source_bound_slots(self):
         release = Path(__file__).resolve().parents[2] / 'releases/planning-release.json'
         import hashlib
+        import shutil
+        shipped = Path(self.tmp.name) / 'shipped.sqlite3'
+        shutil.copyfile(Path(__file__).resolve().parents[2] / 'data/concierge.sqlite3', shipped)
         schedule = approved_schedule(
-            Store(Path(__file__).resolve().parents[2] / 'data/concierge.sqlite3'),
+            Store(shipped),
             path=str(release), expected_sha256=hashlib.sha256(release.read_bytes()).hexdigest(),
             property_id='FURAMA_DANANG', language='vi', as_of='2026-10-02')
         slots = proposed_slots(

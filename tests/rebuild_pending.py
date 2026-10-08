@@ -7,6 +7,7 @@ rebuild list in plan.md / the Phase B plan:
 * B2 follow-up - conversation state (anchor, pending question) in the command prompt
 * B3 plan      - Plan command slots and topics
 * B5 voice     - spoken-unit/symbol rendering that 26196a6 removed from the voice profile
+* B6 accents   - restoring accents on ambiguous accent-less words needs context, not a phrase list
 
 ``xfail(strict=True)``: when a step lands, the test XPASSes and the run fails until the
 entry is deleted here, so this list can only shrink.  ``COLLECT_IGNORE`` holds modules
@@ -29,10 +30,9 @@ REBUILD_PENDING: tuple[tuple[str, str], ...] = (
     ("tests/rag/test_retrieval_recall_safety.py::RetrievalRecallSafetyTests::test_location_question_cannot_use_extension_or_policy_fact", "B1"),
     ("tests/agent/test_no_evidence_recovery.py::test_planning_no_evidence_with_related_topics_returns_recovery_answer", "B3"),
     ("tests/agent/test_service_nlu_recall.py::test_dining_readback_resolves_one_named_restaurant_from_dataset", "B2"),
+    ("tests/agent/test_nlu_robustness.py::test_profile_terms_restore_operating_hours_phrase_without_hardcoded_python_vocabulary", "B6"),
     ("tests/voice/test_voice_latency_optimizations.py::test_vietnamese_speech_rendering_normalizes_phone_symbols_units_and_email", "B5"),
 )
 
 COLLECT_IGNORE: tuple[str, ...] = (
-    "agent/test_nlu_robustness.py",    # imports intent.normalize_intent_with_spans (removed)
-    "data/test_domain_vocab_release.py",  # imports domain_vocab.category_terms (removed)
 )

@@ -19,9 +19,9 @@ ROOT = Path(__file__).resolve().parents[2]
     ],
 )
 def test_p0_4_breakfast_hours_are_recalled_in_guest_language(
-    language: str, query: str, language_marker: str
+    language: str, query: str, language_marker: str, shipped_db
 ):
-    store = Store(str(ROOT / "data/concierge.sqlite3"))
+    store = Store(str(shipped_db))
     result = retrieve(
         store,
         property_id="FURAMA_DANANG",
@@ -46,9 +46,9 @@ def test_p0_4_breakfast_hours_are_recalled_in_guest_language(
     ],
 )
 def test_p0_4_pool_close_hours_are_recalled_in_guest_language(
-    language: str, query: str, language_marker: str
+    language: str, query: str, language_marker: str, shipped_db
 ):
-    store = Store(str(ROOT / "data/concierge.sqlite3"))
+    store = Store(str(shipped_db))
     result = retrieve(
         store,
         property_id="FURAMA_DANANG",

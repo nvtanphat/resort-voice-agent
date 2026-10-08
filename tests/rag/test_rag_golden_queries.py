@@ -10,11 +10,12 @@ sys.path.insert(0, str(ROOT / "src"))
 from concierge_kiosk.persistence.sqlite_store import Store
 from concierge_kiosk.rag.embedding.local import LocalEmbedder
 from concierge_kiosk.rag.retrieval.engine import retrieve
+from shipped_db import shipped_store
 
 
 class RagGoldenQueryTests(unittest.TestCase):
     def test_cafe_hours_rank_correct_fact_for_all_languages_in_hybrid_mode(self):
-        store = Store(str(ROOT / "data/concierge.sqlite3"))
+        store = shipped_store()
         embedder = LocalEmbedder(
             str(ROOT / "models/embeddings/hash-multilingual"),
             str(ROOT / "models/embeddings/hash-multilingual.manifest.json"),
@@ -45,7 +46,7 @@ class RagGoldenQueryTests(unittest.TestCase):
 
 
 def test_p0_3_wifi_single_term_is_bound_to_wifi_fact():
-    store = Store(str(ROOT / "data/concierge.sqlite3"))
+    store = shipped_store()
     cases = {
         "vi": ("wifi", ("wi-fi", "wifi")),
         "en": ("wifi", ("wifi",)),
@@ -67,7 +68,7 @@ def test_p0_3_wifi_single_term_is_bound_to_wifi_fact():
 
 
 def test_p0_3_vietnamese_late_checkout_does_not_use_ceiling_height():
-    store = Store(str(ROOT / "data/concierge.sqlite3"))
+    store = shipped_store()
     result = retrieve(
         store,
         property_id="FURAMA_DANANG",
@@ -83,7 +84,7 @@ def test_p0_3_vietnamese_late_checkout_does_not_use_ceiling_height():
 
 
 def test_p0_3_broken_air_conditioner_abstains_instead_of_using_gym_equipment():
-    store = Store(str(ROOT / "data/concierge.sqlite3"))
+    store = shipped_store()
     result = retrieve(
         store,
         property_id="FURAMA_DANANG",

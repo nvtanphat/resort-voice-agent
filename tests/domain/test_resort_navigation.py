@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from concierge_kiosk.agent.tools.navigation import map_guidance, read_approved_map
 from concierge_kiosk.persistence.sqlite_store import Store
+from shipped_db import shipped_store
 
 
 class ResortNavigationTests(unittest.TestCase):
@@ -17,7 +18,7 @@ class ResortNavigationTests(unittest.TestCase):
     def setUpClass(cls):
         cls.path = ROOT / "releases/map-release.json"
         cls.digest = hashlib.sha256(cls.path.read_bytes()).hexdigest()
-        cls.store = Store(str(ROOT / "data/concierge.sqlite3"))
+        cls.store = shipped_store()
 
     def route(self, query: str, *, start_id: str | None = None, language: str = "en"):
         return map_guidance(

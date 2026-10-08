@@ -23,8 +23,7 @@ from ..agent.understanding.domain_nlu import AFFIRM_TERMS, DENY_TERMS, ROUTING_S
 from ..agent.tools.service_slots import (assess_service, clarification_text, ready_text,
                                           extract_slots)
 
-from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVICE_DEFINITIONS,
-                                                     accepted_slots, default_service_for,
+from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, accepted_slots, default_service_for,
                                                      route_branch_for_request_kind, service_definition,
                                                      VOICE_NUMERIC_SLOTS)
 from concierge_kiosk.core.operational_policy import service_catalog_entry

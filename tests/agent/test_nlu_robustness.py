@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import random
-from concierge_kiosk.agent.understanding.intent import (
-    normalize_intent_text,
-    normalize_intent_with_spans,
-)
+from concierge_kiosk.agent.understanding.intent import normalize_intent_text
+from concierge_kiosk.agent.understanding.normalization import normalize_with_spans as normalize_intent_with_spans
 from tools.nlu.perturb import generate_variants, perturb_utterance
 
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from concierge_kiosk.core.domain_profile import get_domain_profile
-from concierge_kiosk.core.domain_vocab import category_terms, service_terms_by_catalog_id
+from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,6 +25,5 @@ def test_domain_vocab_release_is_schema_valid_and_pinned():
 
 
 def test_runtime_reads_property_terms_from_the_release():
-    assert "furama beach" in category_terms("recreation", "en")
-    terms = service_terms_by_catalog_id("service.bath_towels", "en")
-    assert "extra towels" in terms
+    assert "furama beach" in entity_terms("en", "recreation")
+    assert "extra towels" in service_terms("en")

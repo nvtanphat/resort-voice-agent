@@ -3,10 +3,8 @@
 No model calls, database writes or implicit confirmation of business actions.
 """
 from __future__ import annotations
-import re
-from concierge_kiosk.core.domain_profile import rag_policy
 from dataclasses import dataclass
-from concierge_kiosk.agent.understanding.intent import emergency_response, normalize_intent_text, EMERGENCY_TEXT
+from concierge_kiosk.agent.understanding.intent import emergency_response, EMERGENCY_TEXT
 from concierge_kiosk.agent.understanding.domain_nlu import ROUTING_STATIC_TEXT as STATIC_TEXT
 from concierge_kiosk.domain.service_registry import (
     route_branch_for_request_kind,

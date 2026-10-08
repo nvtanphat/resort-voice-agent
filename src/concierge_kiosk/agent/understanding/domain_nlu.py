@@ -10,7 +10,7 @@ import re
 from typing import Mapping
 
 from concierge_kiosk.core.domain_profile import nlu_policy, voice_policy
-from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
+from concierge_kiosk.core.domain_vocab import service_terms
 
 _POLICY = nlu_policy()
 

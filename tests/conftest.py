@@ -25,6 +25,14 @@ def _reset_slm_circuit():
 
 
 @pytest.fixture
+def shipped_db(tmp_path):
+    """A private copy of the shipped knowledge DB (see tests/shipped_db.py)."""
+    from shipped_db import copy_shipped_db
+
+    return copy_shipped_db(tmp_path)
+
+
+@pytest.fixture
 def understand(monkeypatch):
     """Script the understanding model for business-flow tests.
 

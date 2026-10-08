@@ -13,6 +13,7 @@ from concierge_kiosk.agent.tools.navigation import map_guidance
 from concierge_kiosk.agent.tools.scheduling import approved_schedule
 from concierge_kiosk.core.dataset_layout import MAP, MAP_PATHS, dataset_path
 from concierge_kiosk.persistence.sqlite_store import Store
+from shipped_db import shipped_store
 
 
 class FuramaReleaseTests(unittest.TestCase):
@@ -33,7 +34,7 @@ class FuramaReleaseTests(unittest.TestCase):
     def test_icp_verified_route_works_when_start_is_known(self):
         path = ROOT / "releases/map-release.json"
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        store = Store(str(ROOT / "data/concierge.sqlite3"))
+        store = shipped_store()
         result = map_guidance(
             store,
             path=str(path),
@@ -59,7 +60,7 @@ class FuramaReleaseTests(unittest.TestCase):
     def test_planning_release_is_accepted_for_all_languages(self):
         path = ROOT / "releases/planning-release.json"
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        store = Store(str(ROOT / "data/concierge.sqlite3"))
+        store = shipped_store()
         for language in ("vi", "en", "zh", "ko"):
             schedule = approved_schedule(
                 store,

@@ -1,24 +1,18 @@
 """Bounded, authorized lexical/dense/hybrid retrieval and grounding."""
 from __future__ import annotations
 import logging
-import math
 import re
 import time
-import unicodedata
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from threading import BoundedSemaphore
 from dataclasses import dataclass
-from concierge_kiosk.rag.documents import LANGUAGES
 from concierge_kiosk.rag.embedding.base import Embedder
 from concierge_kiosk.rag.embedding.cache import query_embedding
 from concierge_kiosk.rag.rerank.local import LocalReranker
-from concierge_kiosk.rag.retrieval.evidence import evidence_passage, retrieve_parent_context
 from concierge_kiosk.rag.text.normalize import searchable
-from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
 from concierge_kiosk.rag.text.tokenization import tokens
-from concierge_kiosk.rag.grounding.relevance import evidence_relevant, fts_query, query_terms as meaningful_query_terms
 from concierge_kiosk.i18n import text as i18n_text
-from concierge_kiosk.core.domain_profile import nlu_policy, rag_policy as domain_rag_policy
+from concierge_kiosk.core.domain_profile import nlu_policy
 LOGGER = logging.getLogger(__name__)
 
 # A timed-out native cross-encoder cannot be safely killed in a Python thread.

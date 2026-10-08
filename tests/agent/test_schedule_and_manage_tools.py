@@ -9,12 +9,12 @@ from concierge_kiosk.application.service_actions import ServiceActionService
 from concierge_kiosk.persistence.sqlite_store import Store
 
 
-def test_availability_routes_to_schedule_and_reads_pinned_release():
+def test_availability_routes_to_schedule_and_reads_pinned_release(shipped_db):
     decision = classify_dialogue('Is the spa available tomorrow?', 'en')
     assert decision.branch == 'knowledge'
 
     result = schedule_read(
-        Store('data/concierge.sqlite3'),
+        Store(str(shipped_db)),
         query='Is the spa available tomorrow?', language='en',
         property_id='FURAMA_DANANG', path='releases/planning-release.json',
         expected_sha256=sha256((Path('releases') / 'planning-release.json').read_bytes()).hexdigest(),
