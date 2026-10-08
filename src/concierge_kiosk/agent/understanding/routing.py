@@ -49,7 +49,8 @@ def classify_dialogue(query: str, language: str) -> RouteDecision:
     return RouteDecision('knowledge', False, None)
 
 
-def fast_response(decision: RouteDecision, query: str, language: str) -> dict:
+def fast_response(decision: RouteDecision, query: str, language: str, *,
+                  evidence: str | None = None) -> dict:
     """Return a bounded deterministic response without retrieval or generation."""
     if decision.branch == "emergency":
         answer = emergency_response(query, language) or EMERGENCY_TEXT.get(language)
@@ -80,7 +81,11 @@ def fast_response(decision: RouteDecision, query: str, language: str) -> dict:
                 "requires_staff_review": False, "fast_path": True}
     if decision.branch == "preference":
         from concierge_kiosk.i18n import text as i18n_text
-        return {"answer": i18n_text("preference.saved", language), "sources": [], "suggested_action": None,
+        # A question, never a claim that something was saved: memory changes only after the guest
+        # confirms (see the pending preference proposal in the conversation engine).
+        quoted = (evidence or query).strip()[:120]
+        return {"answer": i18n_text("preference.confirm_question", language, evidence=quoted),
+                "sources": [], "suggested_action": None,
                 "retrieval_mode": "not_used", "generation_mode": "deterministic",
                 "request_completed": False, "grounding": "not_required",
                 "requires_staff_review": False, "fast_path": True}

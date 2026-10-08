@@ -205,5 +205,7 @@
   "backend.preference.saved": "Mình đã ghi nhận sở thích này cho phiên hiện tại và sẽ dùng khi gợi ý hoặc chuẩn bị yêu cầu.",
   "backend.service.ready": "Tôi đã có đủ thông tin để chuẩn bị yêu cầu. Vui lòng kiểm tra trước khi xác nhận.",
   "backend.service.need_slots": "Tôi có thể tiếp tục yêu cầu này, nhưng vẫn cần: {names}. Chưa có yêu cầu nào được gửi.",
-  "backend.operations.synthetic_which_option": "Mình cần biết bạn muốn kiểm tra lựa chọn nào. Vui lòng nói rõ tên nhà hàng hoặc dịch vụ."
+  "backend.operations.synthetic_which_option": "Mình cần biết bạn muốn kiểm tra lựa chọn nào. Vui lòng nói rõ tên nhà hàng hoặc dịch vụ.",
+  "backend.preference.confirm_question": "Bạn muốn mình ghi nhớ “{evidence}” làm sở thích cho phiên này không? Hãy trả lời có hoặc không.",
+  "backend.preference.declined": "Đã rõ, mình sẽ không ghi nhớ điều đó."
 }

@@ -61,6 +61,9 @@ class Command:
     # instead of naming one.  A model-made claim; the server honours it only when a verified
     # anchor exists, and the anchor (never the model) supplies the topic.
     refers_to_context: bool = False
+    # SetPreference only: the exact words of the guest turn the preference rests on.  The server
+    # checks that it is a verbatim span; it is a grounding check, never proof of intent.
+    evidence: str | None = None
 
     def public(self) -> dict[str, Any]:
         result: dict[str, Any] = {'type': self.type}
@@ -69,6 +72,7 @@ class Command:
                 ('value', self.value), ('confirmed', self.confirmed),
                 ('conditional', self.conditional if self.conditional else None),
                 ('refers_to_context', True if self.refers_to_context else None),
+                ('evidence', self.evidence),
                 ('reason', self.reason), ('kind', self.kind), ('target', self.target),
                 ('facet', self.facet)):
             if value is not None:
@@ -163,7 +167,8 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
         variants.append(variant('Confirm', confirmed={'type': 'boolean', 'const': True}))
     for name, spec in preferences.items():
         value = ({'type': 'string', 'enum': list(spec.values)} if spec.kind == 'enum' else text)
-        variants.append(variant('SetPreference', field={'type': 'string', 'const': name}, value=value))
+        variants.append(variant('SetPreference', field={'type': 'string', 'const': name}, value=value,
+                                evidence=text))
     return {
         'type': 'object', 'additionalProperties': False,
         'required': ['commands'],
@@ -189,7 +194,8 @@ def _text(value: object, maximum: int) -> str | None:
     return cleaned if 1 <= len(cleaned) <= maximum else None
 
 
-_OPTIONAL_FIELDS = ('goal', 'query', 'field', 'value', 'confirmed', 'reason', 'kind', 'target', 'facet')
+_OPTIONAL_FIELDS = ('goal', 'query', 'field', 'value', 'confirmed', 'reason', 'kind', 'target', 'facet',
+                    'evidence')
 
 
 def _only(command: Command, *allowed: str) -> bool:
@@ -226,8 +232,13 @@ def _preference_value(command: Command, query: str, language: str | None) -> str
 def validate_commands(commands: Iterable[Command], *, query: str,
                       enabled_request_kinds: frozenset[str] = frozenset(),
                       pending_reply: str | None = None,
-                      language: str | None = None) -> tuple[Command, ...] | None:
-    """Validate a command stream against guest text and server-owned registry."""
+                      language: str | None = None,
+                      require_evidence: bool = True) -> tuple[Command, ...] | None:
+    """Validate a command stream against guest text and server-owned registry.
+
+    ``require_evidence=False`` is for reviewed training examples, which predate the
+    ``SetPreference.evidence`` field; a model proposal always needs it.
+    """
     values = tuple(commands)
     if not query.strip() or not 1 <= len(values) <= MAX_COMMANDS:
         return None
@@ -243,6 +254,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
         if ((command.kind is not None and command.type != 'ChitChat')
                 or (command.target is not None and command.type != 'SwitchLanguage')
                 or (command.facet is not None and command.type != 'AskInfo')
+                or (command.evidence is not None and command.type != 'SetPreference')
                 or (command.refers_to_context and command.type not in {'StartGoal', 'AskInfo', 'Navigate'})):
             return None
 
@@ -337,7 +349,10 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                 return None
         elif command.type == 'SetPreference':
             preference = _preference_value(command, query, language)
-            if preference is None or not _only(command, 'field', 'value'):
+            grounded = (not require_evidence
+                        or (isinstance(command.evidence, str) and len(command.evidence.strip()) >= 2
+                            and _verbatim(query, command.evidence)))
+            if preference is None or not grounded or not _only(command, 'field', 'value', 'evidence'):
                 # An unstated or out-of-range preference is not remembered.
                 continue
             command = replace(command, value=str(preference))
@@ -358,7 +373,7 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
     if not isinstance(raw_commands, list):
         return None
     allowed = {'type', 'goal', 'slots', 'query', 'keys', 'field', 'value',
-               'confirmed', 'conditional', 'reason', 'kind', 'target', 'facet', 'refers_to_context'}
+               'confirmed', 'conditional', 'reason', 'kind', 'target', 'facet', 'refers_to_context', 'evidence'}
     commands: list[Command] = []
     for item in raw_commands:
         if not isinstance(item, dict) or 'type' not in item or set(item) - allowed:
@@ -385,7 +400,7 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
             value=item.get('value'), confirmed=item.get('confirmed'),
             conditional=item.get('conditional', False), reason=item.get('reason'),
             kind=item.get('kind'), target=item.get('target'), facet=item.get('facet'),
-            refers_to_context=item.get('refers_to_context', False)))
+            refers_to_context=item.get('refers_to_context', False), evidence=item.get('evidence')))
     return commands
 
 
@@ -509,8 +524,10 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                 'itinerary, AskStatus when the guest asks how an earlier request is going, Cancel or Modify '
                 'when the guest withdraws or changes a pending or earlier request, Confirm only to approve '
                 'the pending task, SetSlot or CorrectSlot only to answer or correct PENDING_REPLY, '
-                'SetPreference when the guest states a lasting preference (diet, group size, children, '
-                'mobility, quiet), SwitchLanguage when the guest asks to change the conversation language, '
+                'SetPreference only when the guest states a lasting preference (diet, group size, children, '
+                'mobility, quiet) and put in its evidence the exact words of GUEST_TURN that state it; never emit '
+                'SetPreference when the guest said nothing about such a preference, '
+                'SwitchLanguage when the guest asks to change the conversation language, '
                 'Handoff when the guest asks for staff or complains, ChitChat with kind greeting, thanks, '
                 'goodbye or smalltalk for social text, and Clarify when the request is too vague to act on. '
                 'A negated, already-arranged or past-tense mention of a service, or a complaint about it, '

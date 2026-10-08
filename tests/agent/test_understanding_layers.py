@@ -464,21 +464,30 @@ def test_fast_router_returns_none_when_selector_abstains():
 
 
 # ---------------------------------------------------------------------------
-# 3. SetPreference được lưu vào preference memory
+# 3. SetPreference chỉ vào preference memory sau khi khách xác nhận
 # ---------------------------------------------------------------------------
 
-def test_set_preference_persisted_to_preference_memory(tmp_path: Path, understand):
-    understand("vegan", Command("SetPreference", field="dietary", value="vegetarian"))
+def test_set_preference_is_proposed_then_persisted_only_after_confirmation(tmp_path: Path, understand):
+    understand("vegan", Command("SetPreference", field="dietary", value="vegetarian",
+                                evidence="I am vegan"))
     app = _client(tmp_path)
     with TestClient(app, raise_server_exceptions=False) as client:
         session = client.post("/api/session").json()
         headers = {"X-CSRF-Token": session["csrf_token"]}
-        response = client.post(
+        first = client.post(
             "/api/ask",
             headers=headers,
             json={"query": "I am vegan, remember that", "language": "en", "turn_nonce": "pref-12345678"},
         )
-    assert response.status_code == 200
+        assert first.status_code == 200
+        # Only a proposal so far: nothing unconfirmed reaches session memory.
+        assert app.state.preference_memory.load(session["session_id"]) == {}
+        second = client.post(
+            "/api/ask",
+            headers=headers,
+            json={"query": "yes", "language": "en", "turn_nonce": "pref-87654321"},
+        )
+        assert second.status_code == 200
     stored = app.state.preference_memory.load(session["session_id"])
     assert stored.get("dietary") == "vegetarian"
 

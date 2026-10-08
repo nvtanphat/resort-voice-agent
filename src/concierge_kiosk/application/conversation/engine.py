@@ -54,7 +54,8 @@ from concierge_kiosk.agent.understanding.fast_router import FastRouter, TurnCont
 from concierge_kiosk.agent.understanding.emergency_gate import EmergencyGate, emergency_confirm_question
 from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS
 from concierge_kiosk.agent.understanding.intent import EMERGENCY_TEXT
-from concierge_kiosk.core.domain_profile import preference_policy
+from concierge_kiosk.core.domain_profile import memory_policy, preference_policy
+from concierge_kiosk.agent.memory.preferences import PendingPreferenceStore
 from concierge_kiosk.runtime.local_http import slm_turn_budget
 from concierge_kiosk.integrations.synthetic_operations import SyntheticOperations
 from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
@@ -135,6 +136,19 @@ def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDe
 COMMAND_LOOP_BRANCHES = frozenset({'service', 'handoff', 'multi_task', 'request_change', 'confirmation'})
 
 
+def preference_proposal(commands) -> tuple[dict, str] | None:
+    """Preferences the model proposed this turn with the guest words it cites, or ``None``.
+
+    Only a proposal: nothing here reaches session memory until the guest confirms it.
+    """
+    values = preferences_from_commands(commands)
+    if not values:
+        return None
+    cited = dict.fromkeys(command.evidence.strip() for command in commands or ()
+                          if command.type == 'SetPreference' and command.evidence)
+    return values, ' / '.join(cited)[:160]
+
+
 def preferences_from_commands(commands) -> dict:
     """Session preferences stated this turn, from validated SetPreference commands."""
     policy = preference_policy().fields
@@ -155,6 +169,19 @@ class ConversationEngine:
     concierge_agent: object
     turn_support: object = None
     emergency_gate: object = None
+
+
+def _is_expected_denial(query: str, language: str) -> bool:
+    value = normalize_intent_text(query).strip(' .,!?:;')
+    if not value:
+        return False
+    languages = (language,) + tuple(code for code in DENY_TERMS if code != language)
+    for code in languages:
+        for raw_term in DENY_TERMS.get(code, ()):
+            term = normalize_intent_text(raw_term).strip(' .,!?:;')
+            if term and (value == term or value.startswith(term + ' ') or value.endswith(' ' + term)):
+                return True
+    return False
 
 
 def _is_expected_confirmation(query: str, language: str) -> bool:
@@ -204,6 +231,23 @@ class _TurnRuntimeSupport:
     fast_router: FastRouter | None = None
     emergency_gate: EmergencyGate | None = None
     _pending_emergency_checks: set[str] = field(default_factory=set)
+
+    def looks_like_emergency(self, query: str) -> bool:
+        """The same semantic safety gate ``understand_turn`` uses, for callers that must not
+        let an affirmation word hide an emergency."""
+        if self.emergency_gate is None:
+            return False
+        vector = None
+        if self.service_selector is not None:
+            try:
+                vector = self.service_selector._query_vector(query)
+            except Exception:
+                vector = None
+        try:
+            outcome = self.emergency_gate.evaluate(query, query_vector=vector)
+        except Exception:
+            return False
+        return outcome is not None and outcome.branch in {'emergency', 'emergency_check'}
 
     def is_pending_emergency_check(self, session: str) -> bool:
         return session in self._pending_emergency_checks
@@ -547,6 +591,12 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                               record_metric, turn_events, audio_admission, slm_permitted,
                               answers: AnswerServices, logger,
                               service_selector: ServiceSelector | None = None) -> ConversationEngine:
+    # Proposals wait here for the guest's answer; they are never memory until confirmed.
+    memory_cfg = memory_policy()
+    pending_preferences = PendingPreferenceStore(
+        ttl_seconds=float(min(memory_cfg.task_ttl_seconds, memory_cfg.preference_ttl_seconds)),
+        max_sessions=memory_cfg.max_sessions)
+    app.state.pending_preferences = pending_preferences
     ensure_active_context_session = answers.ensure_active_context_session
     emergency_answer = answers.emergency_answer
     grounded_answer = answers.grounded_answer
@@ -807,7 +857,28 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                                 'room_qr_token': body.room_qr_token}
                                if body.room_qr_token else None))
             voice_reply_result = service_actions.voice_proposal_turn(reply_request)
-        if voice_reply_result is None:
+        def service_confirmation_waiting() -> bool:
+            workflow = conversations.workflow_projection(session, body.language)
+            return ((isinstance(workflow, dict) and workflow.get('expected_reply') == 'confirm')
+                    or agent_tasks.load(session, body.language) is not None)
+
+        # A preference proposal lives for exactly one following turn.  It is answered only when
+        # nothing else is waiting for "yes": a pending service confirmation always wins.
+        pending_preference = pending_preferences.take(session) if voice_reply_result is None else None
+        preference_reply = None
+        if (pending_preference is not None and not service_confirmation_waiting()
+                and decision.branch not in {'emergency', 'emergency_check'}
+                and not turn_support.looks_like_emergency(query)):
+            if _is_expected_confirmation(query, body.language):
+                preference_reply = 'saved'
+            elif _is_expected_denial(query, body.language):
+                preference_reply = 'declined'
+        if preference_reply is not None:
+            decision = RouteDecision('preference', True)
+            task_context = None
+            execution_query = query
+            understanding_commands = None
+        elif voice_reply_result is None:
             # One understanding pass per turn: deterministic safety (layer A),
             # the embedding router (B), validated SLM commands (C), then the
             # reviewed-example fallback.  No phrase lists or word counts.
@@ -819,8 +890,19 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             task_context = None
             execution_query = query
             understanding_commands = None
-        turn_preferences = preferences_from_commands(understanding_commands)
+        # Only a confirmed proposal becomes memory (or an effective preference).
+        turn_preferences = pending_preference.values if preference_reply == 'saved' else {}
         effective_preferences.update(turn_preferences)
+        new_proposal = None
+        if decision.branch == 'preference' and preference_reply is None:
+            new_proposal = preference_proposal(understanding_commands)
+            understanding_commands = None  # a preference turn runs no command loop
+            if new_proposal is None:
+                decision = RouteDecision('clarification', True)
+            elif service_confirmation_waiting():
+                # "yes" must keep meaning the service request; the guest can restate afterwards.
+                new_proposal = None
+                decision = RouteDecision('confirmation', True)
         command_loop = (understanding_commands is not None
                         and decision.branch in COMMAND_LOOP_BRANCHES)
         loop_commands = tuple(understanding_commands) if command_loop else None
@@ -873,7 +955,15 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             result = emergency_check_answer(body.language)
             conversations.remember_expected_reply(session, body.language, 'confirm')
         elif decision.fast and decision.branch not in {'service', 'handoff'} and not command_loop:
-            result = fast_response(decision, query, body.language)
+            result = fast_response(decision, query, body.language,
+                                   evidence=(new_proposal[1] if new_proposal else None))
+            if decision.branch == 'preference':
+                if preference_reply == 'saved':
+                    result['answer'] = i18n_text('preference.saved', body.language)
+                elif preference_reply == 'declined':
+                    result['answer'] = i18n_text('preference.declined', body.language)
+                elif new_proposal is not None:
+                    pending_preferences.propose(session, new_proposal[0], new_proposal[1], body.language)
         else:
             request = AgentToolRequest(
                 query=execution_query, language=body.language, session=session,

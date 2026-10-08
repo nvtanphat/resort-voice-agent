@@ -213,7 +213,8 @@ def _example(row: object) -> CommandExample | None:
     commands = commands_from_items(raw_commands) if raw_commands else None
     validated = validate_commands(
         commands, query=utterance, enabled_request_kinds=ACTION_REQUEST_KINDS,
-        pending_reply=pending_field, language=language) if commands else None
+        pending_reply=pending_field, language=language,
+        require_evidence=False) if commands else None
     if not validated or len(validated) != len(commands):
         # A row whose commands do not survive the runtime validator would
         # teach the model an output the server rejects.

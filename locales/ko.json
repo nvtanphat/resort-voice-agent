@@ -206,5 +206,7 @@
   "backend.preference.saved": "알겠습니다. 이번 세션에서 추천하거나 요청을 준비할 때 이 선호 사항을 반영할게요.",
   "backend.service.ready": "요청을 준비할 정보가 충분합니다. 확인하기 전에 내용을 검토해 주세요.",
   "backend.service.need_slots": "이 요청을 계속 준비하려면 다음 정보가 더 필요합니다: {names}. 아직 요청은 전송되지 않았습니다.",
-  "backend.operations.synthetic_which_option": "어떤 항목을 말씀하시는지 알려 주세요. 확인하실 식당이나 서비스 이름을 말씀해 주세요."
+  "backend.operations.synthetic_which_option": "어떤 항목을 말씀하시는지 알려 주세요. 확인하실 식당이나 서비스 이름을 말씀해 주세요.",
+  "backend.preference.confirm_question": "“{evidence}” 내용을 이번 세션의 선호로 기억할까요? 예 또는 아니요로 답해 주세요.",
+  "backend.preference.declined": "알겠습니다. 그 내용은 기억하지 않겠습니다."
 }

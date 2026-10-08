@@ -8,6 +8,7 @@ session rotation/end.
 from __future__ import annotations
 
 import json
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -116,4 +117,59 @@ class SessionPreferenceMemoryStore:
                         (session, self.property_id))
 
 
-__all__ = ['SessionPreferences', 'SessionPreferenceMemoryStore']
+@dataclass(frozen=True)
+class PreferenceProposal:
+    """A preference the guest has been asked to confirm; not yet memory."""
+
+    values: dict
+    evidence: str
+    language: str
+    expires_at: float
+
+
+class PendingPreferenceStore:
+    """Server-owned preference proposals awaiting the guest's answer.
+
+    A model-proposed preference never reaches session memory directly.  It waits here for
+    exactly one following turn: ``take`` removes it, so any turn that is not an answer to the
+    question lets it lapse.  The store is in memory only (nothing unconfirmed is written to the
+    database or to an agent checkpoint), bounded in size and short-lived.  It is separate from
+    the pending service-request confirmation, which it never reuses.
+    """
+
+    def __init__(self, ttl_seconds: float = 120.0, max_sessions: int = 1024, clock=time.monotonic):
+        if not 1.0 <= ttl_seconds <= 600.0 or max_sessions < 1:
+            raise ValueError('Invalid pending preference configuration')
+        self._ttl = ttl_seconds
+        self._max = max_sessions
+        self._clock = clock
+        self._items: dict[str, PreferenceProposal] = {}
+        self._lock = threading.Lock()
+
+    def propose(self, session: str, values: dict, evidence: str, language: str) -> PreferenceProposal:
+        clean = _validate_preferences(dict(values))
+        if not clean:
+            raise ValueError('Empty preference proposal')
+        proposal = PreferenceProposal(clean, evidence.strip()[:160], language, self._clock() + self._ttl)
+        with self._lock:
+            now = self._clock()
+            for key in [k for k, v in self._items.items() if v.expires_at <= now]:
+                del self._items[key]
+            while len(self._items) >= self._max and session not in self._items:
+                del self._items[next(iter(self._items))]
+            self._items[session] = proposal
+        return proposal
+
+    def take(self, session: str) -> PreferenceProposal | None:
+        """Return and remove the live proposal for ``session``."""
+        with self._lock:
+            proposal = self._items.pop(session, None)
+        return proposal if proposal is not None and proposal.expires_at > self._clock() else None
+
+    def clear(self, session: str) -> None:
+        with self._lock:
+            self._items.pop(session, None)
+
+
+__all__ = ['PendingPreferenceStore', 'PreferenceProposal', 'SessionPreferences',
+           'SessionPreferenceMemoryStore']
