@@ -55,7 +55,6 @@ PMS_STAYS: Final[str] = "synthetic/operations/pms/stays.jsonl"
 CHARGE_RULES: Final[str] = "synthetic/operations/billing/charge_rules.json"
 
 # Evaluation/training inputs are dataset paths too, but are never RAG inputs.
-EVAL_GOLD: Final[str] = "evaluation/gold"
 EVAL_SERVICE_ACTIONS: Final[str] = "evaluation/end_to_end/service_actions.jsonl"
 EVAL_VOICE_ASR: Final[str] = "evaluation/voice_text/vi_asr_robustness.jsonl"
 EVAL_MULTI_TURN_VI: Final[str] = "evaluation/end_to_end/journeys/vi_multi_turn.jsonl"

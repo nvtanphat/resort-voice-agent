@@ -69,10 +69,6 @@
       "sha256": "2198cc3b65fdc037f5d14c80884f78bde87d570404e8a19532ba9053c5d0edc4",
       "bytes": 19297
     },
-    "knowledge/documents/manifest.json": {
-      "sha256": "b90f48312d4522dda4b4ea7c0864257774f82c67aa288ed6455487f0162352d5",
-      "bytes": 416
-    },
     "knowledge/sources/verification_snapshots.jsonl": {
       "sha256": "f4059745ec1603c1490e9ec16bff00fada1f9176212202987cca105db021cd9c",
       "bytes": 81550,

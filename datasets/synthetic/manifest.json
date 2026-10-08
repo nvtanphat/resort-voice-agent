@@ -16,37 +16,37 @@
   },
   "artifacts": {
     "operations/billing/charge_rules.json": {
-      "sha256": "d5df6f3f63d949d480a814675b55a070f2d54f04a235fbdd596d782ed3561243",
-      "bytes": 1456
+      "sha256": "ad894f7429a0c7b0ee6099be4e633d5403573f0220ac86d533253e5dca2d8c7c",
+      "bytes": 1524
     },
     "operations/billing/service_recovery.json": {
-      "sha256": "1de20ddae87a34d7489651442a34235fd6251646a0360738c85c761f103674ee",
-      "bytes": 1795
+      "sha256": "d4694a969592d18aa2fae0bc85a3eb9802eafdd43316cd99b322b4e316ae0545",
+      "bytes": 1867
     },
     "operations/engineering/maintenance_taxonomy.json": {
-      "sha256": "ab8a4613305bd8af65d154f3ec237def3a8a8976a5922a857183c4997757dd4c",
-      "bytes": 5644
+      "sha256": "6c69c6d3185d5f4ed053bdde9d53a10c25223723d4a43b5ce119865f3311dee6",
+      "bytes": 5870
     },
     "operations/engineering/workflows.jsonl": {
-      "sha256": "21db92cf2a54964122b9ba3c17e4ce163981531d66ba7d8bb7324ec268345634",
-      "bytes": 9329,
+      "sha256": "a46cd8bd49d334c649e0f109153ef12309e898fa94db43e5ead1a4c96b74f67f",
+      "bytes": 9336,
       "records": 7
     },
     "operations/food_beverage/minibar.json": {
-      "sha256": "fbaa9eb55343c4b4a9de16b8478a593db20ae8183631884a63cc77c381ed0497",
-      "bytes": 6709
+      "sha256": "a0c87640b39ff4b9a85c27177741e9de3d17f370a2ca8777696ef25aae547e3a",
+      "bytes": 6951
     },
     "operations/food_beverage/restaurants.json": {
-      "sha256": "042e26ad92f30592e1eacd5467061515310025d82e9b9663293a6f0a588776eb",
-      "bytes": 10600
+      "sha256": "41f20e3871b2b02a278e022854565eccd4d68ea16c51ccd10548ad85c94532e8",
+      "bytes": 10992
     },
     "operations/food_beverage/room_service_menu.json": {
-      "sha256": "e4b149dbb63f4aa328b9f5349d018570e855b9864684e106728fc06890c9971b",
-      "bytes": 5684
+      "sha256": "18414d891041651a35de9a1eeada1dea48c2ac68872ca2fe4526d4d9b2de52b3",
+      "bytes": 5890
     },
     "operations/history/metadata.json": {
-      "sha256": "f6dbfe9a9dd3af8fa85a6625ebcf8d3b6dc9963317d6b5870652c979476dae8c",
-      "bytes": 1718
+      "sha256": "86d7d5aebb9979be92b6ad1ba2df66d3066c44c78a5cf66528f632ac3dce8b95",
+      "bytes": 1720
     },
     "operations/history/requests.jsonl": {
       "sha256": "652bdbeb7bc3f01f5e3498c47fb0778e03446421e6e8abe062e8ad273a9e05a5",
@@ -54,126 +54,118 @@
       "records": 5000
     },
     "operations/history/summary.json": {
-      "sha256": "93149ce2e52d6c83d67b358409b6ea84b219fd0cc7ee43e6b0b5e4962a316ed5",
-      "bytes": 1159
+      "sha256": "1b4da3974da605e31f069b7a483e4241caa42a64ca711d96685535f338e79c11",
+      "bytes": 1203
     },
     "operations/housekeeping/catalog.json": {
-      "sha256": "d30651655e59eba5a7cbafc265f9371c796988aad59ba69bf3d6081ca74030c6",
-      "bytes": 7526
+      "sha256": "a1e7bcc57f056a1c7f2358d8f421444e0d45d91047bb8f5adfa5838988762520",
+      "bytes": 7794
     },
     "operations/inventory/commercial_snapshot.json": {
-      "sha256": "6652c35fd97e7f82fa69f53253ee67a7600c506b8e99a6437918f160972a2140",
-      "bytes": 9437
+      "sha256": "8de9e58bf95696fb022cf45b325b3613f307b674a9eef443b69b298fc055d360",
+      "bytes": 9802
     },
     "operations/metadata/assumptions.json": {
-      "sha256": "a4756353e4d12f0c2ce04cc2b469a2a557fda7106f8c4974fd04020bc85ccaae",
-      "bytes": 33787
+      "sha256": "f5be37673b3d2c8c3deb6b631bad8efabd9e383cb1d9f6e71eafcbdaf1d4a3b1",
+      "bytes": 34506
     },
     "operations/metadata/coverage.json": {
-      "sha256": "2ffa1185fcaba8d49bb1f5e3aeb80699a6dcac4d0400f0bd0cffc2f9eb36bb5c",
-      "bytes": 4126
+      "sha256": "4407250f0929b461003fe6c2ea1a8c0238862b31f8d2765d23302c733c330a49",
+      "bytes": 4225
     },
     "operations/metadata/demo_business_summary.json": {
-      "sha256": "c30f4492fedf91ae9da57f53169cedc864ce810beb167fff01cbe770b795e2fb",
-      "bytes": 1421
-    },
-    "operations/metadata/nonpublic_policy_registry.json": {
-      "sha256": "6ab1e3c45fc7fa33d070d23db6adb9e3c4db7de00ebab4c74d7f2d855da8d9d6",
-      "bytes": 8353
+      "sha256": "e67f95ef6d421d552568c53c39611b4288db5c26a2c924715020769941b9c371",
+      "bytes": 1473
     },
     "operations/metadata/property_simulation.json": {
-      "sha256": "ac527a8acca6d0a8033fc7565462146e871f80c7d61d717418b2c9d1b6eb466b",
-      "bytes": 2415
+      "sha256": "78e99d34c35f23ff6cd851778019b177916dfa05c77792fdc59de41ee2ec11f6",
+      "bytes": 2511
     },
     "operations/metadata/realism_profile.json": {
-      "sha256": "c41f755f6369a91da60fc92c2673bb73e201fce3edcfeae87c12a895edb63a1b",
-      "bytes": 1987
+      "sha256": "ce4908045c43dcbafda3f39f16a81244f53e041871814ee659a00e93dc524699",
+      "bytes": 2027
     },
     "operations/metadata/sources.json": {
-      "sha256": "a7a4fd53f78aef8fba4fad2448dca9867d73a3c3237288862789b4814212d82c",
-      "bytes": 20213
+      "sha256": "e0a7424162bb87cc26f89fd8c1b7b02a7a3187bb1b81e89442337b879beb5cce",
+      "bytes": 20691
     },
     "operations/pms/stays.jsonl": {
-      "sha256": "ab6729b1073e878bd8c105be6ccc49c65fd8a6b7b01621f55cd51ec252ab3ad6",
-      "bytes": 152714,
+      "sha256": "d970f70385eb0b14379cdaacb41be9818482cfa63d54c1dba3285a3c28a7f9d0",
+      "bytes": 152932,
       "records": 218
     },
     "operations/policies/constraints.json": {
-      "sha256": "5bd6a52bb37a1b9c6a4ec7847b9fbe4af7d90dc4ecdb008ce3c0809bcb6dbd2e",
-      "bytes": 1835
-    },
-    "operations/policies/dispatch_slas.json": {
-      "sha256": "dba9b75b177e56d296562ae1527f8eb83f89fd11171e9edbb4fadc2768ed80e0",
-      "bytes": 1534
+      "sha256": "0b60e7b539faf3a4b5f599979d134cb87f794935af8e298b20b85e33d2085d66",
+      "bytes": 1871
     },
     "operations/policies/escalation_matrix.json": {
-      "sha256": "108d54c49579fd38eaacf0d18570bc770a70b4580831833d2a5fcfd7bf03a398",
-      "bytes": 5768
+      "sha256": "60a909115e4f785ef417996cc87608cfeb560bc005f22d924a2bc61455e80be8",
+      "bytes": 5948
     },
     "operations/policies/escalation_policy.json": {
-      "sha256": "0bd9629fd11925f6d21b6135b217cf4263f0cc2681a2e35ddd53d6510aed5c0e",
-      "bytes": 1432
+      "sha256": "ce549089e51200d3c81058f4fdabb3e5f93215d7e94389fbdfa1b7c7242a154c",
+      "bytes": 1459
     },
     "operations/policies/guest_overrides.json": {
-      "sha256": "fe72acba1d30e34c3b3436b7bdbad96d9315c4556bfb84213759551fafca6b94",
-      "bytes": 1609
+      "sha256": "816ee8f310b39013067a493278697fc2b74ad76273ed9ab713ddcb5ec408bb2c",
+      "bytes": 1647
     },
     "operations/policies/service_policies.json": {
-      "sha256": "296fc7450f5137f042973c85e8f993e02a81616fd76745427c8a40cbdda4564c",
-      "bytes": 35718
+      "sha256": "cc4757e7630b7411f9cf02eaba4d04310a23c6c8621a7def1242f91c9d06e207",
+      "bytes": 36754
     },
     "operations/rooms/access_sop.json": {
-      "sha256": "4b01004ecbbfa59e288f37c622b4baeb52bcac18f08265ab8ebcae06b9854c31",
-      "bytes": 1574
+      "sha256": "178a9a207de095dff6e19cc71895a91ce62a516800c9d5c9227158cb2eafab5a",
+      "bytes": 1619
     },
     "operations/rooms/amenities.json": {
-      "sha256": "4b81ad645db2abd385589cebb0cd13f324baea780067964a58e079da1e68b418",
-      "bytes": 2775
+      "sha256": "8fa17083bfcb62b1ff2b36d32406730dda1dce3e5a8b731643902ee99dbc9bda",
+      "bytes": 2887
     },
     "operations/rooms/inventory.jsonl": {
-      "sha256": "d691b4d71688c1b6b464ef36e1fe67428dd5081f150717b6f692fed2bd2fe4ad",
-      "bytes": 98260,
+      "sha256": "0ffdc1080113548d793f0328f7a0667731f26d5df0c6b7e562d488f8f032a17f",
+      "bytes": 98526,
       "records": 266
     },
     "operations/spa/operations.json": {
-      "sha256": "151972660de75e4bb7a2e7d533d779b4aa92dfdb84591bca60a023f7a5014100",
-      "bytes": 7588
+      "sha256": "b2b9da7feb7cb9af9fc702a51371ff238a0dfaced5e3baf3c9574cfb828962a5",
+      "bytes": 7966
     },
     "operations/staffing/capacity.json": {
-      "sha256": "3ff8ddadd6921b447a74f3cac92eadaf198010724324ef191b5c834081c53fc7",
-      "bytes": 7292
+      "sha256": "f9627fd5b18b821d21b17a1023b432e639c8d1519baf8752f8268df1b00476f2",
+      "bytes": 7578
     },
     "operations/staffing/departments.json": {
-      "sha256": "a673e1adfc111237b46abcfbf6ab17ca970db409f929e37d5db9df5ac15faa33",
-      "bytes": 10564
+      "sha256": "b8b19efb59fb117c8c5d7311377496e707070b330b2cdeb193de878b29d8fc90",
+      "bytes": 10888
     },
     "operations/suppliers/directory.json": {
-      "sha256": "4fd59e2af14a30bf70bc9becd2741c045e6102a75fdc7cab5bf735c932a44628",
-      "bytes": 3385
+      "sha256": "168b2b01e9b878f256b2ab38ee5ce2429da0b5f6415f03e11cf26ff8ada90af9",
+      "bytes": 3506
     },
     "operations/tours/operations.json": {
-      "sha256": "5f9bf7e0195dc7c3adc855f5f3359b8cf0952990fee8d5380660844948d3647f",
-      "bytes": 1866
+      "sha256": "50564635bd69aa4ea4c9233ce512d5a49ebd7eb26c431f92f38ed09664a7daf2",
+      "bytes": 1917
     },
     "operations/tours/products.json": {
-      "sha256": "6384945fe4ad48c8cffca0d83d3dc3c49fe1011e48a4b5a3129815763b69770e",
-      "bytes": 8092
+      "sha256": "67f05b42230a8b11fbf134a2a2463469a686cfe72e256f0b414e25e4bc308faf",
+      "bytes": 8329
     },
     "operations/transport/products.json": {
-      "sha256": "e36f9455ada18b1a896bf86604c04409ccb1629c81d6f250863e30a38547b5cf",
-      "bytes": 4985
+      "sha256": "a03f701d820605d889e98caf5d3787026b4c0e245ddb1a5cfaa756dcdad71b16",
+      "bytes": 5137
     },
     "operations/transport/shuttle_schedule.json": {
-      "sha256": "72c114954a707d931dd1d0df828bb8098dab3219b56bfbd9a96c45ad65fad36f",
-      "bytes": 1909
+      "sha256": "9d97eab07c954f80ebc5874e1c739847e441fbc587d083be420b31da833911cb",
+      "bytes": 1974
     },
     "operations/workflows/channel_dispatch_rules.json": {
-      "sha256": "7eee54c33adfdc0d96a590de9f19594fe3f57ff6e39de0481eec73312b9d6f52",
-      "bytes": 837
+      "sha256": "d5cb80d7aa020cf3b3bcb7ba240faede9acdd72a17c158de0da4f4a4c2e4caca",
+      "bytes": 866
     },
     "operations/workflows/guest_service_workflows.jsonl": {
-      "sha256": "aec08dcf48c3d2c26a9bea3d248da5325a42d6d19a766d1720214be6d522f23a",
-      "bytes": 10321,
+      "sha256": "99596297fa018895c9eaed3ec0a3ce05a1e3fa9425772e1695da1a3b428ce131",
+      "bytes": 10332,
       "records": 11
     }
   }

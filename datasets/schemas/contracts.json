@@ -69,11 +69,6 @@
       "mode": "jsonl"
     },
     {
-      "path": "datasets/training/rag/vi_grounded.jsonl",
-      "schema": "datasets/schemas/training/rag_grounded.schema.json",
-      "mode": "jsonl"
-    },
-    {
       "path": "datasets/evaluation/gold/vi_dev.jsonl",
       "schema": "datasets/schemas/training/agent_gold.schema.json",
       "mode": "jsonl"
@@ -199,11 +194,6 @@
       "mode": "jsonl"
     },
     {
-      "path": "datasets/quarantine/source_candidates.jsonl",
-      "schema": "datasets/schemas/knowledge/source_artifact.schema.json",
-      "mode": "jsonl"
-    },
-    {
       "path": "datasets/synthetic/operations/engineering/workflows.jsonl",
       "schema": "datasets/schemas/synthetic/engineering_workflow.schema.json",
       "mode": "jsonl"
@@ -230,136 +220,6 @@
     }
   ],
   "shape_contracts": [
-    {
-      "path": "datasets/evaluation/agent/index.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "primary_language",
-        "primary_multi_turn_suite",
-        "primary_single_turn_suite",
-        "reporting",
-        "suites"
-      ],
-      "shape_sha256": "945d4ff72a6d2ec73b1384c92aaaeda945428b3dac69a842df31509096fd0874"
-    },
-    {
-      "path": "datasets/evaluation/audit/final_release_audit.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "blocking_findings",
-        "canonical_truth",
-        "domain_review",
-        "key_uniqueness",
-        "leakage",
-        "named_cross_property_refs",
-        "open_fix_items",
-        "property_id",
-        "referential_integrity",
-        "release_version",
-        "reviewed_at",
-        "schema_validation",
-        "scope_boundaries",
-        "slot_grounding",
-        "source_auditability",
-        "status",
-        "synthetic_reference_integrity",
-        "text_surface",
-        "tree",
-        "unfinished_markers"
-      ],
-      "shape_sha256": "33a3211d74761079355e2be35276b51b0f65f69eab2a5b178a2de6c31f29958c"
-    },
-    {
-      "path": "datasets/evaluation/audit/production_hardening_audit.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "audit_id",
-        "checks",
-        "release",
-        "status"
-      ],
-      "shape_sha256": "c957317d16e70f819671835f7ad1541069b9116ca4cee7c604e3857de2940f1f"
-    },
-    {
-      "path": "datasets/evaluation/audit/quality_summary.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "agent_core_vi_cases",
-        "agent_hard_negative_vi_cases",
-        "agent_training_records",
-        "asr_text_vi_cases",
-        "diversity_checks",
-        "domain_review",
-        "knowledge_freshness_records",
-        "known_limits",
-        "natural_challenge_language_distribution",
-        "primary_language",
-        "rag_entity_heldout_cases",
-        "rag_fact_heldout_cases",
-        "rag_training_records",
-        "release_boundary",
-        "retrieval_canonical_fact_coverage",
-        "retrieval_macro_dimensions",
-        "schema_contract_coverage",
-        "service_action_cases",
-        "service_action_language_distribution",
-        "service_action_subtype_distribution_by_language",
-        "source_auditability",
-        "status",
-        "vi_multi_turn_journeys",
-        "vi_multi_turn_turns"
-      ],
-      "shape_sha256": "fa94ea8cf67be7a1bc43768e56ff9358f1b2b048524c46927bc926a6df1b9225"
-    },
-    {
-      "path": "datasets/evaluation/config/diversity_policy.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "batch_metrics",
-        "default_thresholds",
-        "note"
-      ],
-      "shape_sha256": "bcb155fe2eb0ccbe1e01469d199748ee92340ada11782a7b35b084d5fe566e48"
-    },
-    {
-      "path": "datasets/evaluation/config/generation_policy.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "language_priority",
-        "pipeline",
-        "primary_language",
-        "principle",
-        "rules"
-      ],
-      "shape_sha256": "6d98aa265814d9f56fc70946edc6346b521773f75f033e18fde439047878d58b"
-    },
-    {
-      "path": "datasets/evaluation/config/promotion_policy.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "gold_name",
-        "minimum_judge_scores",
-        "on_second_failure",
-        "repair_attempts",
-        "required_booleans",
-        "review_label"
-      ],
-      "shape_sha256": "203aac77ad350ba10551ff3cde473a4354c1c0c93b18d9d98a710fbdc055446a"
-    },
     {
       "path": "datasets/evaluation/end_to_end/failures/production.json",
       "mode": "json_shape",
@@ -440,92 +300,6 @@
         "truth_note"
       ],
       "shape_sha256": "2d94129a69484f54709e85a6b10d9bff652f0a6822f8c47ddf43a4b04aa79b1d"
-    },
-    {
-      "path": "datasets/evaluation/frames/split.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "all_concepts_may_appear_in_primary_training",
-        "concepts",
-        "frame_partition_field",
-        "partition_basis",
-        "policy",
-        "primary_language",
-        "semantic_concept_holdout",
-        "supported_languages"
-      ],
-      "shape_sha256": "1a3bd86c00535575c70946f23045cd9f171e1c6e226ea91dfb81075ef1ebea1d"
-    },
-    {
-      "path": "datasets/evaluation/retrieval/metrics.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "diagnostic_suites",
-        "notes",
-        "primary_suites",
-        "reporting"
-      ],
-      "shape_sha256": "4b97401b2a03eefbb03e5a88cf6e350a24f13b12d646129a781b595d8030fcc4"
-    },
-    {
-      "path": "datasets/evaluation/retrieval/natural_queries.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "cases",
-        "dataset_id",
-        "effective_date",
-        "property_id"
-      ],
-      "shape_sha256": "88e4ac056fa83fcde66538a99db894c7964aa59e2a179fc2a964519ac28ac957"
-    },
-    {
-      "path": "datasets/evaluation/retrieval/split.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "canonical_facts_total",
-        "diagnostic_seen_test",
-        "entity_heldout_entities",
-        "entity_heldout_entities_by_type",
-        "entity_heldout_facts",
-        "entity_heldout_facts_by_type",
-        "entity_ids",
-        "evaluation_languages",
-        "fact_heldout_facts",
-        "fact_heldout_facts_by_type",
-        "fact_holdout_test",
-        "fact_ids",
-        "policy",
-        "primary_test",
-        "total_heldout_fact_share",
-        "total_heldout_facts",
-        "train_languages"
-      ],
-      "shape_sha256": "cd4f34b4559304ee591459d3492613b668cccb137dc357654390f7c268b57667"
-    },
-    {
-      "path": "datasets/evaluation/voice_text/index.json",
-      "mode": "json_shape",
-      "role": "evaluation_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "audio_included",
-        "case_count",
-        "language",
-        "perturbation_counts",
-        "reporting",
-        "route_counts",
-        "suite",
-        "synthetic_asr"
-      ],
-      "shape_sha256": "98c0661fa8dc681ab89cb1f1155b88a2cf06ecb6a4ba7256c1133ad0ed044306"
     },
     {
       "path": "datasets/knowledge/canonical/aliases.json",
@@ -615,23 +389,6 @@
       "shape_sha256": "5ee7e9aacdaaa055734ebf32fa02e6dc19334be72abb4111a6f3b7c9e54b5586"
     },
     {
-      "path": "datasets/knowledge/documents/manifest.json",
-      "mode": "json_shape",
-      "role": "release_metadata",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "dataset_id",
-        "latest_validated_compiled_documents",
-        "note",
-        "property_id",
-        "role",
-        "source_of_truth",
-        "storage_policy",
-        "stored_documents"
-      ],
-      "shape_sha256": "24d755d7ef46091112522da74a9af9ca63939117af8515206ec45f943676a235"
-    },
-    {
       "path": "datasets/knowledge/manifest.json",
       "mode": "json_shape",
       "role": "release_metadata",
@@ -645,7 +402,7 @@
         "role",
         "truth_boundary"
       ],
-      "shape_sha256": "1a82f49cf5f774d09c83ef532f28a59ad3996e0e647d8c37b0ac4c919b033059"
+      "shape_sha256": "5140670fde0d64fcba965482e9d0db991d945020d35bb64930704c79cdee64cf"
     },
     {
       "path": "datasets/manifest.json",
@@ -663,21 +420,6 @@
         "version"
       ],
       "shape_sha256": "186f8689a2b0764255843c7e8785dc622e9dc4cc03567fc513b9465265ca2d83"
-    },
-    {
-      "path": "datasets/quarantine/manifest.json",
-      "mode": "json_shape",
-      "role": "release_metadata",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "artifacts",
-        "dataset_id",
-        "metrics",
-        "property_id",
-        "role",
-        "truth_boundary"
-      ],
-      "shape_sha256": "355033cce0023d1306876192a77ed1abc624c122f905b6ba9b56a35a292eb7b0"
     },
     {
       "path": "datasets/release.json",
@@ -712,7 +454,7 @@
         "role",
         "truth_boundary"
       ],
-      "shape_sha256": "cb1984b89f9b51d00ccaf5b4c93cbdd2d11c01534f4507e1dcdb850471391605"
+      "shape_sha256": "0f5a054a39535af7ac6d47b54c1ac3b0cb4fd9c104f9e0e198d2c921d521af14"
     },
     {
       "path": "datasets/synthetic/operations/billing/charge_rules.json",
@@ -963,21 +705,6 @@
       "shape_sha256": "c452cf5ab536229212d60e65bf47c7230ccb1aa8429660a95a54dcc2fef8eb26"
     },
     {
-      "path": "datasets/synthetic/operations/metadata/nonpublic_policy_registry.json",
-      "mode": "json_shape",
-      "role": "runtime_data",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "classification",
-        "items",
-        "property_id",
-        "purpose",
-        "reviewed_at",
-        "schema_version"
-      ],
-      "shape_sha256": "b48647d6e9cf766c1dcf36897a8951bbb746008f4563f7d8bf7a9fac1cac68e1"
-    },
-    {
       "path": "datasets/synthetic/operations/metadata/property_simulation.json",
       "mode": "json_shape",
       "role": "runtime_data",
@@ -1047,21 +774,6 @@
         "source_refs"
       ],
       "shape_sha256": "f1cf46590d4aea9689cf8937fb5983686c0190d2261401d3dd1073ce3507df8c"
-    },
-    {
-      "path": "datasets/synthetic/operations/policies/dispatch_slas.json",
-      "mode": "json_shape",
-      "role": "runtime_data",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "data_boundary",
-        "description",
-        "property_id",
-        "rules",
-        "timing_is_official_sla",
-        "truth_status"
-      ],
-      "shape_sha256": "1a33beb0390039ac3977d629f629c9f9418e3eda1e81b49813d11ff6a2cc22db"
     },
     {
       "path": "datasets/synthetic/operations/policies/escalation_matrix.json",
@@ -1313,27 +1025,6 @@
         "truth_status"
       ],
       "shape_sha256": "3b64abf85804940e9c0eae4711e27bcc27ee36b3e671e41c18f0a23548babe6d"
-    },
-    {
-      "path": "datasets/training/agent/research/humanized_vi_web_2026_10.json",
-      "mode": "json_shape",
-      "role": "training_only",
-      "top_level_type": "object",
-      "required_top_level_keys": [
-        "batch_id",
-        "copyright_note",
-        "language",
-        "method",
-        "observed_patterns",
-        "property_scope",
-        "purpose",
-        "records_added",
-        "research_date",
-        "route_distribution",
-        "service_code_distribution",
-        "web_sources"
-      ],
-      "shape_sha256": "f1b643dcdb2947f1db583f9d3c9e7890858554276a8e34aa83ca3ee624bae239"
     }
   ],
   "coverage_policy": {

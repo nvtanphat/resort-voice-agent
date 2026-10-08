@@ -166,11 +166,6 @@
       "bytes": 1392
     },
     {
-      "path": "schemas/training/rag_grounded.schema.json",
-      "sha256": "dd074efc73d0e1c25b0e893ba5b98bd67d701b362c7507698e992d38c2525dbd",
-      "bytes": 1936
-    },
-    {
       "path": "schemas/training/source_registry.schema.json",
       "sha256": "05d982ec61b73407d56671979605e7094325337c4c6820dc58bb73062145edfe",
       "bytes": 1245
@@ -201,5 +196,5 @@
       "bytes": 1002
     }
   ],
-  "count": 40
+  "count": 39
 }
