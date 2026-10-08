@@ -56,6 +56,10 @@ class Command:
     target: str | None = None
     # AskInfo only: closed facet name (rag.facet_fact_types key) the guest is asking about.
     facet: str | None = None
+    # StartGoal / AskInfo / Navigate: the guest points back at the last verified topic
+    # instead of naming one.  A model-made claim; the server honours it only when a verified
+    # anchor exists, and the anchor (never the model) supplies the topic.
+    refers_to_context: bool = False
 
     def public(self) -> dict[str, Any]:
         result: dict[str, Any] = {'type': self.type}
@@ -63,6 +67,7 @@ class Command:
                 ('goal', self.goal), ('query', self.query), ('field', self.field),
                 ('value', self.value), ('confirmed', self.confirmed),
                 ('conditional', self.conditional if self.conditional else None),
+                ('refers_to_context', True if self.refers_to_context else None),
                 ('reason', self.reason), ('kind', self.kind), ('target', self.target),
                 ('facet', self.facet)):
             if value is not None:
@@ -75,7 +80,7 @@ class Command:
 
 
 def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
-                   *, slot_reply: bool = True) -> dict[str, Any]:
+                   *, slot_reply: bool = True, context_topic: bool = False) -> dict[str, Any]:
     """Return the closed JSON schema used by an understanding model.
 
     Each command type is its own schema variant carrying only that type's
@@ -101,6 +106,15 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
         }
 
     query = {'type': 'string', 'minLength': 1, 'maxLength': MAX_TEXT}
+
+    def with_context_flag(item: dict[str, Any]) -> dict[str, Any]:
+        """Ask for ``refers_to_context`` only while the server has a verified topic to point at."""
+        if not context_topic:
+            return item
+        # Required, not optional: an optional flag lets a small model skip the decision.
+        return {**item, 'required': [*item['required'], 'refers_to_context'],
+                'properties': {**item['properties'], 'refers_to_context': {'type': 'boolean'}}}
+
     variants = []
     for goal, names in (goal_slots or {}).items():
         slot = {
@@ -108,10 +122,10 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
             'required': ['name', 'text'],
             'properties': {'name': name_schema(names), 'text': text},
         }
-        variants.append(variant(
+        variants.append(with_context_flag(variant(
             'StartGoal', goal={'type': 'string', 'const': goal},
             slots={'type': 'array', 'maxItems': MAX_SLOTS, 'items': slot},
-            conditional={'type': 'boolean'}))
+            conditional={'type': 'boolean'})))
         definition = service_definition(goal)
         if definition is not None and definition.availability_source is not None:
             variants.append({
@@ -129,10 +143,10 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
                      variant('CorrectSlot', field=reply_name, value=text)]
     preferences = preference_policy().fields
     variants += [
-        {**variant('AskInfo', query=query), 'properties': {
+        with_context_flag({**variant('AskInfo', query=query), 'properties': {
             **variant('AskInfo', query=query)['properties'],
-            'facet': {'type': 'string', 'enum': sorted(rag_policy().facet_fact_types)}}},
-        variant('Navigate', query=query),
+            'facet': {'type': 'string', 'enum': sorted(rag_policy().facet_fact_types)}}}),
+        with_context_flag(variant('Navigate', query=query)),
         variant('Confirm', confirmed={'type': 'boolean', 'const': True}),
         variant('Cancel'),
         variant('Modify'),
@@ -177,6 +191,7 @@ _OPTIONAL_FIELDS = ('goal', 'query', 'field', 'value', 'confirmed', 'reason', 'k
 def _only(command: Command, *allowed: str) -> bool:
     """True when every optional field outside ``allowed`` is unset."""
     return (not command.slots and not command.keys and not command.conditional
+            and not command.refers_to_context
             and all(getattr(command, name) is None for name in _OPTIONAL_FIELDS if name not in allowed))
 
 
@@ -222,7 +237,8 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             return None
         if ((command.kind is not None and command.type != 'ChitChat')
                 or (command.target is not None and command.type != 'SwitchLanguage')
-                or (command.facet is not None and command.type != 'AskInfo')):
+                or (command.facet is not None and command.type != 'AskInfo')
+                or (command.refers_to_context and command.type not in {'StartGoal', 'AskInfo', 'Navigate'})):
             return None
 
         if command.type == 'StartGoal':
@@ -329,12 +345,12 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
     if not isinstance(raw_commands, list):
         return None
     allowed = {'type', 'goal', 'slots', 'query', 'keys', 'field', 'value',
-               'confirmed', 'conditional', 'reason', 'kind', 'target', 'facet'}
+               'confirmed', 'conditional', 'reason', 'kind', 'target', 'facet', 'refers_to_context'}
     commands: list[Command] = []
     for item in raw_commands:
         if not isinstance(item, dict) or 'type' not in item or set(item) - allowed:
             return None
-        if 'conditional' in item and type(item['conditional']) is not bool:
+        if any(key in item and type(item[key]) is not bool for key in ('conditional', 'refers_to_context')):
             return None
         slots_raw = item.get('slots', [])
         if not isinstance(slots_raw, list):
@@ -355,7 +371,8 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
             query=item.get('query'), keys=tuple(keys), field=item.get('field'),
             value=item.get('value'), confirmed=item.get('confirmed'),
             conditional=item.get('conditional', False), reason=item.get('reason'),
-            kind=item.get('kind'), target=item.get('target'), facet=item.get('facet')))
+            kind=item.get('kind'), target=item.get('target'), facet=item.get('facet'),
+            refers_to_context=item.get('refers_to_context', False)))
     return commands
 
 
@@ -385,6 +402,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                    service_candidates: Sequence[Mapping[str, Any]] | None = None,
                    examples: Sequence[Mapping[str, Any]] = (),
                    pending_reply: str | None = None,
+                   context_topic: str | None = None,
                    should_cancel=None, timeout_seconds: float = 1.5,
                    num_gpu: int = -1
                    ) -> tuple[Command, ...] | None:
@@ -451,7 +469,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         'keep_alive': '5m',
         'format': command_schema(
             {item['service_mode']: item['accepted_slots'] for item in services},
-            slot_reply=pending_reply is not None),
+            slot_reply=pending_reply is not None, context_topic=bool(context_topic)),
         'messages': [
             {'role': 'system', 'content': (
                 'Interpret exactly one hotel concierge guest turn and return only the JSON schema. '
@@ -478,13 +496,18 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                 'slot the guest did not state. Never invent a room, '
                 'quantity, booking, price, permission or completion. '
                 'EXAMPLES are reviewed guest turns with their correct commands; follow their pattern. '
+                'CONTEXT.last_verified_topic, when present, is the place or topic the guest was just '
+                'told about. Set refers_to_context=true on StartGoal, AskInfo or Navigate only when the guest '
+                'points back at that topic without naming one again; never otherwise, and never copy the topic into a slot or query. '
                 'For a conditional request such as "if available, book it", set conditional=true on '
-                'StartGoal so the planner checks availability before the governed proposal. '
+                'StartGoal so the planner checks availability before the governed proposal; wanting to review or confirm '
+                'later is not a condition, so leave conditional false then. '
                 'A command proposes intent only; the server owns policy, evidence, confirmation and writes.')},
             {'role': 'user', 'content': json.dumps({
                 'language': language,
                 'guest_turn': query[:500],
                 'pending_reply': pending,
+                **({'context': {'last_verified_topic': context_topic[:160]}} if context_topic else {}),
                 'available_services': services,
                 # Nearest reviewed training turns (never evaluation data),
                 # limited to goals offered above so they cannot widen the schema.

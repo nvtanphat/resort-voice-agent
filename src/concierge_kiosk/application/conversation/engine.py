@@ -243,11 +243,13 @@ class _TurnRuntimeSupport:
                 return None
             candidates = None
             examples: tuple = ()
+            anchor = self.conversations.recent_anchor(session, language)
+            context_topic = anchor.title if anchor is not None and anchor.title else None
             if self.service_selector is not None:
                 try:
                     candidates, examples = self.service_selector.understand(
                         query, language=language, enabled_request_kinds=enabled_request_kinds,
-                        pending_field=pending_reply)
+                        pending_field=pending_reply, context_topic=context_topic)
                     # A not-yet-built index yields nothing; the model then sees
                     # the full registry rather than an empty candidate set.
                     candidates = candidates or None
@@ -260,6 +262,7 @@ class _TurnRuntimeSupport:
                 model=models[0], enabled_request_kinds=enabled_request_kinds,
                 service_candidates=candidates, examples=examples,
                 pending_reply=pending_reply,
+                context_topic=context_topic,
                 should_cancel=lambda: self.audio_admission.slm_cancelled(session),
                 num_gpu=self.cfg.slm_num_gpu,
                 timeout_seconds=(min(self.cfg.intent_parser_timeout_seconds,
@@ -372,6 +375,7 @@ class _TurnRuntimeSupport:
         types = {command.type for command in commands}
         if not commands:
             return decision, None, execution_query, None
+        execution_query = self._referenced_topic_query(commands, query, language, session, execution_query)
 
         if 'Cancel' in types and (pending_task is not None or has_pending_proposal):
             # Withdrawing the draft on screen is a server-owned state change;
@@ -437,6 +441,21 @@ class _TurnRuntimeSupport:
             if chk is not None and chk.goal:
                 ctx = {'availability_service_code': chk.goal}
         return dec, ctx, execution_query, commands
+
+    def _referenced_topic_query(self, commands, query: str, language: str, session: str,
+                                execution_query: str) -> str:
+        """Name the last verified topic when the model says the guest points back at it.
+
+        The model only raises ``refers_to_context``; the topic itself is the verified
+        evidence anchor held by the server, and without one the claim is ignored. No
+        wording of the guest turn is consulted.
+        """
+        if execution_query != query or not any(command.refers_to_context for command in commands):
+            return execution_query
+        anchor = self.conversations.recent_anchor(session, language)
+        if anchor is None or not anchor.title or anchor.title.casefold() in query.casefold():
+            return execution_query
+        return f'{anchor.title}. {query}'[:500]
 
     def _anchor_venue(self, query: str, language: str, session: str, command, execution_query: str) -> str:
         """Name the conversation's verified place for "book it there" style turns.
@@ -669,8 +688,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             elif synthetic.status == 'ambiguous':
                 details = ', '.join(str(item.get('name') or item.get('entity_id'))
                                     for item in synthetic.alternatives[:3])
-                answer = i18n_text('operations.synthetic_ambiguous', request.language,
-                                   details=details or 'more than one option')
+                answer = (i18n_text('operations.synthetic_ambiguous', request.language, details=details)
+                          if details else i18n_text('operations.synthetic_which_option', request.language))
             else:
                 answer = i18n_text('operations.synthetic_unavailable', request.language)
             return {

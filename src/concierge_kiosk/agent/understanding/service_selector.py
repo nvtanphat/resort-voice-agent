@@ -121,6 +121,8 @@ class CommandExample:
     group: str | None = None
     # The server question this turn answers (slot replies only).
     pending_field: str | None = None
+    # The verified topic the guest had just been told about (follow-up examples only).
+    context_topic: str | None = None
 
     @property
     def label(self) -> str:
@@ -204,6 +206,7 @@ def _example(row: object) -> CommandExample | None:
         return None
     context = row.get("context") if isinstance(row.get("context"), dict) else {}
     pending_field = _text(context.get("pending_field"), 64) or None
+    context_topic = _text(context.get("last_verified_topic"), 160) or None
     raw_commands = row.get("commands")
     if not (isinstance(raw_commands, list) and raw_commands):
         raw_commands = _legacy_commands(row, row.get("expected_route"), utterance)
@@ -218,7 +221,7 @@ def _example(row: object) -> CommandExample | None:
     public = tuple(command.public() for command in validated)
     goal = next((command.goal for command in validated if command.type == "StartGoal"), None)
     group = normalized_situation_group(row.get("frame_id"), row.get("concept_key"))
-    return CommandExample(language, utterance, public, goal, group, pending_field)
+    return CommandExample(language, utterance, public, goal, group, pending_field, context_topic)
 
 
 def load_command_examples(paths: Sequence[str | Path],
@@ -275,9 +278,12 @@ def nearest_label(scored: Sequence[tuple[float, CommandExample]]
     return label, best_score, runner_up
 
 
-def example_eligible(example: CommandExample, pending_field: str | None) -> bool:
-    """Slot-reply examples only count while the server is asking for that field."""
-    return example.pending_field is None or example.pending_field == pending_field
+def example_eligible(example: CommandExample, pending_field: str | None,
+                     context_topic: str | None = None) -> bool:
+    """Slot-reply examples only count while the server is asking for that field, and
+    follow-up examples only while the server holds a verified topic to point back at."""
+    return ((example.pending_field is None or example.pending_field == pending_field)
+            and (example.context_topic is None or bool(context_topic)))
 
 
 class ServiceSelector:
@@ -311,6 +317,9 @@ class ServiceSelector:
         self._example_vectors: tuple[list[float], ...] | None = None
         self._warming = False
         self._lock = threading.Lock()
+        # `_lock` is held for a whole embedding pass; a guest turn must never wait for it, so the
+        # warming flag has its own short-lived lock.
+        self._state_lock = threading.Lock()
         # One guest turn may pass the same wording through layer B, layer C
         # candidate shaping, and the model-free fallback.  Query embeddings
         # are expensive, while the vectors are immutable; retain only a small
@@ -413,7 +422,7 @@ class ServiceSelector:
         if not in_guest_turn():
             self.warm()
             return True
-        with self._lock:
+        with self._state_lock:
             if not self._warming:
                 self._warming = True
                 threading.Thread(target=self._background_warm, name='service-selector-warm',
@@ -426,7 +435,7 @@ class ServiceSelector:
         except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
             pass
         finally:
-            with self._lock:
+            with self._state_lock:
                 self._warming = False
 
     def _ensure_index(self) -> tuple[list[float], ...]:
@@ -520,7 +529,8 @@ class ServiceSelector:
 
     def understand(self, query: str, *, language: str,
                    enabled_request_kinds: frozenset[str],
-                   pending_field: str | None = None
+                   pending_field: str | None = None,
+                   context_topic: str | None = None
                    ) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
         """Return bounded prompt candidates and the nearest reviewed few-shots.
 
@@ -569,14 +579,26 @@ class ServiceSelector:
         selected = catalog[:self.top_k - fallback_budget] + fallback[:fallback_budget]
         selected.sort(key=lambda item: (-item.score, item.service_mode))
         offered = {item.service_mode for item in selected}
-        shots = tuple(
-            {"guest_turn": example.utterance, "commands": list(example.commands)}
-            for _, example in scored_examples
-            if example_eligible(example, pending_field)
-            and example.label != "emergency"
-            and all(command.get("goal") in offered for command in example.commands
-                    if command.get("type") == "StartGoal"))[:self.example_k]
-        return tuple(item.public() for item in selected), shots
+        usable = [example for _, example in scored_examples
+                  if example_eligible(example, pending_field, context_topic)
+                  and example.label != "emergency"
+                  and all(command.get("goal") in offered for command in example.commands
+                          if command.get("type") == "StartGoal")]
+        chosen = usable[:self.example_k]
+        if context_topic and self.example_k and not any(e.context_topic for e in chosen):
+            # With a verified topic in play, one slot shows how a turn that points back at
+            # it is expressed (and one that does not), so the model sees the mechanism.
+            demo = next((e for e in usable if e.context_topic), None)
+            if demo is not None:
+                chosen = chosen[:self.example_k - 1] + [demo]
+
+        def shot(example: CommandExample) -> dict[str, Any]:
+            item: dict[str, Any] = {"guest_turn": example.utterance, "commands": list(example.commands)}
+            if example.context_topic:
+                item["context"] = {"last_verified_topic": example.context_topic}
+            return item
+
+        return tuple(item.public() for item in selected), tuple(shot(e) for e in chosen)
 
     def nearest(self, query: str, *, min_score: float, min_margin: float,
                 pending_field: str | None = None) -> CommandExample | None:

@@ -82,3 +82,56 @@ def test_every_fast_response_satisfies_its_own_contract(language: str):
         validate_tool_result(decision, result, query, language)
         checked += 1
     assert checked >= 10
+
+
+# --- synthetic availability: a "which option do you mean?" result is a legitimate outcome ---
+
+def _ambiguous_availability_result(answer: str = "which one?") -> dict:
+    """The shape engine._agent_schedule returns when the venue could not be identified."""
+    source = {"source_id": "synthetic:synthetic/operations/food_beverage/restaurants.json",
+              "classification": "synthetic_property_assumption", "synthetic": True}
+    return {
+        "answer": answer, "sources": [], "citations": [], "schedule_verified": False,
+        "schedule_result": {"status": "ambiguous", "records": [], "alternatives": [],
+                            "reason": "venue_not_identified", "source": source, "synthetic": True},
+        "synthetic_source": source, "retrieval_mode": "synthetic_operations",
+        "generation_mode": "extractive", "request_completed": False,
+        "grounding": "synthetic_operational", "evidence_status": "AMBIGUOUS",
+        "suggested_action": None, "requires_staff_review": False,
+    }
+
+
+SCHEDULE = RouteDecision("check_schedule", False)
+
+
+def test_an_ambiguous_availability_answer_satisfies_the_contract():
+    validate_tool_result(SCHEDULE, _ambiguous_availability_result(), "book a table if free", "vi")
+
+
+@pytest.mark.parametrize("tamper", [
+    {"schedule_verified": True},                     # an unresolved venue must never read as verified
+    {"evidence_status": "SUPPORTED_SYNTHETIC"},       # label and status must agree
+    {"suggested_action": {"kind": "dining", "details": "x"}},
+    {"requires_staff_review": True},
+    {"citations": [{"chunk_id": "c"}]},
+])
+def test_an_ambiguous_availability_answer_cannot_carry_authority(tamper: dict):
+    with pytest.raises(RuntimeError):
+        validate_tool_result(SCHEDULE, {**_ambiguous_availability_result(), **tamper}, "book if free", "vi")
+
+
+def test_a_synthetic_result_that_claims_support_while_ambiguous_is_still_rejected():
+    result = _ambiguous_availability_result()
+    result["schedule_result"] = {**result["schedule_result"], "status": "available"}
+    with pytest.raises(RuntimeError):
+        validate_tool_result(SCHEDULE, result, "book if free", "vi")  # status says available, label says AMBIGUOUS
+
+
+@pytest.mark.parametrize("language", ["vi", "en", "zh", "ko"])
+def test_the_which_option_prompt_is_localised_when_no_alternatives_are_known(language: str):
+    from concierge_kiosk.i18n import text
+
+    answer = text("operations.synthetic_which_option", language)
+    assert answer and "more than one option" not in answer
+    if language != "en":
+        assert answer != text("operations.synthetic_which_option", "en"), "must not be an English placeholder"

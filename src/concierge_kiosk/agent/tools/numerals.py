@@ -22,6 +22,7 @@ from concierge_kiosk.agent.understanding.domain_nlu import (
     TIME_PATTERNS as _TIME_PATTERNS,
 )
 from concierge_kiosk.agent.understanding.intent import normalize_intent_text
+from concierge_kiosk.agent.understanding.normalization import normalize_with_spans
 
 
 def _number_phrase_value(values: list[int], connectors: frozenset[str], words: list[str]) -> int:
@@ -176,7 +177,45 @@ def _marked_clock(text: str, language: str) -> str | None:
     return f'{int(match.group("hour")):02d}:{int(minute_value):02d}'
 
 
+def _hour_for_period(hour: int, period: str) -> int:
+    if period == 'am':
+        return 0 if hour == 12 else hour
+    if period == 'noon':
+        return 12 if hour == 12 else (hour + 12 if hour < 12 else hour)
+    if period == 'pm':
+        return hour + 12 if hour < 12 else hour
+    return hour
+
+
 def preferred_time(text: str, language: str) -> str | None:
+    """Parse a clock time, letting a corrected time keep the daypart it replaces.
+
+    The text is first reduced to what follows a self-correction marker, so when a spoken
+    "seven in the evening, no, eight" is corrected the daypart goes with the discarded clause.  A
+    correction changes the hour, not the meal; when the surviving time is a bare
+    12-hour clock and the original text carried exactly one daypart-qualified time, the
+    corrected hour takes that daypart.  Two different dayparts are never guessed.
+    """
+    value = _preferred_time_core(text, language)
+    if value is None or not re.fullmatch(r'\d{2}:\d{2}', value):
+        return value
+    pattern = _CLOCK_DAYPART_PATTERNS.get(language)
+    dayparts = _CLOCK_DAYPARTS.get(language, {})
+    if pattern is None or not dayparts:
+        return value
+    hour, minute = int(value[:2]), value[3:]
+    surviving = _normalize_number_words(text, language)
+    if not 1 <= hour <= 12 or ':' in surviving or pattern.search(surviving):
+        return value
+    original = normalize_with_spans(text, language).text
+    periods = {dayparts.get(match.group('daypart')) for match in pattern.finditer(original)}
+    periods.discard(None)
+    if len(periods) != 1:
+        return value
+    return f'{_hour_for_period(hour, next(iter(periods))):02d}:{minute}'
+
+
+def _preferred_time_core(text: str, language: str) -> str | None:
     normalized = _normalize_number_words(text, language)
     clock = re.search(r'(?<!\d)((?:[01]?\d|2[0-3])):([0-5]\d)(?!\d)', normalized)
     if clock:
@@ -191,12 +230,7 @@ def preferred_time(text: str, language: str) -> str | None:
             daypart = match.group('daypart')
             period = dayparts.get(daypart)
             if period is not None and 0 <= hour <= 12 and 0 <= minute <= 59:
-                if period == 'am':
-                    hour = 0 if hour == 12 else hour
-                elif period == 'noon':
-                    hour = 12 if hour == 12 else (hour + 12 if hour < 12 else hour)
-                elif period == 'pm':
-                    hour = hour + 12 if hour < 12 else hour
+                hour = _hour_for_period(hour, period)
                 clock_value = f'{hour:02d}:{minute:02d}'
                 relative = next((term for term in _RELATIVE_TIME_TERMS.get(language, ())
                                  if term in normalized and daypart in term), None)

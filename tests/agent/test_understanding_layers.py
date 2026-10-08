@@ -351,7 +351,8 @@ def test_router_abstain_and_slm_share_one_query_embedding(monkeypatch: pytest.Mo
     )
     support = _TurnRuntimeSupport(
         cfg=cfg, workflows=SimpleNamespace(workflow_projection=lambda *_: None),
-        conversations=SimpleNamespace(workflow_projection=lambda *_: None),
+        conversations=SimpleNamespace(workflow_projection=lambda *_: None,
+                                      recent_anchor=lambda *_: None),
         agent_checkpoints=None,
         agent_tasks=SimpleNamespace(load=lambda *_: None, clear=lambda *_: None),
         audio_admission=audio, slm_permitted=lambda: True,

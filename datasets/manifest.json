@@ -764,9 +764,9 @@
     },
     {
       "path": "training/agent/assistant_candidates.jsonl",
-      "bytes": 506101,
-      "sha256": "41b60b993566c465cb3ad6584d85954fd5ffed9acf860baa935d0dedc1ba12f2",
-      "records": 1069
+      "bytes": 514093,
+      "sha256": "f4adb8e924760c3961a1b1a02c9d47080557c45f582b0ccb9cc39d57cdf968d9",
+      "records": 1083
     },
     {
       "path": "training/agent/research/humanized_vi_web_2026_10.json",

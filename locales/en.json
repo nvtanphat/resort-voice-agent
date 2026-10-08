@@ -204,5 +204,6 @@
   "backend.clarification.room_number": "What is your room number?",
   "backend.preference.saved": "Noted. I will keep this preference for this session when suggesting options or preparing requests.",
   "backend.service.ready": "I have enough information to prepare this request. Please review it before confirming.",
-  "backend.service.need_slots": "I can continue this request, but I still need: {names}. Nothing has been submitted yet."
+  "backend.service.need_slots": "I can continue this request, but I still need: {names}. Nothing has been submitted yet.",
+  "backend.operations.synthetic_which_option": "I need to know which option you mean. Please tell me the restaurant or service you have in mind."
 }

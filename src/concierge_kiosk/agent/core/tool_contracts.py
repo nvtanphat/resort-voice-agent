@@ -426,13 +426,20 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
     if grounding == 'synthetic_operational':
         source = result.get('synthetic_source')
         schedule = result.get('schedule_result')
+        status = schedule.get('status') if isinstance(schedule, dict) else None
+        # "Which option do you mean?" is a legitimate outcome: it must be labelled AMBIGUOUS, can
+        # never read as verified, and carries no action or staff-review authority.
+        expected_label = 'AMBIGUOUS' if status == 'ambiguous' else 'SUPPORTED_SYNTHETIC'
         if (sources or citations or not isinstance(source, dict)
                 or source.get('synthetic') is not True
                 or not isinstance(source.get('source_id'), str)
-                or result.get('evidence_status') != 'SUPPORTED_SYNTHETIC'
+                or result.get('evidence_status') != expected_label
                 or not isinstance(schedule, dict)
                 or schedule.get('synthetic') is not True
-                or schedule.get('status') not in {'available', 'unavailable'}):
+                or status not in {'available', 'unavailable', 'ambiguous'}
+                or (status == 'ambiguous' and (result.get('schedule_verified') is not False
+                                               or result.get('suggested_action') is not None
+                                               or result.get('requires_staff_review') is not False))):
             raise RuntimeError('Synthetic operational result is not explicitly labelled')
     elif grounding in {'extractive', 'model_assisted_semantic'}:
         if not sources or not citations:
