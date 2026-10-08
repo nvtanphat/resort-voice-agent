@@ -1,4 +1,4 @@
-/* source-sha256:36c87fa8f8562cb768f72b3821b735b728e0c7b1a4d0b389be20d0eb1996828a */
+/* source-sha256:03f9d1cd4aa9ac823136f1bd7a080f4eb5c3dd592f3119e42fc2fe4837d84e55 */
 /* Concierge Kiosk guest UI. */
 (function(){
 'use strict';
@@ -37049,6 +37049,7 @@ module.exports={
   "backend.out_of_scope.reply": "Câu này nằm ngoài phạm vi hỗ trợ của khách sạn, nhưng tôi có thể giúp bạn về thông tin, chỉ đường hoặc dịch vụ lưu trú.",
   "backend.emergency.alert_queued": " Đã tạo cảnh báo ưu tiên cao trên hàng đợi của nhân viên; đây không phải xác nhận rằng lực lượng cứu hộ đã được điều động.",
   "backend.emergency.alert_unconfirmed": " Không thể xác nhận cảnh báo nội bộ đã được gửi; hãy liên hệ trực tiếp nhân viên hoặc số khẩn cấp ở trên.",
+  "backend.emergency.confirm_question": "Bạn có đang trong tình huống khẩn cấp cần trợ giúp ngay không?",
   "backend.knowledge.revoked": "Chủ đề trước không còn thông tin đã xác minh. Vui lòng hỏi lại hoặc liên hệ lễ tân.",
   "backend.knowledge.abstain": "Chưa tìm thấy thông tin đã xác minh cho câu hỏi này.",
   "backend.knowledge.staff_confirmation_required": "Thông tin này đang chờ nhân viên xác nhận. Vui lòng hỏi nhân viên khách sạn để xác nhận trước khi sử dụng.",
@@ -37246,7 +37247,10 @@ module.exports={
   "backend.clarification.activity_preference": "Bạn thích loại hoạt động nào?",
   "backend.clarification.meal_preference": "Bạn muốn dùng bữa kiểu gì?",
   "backend.clarification.time_window": "Khung giờ nào phù hợp với bạn?",
-  "backend.clarification.room_number": "Số phòng của bạn là bao nhiêu?"
+  "backend.clarification.room_number": "Số phòng của bạn là bao nhiêu?",
+  "backend.preference.saved": "Mình đã ghi nhận sở thích này cho phiên hiện tại và sẽ dùng khi gợi ý hoặc chuẩn bị yêu cầu.",
+  "backend.service.ready": "Tôi đã có đủ thông tin để chuẩn bị yêu cầu. Vui lòng kiểm tra trước khi xác nhận.",
+  "backend.service.need_slots": "Tôi có thể tiếp tục yêu cầu này, nhưng vẫn cần: {names}. Chưa có yêu cầu nào được gửi."
 }
 ;
 },{}],
@@ -37256,6 +37260,7 @@ module.exports={
   "backend.out_of_scope.reply": "That is outside my hotel concierge scope, but I can help with hotel information, directions, or guest services.",
   "backend.emergency.alert_queued": " A high-priority alert has been placed in the staff queue; this does not confirm that emergency responders were dispatched.",
   "backend.emergency.alert_unconfirmed": " The kiosk could not confirm an internal staff alert; contact staff or the emergency numbers above directly.",
+  "backend.emergency.confirm_question": "Are you in an emergency situation and need immediate assistance?",
   "backend.knowledge.revoked": "The previous topic no longer has verified information. Please rephrase or contact reception.",
   "backend.knowledge.abstain": "I could not find verified information for this question.",
   "backend.knowledge.staff_confirmation_required": "This fact is awaiting staff confirmation. Please ask hotel staff to confirm it before relying on it.",
@@ -37444,16 +37449,19 @@ module.exports={
   "backend.knowledge.fact.capacity": "{entity} capacity: {value}.",
   "backend.knowledge.fact.address": "{entity} address: {value}.",
   "backend.knowledge.fact.default": "{entity}: {value}.",
-  "backend.navigation.choose_destination": "I found several possible destinations: {options}. Please choose one."
-  ,"backend.clarification.preferred_time": "What time would you prefer?"
-  ,"backend.clarification.party_size": "How many guests should I plan for?"
-  ,"backend.clarification.preference": "What would you prefer?"
-  ,"backend.clarification.restaurant_style": "What kind of dining experience would you prefer?"
-  ,"backend.clarification.destination": "Which destination do you mean?"
-  ,"backend.clarification.activity_preference": "What kind of activity would you prefer?"
-  ,"backend.clarification.meal_preference": "What kind of meal would you prefer?"
-  ,"backend.clarification.time_window": "What time window works best for you?"
-  ,"backend.clarification.room_number": "What is your room number?"
+  "backend.navigation.choose_destination": "I found several possible destinations: {options}. Please choose one.",
+  "backend.clarification.preferred_time": "What time would you prefer?",
+  "backend.clarification.party_size": "How many guests should I plan for?",
+  "backend.clarification.preference": "What would you prefer?",
+  "backend.clarification.restaurant_style": "What kind of dining experience would you prefer?",
+  "backend.clarification.destination": "Which destination do you mean?",
+  "backend.clarification.activity_preference": "What kind of activity would you prefer?",
+  "backend.clarification.meal_preference": "What kind of meal would you prefer?",
+  "backend.clarification.time_window": "What time window works best for you?",
+  "backend.clarification.room_number": "What is your room number?",
+  "backend.preference.saved": "Noted. I will keep this preference for this session when suggesting options or preparing requests.",
+  "backend.service.ready": "I have enough information to prepare this request. Please review it before confirming.",
+  "backend.service.need_slots": "I can continue this request, but I still need: {names}. Nothing has been submitted yet."
 }
 ;
 },{}],
@@ -37463,6 +37471,7 @@ module.exports={
   "backend.out_of_scope.reply": "这个问题超出了酒店礼宾服务范围，但我可以为您提供酒店信息、路线指引或住客服务帮助。",
   "backend.emergency.alert_queued": " 已向工作人员队列提交高优先级警报；这不表示公共应急人员已经出动。",
   "backend.emergency.alert_unconfirmed": " 自助机无法确认内部警报已送达；请直接联系工作人员或拨打上述紧急电话。",
+  "backend.emergency.confirm_question": "您是否遇到紧急情况并需要立即协助？",
   "backend.knowledge.revoked": "之前话题的资料已无法核实，请重新提问或联系前台。",
   "backend.knowledge.abstain": "未找到可核实回答此问题的信息。",
   "backend.knowledge.staff_confirmation_required": "这项信息正在等待工作人员确认。使用前请向酒店工作人员核实。",
@@ -37660,7 +37669,10 @@ module.exports={
   "backend.clarification.activity_preference": "您喜欢哪类活动？",
   "backend.clarification.meal_preference": "您想吃哪种餐食？",
   "backend.clarification.time_window": "哪个时间段最适合您？",
-  "backend.clarification.room_number": "请问您的房间号是多少？"
+  "backend.clarification.room_number": "请问您的房间号是多少？",
+  "backend.preference.saved": "已记下，本次会话中推荐或准备请求时会考虑这个偏好。",
+  "backend.service.ready": "信息已足够准备此请求。请在确认前检查内容。",
+  "backend.service.need_slots": "我可以继续准备此请求，但还需要：{names}。目前尚未提交任何请求。"
 }
 ;
 },{}],
@@ -37670,6 +37682,7 @@ module.exports={
   "backend.out_of_scope.reply": "이 질문은 호텔 컨시어지의 지원 범위를 벗어나지만, 호텔 정보와 길 안내 또는 투숙객 서비스를 도와드릴 수 있습니다.",
   "backend.emergency.alert_queued": " 직원 대기열에 최우선 긴급 경보를 등록했습니다. 이는 공공 긴급 구조대가 출동했다는 확인이 아닙니다.",
   "backend.emergency.alert_unconfirmed": " 내부 직원 경보 전송을 확인할 수 없습니다. 직원 또는 위 긴급 번호로 직접 연락하세요.",
+  "backend.emergency.confirm_question": "즉각적인 도움이 필요한 긴급 상황입니까?",
   "backend.knowledge.revoked": "이전 주제의 정보를 더 이상 확인할 수 없습니다. 다시 질문하거나 프런트에 문의하세요.",
   "backend.knowledge.abstain": "이 질문에 대해 확인된 정보를 찾지 못했습니다.",
   "backend.knowledge.staff_confirmation_required": "이 정보는 직원 확인을 기다리고 있습니다. 이용하기 전에 호텔 직원에게 확인해 주세요.",
@@ -37868,7 +37881,10 @@ module.exports={
   "backend.clarification.activity_preference": "어떤 활동을 원하시나요?",
   "backend.clarification.meal_preference": "어떤 식사를 원하시나요?",
   "backend.clarification.time_window": "어느 시간대가 좋으신가요?",
-  "backend.clarification.room_number": "객실 번호가 어떻게 되시나요?"
+  "backend.clarification.room_number": "객실 번호가 어떻게 되시나요?",
+  "backend.preference.saved": "알겠습니다. 이번 세션에서 추천하거나 요청을 준비할 때 이 선호 사항을 반영할게요.",
+  "backend.service.ready": "요청을 준비할 정보가 충분합니다. 확인하기 전에 내용을 검토해 주세요.",
+  "backend.service.need_slots": "이 요청을 계속 준비하려면 다음 정보가 더 필요합니다: {names}. 아직 요청은 전송되지 않았습니다."
 }
 ;
 },{}],

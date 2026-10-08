@@ -76,6 +76,10 @@ jobs:
           python -m pip install -e '.[ops]'
           python -m pip install pip-audit bandit
       - name: Dependency audit
-        run: python -m pip_audit --strict
+        # Audit the pinned third-party set only: the project itself is an editable,
+        # unpublished package that pip-audit cannot look up (--strict turns that into an error).
+        run: |
+          python -m pip freeze --exclude-editable > audit-requirements.txt
+          python -m pip_audit --strict --no-deps --disable-pip -r audit-requirements.txt
       - name: Source scan
         run: bandit -q -r src/concierge_kiosk tools -ll

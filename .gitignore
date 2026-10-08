@@ -4,7 +4,11 @@ __pycache__/
 .env
 .env.*
 !.env.example
-/models/
+/models/*
+!/models/embeddings/
+/models/embeddings/*
+# Small, non-secret embedding pins the data audit and runtime check against.
+!/models/embeddings/*.ollama.manifest.json
 *.sqlite3*
 !/data/concierge.sqlite3
 !/data/concierge-graph.sqlite3

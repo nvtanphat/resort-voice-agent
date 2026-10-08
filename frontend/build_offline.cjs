@@ -5,14 +5,8 @@ require.resolve('react-dom/client');
 require.resolve('tailwindcss/lib/cli.js');
 const base=__dirname;
 
-function sourceDigest(){
- const files=[];
- const walk=dir=>{for(const name of fs.readdirSync(dir).sort()){const file=path.join(dir,name),stat=fs.statSync(file);if(stat.isDirectory())walk(file);else if(/\.(?:ts|tsx|css)$/.test(name))files.push(file);}};
- walk(path.join(base,'src'));files.push(path.join(base,'package-lock.json'));
- const hash=crypto.createHash('sha256');
- for(const file of files.sort()){hash.update(path.relative(base,file).replaceAll('\\','/'));hash.update('\0');hash.update(fs.readFileSync(file));hash.update('\0');}
- return hash.digest('hex');
-}
+const { sourceDigest: digestOf } = require('./source_digest.cjs');
+const sourceDigest = () => digestOf(base);
 const entry=path.join(base,'src','main.tsx');
 const staffEntry=path.join(base,'src','staff','main.tsx');
 const dir=path.join(base,'..','web');fs.mkdirSync(dir,{recursive:true});
