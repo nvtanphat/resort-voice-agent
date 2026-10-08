@@ -36,9 +36,7 @@ from .bootstrap import prepare_runtime
 from .core.property_profile import load_property_profile, unconfigured_property_profile
 from .core.domain_profile import get_domain_profile, load_domain_profile, voice_policy
 from .agent.understanding.service_selector import ServiceSelector, load_command_examples
-from .core.dataset_layout import (
-    SERVICE_CATALOG, TRAIN_AGENT_CANDIDATES, TRAIN_AGENT_MULTILINGUAL, TRAIN_AGENT_VI_GOLD, dataset_path,
-)
+from .core.dataset_layout import SERVICE_CATALOG, dataset_path, training_agent_paths
 from .core.settings import Settings
 from .domain.service_requests import InvalidTransition
 from .runtime.metrics import latency_bucket
@@ -118,18 +116,14 @@ def _build_service_selector(cfg, embedder):
     root = getattr(cfg, 'structured_dataset_dir', None)
     path = dataset_path(SERVICE_CATALOG, root)
     try:
-        command_paths = [dataset_path(name, root)
-                         for name in (TRAIN_AGENT_VI_GOLD, TRAIN_AGENT_MULTILINGUAL, TRAIN_AGENT_CANDIDATES)]
-        # Every reviewed JSONL under the training/agent data root is eligible
-        # to contribute command examples.  This keeps newly promoted gap-
-        # closure batches data-driven without adding a service/file allowlist
-        # to the application composition root.
-        training_root = command_paths[0].parent
-        command_paths.extend(
-            candidate for candidate in sorted(training_root.glob('*.jsonl'))
-            if candidate not in command_paths)
-        examples = load_command_examples(command_paths)
-        LOGGER.info('service_selector_examples count=%d files=%d', len(examples), len(command_paths))
+        # Every JSONL under the training/agent data root can contribute command
+        # examples (no service/file allowlist here); only rows whose gold_status
+        # is listed in nlu.service_selector.example_statuses are used.
+        command_paths = training_agent_paths(root)
+        statuses = tuple(policy['example_statuses'])
+        examples = load_command_examples(command_paths, statuses)
+        LOGGER.info('service_selector_examples count=%d files=%d statuses=%s',
+                    len(examples), len(command_paths), ','.join(statuses))
         cache_dir = Path(cfg.db_path).parent / 'service-selector-cache'
         return ServiceSelector(path, embedder, top_k=int(policy['top_k']),
                                examples=examples, example_k=int(policy['example_k']),

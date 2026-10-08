@@ -14,9 +14,10 @@ import json
 import math
 from pathlib import Path
 import threading
-from typing import Any, Protocol, Sequence
+from typing import Any, Iterable, Protocol, Sequence
 
 from concierge_kiosk.agent.understanding.commands import commands_from_items, validate_commands
+from concierge_kiosk.core.dataset_layout import row_has_status, training_agent_paths
 from concierge_kiosk.domain.service_registry import (
     ACTION_REQUEST_KINDS,
     SERVICE_DEFINITIONS,
@@ -149,6 +150,16 @@ _LEGACY_ROUTE_COMMANDS: dict[str, dict[str, Any]] = {
     "safety_escalation": {"type": "Handoff", "reason": "safety concern"},
 }
 
+# Routes owned by deterministic layers: a bare-route row teaches no command, and
+# the omission is deliberate.  Any other bare route must appear above or the
+# row would be dropped silently (tests/agent/test_training_route_coverage.py).
+EXCLUDED_ROUTES: frozenset[str] = frozenset({"policy_guard", "privacy_guard"})
+
+
+def legacy_route_supported(route: object) -> bool:
+    """True when a row with only ``expected_route`` can become an example (or is excluded on purpose)."""
+    return route in {"service", "knowledge", "knowledge_abstain", "availability", "emergency"}         or route in _LEGACY_ROUTE_COMMANDS or route in EXCLUDED_ROUTES
+
 
 def _legacy_commands(row: dict[str, Any], route: object, utterance: str) -> list[dict[str, Any]] | None:
     if route == "service":
@@ -210,8 +221,13 @@ def _example(row: object) -> CommandExample | None:
     return CommandExample(language, utterance, public, goal, group, pending_field)
 
 
-def load_command_examples(paths: Sequence[str | Path]) -> tuple[CommandExample, ...]:
-    """Load train-split service/knowledge examples; evaluation data is never read here."""
+def load_command_examples(paths: Sequence[str | Path],
+                          statuses: Iterable[str] | None = None) -> tuple[CommandExample, ...]:
+    """Load train-split service/knowledge examples; evaluation data is never read here.
+
+    ``statuses`` limits rows to those whose ``gold_status`` is listed
+    (``nlu.service_selector.example_statuses``); ``None`` keeps every row.
+    """
     examples: list[CommandExample] = []
     for path in paths:
         source = Path(path)
@@ -224,9 +240,23 @@ def load_command_examples(paths: Sequence[str | Path]) -> tuple[CommandExample, 
                 row = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if (example := _example(row)) is not None:
+            if row_has_status(row, statuses) and (example := _example(row)) is not None:
                 examples.append(example)
     return tuple(examples)
+
+
+def load_configured_examples(root: str | Path | None = None,
+                             statuses: Iterable[str] | None = None) -> tuple[CommandExample, ...]:
+    """Load examples exactly as the runtime does (shared training files + configured statuses).
+
+    Measurement and calibration tools use this so they never score a different
+    example set than the server.  ``statuses`` overrides the configured list
+    for controlled comparisons.
+    """
+    from concierge_kiosk.core.domain_profile import nlu_policy
+    allowed = tuple(statuses) if statuses is not None else tuple(
+        nlu_policy().service_selector["example_statuses"])
+    return load_command_examples(training_agent_paths(root), allowed)
 
 
 def nearest_label(scored: Sequence[tuple[float, CommandExample]]
@@ -317,8 +347,9 @@ class ServiceSelector:
             ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')
         ).hexdigest()
         key = hashlib.sha256(json.dumps({
+            # top_k/example_k only bound the prompt; they never change a vector,
+            # so they stay out of the key and sweeps reuse one embedding pass.
             'model': model, 'catalog': catalog_hash, 'examples': examples_hash,
-            'top_k': self.top_k, 'example_k': self.example_k,
         }, sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
         return self.cache_dir / f'{key}.json'
 
@@ -625,4 +656,4 @@ class ServiceSelector:
 
 
 __all__ = ["CommandExample", "ServiceCandidate", "ServiceSelector", "example_eligible",
-           "load_command_examples", "nearest_label"]
+           "load_command_examples", "load_configured_examples", "nearest_label"]

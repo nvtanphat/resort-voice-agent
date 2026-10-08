@@ -14,6 +14,10 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
         value = selector.get(key)
         if not isinstance(value, int) or isinstance(value, bool) or not low <= value <= high:
             raise ValueError(f"nlu.service_selector.{key} must be an integer in [{low}, {high}]")
+    statuses = selector.get("example_statuses")
+    if (not isinstance(statuses, list) or not statuses or len(set(statuses)) != len(statuses)
+            or any(not isinstance(item, str) or not item.strip() for item in statuses)):
+        raise ValueError("nlu.service_selector.example_statuses must be a non-empty list of unique strings")
     for key, low in (("fallback_min_score", -1.0), ("fallback_min_margin", 0.0),
                      ("router_min_score", -1.0), ("router_min_margin", 0.0),
                      ("emergency_min_prob", 0.0), ("emergency_review_prob", 0.0)):

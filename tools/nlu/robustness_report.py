@@ -24,12 +24,9 @@ for path in (ROOT, ROOT / "src"):
         sys.path.insert(0, str(path))
 
 from concierge_kiosk.agent.understanding.routing import classify_dialogue
-from concierge_kiosk.agent.understanding.service_selector import ServiceSelector, load_command_examples
+from concierge_kiosk.agent.understanding.service_selector import ServiceSelector, load_configured_examples
 from concierge_kiosk.core.dataset_layout import (
     SERVICE_CATALOG,
-    TRAIN_AGENT_CANDIDATES,
-    TRAIN_AGENT_MULTILINGUAL,
-    TRAIN_AGENT_VI_GOLD,
 )
 from concierge_kiosk.core.domain_profile import nlu_policy
 from concierge_kiosk.domain.service_registry import route_branch_for_request_kind, service_definition
@@ -118,11 +115,7 @@ def main() -> int:
                                  languages=set(args.languages or ()))
     selector = None
     if any(str(row.get("expected_route")) == "service" for row in variants):
-        examples = load_command_examples([
-            dataset_path(TRAIN_AGENT_VI_GOLD),
-            dataset_path(TRAIN_AGENT_MULTILINGUAL),
-            dataset_path(TRAIN_AGENT_CANDIDATES),
-        ])
+        examples = load_configured_examples()
         selector = ServiceSelector(
             dataset_path(SERVICE_CATALOG),
             LocalEmbedder(args.embedding_model, str(args.embedding_manifest)),

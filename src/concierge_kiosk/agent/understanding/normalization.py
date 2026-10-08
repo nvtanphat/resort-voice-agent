@@ -18,9 +18,8 @@ import unicodedata
 from typing import Any, Iterable
 
 from concierge_kiosk.agent.understanding.domain_nlu import SLOTS, TIME_EXPRESSIONS, NORMALIZATION
-from concierge_kiosk.core.domain_profile import supported_languages, voice_policy
-from concierge_kiosk.core.dataset_layout import (TRAIN_AGENT_CANDIDATES, TRAIN_AGENT_MULTILINGUAL,
-                                                  TRAIN_AGENT_VI_GOLD, dataset_path)
+from concierge_kiosk.core.domain_profile import nlu_policy, supported_languages
+from concierge_kiosk.core.dataset_layout import row_has_status, training_agent_paths
 from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
 from concierge_kiosk.core.terminology import normalize_terminology
 
@@ -115,12 +114,16 @@ def _profile_terms(language: str | None) -> tuple[tuple[str, str], ...]:
 def _data_derived_terms(language: str | None) -> frozenset[tuple[str, str]]:
     """Build the repair lexicon from reviewed utterances and the pinned release."""
     values: set[tuple[str, str]] = set()
-    for path in (dataset_path(TRAIN_AGENT_VI_GOLD), dataset_path(TRAIN_AGENT_MULTILINGUAL),
-                 dataset_path(TRAIN_AGENT_CANDIDATES)):
+    statuses = tuple(nlu_policy().service_selector['example_statuses'])
+    for path in training_agent_paths():
+        if not path.is_file():
+            continue
         for line in path.read_text(encoding='utf-8').splitlines():
             try:
                 row = json.loads(line)
             except json.JSONDecodeError:
+                continue
+            if not row_has_status(row, statuses):
                 continue
             code = str(row.get('language') or '')
             utterance = row.get('utterance')

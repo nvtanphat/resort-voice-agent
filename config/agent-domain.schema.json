@@ -1239,6 +1239,7 @@
           "required": [
             "top_k",
             "example_k",
+            "example_statuses",
             "fallback_min_score",
             "fallback_min_margin",
             "router_min_score",
@@ -1257,6 +1258,15 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 8
+            },
+            "example_statuses": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
             "fallback_min_score": {
               "type": "number",

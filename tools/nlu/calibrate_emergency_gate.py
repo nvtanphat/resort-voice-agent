@@ -35,12 +35,9 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from concierge_kiosk.agent.understanding.service_selector import (  # noqa: E402
     CommandExample,
-    load_command_examples,
+    load_configured_examples,
 )
 from concierge_kiosk.core.dataset_layout import (  # noqa: E402
-    TRAIN_AGENT_CANDIDATES,
-    TRAIN_AGENT_MULTILINGUAL,
-    TRAIN_AGENT_VI_GOLD,
     dataset_path,
 )
 from concierge_kiosk.rag.embedding.local import LocalEmbedder  # noqa: E402
@@ -83,7 +80,7 @@ def _get_vectors(examples: tuple[CommandExample, ...], model: str, manifest: str
 
 
 def _fold_of(group: str) -> int:
-    return int(hashlib.sha1(group.encode("utf-8")).hexdigest(), 16) % FOLDS
+    return int(hashlib.sha1(group.encode("utf-8"), usedforsecurity=False).hexdigest(), 16) % FOLDS
 
 
 def _out_of_fold(vectors: Any, labels: Any, folds: Any, l2: float) -> Any:
@@ -122,14 +119,11 @@ def calibrate_emergency_gate(
     embedding_manifest: str = str(ROOT / "models/embeddings/bge-m3.ollama.manifest.json"),
     use_cache: bool = True,
     apply_config: bool = True,
+    example_statuses: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     import numpy as np
 
-    examples = load_command_examples([
-        dataset_path(TRAIN_AGENT_VI_GOLD),
-        dataset_path(TRAIN_AGENT_MULTILINGUAL),
-        dataset_path(TRAIN_AGENT_CANDIDATES),
-    ])
+    examples = load_configured_examples(statuses=example_statuses)
     if not examples:
         raise ValueError("No training command examples found")
     cache_dir = Path(".cache") if use_cache else None
@@ -194,6 +188,10 @@ def calibrate_emergency_gate(
                     for i in np.flatnonzero(vi & (labels == 0) & (probs >= full))]
 
     report_path = ROOT / "reports" / "nlu" / "emergency-calibration.json"
+    if example_statuses is not None:
+        # A comparison run must never replace the record behind the live thresholds.
+        report_path = ROOT / "reports" / "nlu" / "v1" / (
+            "emergency-calibration-" + "+".join(sorted(example_statuses)).lower() + ".json")
     report_path.parent.mkdir(parents=True, exist_ok=True)
     previous = None
     if report_path.is_file():
@@ -248,10 +246,17 @@ if __name__ == "__main__":
     parser.add_argument("--embedding-manifest", default=ROOT / "models/embeddings/bge-m3.ollama.manifest.json")
     parser.add_argument("--no-apply-config", dest="apply_config", action="store_false", default=True)
     parser.add_argument("--no-cache", dest="use_cache", action="store_false", default=True)
+    parser.add_argument("--example-statuses", default=None,
+                        help="comma-separated gold_status values to train on (default: runtime config); "
+                             "combine with --no-apply-config for a comparison run")
     args = parser.parse_args()
+    if args.example_statuses is not None and args.apply_config:
+        parser.error("--example-statuses changes the example set; pass --no-apply-config as well")
     calibrate_emergency_gate(
         embedding_model=args.embedding_model,
         embedding_manifest=str(args.embedding_manifest),
         use_cache=args.use_cache,
         apply_config=args.apply_config,
+        example_statuses=(None if args.example_statuses is None else
+                          tuple(s.strip() for s in args.example_statuses.split(",") if s.strip())),
     )

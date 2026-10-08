@@ -43,15 +43,13 @@ from tools.evaluation.command_results import MeasuredCases, OUTCOMES, fingerprin
 from concierge_kiosk.agent.understanding import commands as command_module  # noqa: E402
 from concierge_kiosk.agent.understanding.service_selector import (  # noqa: E402
     ServiceSelector,
-    load_command_examples,
+    load_configured_examples,
 )
 from concierge_kiosk.core.domain_profile import nlu_policy  # noqa: E402
 from concierge_kiosk.core.dataset_layout import (  # noqa: E402
     SERVICE_CATALOG,
-    TRAIN_AGENT_CANDIDATES,
-    TRAIN_AGENT_MULTILINGUAL,
-    TRAIN_AGENT_VI_GOLD,
     dataset_path,
+    training_agent_paths,
 )
 from concierge_kiosk.domain.service_registry import (  # noqa: E402
     default_service_for,
@@ -111,14 +109,13 @@ def _evaluation_inputs(args, rows: list[dict], enabled: frozenset[str]) -> dict:
             or parsed.username or parsed.password or parsed.query or parsed.fragment
             or parsed.path not in {'', '/'}):
         raise ValueError('Evaluation model endpoint must be loopback')
-    with urlopen(args.base_url.rstrip('/') + '/api/tags', timeout=15) as response:
+    with urlopen(args.base_url.rstrip('/') + '/api/tags', timeout=15) as response:  # nosec B310  # loopback http only, validated above
         models = json.load(response).get('models', [])
     wanted = {args.model, args.embedding_model.removeprefix('ollama://')}
     digests = {item['name']: item['digest'] for item in models
                if item.get('name') in wanted or item.get('name', '').removesuffix(':latest') in wanted}
     files = [args.dataset, args.embedding_manifest, dataset_path(SERVICE_CATALOG),
-             dataset_path(TRAIN_AGENT_VI_GOLD), dataset_path(TRAIN_AGENT_MULTILINGUAL),
-             dataset_path(TRAIN_AGENT_CANDIDATES), ROOT / 'config/agent-domain.json',
+             *training_agent_paths(), ROOT / 'config/agent-domain.json',
              ROOT / 'releases/property-profile.json',
              ROOT / 'tools/evaluation/evaluate_command_understanding.py',
              ROOT / 'tools/evaluation/command_results.py',
@@ -131,7 +128,8 @@ def _evaluation_inputs(args, rows: list[dict], enabled: frozenset[str]) -> dict:
                       for file in files},
             'scope_hash': fingerprint({'rows': rows}), 'enabled': sorted(enabled),
             'model': args.model, 'embedding_model': args.embedding_model, 'model_digests': digests,
-            'top_k': args.top_k, 'example_k': args.example_k, 'languages': sorted(args.languages or ()),
+            'top_k': args.top_k, 'example_k': args.example_k,
+            'example_statuses': sorted(args.example_statuses), 'languages': sorted(args.languages or ()),
             'fallback_only': args.fallback_only, 'timeout': args.timeout, 'num_gpu': args.num_gpu,
             'max_failures': args.max_failures, 'endpoint': args.base_url}
 
@@ -183,7 +181,8 @@ def _report(args, journal, counts, latencies, failures, resumed) -> dict:
                    'rows': journal.expected, 'measured_rows': len(journal.records),
                    'resumed_cases': resumed, 'input_fingerprint': journal.header['fingerprint'],
                    'model': args.model, 'embedding_model': args.embedding_model,
-                   'top_k': args.top_k, 'example_k': args.example_k, 'fallback_only': args.fallback_only,
+                   'top_k': args.top_k, 'example_k': args.example_k,
+                   'example_statuses': list(args.example_statuses), 'fallback_only': args.fallback_only,
                    'timeout_seconds': args.timeout, 'num_gpu': args.num_gpu,
                    'machine': {'platform': platform.platform(), 'processor': platform.processor(),
                                'cpu_count': os.cpu_count()}},
@@ -195,6 +194,11 @@ def _report(args, journal, counts, latencies, failures, resumed) -> dict:
 
 
 def evaluate(args: argparse.Namespace) -> dict[str, Any]:
+    runtime = nlu_policy().service_selector
+    args.top_k = int(runtime['top_k']) if args.top_k is None else args.top_k
+    args.example_k = int(runtime['example_k']) if args.example_k is None else args.example_k
+    args.example_statuses = (tuple(runtime['example_statuses']) if args.example_statuses is None
+                             else tuple(s.strip() for s in args.example_statuses.split(',') if s.strip()))
     enabled = _enabled_request_kinds()
     rows = _rows(args.dataset, set(args.languages or ()), args.limit, enabled)
     inputs = _evaluation_inputs(args, rows, enabled)
@@ -203,11 +207,11 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     resumed = len(journal.records)
     print(json.dumps({'expected': len(rows), 'resumed': resumed, 'checkpoint': str(cases_path)}), flush=True)
     embedder = LocalEmbedder(args.embedding_model, str(args.embedding_manifest))
-    examples = (load_command_examples([dataset_path(TRAIN_AGENT_VI_GOLD),
-                                       dataset_path(TRAIN_AGENT_MULTILINGUAL),
-                                       dataset_path(TRAIN_AGENT_CANDIDATES)]) if args.example_k else ())
+    examples = (load_configured_examples(statuses=args.example_statuses)
+                if args.example_k else ())
     selector = ServiceSelector(dataset_path(SERVICE_CATALOG), embedder, top_k=args.top_k,
-                               examples=examples, example_k=args.example_k)
+                               examples=examples, example_k=args.example_k,
+                               cache_dir=ROOT / '.cache' / 'service-selector-eval')
     policy = nlu_policy().service_selector
     if args.num_gpu is not None:
         original_chat = command_module._chat
@@ -262,9 +266,14 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--language", action="append", dest="languages")
     parser.add_argument("--limit", type=int, default=0)
-    parser.add_argument("--top-k", type=int, default=8)
-    parser.add_argument("--example-k", type=int, default=4,
-                        help="nearest reviewed training turns shown as few-shots (0 disables)")
+    parser.add_argument("--top-k", type=int, default=None,
+                        help="candidate services offered to the model (default: runtime nlu.service_selector.top_k)")
+    parser.add_argument("--example-k", type=int, default=None,
+                        help="nearest reviewed training turns shown as few-shots, 0 disables "
+                             "(default: runtime nlu.service_selector.example_k)")
+    parser.add_argument("--example-statuses", default=None,
+                        help="comma-separated gold_status values whose training rows are used "
+                             "(default: runtime nlu.service_selector.example_statuses)")
     parser.add_argument("--base-url", default=os.environ.get("CONCIERGE_LLM_BASE_URL",
                                                              "http://127.0.0.1:11434"))
     parser.add_argument("--model", default=os.environ.get("CONCIERGE_LLM_MODEL", "qwen2.5:3b"))

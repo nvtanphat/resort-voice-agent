@@ -1293,6 +1293,7 @@
     "service_selector": {
       "top_k": 5,
       "example_k": 2,
+      "example_statuses": ["GOLD", "CANDIDATE"],
       "fallback_min_score": 0.88,
       "fallback_min_margin": 0.13,
       "router_min_score": 0.87,

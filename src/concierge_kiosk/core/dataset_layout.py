@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Final
+from typing import Final, Iterable
 
 
 PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[3]
@@ -79,6 +79,28 @@ def dataset_root(root: str | Path | None = None) -> Path:
 def dataset_path(relative: str | Path, root: str | Path | None = None) -> Path:
     """Resolve one layout-relative dataset path below ``dataset_root``."""
     return dataset_root(root) / Path(relative)
+
+
+def training_agent_paths(root: str | Path | None = None) -> tuple[Path, ...]:
+    """Every top-level training JSONL under ``training/agent``, canonical files first.
+
+    Runtime and the measurement/calibration tools must share this one list;
+    otherwise a tool can measure a different example set than the server uses.
+    """
+    named = [dataset_path(name, root)
+             for name in (TRAIN_AGENT_VI_GOLD, TRAIN_AGENT_MULTILINGUAL, TRAIN_AGENT_CANDIDATES)]
+    extra = [path for path in sorted(named[0].parent.glob("*.jsonl")) if path not in named]
+    return (*named, *extra)
+
+
+def row_has_status(row: object, statuses: "Iterable[str] | None") -> bool:
+    """True when ``row`` carries an allowed ``gold_status``; ``None`` disables the filter.
+
+    A row without a status counts as unreviewed once a filter is given.
+    """
+    if statuses is None:
+        return True
+    return isinstance(row, dict) and row.get("gold_status") in set(statuses)
 
 
 def canonical_text_bytes(path: Path) -> bytes:

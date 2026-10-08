@@ -36,13 +36,10 @@ if hasattr(sys.stdout, "reconfigure"):
 from concierge_kiosk.agent.understanding.service_selector import (  # noqa: E402
     CommandExample,
     example_eligible,
-    load_command_examples,
+    load_configured_examples,
     nearest_label,
 )
 from concierge_kiosk.core.dataset_layout import (  # noqa: E402
-    TRAIN_AGENT_CANDIDATES,
-    TRAIN_AGENT_MULTILINGUAL,
-    TRAIN_AGENT_VI_GOLD,
     dataset_path,
 )
 from concierge_kiosk.rag.embedding.local import LocalEmbedder  # noqa: E402
@@ -102,11 +99,7 @@ def _get_vectors(examples: tuple[CommandExample, ...], model: str, manifest: str
 
 
 def calibrate(args: argparse.Namespace) -> dict[str, Any]:
-    examples = load_command_examples([
-        dataset_path(TRAIN_AGENT_VI_GOLD),
-        dataset_path(TRAIN_AGENT_MULTILINGUAL),
-        dataset_path(TRAIN_AGENT_CANDIDATES),
-    ])
+    examples = load_configured_examples()
     if not examples:
         raise ValueError("No training command examples found")
 
