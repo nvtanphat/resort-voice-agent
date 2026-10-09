@@ -286,9 +286,9 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
         return {"proposal_id": proposal["id"], "kind": proposal["kind"],
                 "details": proposal["details"], "status": proposal["status"],
                 "expires_at": proposal["expires_at"], "requires_confirmation": True,
-                "staff_verification_required": proposal["kind"] in VERIFICATION_KINDS,
+                "staff_verification_required": body.change is None and proposal["kind"] in VERIFICATION_KINDS,
                 "service_code": proposal.get('service_code', ''),
-                "price_disclosure_required": bool(proposal.get('price_disclosure_required', False)),
+                "price_disclosure_required": body.change is None and bool(proposal.get('price_disclosure_required', False)),
                 "price_disclosure": proposal.get('price_disclosure', ''),
                 "outside_operating_hours": bool(proposal.get('outside_operating_hours', False)),
                 "next_open_at": proposal.get('next_open_at'),
@@ -305,6 +305,16 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
                 session: str = Depends(guest_session)):
         rate(request, f"confirm:{session}", 20)
         row = confirm_authorized_proposal(session, body)
+        if isinstance(row.get('request_change'), dict):
+            response.status_code = 202
+            change = row['request_change']
+            with conversations.serialize(session):
+                conversations.sync_workflow(session, row['language'], proposal_id=body.proposal_id,
+                                            service_kind=row['kind'], status=row['status'])
+            return {'request_id': row['id'], 'status': row['status'],
+                    'change_state': change['change_state'],
+                    'orchestration_sync': row.get('orchestration_sync', 'not_applicable'),
+                    'message': i18n_text('request.change.recorded', row['language'], code=row['id'][:8])}
         # On an idempotent replay staff may already have approved, rejected or
         # completed the request. Never announce a stale queued state or make a
         # fulfilment claim without the authoritative committed business row.
@@ -372,17 +382,21 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
         rate(request, f"request-change:{session}", 20)
         if len(request_id) != 32 or any(ch not in '0123456789abcdef' for ch in request_id):
             raise HTTPException(status_code=404, detail='Request not found')
-        payload = body.payload.model_dump(exclude_none=True) if body.payload is not None else None
-        result = workflows.request_guest_change(
-            session, request_id, body.action, body.nonce,
-            payload=payload, note=body.note)
-        # Preserve the original request language in the UX projection. The
-        # domain read remains authoritative and session scoped.
+        payload = body.payload.model_dump(exclude_none=True, exclude_unset=True) if body.payload is not None else None
         status_row = workflows.guest_request_status(session, request_id)
-        result['language'] = status_row['language']
-        if not result.get('idempotent_replay'):
-            record_metric('request.change_' + body.action, status_row['language'])
-        return result
+        if body.note:
+            if body.action == 'cancel':
+                raise HTTPException(status_code=422, detail='Cancellation does not accept modified fields')
+            payload = {**(payload or {}), 'note': body.note}
+        result = workflows.prepare_change(session, request_id, body.action,
+            status_row['language'], body.nonce, payload)
+        with conversations.serialize(session):
+            conversations.sync_workflow(session, status_row['language'], proposal_id=result['id'],
+                                        service_kind=result['kind'], status='awaiting_confirmation')
+        return {'proposal_id': result['id'], 'kind': result['kind'],
+                'details': result['details'], 'status': result['status'],
+                'expires_at': result['expires_at'], 'requires_confirmation': True,
+                'staff_verification_required': False}
 
     @app.get('/api/requests/mine', response_model=GuestRequestsResponse)
     def guest_requests(session: str = Depends(guest_session),

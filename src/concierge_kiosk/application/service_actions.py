@@ -10,6 +10,8 @@ from __future__ import annotations
 from concierge_kiosk.core.domain_profile import supported_languages, ui_policy, voice_policy
 from concierge_kiosk.i18n import text as i18n_text
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import logging
 import re
 from functools import lru_cache
@@ -116,7 +118,9 @@ def _canonical_service_review(*, mode: str, language: str,
         name = mode.replace('_', ' ')
 
     labels = SLOT_LABELS.get(language, {})
-    lines = [name.strip()]
+    # Item-bearing services describe a guest request, not a fixed catalog item
+    # or an inventory promise. The labeled item is preserved verbatim below.
+    lines = [] if 'requested_item' in accepted_slots(mode) else [name.strip()]
     for key in accepted_slots(mode):
         value = slots.get(key)
         if value in (None, ''):
@@ -286,8 +290,8 @@ class ServiceActionService:
         """Govern a cancellation/modification of the latest session request.
 
         Natural language may request a cancellation or provide changed structured
-        fields. The kiosk never rewrites the staff ticket directly: it records a
-        staff-reviewed change request against the session-owned ticket.
+        fields. It produces a review draft. Only the explicit proposal
+        confirmation endpoint queues a change against the session-owned ticket.
         """
         intent = request.change_action if request.change_action in {'cancel', 'modify'} else None
         if intent is None:
@@ -301,15 +305,25 @@ class ServiceActionService:
         active = [row for row in rows
                   if row.get('status') in {'pending_staff', 'approved', 'in_progress', 'paused'}
                   and row.get('guest_change_state') not in {'cancelled', 'cancel_requested', 'modify_requested'}]
-        # A short ticket prefix in the utterance wins; otherwise use the newest
-        # active ticket in this privacy-scoped kiosk session.
+        # A session-owned unique reference wins. Without one, multiple active
+        # tickets require selection before recording any consequential change.
         import re
         prefix = next(iter(re.findall(r'(?<![0-9a-f])([0-9a-f]{8})(?![0-9a-f])', request.query.casefold())), None)
         if prefix:
             matches = [row for row in active if str(row.get('id', '')).startswith(prefix)]
             row = matches[0] if len(matches) == 1 else None
         else:
-            row = active[0] if active else None
+            if len(active) > 1:
+                codes = ', '.join(str(item['id'])[:8] for item in active)
+                return {'answer': i18n_text('request.change.select', request.language, codes=codes),
+                        'sources': [], 'citations': [], 'suggested_action': None,
+                        'retrieval_mode': 'business_state', 'generation_mode': 'deterministic',
+                        'request_completed': False, 'grounding': 'business_state',
+                        'requires_staff_review': False, 'business_state_verified': True,
+                        'request_change': {'needs_selection': True, 'action': intent},
+                        'agent_action': {'status': 'needs_user_input', 'business_writes': 0,
+                                         'missing_slots': ['request_id']}}
+            row = active[0] if len(active) == 1 else None
         if row is None:
             answer = i18n_text('request.change.none', request.language)
             return {'answer': answer, 'sources': [], 'citations': [], 'suggested_action': None,
@@ -320,32 +334,36 @@ class ServiceActionService:
         if intent == 'modify':
             mode = (row['service_code'] if 'service_code' in row.keys() and row['service_code']
                     else default_service_for(row['kind']))
-            payload = extract_slots(request.query, request.language, row['kind'], existing={}, mode=mode)
-            if not payload:
+            assessment = assess_service(request.query, request.language, row['kind'],
+                existing={}, mode=mode, reference_time=self._reference_time())
+            payload = assessment.slots
+            if not payload or 'requested_date' in assessment.missing:
                 answer = i18n_text('request.change.need_details', request.language)
                 return {'answer': answer, 'sources': [], 'citations': [], 'suggested_action': None,
                         'retrieval_mode': 'business_state', 'generation_mode': 'deterministic',
                         'request_completed': False, 'grounding': 'business_state',
                         'requires_staff_review': False, 'business_state_verified': True,
                         'request_change': {'request_id': row['id'], 'action': 'modify', 'needs_details': True}}
-        nonce = request.action_nonce or ('change-' + row['id'][:16] + '-' + intent)
-        changed = self._workflows.request_guest_change(
-            request.session, row['id'], intent, nonce, payload=payload, note='')
-        code = row['id'][:8]
-        answer = i18n_text('request.change.cancel_submitted' if intent == 'cancel' else 'request.change.modify_submitted', request.language, code=code)
-        return {'answer': answer, 'sources': [], 'citations': [], 'suggested_action': None,
+        review = self._workflows.review_change(request.session, row['id'], intent,
+                                               request.language, payload)
+        answer = review['details']
+        return {'answer': answer, 'sources': [], 'citations': [],
                 'retrieval_mode': 'business_state', 'generation_mode': 'deterministic',
                 'request_completed': False, 'grounding': 'business_state',
                 'requires_staff_review': True, 'business_state_verified': True,
                 'tool_route': 'manage_request',
                 'agent_action': {
                     'status': 'confirmation_required',
-                    'business_writes': 1,
-                    'write_kind': 'staff_review_change_request',
+                    'business_writes': 0,
                     'authority': {'outcome': 'confirm', 'level': 'staff_review',
                                   'requires_confirmation': True},
                 },
-                'request_change': {**changed, 'action': intent, 'request_id': row['id']}}
+                'service_payload': review['payload'], 'suggested_action': {
+                    key: value for key, value in review.items() if key != 'payload'},
+                'request_change': {'action': intent, 'request_id': row['id'], 'needs_confirmation': True}}
+
+    def _reference_time(self) -> datetime | None:
+        return datetime.now(ZoneInfo(self._cfg.property_timezone)) if self._cfg is not None else None
 
 
     def voice_proposal_turn(self, request: AgentToolRequest) -> dict | None:
@@ -387,12 +405,12 @@ class ServiceActionService:
                 code for code in supported_languages() if code != request.language):
             candidate = extract_slots(
                 request.query, parse_language, pending.kind,
-                existing=pending.slots, mode=pending.mode)
+                existing=pending.slots, mode=pending.mode, reference_time=self._reference_time())
             if candidate != pending.slots:
                 updated_slots = candidate
                 assessment = assess_service(
                     request.query, parse_language, pending.kind,
-                    existing=pending.slots, mode=pending.mode)
+                    existing=pending.slots, mode=pending.mode, reference_time=self._reference_time())
                 break
         if updated_slots is not None and assessment is not None and assessment.ready:
             revised_details = _replace_changed_slot_values(
@@ -495,7 +513,12 @@ class ServiceActionService:
             if venue is not None:
                 slot_name, venue_name = venue
                 existing = {**existing, slot_name: venue_name}
-        assessment = assess_service(slot_source_query, request.language, kind, existing=existing, mode=mode)
+        assessment = assess_service(slot_source_query, request.language, kind, existing=existing, mode=mode, reference_time=self._reference_time())
+        if (context and 'requested_date' in context.get('missing', ())
+                and 'requested_date' not in assessment.slots
+                and 'requested_date' not in assessment.missing):
+            assessment = type(assessment)(assessment.kind, assessment.mode, assessment.slots,
+                                          assessment.missing + ('requested_date',))
         branch = route_branch_for_request_kind(kind)
         if branch not in {'service', 'handoff'}:
             raise RuntimeError('Service kind has no configured service route')

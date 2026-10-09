@@ -320,6 +320,8 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                     or command.slots or command.field is not None or command.value is not None
                     or command.confirmed is not None or command.reason is not None):
                 continue
+            if not _verbatim(query, command.query):
+                command = replace(command, query=query[:MAX_TEXT])
             if command.facet is not None and command.facet not in rag_policy().facet_fact_types:
                 # An unknown facet is dropped, not trusted: the read still runs unscoped.
                 command = replace(command, facet=None)
@@ -329,6 +331,8 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                     or command.value is not None or command.confirmed is not None
                     or command.reason is not None):
                 continue
+            if not _verbatim(query, command.query):
+                command = replace(command, query=query[:MAX_TEXT])
         elif command.type == 'Confirm':
             if pending_reply != 'confirm':
                 # Nothing is waiting for a confirmation: drop the claim, keep the rest of the turn.
@@ -508,9 +512,18 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                     item[key] = value[:320]
             services.append(item)
             seen.add(definition.code)
-        if not services:
-            note('unavailable')
-            return None
+    # Retrieval is a ranking hint, not authority to exclude registry services.
+    # Keep shortlisted descriptions first and retain every allowed goal. Fields
+    # duplicated in the schema or unused by understanding need not be prompt data.
+    seen_codes = {item['service_mode'] for item in services}
+    services.extend({'service_mode': code, 'accepted_slots': list(accepted_slots(code)),
+                     'description': definition.description}
+                    for code, definition in SERVICE_DEFINITIONS.items()
+                    if code not in seen_codes and definition.request_kind in enabled_request_kinds
+                    and definition.request_kind != 'directions')
+    services = [{key: value for key, value in item.items()
+                 if key in {'service_mode', 'accepted_slots', 'description', 'name'}}
+                for item in services]
     pending = pending_reply or 'none'
     payload = {
         'model': model,
@@ -547,6 +560,8 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                 'Every slot text, value and query must '
                 'be an exact substring of GUEST_TURN, in the guest\'s own words and digits; omit any '
                 'slot the guest did not state. Never invent a room, '
+                'Use requested_item for the exact item words and unit for the stated counting unit; '
+                'never replace an item with a service catalog name. '
                 'quantity, booking, price, permission or completion. '
                 'EXAMPLES are reviewed guest turns with their correct commands; follow their pattern. '
                 'CONTEXT.last_verified_topic, when present, is the place or topic the guest was just '
@@ -568,7 +583,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                              if all(command.get('type') != 'StartGoal'
                                     or command.get('goal') in {s['service_mode'] for s in services}
                                     for command in item.get('commands', ()))],
-            }, ensure_ascii=False)},
+            }, ensure_ascii=False, separators=(',', ':'))},
         ],
         'options': {'temperature': 0, 'num_predict': 220, 'num_ctx': SLM_NUM_CTX,
                     'num_gpu': num_gpu},

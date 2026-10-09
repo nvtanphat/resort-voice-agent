@@ -149,12 +149,13 @@ def _build_lifespan(graph_holder, store, workflows, cfg=None):
             except Exception as exc:  # warm-up is an optimization only
                 LOGGER.warning('voice_model_warmup_failed type=%s', type(exc).__name__)
             if cfg.llm_base_url and cfg.llm_model:
-                # Ollama loads a model lazily; the first guest turn would pay
-                # several seconds. A 1-token request keeps it resident.
+                # Share the guest's CPU lane. If a guest already owns it, skip
+                # this optimization rather than starting a competing load.
                 from .runtime.local_ai import warm_local_slm
                 try:
                     await asyncio.to_thread(warm_local_slm, cfg.llm_base_url, cfg.llm_model,
-                                            num_gpu=cfg.slm_num_gpu)
+                                            num_gpu=cfg.slm_num_gpu,
+                                            admission=_app.state.audio_admission)
                 except Exception as exc:
                     LOGGER.warning('slm_warmup_failed type=%s', type(exc).__name__)
             selector = getattr(_app.state, 'service_selector', None)

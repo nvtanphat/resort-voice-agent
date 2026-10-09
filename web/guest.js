@@ -1,4 +1,4 @@
-/* source-sha256:03f9d1cd4aa9ac823136f1bd7a080f4eb5c3dd592f3119e42fc2fe4837d84e55 */
+/* source-sha256:e72de2ebf2953172f8376b789a9585a9d8e65837e615dd7193bfd738f9a8b54e */
 /* Concierge Kiosk guest UI. */
 (function(){
 'use strict';
@@ -35477,7 +35477,7 @@ const App = () => {
         if (service.question)
             void handleSendMessage(service.question);
     };
-    const applySuggested = (kind, details, service) => {
+    const applySuggested = (kind, details, service, payload, change) => {
         if (!allowedRequestKinds.includes(kind))
             return;
         if (pendingProposal) {
@@ -35485,9 +35485,17 @@ const App = () => {
             return;
         }
         setRequestType(kind);
-        setSuggestedDetails(details.trim() ? { kind, details, service } : null);
+        setSuggestedDetails(details.trim() ? { kind, details, service, payload, change } : null);
         setNote(details);
         draftNonce.current = null;
+        if (payload?.room_number)
+            setRoomNumber(payload.room_number);
+        if (payload?.quantity)
+            setQuantity(payload.quantity);
+        if (payload?.preferred_time)
+            setRequestTime(payload.preferred_time);
+        if (payload?.party_size)
+            setPartySize(String(payload.party_size));
         if (details.trim())
             showToast((0, i18n_1.t)(selectedLanguage, 'reviewRequest'));
         else
@@ -35580,7 +35588,7 @@ const App = () => {
             setLastQuery(text);
             const clearSuggestions = result.clear_suggestions === true;
             setMessages(items => [...(clearSuggestions ? items.map(item => ({ ...item, suggestedAction: undefined })) : items), { id: uuid(), sender: 'assistant', time: clock(language), text: result.answer, answerTitle: result.answer_title,
-                    citations: result.citations || [], suggestedAction: clearSuggestions ? null : (result.suggested_action && allowedRequestKinds.includes(result.suggested_action.kind) ? result.suggested_action : null), speechTurnId: result.speech_turn_id,
+                    citations: result.citations || [], suggestedAction: clearSuggestions ? null : (result.suggested_action && allowedRequestKinds.includes(result.suggested_action.kind) ? { ...result.suggested_action, payload: result.service_payload } : null), speechTurnId: result.speech_turn_id,
                     planIsDraft: result.plan_is_draft, missingTopics: result.missing_topics, mapGuidance: result.map_guidance,
                     plan: result.plan, evidenceStatus: result.evidence_status, omittedClaims: result.omitted_claims,
                     relatedTopics: result.related_topics || [], supportContact: result.support_contact || null,
@@ -36261,11 +36269,11 @@ const App = () => {
         if (!sessionReady || submitting || pendingProposal || !requestType || !uiContract?.capabilities.create_request)
             return;
         try {
-            const details = buildDetails();
+            const details = suggestedDetails?.change ? suggestedDetails.details : buildDetails();
             setSubmitting(true);
             const epoch = sessionEpoch.current;
-            const payload = { note: note.trim() };
-            const fields = requestFields(requestType);
+            const payload = { ...(suggestedDetails?.kind === requestType ? suggestedDetails.payload : {}), ...(suggestedDetails?.change ? {} : { note: note.trim() }) };
+            const fields = suggestedDetails?.change ? new Set() : requestFields(requestType);
             if (fields.has('room_number') && roomNumber.trim())
                 payload.room_number = roomNumber.trim();
             if (fields.has('quantity'))
@@ -36278,7 +36286,7 @@ const App = () => {
                 showToast({ vi: 'Vui lòng đồng ý chính sách dữ liệu.', en: 'Please agree to the data notice.', zh: '请同意数据说明。', ko: '데이터 안내에 동의해 주세요.' }[selectedLanguage]);
                 return;
             }
-            const proposal = await api.prepare(requestType, selectedLanguage, details, draftNonce.current || (draftNonce.current = uuid()), payload, dataConsent, suggestedDetails?.kind === requestType ? suggestedDetails.service : undefined);
+            const proposal = await api.prepare(requestType, selectedLanguage, details, draftNonce.current || (draftNonce.current = uuid()), payload, dataConsent, suggestedDetails?.kind === requestType ? suggestedDetails.service : undefined, suggestedDetails?.change);
             if (epoch !== sessionEpoch.current)
                 return;
             setPendingProposal(proposal);
@@ -36327,7 +36335,7 @@ const App = () => {
             if (result.confirmation_code && result.status_url) {
                 setLatestStatus({ code: result.confirmation_code, url: result.status_url, qr: result.status_url.replace('/status/', '/api/status/') + '/qr.svg' });
             }
-            showToast(`${(0, i18n_1.t)(langRef.current, 'bookingDisclaimer')} ${result.confirmation_code || ''}`);
+            showToast(result.change_state ? result.message : `${(0, i18n_1.t)(langRef.current, 'bookingDisclaimer')} ${result.confirmation_code || ''}`);
         }
         catch (err) {
             if (!expireIfAuth(err))
@@ -36410,10 +36418,11 @@ const App = () => {
     const handleSaveEdit = (values) => {
         if (changeTargetId) {
             const target = changeTargetId;
+            const epoch = sessionEpoch.current;
             const payload = {};
             if (values.room.trim())
                 payload.room_number = values.room.trim();
-            if (values.quantity > 0)
+            if (requestProgress?.payload?.quantity !== undefined && values.quantity > 0)
                 payload.quantity = values.quantity;
             if (values.time.trim())
                 payload.preferred_time = values.time.trim();
@@ -36422,10 +36431,13 @@ const App = () => {
             if (values.note.trim())
                 payload.note = values.note.trim();
             setChangeBusy(true);
-            void api.requestChange(target, 'modify', uuid(), payload).then(async () => {
+            void api.requestChange(target, 'modify', uuid(), payload).then(async (proposal) => {
+                if (epoch !== sessionEpoch.current)
+                    return;
+                setPendingProposal(proposal);
                 setChangeTargetId(null);
                 setIsEditModalOpen(false);
-                showToast((0, i18n_1.t)(langRef.current, 'modifyQueued'));
+                showToast((0, i18n_1.t)(langRef.current, 'reviewRequest'));
                 await refreshRequests();
             }).catch(err => { if (!expireIfAuth(err))
                 showToast((0, i18n_1.t)(langRef.current, 'changeError')); })
@@ -36444,12 +36456,16 @@ const App = () => {
         setIsEditModalOpen(false);
     };
     const requestCancelSubmitted = async () => {
-        if (!requestProgress?.can_cancel || changeBusy)
+        if (!requestProgress?.can_cancel || changeBusy || pendingProposal || submitting)
             return;
+        const epoch = sessionEpoch.current;
         setChangeBusy(true);
         try {
-            await api.requestChange(requestProgress.id, 'cancel', uuid());
-            showToast((0, i18n_1.t)(langRef.current, 'cancelQueued'));
+            const proposal = await api.requestChange(requestProgress.id, 'cancel', uuid());
+            if (epoch !== sessionEpoch.current)
+                return;
+            setPendingProposal(proposal);
+            showToast((0, i18n_1.t)(langRef.current, 'reviewRequest'));
             await refreshRequests();
         }
         catch (err) {
@@ -36461,7 +36477,7 @@ const App = () => {
         }
     };
     const requestModifySubmitted = () => {
-        if (!requestProgress?.can_modify || changeBusy)
+        if (!requestProgress?.can_modify || changeBusy || pendingProposal || submitting)
             return;
         const p = requestProgress.effective_payload || requestProgress.payload || {};
         setChangeTargetId(requestProgress.id);
@@ -36675,7 +36691,7 @@ function ask(query, language, previous_query, signal, turn, startLocation, turnN
         return response.json();
     });
 }
-const prepare = (kind, language, details, nonce, payload, dataConsent = false, service) => request('/api/requests/prepare', 'POST', { kind, language, details, nonce, payload: payload || null, data_consent: dataConsent, ...(service ? { service } : {}) });
+const prepare = (kind, language, details, nonce, payload, dataConsent = false, service, change) => request('/api/requests/prepare', 'POST', { kind, language, details, nonce, payload: payload || null, data_consent: dataConsent, ...(service ? { service } : {}), ...(change ? { change } : {}) });
 exports.prepare = prepare;
 const confirm = (proposal_id, verification, priceAcknowledged = false) => request('/api/requests/confirm', 'POST', { proposal_id, confirmed: true, price_acknowledged: priceAcknowledged, verification: verification || null });
 exports.confirm = confirm;
@@ -37045,6 +37061,7 @@ exports.taskLabel = taskLabel;
 },{"../../locales/vi.json":17,"../../locales/en.json":18,"../../locales/zh.json":19,"../../locales/ko.json":20}],
 17:[function(module,exports,require,process){
 module.exports={
+  "backend.request.change.select": "Bạn muốn thay đổi yêu cầu nào? Vui lòng chọn một mã yêu cầu: {codes}.",
   "backend.smalltalk.reply": "Rất vui được hỗ trợ bạn! Bạn cần tôi tra cứu thông tin, chỉ đường hay gửi yêu cầu dịch vụ nào không?",
   "backend.out_of_scope.reply": "Câu này nằm ngoài phạm vi hỗ trợ của khách sạn, nhưng tôi có thể giúp bạn về thông tin, chỉ đường hoặc dịch vụ lưu trú.",
   "backend.emergency.alert_queued": " Đã tạo cảnh báo ưu tiên cao trên hàng đợi của nhân viên; đây không phải xác nhận rằng lực lượng cứu hộ đã được điều động.",
@@ -37062,6 +37079,7 @@ module.exports={
   "backend.request.status_prefix": "Trạng thái yêu cầu hiện tại:",
   "backend.request.status_line": "{code}: {status} — đã chờ {minutes} phút",
   "backend.request.overdue": "Yêu cầu đã quá SLA.",
+  "backend.request.merged_with_existing": "Dịch vụ này đã được ghi nhận cho cùng phòng nên không gửi thêm yêu cầu thứ hai. Mã tham chiếu hiển thị là của yêu cầu hiện có.",
   "backend.request.escalated": "Tôi đã gửi một lần nhắc đến bộ phận phụ trách.",
   "backend.request.change.none": "Tôi không tìm thấy yêu cầu đang hoạt động nào trong phiên kiosk này để thay đổi.",
   "backend.request.change.need_details": "Bạn muốn sửa thông tin nào của yêu cầu đó? Hãy nêu rõ số phòng, số lượng, thời gian hoặc số khách mới.",
@@ -37250,7 +37268,14 @@ module.exports={
   "backend.clarification.room_number": "Số phòng của bạn là bao nhiêu?",
   "backend.preference.saved": "Mình đã ghi nhận sở thích này cho phiên hiện tại và sẽ dùng khi gợi ý hoặc chuẩn bị yêu cầu.",
   "backend.service.ready": "Tôi đã có đủ thông tin để chuẩn bị yêu cầu. Vui lòng kiểm tra trước khi xác nhận.",
-  "backend.service.need_slots": "Tôi có thể tiếp tục yêu cầu này, nhưng vẫn cần: {names}. Chưa có yêu cầu nào được gửi."
+  "backend.service.need_slots": "Tôi có thể tiếp tục yêu cầu này, nhưng vẫn cần: {names}. Chưa có yêu cầu nào được gửi.",
+  "backend.operations.synthetic_which_option": "Mình cần biết bạn muốn kiểm tra lựa chọn nào. Vui lòng nói rõ tên nhà hàng hoặc dịch vụ.",
+  "backend.preference.confirm_question": "Bạn muốn mình ghi nhớ “{evidence}” làm sở thích cho phiên này không? Hãy trả lời có hoặc không.",
+  "backend.preference.declined": "Đã rõ, mình sẽ không ghi nhớ điều đó.",
+  "backend.request.change.recorded": "Thay đổi cho ticket {code} đã được ghi nhận. Xem trạng thái ticket để biết quyết định của nhân viên.",
+  "backend.request.change.cancel_label": "xin hủy",
+  "backend.request.change.modify_label": "xin sửa",
+  "backend.request.change.review": "Xem lại ticket {code}: {action}. Trường thay đổi: {changes}. Xác nhận để gửi nhân viên xét duyệt."
 }
 ;
 },{}],
@@ -37273,8 +37298,10 @@ module.exports={
   "backend.request.status_prefix": "Current request status:",
   "backend.request.status_line": "{code}: {status} — waiting {minutes} min",
   "backend.request.overdue": "SLA is overdue.",
+  "backend.request.merged_with_existing": "This service is already queued for the same room, so no second request was sent. The reference shown is the existing request's.",
   "backend.request.escalated": "I sent one reminder to the assigned department.",
   "backend.request.change.none": "I could not find an active request in this kiosk session to change.",
+  "backend.request.change.select": "Which request would you like to change? Please give one of these request references: {codes}.",
   "backend.request.change.need_details": "What would you like to change? Please state the new room, quantity, time, or party size.",
   "backend.request.change.cancel_submitted": "I sent a cancellation request for {code} to staff for review. The original request is not cancelled until staff confirm it.",
   "backend.request.change.modify_submitted": "I sent the changes for request {code} to staff for review. They take effect only after staff approve them.",
@@ -37461,12 +37488,20 @@ module.exports={
   "backend.clarification.room_number": "What is your room number?",
   "backend.preference.saved": "Noted. I will keep this preference for this session when suggesting options or preparing requests.",
   "backend.service.ready": "I have enough information to prepare this request. Please review it before confirming.",
-  "backend.service.need_slots": "I can continue this request, but I still need: {names}. Nothing has been submitted yet."
+  "backend.service.need_slots": "I can continue this request, but I still need: {names}. Nothing has been submitted yet.",
+  "backend.operations.synthetic_which_option": "I need to know which option you mean. Please tell me the restaurant or service you have in mind.",
+  "backend.preference.confirm_question": "Would you like me to remember “{evidence}” as a preference for this session? Please answer yes or no.",
+  "backend.preference.declined": "Understood, I will not remember that.",
+  "backend.request.change.recorded": "Your change for ticket {code} is recorded. Check the ticket status for the staff decision.",
+  "backend.request.change.cancel_label": "cancel",
+  "backend.request.change.modify_label": "modify",
+  "backend.request.change.review": "Review ticket {code}: {action}. Changed fields: {changes}. Confirm to send this change for staff review."
 }
 ;
 },{}],
 19:[function(module,exports,require,process){
 module.exports={
+  "backend.request.change.select": "您想更改哪项请求？请提供以下请求编号之一：{codes}。",
   "backend.smalltalk.reply": "很高兴为您服务！您需要查询酒店信息、指路，还是提交服务请求？",
   "backend.out_of_scope.reply": "这个问题超出了酒店礼宾服务范围，但我可以为您提供酒店信息、路线指引或住客服务帮助。",
   "backend.emergency.alert_queued": " 已向工作人员队列提交高优先级警报；这不表示公共应急人员已经出动。",
@@ -37484,6 +37519,7 @@ module.exports={
   "backend.request.status_prefix": "当前请求状态：",
   "backend.request.status_line": "{code}: {status} — 已等待 {minutes} 分钟",
   "backend.request.overdue": "该请求已超过 SLA。",
+  "backend.request.merged_with_existing": "同一房间已有相同的服务请求在处理中，因此未重复提交。显示的参考编号为现有请求的编号。",
   "backend.request.escalated": "我已向负责部门发送一次提醒。",
   "backend.request.change.none": "当前 kiosk 会话中没有可更改的活动请求。",
   "backend.request.change.need_details": "您想修改哪项信息？请说明新的房号、数量、时间或人数。",
@@ -37672,12 +37708,20 @@ module.exports={
   "backend.clarification.room_number": "请问您的房间号是多少？",
   "backend.preference.saved": "已记下，本次会话中推荐或准备请求时会考虑这个偏好。",
   "backend.service.ready": "信息已足够准备此请求。请在确认前检查内容。",
-  "backend.service.need_slots": "我可以继续准备此请求，但还需要：{names}。目前尚未提交任何请求。"
+  "backend.service.need_slots": "我可以继续准备此请求，但还需要：{names}。目前尚未提交任何请求。",
+  "backend.operations.synthetic_which_option": "我需要知道您指的是哪一个选项。请告诉我您想查询的餐厅或服务名称。",
+  "backend.preference.confirm_question": "您希望我在本次对话中记住“{evidence}”作为偏好吗？请回答是或否。",
+  "backend.preference.declined": "好的，我不会记住这一点。",
+  "backend.request.change.recorded": "工单 {code} 的更改已记录。请查看工单状态以了解员工的决定。",
+  "backend.request.change.cancel_label": "申请取消",
+  "backend.request.change.modify_label": "申请修改",
+  "backend.request.change.review": "审核工单 {code}: {action}。更改字段：{changes}。确认后提交员工审核。"
 }
 ;
 },{}],
 20:[function(module,exports,require,process){
 module.exports={
+  "backend.request.change.select": "어떤 요청을 변경하시겠습니까? 다음 요청 번호 중 하나를 알려 주세요: {codes}.",
   "backend.smalltalk.reply": "도와드리게 되어 기쁩니다! 호텔 정보, 길 안내 또는 서비스 요청이 필요하신가요?",
   "backend.out_of_scope.reply": "이 질문은 호텔 컨시어지의 지원 범위를 벗어나지만, 호텔 정보와 길 안내 또는 투숙객 서비스를 도와드릴 수 있습니다.",
   "backend.emergency.alert_queued": " 직원 대기열에 최우선 긴급 경보를 등록했습니다. 이는 공공 긴급 구조대가 출동했다는 확인이 아닙니다.",
@@ -37695,6 +37739,7 @@ module.exports={
   "backend.request.status_prefix": "현재 요청 상태:",
   "backend.request.status_line": "{code}: {status} — {minutes}분 대기 중",
   "backend.request.overdue": "SLA 시간이 초과되었습니다.",
+  "backend.request.merged_with_existing": "같은 객실에 대해 동일한 서비스가 이미 접수되어 있어 중복 요청을 보내지 않았습니다. 표시된 참조 번호는 기존 요청의 번호입니다.",
   "backend.request.escalated": "담당 부서에 한 번 재알림을 보냈습니다.",
   "backend.request.change.none": "현재 키오스크 세션에서 변경할 수 있는 활성 요청을 찾지 못했습니다.",
   "backend.request.change.need_details": "어떤 내용을 변경할까요? 새 객실 번호, 수량, 시간 또는 인원을 알려 주세요.",
@@ -37884,7 +37929,14 @@ module.exports={
   "backend.clarification.room_number": "객실 번호가 어떻게 되시나요?",
   "backend.preference.saved": "알겠습니다. 이번 세션에서 추천하거나 요청을 준비할 때 이 선호 사항을 반영할게요.",
   "backend.service.ready": "요청을 준비할 정보가 충분합니다. 확인하기 전에 내용을 검토해 주세요.",
-  "backend.service.need_slots": "이 요청을 계속 준비하려면 다음 정보가 더 필요합니다: {names}. 아직 요청은 전송되지 않았습니다."
+  "backend.service.need_slots": "이 요청을 계속 준비하려면 다음 정보가 더 필요합니다: {names}. 아직 요청은 전송되지 않았습니다.",
+  "backend.operations.synthetic_which_option": "어떤 항목을 말씀하시는지 알려 주세요. 확인하실 식당이나 서비스 이름을 말씀해 주세요.",
+  "backend.preference.confirm_question": "“{evidence}” 내용을 이번 세션의 선호로 기억할까요? 예 또는 아니요로 답해 주세요.",
+  "backend.preference.declined": "알겠습니다. 그 내용은 기억하지 않겠습니다.",
+  "backend.request.change.recorded": "티켓 {code}의 변경이 기록되었습니다. 직원의 결정은 티켓 상태에서 확인하세요.",
+  "backend.request.change.cancel_label": "취소 요청",
+  "backend.request.change.modify_label": "변경 요청",
+  "backend.request.change.review": "티켓 {code} 검토: {action}. 변경 필드: {changes}. 확인하면 직원 검토에 제출됩니다."
 }
 ;
 },{}],
@@ -49953,7 +50005,7 @@ const ChatSection = ({ propertyName, language, messages, value, onChange, onSend
     (0, react_1.useEffect)(() => { bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [messages.length, isThinking, prepared]);
     const send = (event) => { event.preventDefault(); if (ready && !isThinking && value.trim().length >= 2)
         onSendMessage(value.trim()); };
-    return (0, jsx_runtime_1.jsxs)("section", { className: "lg:col-span-6 flex flex-col h-full min-h-0 overflow-hidden space-y-2.5", "data-purpose": "chat-concierge-center", children: [(0, jsx_runtime_1.jsxs)("div", { className: "relative px-5 py-3 border border-brand-borderLight shadow-sm overflow-hidden flex-shrink-0 rounded-lg bg-white/80", children: [(0, jsx_runtime_1.jsx)("div", { className: "absolute -top-6 -right-6 w-40 h-40 opacity-30 pointer-events-none palm-watermark" }), (0, jsx_runtime_1.jsx)("span", { className: "text-[10px] tracking-[0.25em] font-semibold text-[#8E764E] uppercase", children: (0, i18n_1.t)(language, 'welcomeTo') }), (0, jsx_runtime_1.jsx)("h1", { className: "font-serif text-[22px] lg:text-[24px] font-semibold text-brand-navyDark leading-tight", children: propertyName }), (0, jsx_runtime_1.jsx)("p", { className: "text-xs text-brand-textMuted mt-0.5", children: (0, i18n_1.t)(language, 'intro') })] }), error && (0, jsx_runtime_1.jsxs)("div", { role: "alert", className: "bg-rose-50 text-rose-800 rounded-lg border border-rose-200 p-3 text-xs flex justify-between gap-2", children: [(0, jsx_runtime_1.jsx)("span", { children: error }), (0, jsx_runtime_1.jsx)("button", { onClick: onRetry, className: "min-h-11 px-2 underline font-semibold", children: (0, i18n_1.t)(language, 'reconnect') })] }), (0, jsx_runtime_1.jsxs)("div", { className: "flex-1 min-h-0 flex flex-col space-y-3 custom-scrollbar overflow-y-auto pr-1", "data-purpose": "chat-messages-container", "aria-live": "polite", children: [messages.length === 0 && (0, jsx_runtime_1.jsx)("div", { className: "text-xs text-gray-500 bg-white/70 border border-brand-borderLight p-4 rounded-xl", children: (0, i18n_1.t)(language, ready ? 'choose' : 'connecting') }), messages.map(msg => (0, jsx_runtime_1.jsxs)("div", { className: `flex items-start gap-2.5 ${msg.sender === 'user' ? 'justify-end pl-10' : 'pr-2'}`, children: [msg.sender === 'assistant' && (0, jsx_runtime_1.jsx)("span", { "aria-hidden": "true", className: "w-8 h-8 rounded-lg bg-[#3C5B82] text-white flex items-center justify-center shrink-0", children: "\u2727" }), (0, jsx_runtime_1.jsxs)("div", { className: `max-w-full min-w-0 ${msg.sender === 'user' ? 'bg-[#EBF3FA] border-[#D8E6F5] rounded-tr-none' : 'bg-white/85 border-[#E9E1D2]'} border rounded-xl px-4 py-3 shadow-sm text-xs leading-relaxed`, children: [msg.sender === 'user' ? (0, jsx_runtime_1.jsx)("p", { className: "whitespace-pre-wrap break-words", children: msg.text }) : (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [!!msg.answerTitle && (0, jsx_runtime_1.jsx)("p", { className: "text-[10px] font-semibold text-brand-navy mb-1", children: msg.answerTitle }), (0, jsx_runtime_1.jsx)(MarkdownText_1.default, { className: "whitespace-pre-wrap break-words", text: msg.text })] }), msg.sender === 'assistant' && (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [!!msg.evidenceStatus && (0, jsx_runtime_1.jsxs)("p", { className: "text-[10px] mt-2 text-gray-500", children: [(0, i18n_1.t)(language, 'evidence'), ": ", msg.evidenceStatus, msg.omittedClaims ? ` · ${msg.omittedClaims} ${(0, i18n_1.t)(language, 'unsupported')}` : ''] }), !!msg.citations?.length && (0, jsx_runtime_1.jsxs)("details", { className: "mt-2 text-[11px] rounded bg-[#FAF7F2] p-2", children: [(0, jsx_runtime_1.jsxs)("summary", { className: "cursor-pointer font-semibold text-brand-navy", children: [(0, i18n_1.t)(language, 'sources'), " (", msg.citations.length, ")"] }), msg.citations.map(c => (0, jsx_runtime_1.jsxs)("div", { className: "border-t border-[#E9E1D2] mt-2 pt-2", children: [(0, jsx_runtime_1.jsxs)("strong", { children: [c.title, " \u00B7 ", c.revision] }), (0, jsx_runtime_1.jsx)(MarkdownText_1.default, { className: "whitespace-pre-wrap mt-1", text: c.quote }), (0, jsx_runtime_1.jsxs)("small", { children: [(0, i18n_1.t)(language, 'source'), ": ", c.source_id, " \u00B7 ", c.heading] })] }, c.citation_id))] }), msg.mapGuidance?.status === 'verified' && (0, jsx_runtime_1.jsxs)("div", { className: "mt-2 rounded border border-[#E9E1D2] p-2", children: [(0, jsx_runtime_1.jsxs)("strong", { children: [msg.mapGuidance.origin, " \u2192 ", msg.mapGuidance.destination] }), (0, jsx_runtime_1.jsx)("ol", { className: "list-decimal pl-5 mt-1", children: msg.mapGuidance.steps?.map((step, i) => (0, jsx_runtime_1.jsx)("li", { children: step }, i)) })] }), !!msg.plan && (0, jsx_runtime_1.jsxs)("details", { className: "mt-2 rounded border border-[#E9E1D2] p-2", children: [(0, jsx_runtime_1.jsx)("summary", { className: "cursor-pointer font-semibold", children: (0, i18n_1.t)(language, 'draftPlan') }), msg.plan.activities.map((a, i) => (0, jsx_runtime_1.jsxs)("p", { className: "mt-1", children: [a.suggested_time ? (0, jsx_runtime_1.jsxs)("strong", { children: [a.suggested_time.start, "\u2013", a.suggested_time.end, " \u00B7 "] }) : null, a.description] }, i)), (0, jsx_runtime_1.jsx)("p", { className: "mt-2 text-amber-800", children: (0, i18n_1.t)(language, 'bookingDisclaimer') })] }), !!msg.taskProgress?.length && (0, jsx_runtime_1.jsx)("div", { className: "mt-2 border-t border-[#E9E1D2] pt-2", children: msg.taskProgress.map(task => (0, jsx_runtime_1.jsxs)("p", { children: [['knowledge', 'navigation', 'planning'].includes(task.kind) ? (0, i18n_1.taskLabel)(language, task.kind) : kindLabel(task.kind), ": ", (0, i18n_1.taskLabel)(language, task.status)] }, task.id)) }), !!msg.agentProgress?.length && (0, jsx_runtime_1.jsxs)("details", { className: "mt-2 rounded border border-[#E9E1D2] bg-[#FAF7F2] p-2", children: [(0, jsx_runtime_1.jsx)("summary", { className: "cursor-pointer font-semibold text-brand-navy", children: (0, i18n_1.t)(language, 'agentProgress') }), (0, jsx_runtime_1.jsx)("ol", { className: "mt-1 space-y-1 list-decimal pl-4", children: msg.agentProgress.map(item => (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("span", { className: "font-medium", children: item.capability || (0, i18n_1.t)(language, 'agentStep') }), (0, jsx_runtime_1.jsxs)("span", { className: "text-gray-500", children: [" \u00B7 ", item.status] })] }, `${item.step}:${item.requirement_id || ''}`)) })] }), !!msg.supportContact && (0, jsx_runtime_1.jsxs)("div", { className: "mt-2 rounded border border-[#D9E5D7] bg-[#F6FAF5] p-2", children: [(0, jsx_runtime_1.jsxs)("strong", { children: [(0, i18n_1.t)(language, 'supportContact'), ": ", msg.supportContact.label] }), !!msg.supportContact.extensions.length && (0, jsx_runtime_1.jsxs)("p", { children: [(0, i18n_1.t)(language, 'extension'), ": ", msg.supportContact.extensions.join(' / ')] }), !!msg.supportContact.phones.length && (0, jsx_runtime_1.jsxs)("p", { children: [(0, i18n_1.t)(language, 'phone'), ": ", msg.supportContact.phones.join(' / ')] }), msg.supportContact.email && (0, jsx_runtime_1.jsxs)("p", { children: [(0, i18n_1.t)(language, 'email'), ": ", msg.supportContact.email] })] }), !!msg.relatedTopics?.length && (0, jsx_runtime_1.jsxs)("div", { className: "mt-2", children: [(0, jsx_runtime_1.jsx)("p", { className: "text-[11px] font-semibold text-brand-navy", children: (0, i18n_1.t)(language, 'relatedTopics') }), (0, jsx_runtime_1.jsx)("div", { className: "flex flex-wrap gap-2 mt-1", children: msg.relatedTopics.map(topic => (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: () => onSendMessage(topic.query), className: "min-h-11 border border-[#D8E6F5] bg-[#F4F8FC] rounded-full px-3 py-1.5 hover:bg-[#EAF2FA]", children: topic.label }, `${topic.language}:${topic.label}`)) })] }), !!msg.suggestedAction && (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: () => onSuggested(msg.suggestedAction.kind, msg.suggestedAction.details, msg.suggestedAction.service), className: "mt-2 min-h-11 rounded-full border border-[#B89B6A] text-[#73532C] px-3 py-1.5 hover:bg-[#F8F1E7]", children: (0, i18n_1.t)(language, 'reviewKind').replace('{kind}', kindLabel(msg.suggestedAction.kind)) }), !!msg.actionOptions?.length && (0, jsx_runtime_1.jsx)("div", { className: "flex flex-wrap gap-2 mt-2", children: msg.actionOptions.map((a, i) => (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: () => onSuggested(a.kind, ''), className: "min-h-11 border border-stone-300 rounded-full px-3 py-1 hover:bg-stone-50", children: kindLabel(a.kind) }, i)) })] }), (0, jsx_runtime_1.jsx)("div", { className: "mt-1 text-[10px] text-gray-400 text-right", children: msg.time })] })] }, msg.id)), isThinking && (0, jsx_runtime_1.jsx)("div", { role: "status", className: "text-xs text-brand-navy bg-white border border-[#E9E1D2] rounded-xl p-3 self-start", children: (0, i18n_1.t)(language, 'consulting') }), requestPreview && (0, jsx_runtime_1.jsxs)("div", { className: "border border-[#E3D7C5] bg-[#F6EFE3] p-3.5 shadow-sm space-y-2 rounded-lg", "data-purpose": "review-request-card", children: [(0, jsx_runtime_1.jsxs)("div", { className: "flex justify-between gap-2 items-center", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("h3", { className: "font-serif font-bold text-base text-brand-navyDark", children: (0, i18n_1.t)(language, 'reviewRequest') }), (0, jsx_runtime_1.jsx)("p", { className: "text-[11px] text-gray-600", children: (0, i18n_1.t)(language, 'reviewDisclaimer') })] }), !prepared && (0, jsx_runtime_1.jsx)("button", { disabled: pending, onClick: onOpenEditModal, className: "min-h-11 text-xs border bg-white rounded-full px-3 py-1", children: (0, i18n_1.t)(language, 'edit') })] }), (0, jsx_runtime_1.jsx)("p", { className: "whitespace-pre-wrap break-words bg-white/70 rounded-lg border border-[#E9E1D2] p-3 text-xs", children: requestPreview }), prepared && priceDisclosureRequired && (0, jsx_runtime_1.jsxs)("div", { className: "rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs space-y-2", children: [(0, jsx_runtime_1.jsx)("p", { children: priceDisclosure }), (0, jsx_runtime_1.jsxs)("label", { className: "flex gap-2 items-start", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: priceAcknowledged, onChange: event => onPriceAcknowledged(event.target.checked), className: "mt-0.5" }), (0, jsx_runtime_1.jsx)("span", { children: (0, i18n_1.t)(language, 'priceDisclosureAcknowledgement') })] })] }), prepared && outsideOperatingHours && (0, jsx_runtime_1.jsx)("p", { className: "rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs", children: (0, i18n_1.t)(language, 'outsideOperatingHours').replace('{time}', nextOpenLabel || (0, i18n_1.t)(language, 'staffVerify')) }), prepared ? (0, jsx_runtime_1.jsxs)("div", { className: "flex flex-wrap gap-2", children: [(0, jsx_runtime_1.jsx)("button", { disabled: pending || (priceDisclosureRequired && !priceAcknowledged), onClick: onConfirm, className: "min-h-11 bg-[#75552D] text-white rounded-lg text-xs py-2 px-4 disabled:opacity-50", children: (0, i18n_1.t)(language, pending ? 'processing' : 'confirmStaff') }), (0, jsx_runtime_1.jsx)("button", { disabled: pending, onClick: onCancel, className: "min-h-11 border border-[#73532C] rounded-lg text-xs py-2 px-4", children: (0, i18n_1.t)(language, 'discard') })] }) : (0, jsx_runtime_1.jsxs)("div", { className: "flex flex-wrap gap-2", children: [(0, jsx_runtime_1.jsx)("button", { disabled: pending, onClick: onPrepare, className: "min-h-11 bg-[#75552D] text-white rounded-lg text-xs py-2 px-4 disabled:opacity-50", children: (0, i18n_1.t)(language, pending ? 'preparing' : 'prepare') }), (0, jsx_runtime_1.jsx)("button", { disabled: pending, onClick: onStartRequest, className: "min-h-11 border border-[#73532C] rounded-lg text-xs py-2 px-4", children: (0, i18n_1.t)(language, 'editDetails') })] })] }), !requestPreview && ready && canCreateRequest && (0, jsx_runtime_1.jsx)("button", { className: "self-start min-h-11 border border-[#E9E1D2] bg-white/75 text-[#73532C] rounded-full px-4 py-2 text-xs", onClick: onStartRequest, children: (0, i18n_1.t)(language, 'createRequest') }), (0, jsx_runtime_1.jsx)("div", { ref: bottom })] }), mapPlaces.length > 0 && (0, jsx_runtime_1.jsxs)("label", { className: "text-[11px] text-gray-600", children: [(0, i18n_1.t)(language, 'mapOrigin'), " ", (0, jsx_runtime_1.jsxs)("select", { className: "rounded border p-1 bg-white ml-1", value: startLocation, onChange: e => onStartLocation(e.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: (0, i18n_1.t)(language, 'default') }), mapPlaces.map(p => (0, jsx_runtime_1.jsx)("option", { value: p.id, children: p.label }, p.id))] })] }), (0, jsx_runtime_1.jsxs)("form", { onSubmit: send, className: "p-1.5 pl-4 border border-[#E0D8C8] shadow-sm flex items-center gap-3 shrink-0 rounded-lg bg-white/85", "data-purpose": "chat-input-bar", children: [(0, jsx_runtime_1.jsx)("input", { "aria-label": (0, i18n_1.t)(language, 'askConcierge'), value: value, maxLength: 500, disabled: !ready || isThinking, onChange: e => onChange(e.target.value), className: "flex-1 min-w-0 text-xs py-2 outline-none bg-transparent", placeholder: (0, i18n_1.t)(language, 'askPlaceholder') }), (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: onVoice, disabled: !ready || !voiceAvailable, title: (0, i18n_1.t)(language, 'voiceToggle'), className: "min-w-11 min-h-11 text-[#73532C] disabled:opacity-40 text-xs px-2", children: "\uD83C\uDF99" }), (0, jsx_runtime_1.jsx)("button", { type: "submit", disabled: !ready || isThinking || value.trim().length < 2, className: "min-h-11 bg-[#142742] text-white rounded-lg py-2 px-4 text-xs disabled:opacity-40", children: (0, i18n_1.t)(language, 'send') })] })] });
+    return (0, jsx_runtime_1.jsxs)("section", { className: "lg:col-span-6 flex flex-col h-full min-h-0 overflow-hidden space-y-2.5", "data-purpose": "chat-concierge-center", children: [(0, jsx_runtime_1.jsxs)("div", { className: "relative px-5 py-3 border border-brand-borderLight shadow-sm overflow-hidden flex-shrink-0 rounded-lg bg-white/80", children: [(0, jsx_runtime_1.jsx)("div", { className: "absolute -top-6 -right-6 w-40 h-40 opacity-30 pointer-events-none palm-watermark" }), (0, jsx_runtime_1.jsx)("span", { className: "text-[10px] tracking-[0.25em] font-semibold text-[#8E764E] uppercase", children: (0, i18n_1.t)(language, 'welcomeTo') }), (0, jsx_runtime_1.jsx)("h1", { className: "font-serif text-[22px] lg:text-[24px] font-semibold text-brand-navyDark leading-tight", children: propertyName }), (0, jsx_runtime_1.jsx)("p", { className: "text-xs text-brand-textMuted mt-0.5", children: (0, i18n_1.t)(language, 'intro') })] }), error && (0, jsx_runtime_1.jsxs)("div", { role: "alert", className: "bg-rose-50 text-rose-800 rounded-lg border border-rose-200 p-3 text-xs flex justify-between gap-2", children: [(0, jsx_runtime_1.jsx)("span", { children: error }), (0, jsx_runtime_1.jsx)("button", { onClick: onRetry, className: "min-h-11 px-2 underline font-semibold", children: (0, i18n_1.t)(language, 'reconnect') })] }), (0, jsx_runtime_1.jsxs)("div", { className: "flex-1 min-h-0 flex flex-col space-y-3 custom-scrollbar overflow-y-auto pr-1", "data-purpose": "chat-messages-container", "aria-live": "polite", children: [messages.length === 0 && (0, jsx_runtime_1.jsx)("div", { className: "text-xs text-gray-500 bg-white/70 border border-brand-borderLight p-4 rounded-xl", children: (0, i18n_1.t)(language, ready ? 'choose' : 'connecting') }), messages.map(msg => (0, jsx_runtime_1.jsxs)("div", { className: `flex items-start gap-2.5 ${msg.sender === 'user' ? 'justify-end pl-10' : 'pr-2'}`, children: [msg.sender === 'assistant' && (0, jsx_runtime_1.jsx)("span", { "aria-hidden": "true", className: "w-8 h-8 rounded-lg bg-[#3C5B82] text-white flex items-center justify-center shrink-0", children: "\u2727" }), (0, jsx_runtime_1.jsxs)("div", { className: `max-w-full min-w-0 ${msg.sender === 'user' ? 'bg-[#EBF3FA] border-[#D8E6F5] rounded-tr-none' : 'bg-white/85 border-[#E9E1D2]'} border rounded-xl px-4 py-3 shadow-sm text-xs leading-relaxed`, children: [msg.sender === 'user' ? (0, jsx_runtime_1.jsx)("p", { className: "whitespace-pre-wrap break-words", children: msg.text }) : (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [!!msg.answerTitle && (0, jsx_runtime_1.jsx)("p", { className: "text-[10px] font-semibold text-brand-navy mb-1", children: msg.answerTitle }), (0, jsx_runtime_1.jsx)(MarkdownText_1.default, { className: "whitespace-pre-wrap break-words", text: msg.text })] }), msg.sender === 'assistant' && (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [!!msg.evidenceStatus && (0, jsx_runtime_1.jsxs)("p", { className: "text-[10px] mt-2 text-gray-500", children: [(0, i18n_1.t)(language, 'evidence'), ": ", msg.evidenceStatus, msg.omittedClaims ? ` · ${msg.omittedClaims} ${(0, i18n_1.t)(language, 'unsupported')}` : ''] }), !!msg.citations?.length && (0, jsx_runtime_1.jsxs)("details", { className: "mt-2 text-[11px] rounded bg-[#FAF7F2] p-2", children: [(0, jsx_runtime_1.jsxs)("summary", { className: "cursor-pointer font-semibold text-brand-navy", children: [(0, i18n_1.t)(language, 'sources'), " (", msg.citations.length, ")"] }), msg.citations.map(c => (0, jsx_runtime_1.jsxs)("div", { className: "border-t border-[#E9E1D2] mt-2 pt-2", children: [(0, jsx_runtime_1.jsxs)("strong", { children: [c.title, " \u00B7 ", c.revision] }), (0, jsx_runtime_1.jsx)(MarkdownText_1.default, { className: "whitespace-pre-wrap mt-1", text: c.quote }), (0, jsx_runtime_1.jsxs)("small", { children: [(0, i18n_1.t)(language, 'source'), ": ", c.source_id, " \u00B7 ", c.heading] })] }, c.citation_id))] }), msg.mapGuidance?.status === 'verified' && (0, jsx_runtime_1.jsxs)("div", { className: "mt-2 rounded border border-[#E9E1D2] p-2", children: [(0, jsx_runtime_1.jsxs)("strong", { children: [msg.mapGuidance.origin, " \u2192 ", msg.mapGuidance.destination] }), (0, jsx_runtime_1.jsx)("ol", { className: "list-decimal pl-5 mt-1", children: msg.mapGuidance.steps?.map((step, i) => (0, jsx_runtime_1.jsx)("li", { children: step }, i)) })] }), !!msg.plan && (0, jsx_runtime_1.jsxs)("details", { className: "mt-2 rounded border border-[#E9E1D2] p-2", children: [(0, jsx_runtime_1.jsx)("summary", { className: "cursor-pointer font-semibold", children: (0, i18n_1.t)(language, 'draftPlan') }), msg.plan.activities.map((a, i) => (0, jsx_runtime_1.jsxs)("p", { className: "mt-1", children: [a.suggested_time ? (0, jsx_runtime_1.jsxs)("strong", { children: [a.suggested_time.start, "\u2013", a.suggested_time.end, " \u00B7 "] }) : null, a.description] }, i)), (0, jsx_runtime_1.jsx)("p", { className: "mt-2 text-amber-800", children: (0, i18n_1.t)(language, 'bookingDisclaimer') })] }), !!msg.taskProgress?.length && (0, jsx_runtime_1.jsx)("div", { className: "mt-2 border-t border-[#E9E1D2] pt-2", children: msg.taskProgress.map(task => (0, jsx_runtime_1.jsxs)("p", { children: [['knowledge', 'navigation', 'planning'].includes(task.kind) ? (0, i18n_1.taskLabel)(language, task.kind) : kindLabel(task.kind), ": ", (0, i18n_1.taskLabel)(language, task.status)] }, task.id)) }), !!msg.agentProgress?.length && (0, jsx_runtime_1.jsxs)("details", { className: "mt-2 rounded border border-[#E9E1D2] bg-[#FAF7F2] p-2", children: [(0, jsx_runtime_1.jsx)("summary", { className: "cursor-pointer font-semibold text-brand-navy", children: (0, i18n_1.t)(language, 'agentProgress') }), (0, jsx_runtime_1.jsx)("ol", { className: "mt-1 space-y-1 list-decimal pl-4", children: msg.agentProgress.map(item => (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("span", { className: "font-medium", children: item.capability || (0, i18n_1.t)(language, 'agentStep') }), (0, jsx_runtime_1.jsxs)("span", { className: "text-gray-500", children: [" \u00B7 ", item.status] })] }, `${item.step}:${item.requirement_id || ''}`)) })] }), !!msg.supportContact && (0, jsx_runtime_1.jsxs)("div", { className: "mt-2 rounded border border-[#D9E5D7] bg-[#F6FAF5] p-2", children: [(0, jsx_runtime_1.jsxs)("strong", { children: [(0, i18n_1.t)(language, 'supportContact'), ": ", msg.supportContact.label] }), !!msg.supportContact.extensions.length && (0, jsx_runtime_1.jsxs)("p", { children: [(0, i18n_1.t)(language, 'extension'), ": ", msg.supportContact.extensions.join(' / ')] }), !!msg.supportContact.phones.length && (0, jsx_runtime_1.jsxs)("p", { children: [(0, i18n_1.t)(language, 'phone'), ": ", msg.supportContact.phones.join(' / ')] }), msg.supportContact.email && (0, jsx_runtime_1.jsxs)("p", { children: [(0, i18n_1.t)(language, 'email'), ": ", msg.supportContact.email] })] }), !!msg.relatedTopics?.length && (0, jsx_runtime_1.jsxs)("div", { className: "mt-2", children: [(0, jsx_runtime_1.jsx)("p", { className: "text-[11px] font-semibold text-brand-navy", children: (0, i18n_1.t)(language, 'relatedTopics') }), (0, jsx_runtime_1.jsx)("div", { className: "flex flex-wrap gap-2 mt-1", children: msg.relatedTopics.map(topic => (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: () => onSendMessage(topic.query), className: "min-h-11 border border-[#D8E6F5] bg-[#F4F8FC] rounded-full px-3 py-1.5 hover:bg-[#EAF2FA]", children: topic.label }, `${topic.language}:${topic.label}`)) })] }), !!msg.suggestedAction && (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: () => onSuggested(msg.suggestedAction.kind, msg.suggestedAction.details, msg.suggestedAction.service, msg.suggestedAction.payload, msg.suggestedAction.change), className: "mt-2 min-h-11 rounded-full border border-[#B89B6A] text-[#73532C] px-3 py-1.5 hover:bg-[#F8F1E7]", children: (0, i18n_1.t)(language, 'reviewKind').replace('{kind}', kindLabel(msg.suggestedAction.kind)) }), !!msg.actionOptions?.length && (0, jsx_runtime_1.jsx)("div", { className: "flex flex-wrap gap-2 mt-2", children: msg.actionOptions.map((a, i) => (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: () => onSuggested(a.kind, ''), className: "min-h-11 border border-stone-300 rounded-full px-3 py-1 hover:bg-stone-50", children: kindLabel(a.kind) }, i)) })] }), (0, jsx_runtime_1.jsx)("div", { className: "mt-1 text-[10px] text-gray-400 text-right", children: msg.time })] })] }, msg.id)), isThinking && (0, jsx_runtime_1.jsx)("div", { role: "status", className: "text-xs text-brand-navy bg-white border border-[#E9E1D2] rounded-xl p-3 self-start", children: (0, i18n_1.t)(language, 'consulting') }), requestPreview && (0, jsx_runtime_1.jsxs)("div", { className: "border border-[#E3D7C5] bg-[#F6EFE3] p-3.5 shadow-sm space-y-2 rounded-lg", "data-purpose": "review-request-card", children: [(0, jsx_runtime_1.jsxs)("div", { className: "flex justify-between gap-2 items-center", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("h3", { className: "font-serif font-bold text-base text-brand-navyDark", children: (0, i18n_1.t)(language, 'reviewRequest') }), (0, jsx_runtime_1.jsx)("p", { className: "text-[11px] text-gray-600", children: (0, i18n_1.t)(language, 'reviewDisclaimer') })] }), !prepared && (0, jsx_runtime_1.jsx)("button", { disabled: pending, onClick: onOpenEditModal, className: "min-h-11 text-xs border bg-white rounded-full px-3 py-1", children: (0, i18n_1.t)(language, 'edit') })] }), (0, jsx_runtime_1.jsx)("p", { className: "whitespace-pre-wrap break-words bg-white/70 rounded-lg border border-[#E9E1D2] p-3 text-xs", children: requestPreview }), prepared && priceDisclosureRequired && (0, jsx_runtime_1.jsxs)("div", { className: "rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs space-y-2", children: [(0, jsx_runtime_1.jsx)("p", { children: priceDisclosure }), (0, jsx_runtime_1.jsxs)("label", { className: "flex gap-2 items-start", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: priceAcknowledged, onChange: event => onPriceAcknowledged(event.target.checked), className: "mt-0.5" }), (0, jsx_runtime_1.jsx)("span", { children: (0, i18n_1.t)(language, 'priceDisclosureAcknowledgement') })] })] }), prepared && outsideOperatingHours && (0, jsx_runtime_1.jsx)("p", { className: "rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs", children: (0, i18n_1.t)(language, 'outsideOperatingHours').replace('{time}', nextOpenLabel || (0, i18n_1.t)(language, 'staffVerify')) }), prepared ? (0, jsx_runtime_1.jsxs)("div", { className: "flex flex-wrap gap-2", children: [(0, jsx_runtime_1.jsx)("button", { disabled: pending || (priceDisclosureRequired && !priceAcknowledged), onClick: onConfirm, className: "min-h-11 bg-[#75552D] text-white rounded-lg text-xs py-2 px-4 disabled:opacity-50", children: (0, i18n_1.t)(language, pending ? 'processing' : 'confirmStaff') }), (0, jsx_runtime_1.jsx)("button", { disabled: pending, onClick: onCancel, className: "min-h-11 border border-[#73532C] rounded-lg text-xs py-2 px-4", children: (0, i18n_1.t)(language, 'discard') })] }) : (0, jsx_runtime_1.jsxs)("div", { className: "flex flex-wrap gap-2", children: [(0, jsx_runtime_1.jsx)("button", { disabled: pending, onClick: onPrepare, className: "min-h-11 bg-[#75552D] text-white rounded-lg text-xs py-2 px-4 disabled:opacity-50", children: (0, i18n_1.t)(language, pending ? 'preparing' : 'prepare') }), (0, jsx_runtime_1.jsx)("button", { disabled: pending, onClick: onStartRequest, className: "min-h-11 border border-[#73532C] rounded-lg text-xs py-2 px-4", children: (0, i18n_1.t)(language, 'editDetails') })] })] }), !requestPreview && ready && canCreateRequest && (0, jsx_runtime_1.jsx)("button", { className: "self-start min-h-11 border border-[#E9E1D2] bg-white/75 text-[#73532C] rounded-full px-4 py-2 text-xs", onClick: onStartRequest, children: (0, i18n_1.t)(language, 'createRequest') }), (0, jsx_runtime_1.jsx)("div", { ref: bottom })] }), mapPlaces.length > 0 && (0, jsx_runtime_1.jsxs)("label", { className: "text-[11px] text-gray-600", children: [(0, i18n_1.t)(language, 'mapOrigin'), " ", (0, jsx_runtime_1.jsxs)("select", { className: "rounded border p-1 bg-white ml-1", value: startLocation, onChange: e => onStartLocation(e.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: (0, i18n_1.t)(language, 'default') }), mapPlaces.map(p => (0, jsx_runtime_1.jsx)("option", { value: p.id, children: p.label }, p.id))] })] }), (0, jsx_runtime_1.jsxs)("form", { onSubmit: send, className: "p-1.5 pl-4 border border-[#E0D8C8] shadow-sm flex items-center gap-3 shrink-0 rounded-lg bg-white/85", "data-purpose": "chat-input-bar", children: [(0, jsx_runtime_1.jsx)("input", { "aria-label": (0, i18n_1.t)(language, 'askConcierge'), value: value, maxLength: 500, disabled: !ready || isThinking, onChange: e => onChange(e.target.value), className: "flex-1 min-w-0 text-xs py-2 outline-none bg-transparent", placeholder: (0, i18n_1.t)(language, 'askPlaceholder') }), (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: onVoice, disabled: !ready || !voiceAvailable, title: (0, i18n_1.t)(language, 'voiceToggle'), className: "min-w-11 min-h-11 text-[#73532C] disabled:opacity-40 text-xs px-2", children: "\uD83C\uDF99" }), (0, jsx_runtime_1.jsx)("button", { type: "submit", disabled: !ready || isThinking || value.trim().length < 2, className: "min-h-11 bg-[#142742] text-white rounded-lg py-2 px-4 text-xs disabled:opacity-40", children: (0, i18n_1.t)(language, 'send') })] })] });
 };
 exports.ChatSection = ChatSection;
 

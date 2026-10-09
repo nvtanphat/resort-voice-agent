@@ -43,7 +43,7 @@ def test_registry_owns_default_tool_risk_and_confirmation_policy():
     assert route_branch_for_request_kind("directions") == "navigation"
 
     assert service_tool("amenity_delivery") == "service_action"
-    assert set(accepted_slots("amenity_delivery")) == {"room_number", "quantity"}
+    assert set(accepted_slots("amenity_delivery")) == {"room_number", "quantity", "requested_item", "unit"}
     assert service_risk_tier("amenity_delivery") == 1
     assert service_requires_confirmation("amenity_delivery") is False
     assert service_confirmation_boundary("amenity_delivery") == "policy"

@@ -391,15 +391,11 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                 continue
             kind = definition.request_kind
             code = command.goal or ''
-            slots = apply_preference_slots(extract_slots(query, language, kind, mode=code), code)
-            for slot in command.slots:
-                # Keep the typed, deterministic extraction authoritative for
-                # numeric/time fields.  Model slot text is only a verbatim
-                # hint; replacing an extracted integer with values such as
-                # ``"2 towels"`` makes the later workflow payload lose the
-                # quantity or fail its contract.
-                if slot.name not in slots:
-                    slots[slot.name] = slot.text
+            hints = {slot.name: slot.text for slot in command.slots}
+            # Validated model spans seed text fields and counting units;
+            # deterministic extraction still owns numeric/time normalization.
+            slots = apply_preference_slots(
+                extract_slots(query, language, kind, mode=code, existing=hints), code)
             candidates.append(ServiceCandidate(
                 id=f'S{len(candidates)+1}', service_code=code,
                 request_kind=kind, guest_text=query[:500], slot_source_query=query,

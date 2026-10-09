@@ -289,6 +289,8 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         keys = {'facets': (facet,) if facet else (), 'fact_types': facet_fact_types(facet),
                 'contexts': _mentioned_contexts(q, language)}
         structured_entities, structured_fact_types = structured_selectors(q, language, facet)
+        keys['entity_ids'] = (property_entity_matches(q, language, structured_dataset.aliases)
+                              if structured_dataset is not None else ())
         if structured_entities and structured_fact_types:
             record_metric('rag.structured_lookup_candidate', language)
         contextual = False
@@ -334,12 +336,18 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                 if not filtered_sources:
                     result.mode = 'context_filter_abstention'
                     contextual = False
-            if result.sources and (not answerable(keys, q, result.sources[0], language=language, dense_threshold=cfg.rag_min_dense_similarity)):
-                answerability_failure = {'requested_facets': list(keys['facets']), 'source_fact_type': result.sources[0].get('fact_type', '')}
-                result.sources = []
-                result.answer = abstention_answer(language)
-                result.mode = 'answerability_abstention'
-                contextual = False
+            if result.sources:
+                accepted = [source for source in result.sources
+                            if answerable(keys, q, source, language=language,
+                                          dense_threshold=cfg.rag_min_dense_similarity)]
+                if len(accepted) != len(result.sources):
+                    answerability_failure = {'requested_facets': list(keys['facets']),
+                                             'rejected_count': len(result.sources) - len(accepted)}
+                    result.sources = accepted
+                    result.answer = accepted[0]['content'] if accepted else abstention_answer(language)
+                    if not accepted:
+                        result.mode = 'answerability_abstention'
+                        contextual = False
         speech_metric("rag", language, retrieval_started,
                       "with_evidence" if result.sources else "no_evidence")
         if not result.sources and revoked_anchor is not None:

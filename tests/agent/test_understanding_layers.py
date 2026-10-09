@@ -352,7 +352,7 @@ def test_router_abstain_and_slm_share_one_query_embedding(monkeypatch: pytest.Mo
     support = _TurnRuntimeSupport(
         cfg=cfg, workflows=SimpleNamespace(workflow_projection=lambda *_: None),
         conversations=SimpleNamespace(workflow_projection=lambda *_: None,
-                                      recent_anchor=lambda *_: None),
+                                          recent_anchor=lambda *_: None, recent_anchors=lambda *_: ()),
         agent_checkpoints=None,
         agent_tasks=SimpleNamespace(load=lambda *_: None, clear=lambda *_: None),
         audio_admission=audio, slm_permitted=lambda: True,
@@ -647,8 +647,8 @@ def test_command_cancel_active_ticket_requests_staff_cancellation(tmp_path: Path
 
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["request_change"]["change_state"] == "cancel_requested"
-    assert app.state.workflows.request_detail(active["id"])["guest_change_state"] == "cancel_requested"
+    assert body["request_change"]["needs_confirmation"] is True
+    assert app.state.workflows.request_detail(active["id"])["guest_change_state"] == "none"
 
 
 def test_command_modify_active_ticket_extracts_new_time(tmp_path: Path, understand):
@@ -665,10 +665,10 @@ def test_command_modify_active_ticket_extracts_new_time(tmp_path: Path, understa
 
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["request_change"]["change_state"] == "modify_requested"
+    assert body["request_change"]["needs_confirmation"] is True
     detail = app.state.workflows.request_detail(active["id"])
-    assert detail["guest_change_state"] == "modify_requested"
-    assert detail["guest_change_payload"] == {"preferred_time": "09:30"}
+    assert detail["guest_change_state"] == "none"
+    assert body["service_payload"] == {"preferred_time": "09:30"}
 
 
 def test_command_modify_without_changed_slots_needs_details(tmp_path: Path, understand):
@@ -711,7 +711,8 @@ def test_cancel_and_start_goal_changes_ticket_and_prepares_replacement(
         Command("Cancel"),
         Command(
             "StartGoal", goal="amenity_delivery",
-            slots=(CommandSlot("quantity", "2"), CommandSlot("room_number", "305")),
+            slots=(CommandSlot("quantity", "2"), CommandSlot("room_number", "305"),
+                   CommandSlot("requested_item", "towels")),
         ),
     )
     app = _client(tmp_path)
@@ -725,7 +726,7 @@ def test_cancel_and_start_goal_changes_ticket_and_prepares_replacement(
 
     assert response.status_code == 200, response.text
     body = response.json()
-    assert app.state.workflows.request_detail(active["id"])["guest_change_state"] == "cancel_requested"
+    assert app.state.workflows.request_detail(active["id"])["guest_change_state"] == "none"
     assert any(item["service_code"] == "amenity_delivery" for item in body["proposed_actions"])
 
 

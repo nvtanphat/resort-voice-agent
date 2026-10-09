@@ -23,7 +23,7 @@ def test_ack_clock_is_separate_from_service_clock_and_escalates_twice():
     try:
         proposal = workflows.prepare(
             session, 'facilities', 'en', 'Fresh bath towels for room 305',
-            'clock-12345678', {'room_number': '305', 'quantity': 2, 'note': 'towels'}, service_code='amenity_delivery')
+            'clock-12345678', {'room_number': '305', 'quantity': 2, 'requested_item': 'bath towels', 'note': 'towels'}, service_code='amenity_delivery')
         row = workflows.confirm(session, proposal['id'], True)
         assert row['ack_due_at'] > row['created_at']
         assert row['sla_due_at'] == 0
@@ -58,7 +58,7 @@ def test_staff_work_states_and_feedback_are_durable():
     try:
         proposal = workflows.prepare(
             session, 'facilities', 'en', 'Fresh bath towels for room 306',
-            'state-12345678', {'room_number': '306', 'quantity': 1, 'note': 'towels'}, service_code='amenity_delivery')
+            'state-12345678', {'room_number': '306', 'quantity': 1, 'requested_item': 'bath towels', 'note': 'towels'}, service_code='amenity_delivery')
         row = workflows.confirm(session, proposal['id'], True)
         assert row['priority'] == 2
         workflows.staff_transition(row['id'], 'approve', 'housekeeping', verified=True,
@@ -92,7 +92,7 @@ def test_legacy_zero_ack_clock_is_repaired_from_configured_policy():
     try:
         proposal = workflows.prepare(
             session, 'facilities', 'en', 'Fresh bath towels for room 305',
-            'legacy-clock-123456', {'room_number': '305', 'quantity': 1}, service_code='amenity_delivery')
+            'legacy-clock-123456', {'room_number': '305', 'quantity': 1, 'requested_item':'bath towels'}, service_code='amenity_delivery')
         row = workflows.confirm(session, proposal['id'], True)
         with workflows.store.connection(write=True) as con:
             con.execute('UPDATE service_requests SET ack_due_at=0 WHERE id=?', (row['id'],))
@@ -130,12 +130,12 @@ def test_quantity_limit_dedupe_price_disclosure_and_room_boundary(monkeypatch):
         monkeypatch.setattr(workflows, '_service_flags', flags_with_quantity_limit)
         oversized = workflows.prepare(
             session, 'facilities', 'en', 'Fresh bath towels for room 305',
-            'quantity-12345678', {'room_number': '305', 'quantity': 5, 'note': 'towels'}, service_code='amenity_delivery')
+            'quantity-12345678', {'room_number': '305', 'quantity': 5, 'requested_item': 'bath towels', 'note': 'towels'}, service_code='amenity_delivery')
         assert oversized['quantity_requires_staff_review'] is True
         first = workflows.confirm(session, oversized['id'], True)
         duplicate = workflows.prepare(
             session, 'facilities', 'en', 'Fresh bath towels for room 305',
-            'quantity-22345678', {'room_number': '305', 'quantity': 5, 'note': 'towels'}, service_code='amenity_delivery')
+            'quantity-22345678', {'room_number': '305', 'quantity': 5, 'requested_item': 'bath towels', 'note': 'towels'}, service_code='amenity_delivery')
         replay = workflows.confirm(session, duplicate['id'], True)
         assert replay['deduplicated'] is True
         assert replay['id'] == first['id']
@@ -152,7 +152,7 @@ def test_quantity_limit_dedupe_price_disclosure_and_room_boundary(monkeypatch):
         with pytest.raises(PermissionError, match='inventory'):
             workflows.prepare(
                 session, 'facilities', 'en', 'Fresh bath towels for room 999',
-                'room-12345678', {'room_number': '999', 'quantity': 1, 'note': 'towels'}, service_code='amenity_delivery')
+                'room-12345678', {'room_number': '999', 'quantity': 1, 'requested_item': 'bath towels', 'note': 'towels'}, service_code='amenity_delivery')
     finally:
         directory.cleanup()
 
@@ -205,7 +205,7 @@ def test_sqlite_guard_rejects_direct_invalid_state_transition():
     try:
         proposal = workflows.prepare(
             session, 'facilities', 'en', 'Fresh bath towels for room 307',
-            'guard-12345678', {'room_number': '307', 'quantity': 1, 'note': 'towels'}, service_code='amenity_delivery')
+            'guard-12345678', {'room_number': '307', 'quantity': 1, 'requested_item': 'bath towels', 'note': 'towels'}, service_code='amenity_delivery')
         row = workflows.confirm(session, proposal['id'], True)
         with pytest.raises(sqlite3.IntegrityError, match='illegal service request transition|review evidence'):
             with workflows.store.connection(write=True) as con:

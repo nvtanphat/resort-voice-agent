@@ -88,8 +88,8 @@ def test_service_selector_returns_catalog_candidates_and_registry_slots():
         'Please bring fresh bath towels', language='en',
         enabled_request_kinds=frozenset({'facilities'}))
     towels = next(item for item in candidates if item['service_mode'] == 'amenity_delivery')
-    assert towels['catalog_service_id'] == 'service.bath_towels'
-    assert towels['accepted_slots'] == ['room_number', 'quantity']
+    assert not towels.get('catalog_service_id'), 'A generic item request must not bind a bath-towel catalog row'
+    assert towels['accepted_slots'] == ['room_number', 'requested_item', 'quantity', 'unit']
     assert len(candidates) <= 3
 
 
@@ -123,7 +123,7 @@ def test_model_command_prompt_rechecks_selector_candidates_against_registry(monk
     services = json.loads(captured['messages'][1]['content'])['available_services']
     assert result and result[0].goal == 'amenity_delivery'
     assert all(item['service_mode'] != 'not_a_registry_service' for item in services)
-    assert services[0]['accepted_slots'] == ['room_number', 'quantity']
+    assert services[0]['accepted_slots'] == ['room_number', 'requested_item', 'quantity', 'unit']
 
 
 def test_command_schema_closes_goals_and_slots_per_candidate():
@@ -175,10 +175,10 @@ def test_model_commands_sends_examples_only_for_offered_goals(monkeypatch):
             {'guest_turn': 'pool hours?', 'commands': [{'type': 'AskInfo', 'query': 'pool hours?'}]},
         ))
     content = json.loads(captured['messages'][1]['content'])
-    assert [item['guest_turn'] for item in content['examples']] == ['two towels', 'pool hours?']
+    assert [item['guest_turn'] for item in content['examples']] == ['two towels', 'late checkout', 'pool hours?']
     variants = captured['format']['properties']['commands']['items']['anyOf']
     assert [item['properties']['goal']['const'] for item in variants
-            if item['properties']['type']['const'] == 'StartGoal'] == ['amenity_delivery']
+            if item['properties']['type']['const'] == 'StartGoal'] == [service['service_mode'] for service in content['available_services']]
 
 
 class _AxisEmbedder:
@@ -250,8 +250,11 @@ def test_load_command_examples_keeps_reviewed_multi_step_commands(tmp_path):
         'amenity_delivery', 'transport_request']
 
 
-def test_availability_mode_uses_only_the_best_semantic_match():
+def test_availability_mode_uses_only_the_best_semantic_match(monkeypatch):
     selector = ServiceSelector(dataset_path(SERVICE_CATALOG), _ServiceEmbedder(), top_k=8)
+    monkeypatch.setattr(ServiceSelector, 'select', lambda *args, **kwargs: (
+        {'service_mode':'amenity_delivery','score':1.0},
+        {'service_mode':'dining_reservation','score':0.5}))
     # The best match (towels) has no availability source; a lower-ranked
     # bookable service must not be picked just because it has one.
     assert selector.select_availability_mode(

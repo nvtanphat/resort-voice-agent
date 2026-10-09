@@ -147,11 +147,9 @@ SERVICE_SLOTS = _DOMAIN.service_slots
 # contract mirrors these names for OpenAPI, while workflow validation and
 # continuation logic consume this registry-owned set instead of copying a
 # second list in each layer.
-SERVICE_PAYLOAD_SLOTS = frozenset({
-    'room_number', 'quantity', 'preferred_time', 'party_size',
-    'restaurant_name', 'note', 'price_acknowledged',
-})
-SERVICE_PAYLOAD_TEXT_SLOTS = ('room_number', 'preferred_time', 'restaurant_name', 'note')
+SERVICE_PAYLOAD_SLOTS = SERVICE_SLOTS | frozenset({'note', 'price_acknowledged'})
+SERVICE_PAYLOAD_TEXT_SLOTS = ('requested_date', 'room_number', 'preferred_time', 'restaurant_name', 'note',
+                            'requested_item', 'unit')
 SLOT_REPLY_SLOTS = ('quantity', 'preferred_time', 'party_size')
 VOICE_NUMERIC_SLOTS = frozenset({'room_number', 'quantity'})
 DOMAIN_PROFILE_ID = _DOMAIN.profile_id

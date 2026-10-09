@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import secrets
 import time
+from datetime import date
+from contextlib import nullcontext
+from concierge_kiosk.i18n import text as i18n_text
 from functools import lru_cache
 from collections.abc import Mapping
 from .base import InvalidTransition, KINDS, LANGUAGES, SENSITIVE, digest
@@ -96,6 +99,14 @@ class SubmissionWorkflowMixin:
             except (TypeError, ValueError, json.JSONDecodeError):
                 candidate = {}
             if isinstance(candidate, dict) and str(candidate.get('room_number') or '').strip() == room:
+                # Two different items for the same room are different requests;
+                # legacy item-less tickets cannot swallow a new item request.
+                if ('requested_item' in candidate or 'requested_item' in payload) and any(
+                        candidate.get(key) != payload.get(key)
+                        for key in ('requested_item', 'unit', 'quantity')):
+                    continue
+                if candidate.get('requested_date') != payload.get('requested_date'):
+                    continue
                 return row
         return None
 
@@ -171,7 +182,8 @@ class SubmissionWorkflowMixin:
             return alert
 
     def prepare(self, session_id: str, kind: str, language: str, details: str, nonce: str,
-                payload: dict | None = None, *, service_code: str | None = None) -> dict:
+                payload: dict | None = None, *, service_code: str | None = None,
+                _change: dict | None = None) -> dict:
         if kind not in KINDS or language not in LANGUAGES:
             raise ValueError("Invalid category or language")
         self._enforce_property_policy(kind, language)
@@ -184,9 +196,13 @@ class SubmissionWorkflowMixin:
             raise ValueError("Emergency: contact nearby hotel staff or local emergency services now; this kiosk cannot dispatch responders")
         if not 8 <= len(nonce) <= 80 or not all(c.isalnum() or c in "-_" for c in nonce):
             raise ValueError("Invalid request nonce")
-        payload = payload or {"note": details}
+        payload = payload or ({} if _change is not None else {"note": details})
         if not isinstance(payload, dict):
             raise ValueError("Invalid structured request payload")
+        if '_request_change' in payload:
+            raise ValueError('Reserved proposal field')
+        if SENSITIVE.search(json.dumps(payload, ensure_ascii=False)):
+            raise ValueError('Structured request payload contains sensitive data')
         self._validate_quantity(payload)
         self._validate_room_inventory(str(payload.get('room_number') or ''))
         # The service is the one understanding proposed (or the kind's
@@ -196,6 +212,14 @@ class SubmissionWorkflowMixin:
             raise ValueError("Service does not match the request kind")
         service_code = definition.code if definition is not None else (default_service_for(kind) or '')
         definition = service_definition(service_code) if service_code else None
+        if payload.get('requested_date') is not None:
+            if definition is None or 'requested_date' not in definition.required_slots + definition.optional_slots:
+                raise ValueError('Service does not accept a date')
+            date.fromisoformat(payload['requested_date'])
+        if _change is None and definition is not None and 'requested_item' in definition.required_slots:
+            item = payload.get('requested_item')
+            if not isinstance(item, str) or not 1 <= len(item.strip()) <= 120:
+                raise ValueError('Requested item is required')
         venue_definition = definition
         if venue_definition is None or venue_definition.venue_slot is None:
             venue_definition = next((candidate for candidate in SERVICE_DEFINITIONS.values()
@@ -209,12 +233,14 @@ class SubmissionWorkflowMixin:
         window = service_window_state(service_code, cfg=self.cfg) if service_code else {
             'within_hours': True, 'next_open_at': None, 'status': 'unknown'}
         payload = dict(payload)
+        if _change is not None:
+            payload['_request_change'] = dict(_change)
         if service_code:
             payload['_service_code'] = service_code
         payload['_service_window'] = {
             'status': window['status'], 'next_open_at': window['next_open_at']}
         payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        if len(payload_json.encode("utf-8")) > 1200 or SENSITIVE.search(payload_json):
+        if len(payload_json.encode("utf-8")) > 1200:
             raise ValueError("Structured request payload is invalid or contains sensitive data")
         with self.store.connection(write=True) as con:
             now = int(time.time())
@@ -312,6 +338,27 @@ class SubmissionWorkflowMixin:
             except (TypeError, ValueError, json.JSONDecodeError):
                 proposal_payload = {}
             proposal_payload = proposal_payload if isinstance(proposal_payload, dict) else {}
+            target = proposal_payload.get('_request_change')
+            if isinstance(target, dict):
+                owned = con.execute(
+                    'SELECT r.* FROM service_requests r JOIN proposals p ON p.id=r.proposal_id '
+                    'WHERE r.id=? AND r.property_id=? AND p.session_id=? AND p.property_id=?',
+                    (target.get('request_id'), self.property_id, session_id, self.property_id)).fetchone()
+                if owned is None:
+                    raise PermissionError('Change ticket is not owned by this session')
+                if row['status'] == 'confirmed':
+                    return {**dict(owned), 'idempotent_replay': True,
+                            'request_change': {'change_state': owned['guest_change_state'],
+                                               'action': target['action']}}
+                if row['status'] != 'awaiting_confirmation' or row['expires_at'] <= now:
+                    raise InvalidTransition('Proposal expired or cancelled')
+                changes = {key: value for key, value in proposal_payload.items()
+                           if not key.startswith('_')}
+                changed = self.request_guest_change(session_id, owned['id'], target['action'],
+                    'change-' + proposal_id, payload=changes, _connection=con)
+                con.execute("UPDATE proposals SET status='confirmed' WHERE id=?", (proposal_id,))
+                return {**dict(owned), 'idempotent_replay': False,
+                        'request_change': {**changed, 'action': target['action']}}
             self._validate_room_inventory(str(proposal_payload.get('room_number') or ''))
             stored_service = proposal_payload.get('_service_code')
             definition = service_definition(stored_service) if isinstance(stored_service, str) else None
@@ -391,7 +438,7 @@ class SubmissionWorkflowMixin:
 
     def request_guest_change(self, session_id: str, request_id: str, change_type: str,
                              nonce: str, *, payload: dict | None = None,
-                             note: str = '') -> dict:
+                             note: str = '', _connection=None) -> dict:
         """Queue a guest-requested cancellation or modification for staff review.
 
         The original request remains immutable. Staff review either marks the
@@ -421,7 +468,8 @@ class SubmissionWorkflowMixin:
         if len(payload_json.encode('utf-8')) > 1200 or SENSITIVE.search(payload_json):
             raise ValueError('Change payload is invalid or contains sensitive data')
         nonce_hash = digest(nonce)
-        with self.store.connection(write=True) as con:
+        with (nullcontext(_connection) if _connection is not None
+              else self.store.connection(write=True)) as con:
             now = int(time.time())
             row = con.execute(
                 'SELECT r.*,p.session_id FROM service_requests r JOIN proposals p ON p.id=r.proposal_id '
@@ -454,6 +502,46 @@ class SubmissionWorkflowMixin:
             )
             return {'request_id': request_id, 'change_state': target,
                     'status': row['status'], 'idempotent_replay': False}
+
+    def change_ticket(self, session_id: str, request_id: str) -> dict:
+        with self.store.connection() as con:
+            row = con.execute(
+                'SELECT r.* FROM service_requests r JOIN proposals p ON p.id=r.proposal_id '
+                'WHERE r.id=? AND r.property_id=? AND p.session_id=? AND p.property_id=?',
+                (request_id, self.property_id, session_id, self.property_id)).fetchone()
+        if row is None:
+            raise PermissionError('Request not found for this session')
+        return dict(row)
+
+    def review_change(self, session_id: str, request_id: str, action: str,
+                      language: str, payload: dict | None = None) -> dict:
+        row = self.change_ticket(session_id, request_id)
+        if action not in {'cancel', 'modify'}:
+            raise ValueError('Invalid request change')
+        if row['status'] not in {'pending_staff', 'approved', 'in_progress', 'paused'}:
+            raise InvalidTransition('This request can no longer be changed')
+        if row['guest_change_state'] in {'cancel_requested', 'modify_requested', 'cancelled'}:
+            raise InvalidTransition('A request change is already pending or final')
+        changes = dict(payload or {})
+        definition = service_definition(row['service_code'])
+        allowed = set(definition.required_slots + definition.optional_slots) | {'note'} if definition else set()
+        if set(changes) - allowed or (action == 'cancel' and changes):
+            raise ValueError('Unsupported change fields')
+        if action == 'modify' and not changes:
+            raise ValueError('Modification requires changed fields')
+        if changes.get('requested_date') is not None:
+            date.fromisoformat(changes['requested_date'])
+        label = i18n_text('request.change.' + action + '_label', language)
+        details = i18n_text('request.change.review', language,
+            code=request_id[:8], action=label, changes=json.dumps(changes, ensure_ascii=False))
+        return {'kind': row['kind'], 'service': row['service_code'], 'details': details,
+                'payload': changes, 'change': {'request_id': request_id, 'action': action}}
+
+    def prepare_change(self, session_id: str, request_id: str, action: str,
+                       language: str, nonce: str, payload: dict | None = None) -> dict:
+        review = self.review_change(session_id, request_id, action, language, payload)
+        return self.prepare(session_id, review['kind'], language, review['details'], nonce,
+            review['payload'], service_code=review['service'], _change=review['change'])
 
     def cancel_proposal(self, session_id: str, proposal_id: str) -> dict:
         """Cancel a review-stage proposal; never undo a queued staff request.

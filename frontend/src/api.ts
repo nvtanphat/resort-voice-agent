@@ -51,10 +51,11 @@ export interface SupportContact {
   verified_at:string|null; grounding:'manifest_pinned_directory';
 }
 export interface Answer {
+  service_payload?: ServicePayload;
   answer: string; answer_title?: string | null; citations: Citation[]; speech_turn_id: string;
   speech_plan?: SpeechPlan;
   clear_suggestions?: boolean;
-  suggested_action: {kind: RequestKind; details: string; service?: string} | null;
+  suggested_action: {change?:RequestChangeTarget;kind: RequestKind; details: string; service?: string} | null;
   action_options?: Array<{kind:RequestKind}>;
   tool_route?: string; retrieval_mode?: string;
   plan_is_draft?: boolean; plan_topics?: string[]; missing_topics?: string[];
@@ -189,12 +190,13 @@ export function ask(query:string,language:LanguageCode,previous_query:string,sig
       return response.json() as Promise<Answer>;
     });
 }
-export const prepare = (kind:RequestKind,language:LanguageCode,details:string,nonce:string,payload?:ServicePayload,dataConsent=false,service?:string) =>
+export type RequestChangeTarget = {request_id:string;action:'cancel'|'modify'};
+export const prepare = (kind:RequestKind,language:LanguageCode,details:string,nonce:string,payload?:ServicePayload,dataConsent=false,service?:string,change?:RequestChangeTarget) =>
   request<{proposal_id:string;kind:RequestKind;details:string;status:string;expires_at:number;requires_confirmation:boolean;staff_verification_required:boolean;service_code?:string;price_disclosure_required?:boolean;price_disclosure?:string;outside_operating_hours?:boolean;next_open_at?:number|null}>(
-    '/api/requests/prepare','POST',{kind,language,details,nonce,payload:payload||null,data_consent:dataConsent,...(service?{service}:{})});
+    '/api/requests/prepare','POST',{kind,language,details,nonce,payload:payload||null,data_consent:dataConsent,...(service?{service}:{}),...(change?{change}:{})});
 export interface GuestVerificationInput { room_number:string; last_name?:string; room_qr_token?:string; }
 export const confirm = (proposal_id:string, verification?:GuestVerificationInput, priceAcknowledged=false) =>
-  request<{request_id:string;status:RequestStatus;message:string;guest_verification_state:string;eta_minutes:number|null;external_dispatch_state:string;confirmation_code:string;status_url:string;status_token_expires_at:number}>('/api/requests/confirm','POST',{proposal_id,confirmed:true,price_acknowledged:priceAcknowledged,verification:verification||null});
+  request<{request_id:string;status:RequestStatus;message:string;change_state?:string;guest_verification_state:string;eta_minutes:number|null;external_dispatch_state:string;confirmation_code:string;status_url:string;status_token_expires_at:number}>('/api/requests/confirm','POST',{proposal_id,confirmed:true,price_acknowledged:priceAcknowledged,verification:verification||null});
 export const cancelProposal = (proposal_id:string) => request('/api/requests/cancel','POST',{proposal_id});
 export const myRequests = () => request<{items:RequestRow[]}>('/api/requests/mine?limit=30');
 export const requestProgress = (id:string) => request<GuestRequestProgress>(`/api/requests/${encodeURIComponent(id)}/progress`);
@@ -204,7 +206,7 @@ export const requestFeedback = (id:string,rating:number,note='') =>
   request<{request_id:string;rating:number;note:string;created_at:number}>(
     `/api/requests/${encodeURIComponent(id)}/feedback`,'POST',{rating,note});
 export const requestChange = (id:string, action:'cancel'|'modify', nonce:string, payload?:ServicePayload, note='') =>
-  request<{request_id:string;change_state:string;status:RequestStatus}>(`/api/requests/${encodeURIComponent(id)}/change`,'POST',{action,nonce,payload:payload||null,note});
+  request<Awaited<ReturnType<typeof prepare>>>(`/api/requests/${encodeURIComponent(id)}/change`,'POST',{action,nonce,payload:payload||null,note});
 export const startVoiceTurn = () => request<{turn_id:string}>('/api/audio/turn/start','POST');
 export const voiceGreeting = (language:LanguageCode, signal?:AbortSignal) =>
   request<VoiceGreeting>(`/api/audio/greeting?language=${encodeURIComponent(language)}`,'POST',undefined,signal);

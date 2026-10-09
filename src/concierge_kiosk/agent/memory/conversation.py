@@ -109,7 +109,14 @@ class ConversationMemory:
         """Return the latest verified public anchor for a narrowly scoped continuation."""
         with self._lock:
             current = self._active(session, language, time.monotonic())
-            return current.turns[-1] if current is not None and current.turns else None
+            return (current.latest_anchors[0] if current is not None
+                    and len(current.latest_anchors) == 1 else None)
+
+    def recent_anchors(self, session: str, language: str) -> tuple[EvidenceAnchor, ...]:
+        """Only the latest accepted turn's bounded topics, preserving ambiguity."""
+        with self._lock:
+            current = self._active(session, language, time.monotonic())
+            return current.latest_anchors if current is not None else ()
 
 
     def commit_topic(self, session: str, language: str, *, expected_version: int,
@@ -139,6 +146,8 @@ class ConversationMemory:
                 current = SessionTopics(language, now + self.ttl)
                 self._sessions[session] = current
             if revoked is not None:
+                current.latest_anchors = tuple(item for item in current.latest_anchors
+                    if (item.source_id, item.revision) != (revoked.source_id, revoked.revision))
                 current.turns = deque((item for item in current.turns
                                        if (item.source_id, item.revision) !=
                                        (revoked.source_id, revoked.revision)), maxlen=MAX_TURNS)
@@ -150,6 +159,16 @@ class ConversationMemory:
             if sources is not None:
                 current.total_turns += 1
                 turn_number = current.total_turns
+                anchors = []
+                for source in sources[:8]:
+                    if any(item.title == source.get('title') for item in anchors):
+                        continue
+                    anchors.append(EvidenceAnchor(
+                        source_id=source['source_id'], revision=source['revision'],
+                        chunk_id=source['chunk_id'], title=source['title'], heading=source['heading'],
+                        language=source.get('language') or language,
+                        section_id=str(source.get('section_id', ''))))
+                current.latest_anchors = tuple(anchors)
                 if not sources:
                     current.turns.clear()
                 else:
@@ -164,6 +183,7 @@ class ConversationMemory:
                         current.summary.popitem(last=False)
             if suspend:
                 current.turns.clear()
+                current.latest_anchors = ()
             current.deadline = now + self.ttl
             self._bump_version_locked(session)
             for sid, value in list(self._sessions.items()):
@@ -206,7 +226,7 @@ class ConversationMemory:
         allowed = {
             None, 'confirm', 'choice', 'room_number', 'quantity', 'preferred_time',
             'party_size', 'destination', 'activity_preference', 'meal_preference',
-            'restaurant_style', 'time_window', 'preference',
+            'restaurant_style', 'time_window', 'preference', 'requested_item', 'unit', 'requested_date',
         }
         if expected_reply not in allowed:
             raise ValueError('Unsupported expected reply')

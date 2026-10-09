@@ -1,5 +1,6 @@
 """Validated HTTP request contracts shared by guest, staff and internal APIs."""
 from __future__ import annotations
+from datetime import date
 from typing import Literal
 from pydantic import BaseModel, Field, ConfigDict, StrictBool, field_validator
 from concierge_kiosk.domain.service_registry import LANGUAGES, REQUEST_KINDS
@@ -31,6 +32,9 @@ class Ask(StrictRequest):
 
 
 class ServicePayload(StrictRequest):
+    requested_date: str | None = Field(default=None, pattern=r'^\d{4}-\d{2}-\d{2}$')
+    requested_item: str | None = Field(default=None, min_length=1, max_length=120)
+    unit: str | None = Field(default=None, min_length=1, max_length=40)
     room_number: str | None = Field(default=None, max_length=24)
     quantity: int | None = Field(default=None, ge=1, le=20)
     preferred_time: str | None = Field(default=None, max_length=40)
@@ -38,6 +42,13 @@ class ServicePayload(StrictRequest):
     restaurant_name: str | None = Field(default=None, max_length=120)
     note: str = Field(default="", max_length=500)
     price_acknowledged: StrictBool = False
+
+    @field_validator('requested_date')
+    @classmethod
+    def validate_date(cls, value):
+        if value is not None:
+            date.fromisoformat(value)
+        return value
 
     @field_validator(*SERVICE_PAYLOAD_TEXT_SLOTS)
     @classmethod
@@ -64,7 +75,13 @@ class GuestVerificationInput(StrictRequest):
         # Pydantic field validators do not reliably see following fields.
         return value
 
+class RequestChangeTarget(StrictRequest):
+    request_id: str = Field(pattern=r'^[0-9a-f]{32}$')
+    action: Literal['cancel', 'modify']
+
+
 class Prepare(StrictRequest):
+    change: RequestChangeTarget | None = None
     kind: str
     language: str
     # Registry service code from the agent's suggestion; validated against
@@ -277,6 +294,7 @@ class PrepareResponse(PublicResponse):
 
 
 class ConfirmResponse(PublicResponse):
+    change_state: str | None = None
     request_id: str
     status: str
     orchestration_sync: str

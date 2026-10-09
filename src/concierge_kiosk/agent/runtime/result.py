@@ -7,8 +7,9 @@ are committed by ``ServiceActionService`` after the owning HTTP turn is accepted
 from __future__ import annotations
 
 from concierge_kiosk.domain.service_registry import (SERVICE_TOOLS, service_requires_confirmation,
-                                                     service_tool)
+                                                     service_tool, default_service_for)
 from concierge_kiosk.i18n import text as i18n_text
+from concierge_kiosk.rag.grounding.citations import rebase_citations
 from concierge_kiosk.core.domain_profile import ui_policy
 
 from .runtime import AgentRun
@@ -28,6 +29,37 @@ def _dedupe(items: list[dict], fields: tuple[str, ...]) -> list[dict]:
         seen.add(key)
         out.append(item)
     return out
+
+
+def _handoff_confirmation(meta: dict, raw: dict) -> dict | None:
+    """Project observed server-authorized handoff/change reviews, never model authority."""
+    action = raw.get('agent_action') or {}
+    suggestion = raw.get('suggested_action') or {}
+    change = suggestion.get('change')
+    if (meta.get('capability') == 'manage_request' and meta.get('verified') is True
+            and meta.get('requirement_outcome') in {'command:Cancel', 'command:Modify'}
+            and raw.get('business_state_verified') is True
+            and action.get('status') == 'confirmation_required'
+            and action.get('business_writes') == 0
+            and action.get('authority', {}).get('outcome') == 'confirm'
+            and isinstance(change, dict)
+            and change.get('action') in {'cancel', 'modify'}
+            and change.get('action') == raw.get('request_change', {}).get('action')
+            and change.get('request_id') == raw.get('request_change', {}).get('request_id')):
+        return {**suggestion, 'task_id': meta['step_id'],
+                'service_code': suggestion.get('service'),
+                'payload': raw.get('service_payload', {}), 'requires_confirmation': True}
+    if (meta.get('capability') != 'handoff_staff' or meta.get('verified') is not True
+            or meta.get('requirement_outcome') != 'command:Handoff'
+            or action.get('status') != 'confirmation_required'
+            or action.get('business_writes') != 0
+            or action.get('authority', {}).get('outcome') != 'confirm'
+            or suggestion.get('kind') != 'human'
+            or not isinstance(suggestion.get('details'), str)):
+        return None
+    return {'task_id': meta['step_id'], 'service_code': default_service_for('human'),
+            'kind': 'human', 'details': suggestion['details'], 'payload': {},
+            'requires_confirmation': True}
 
 
 def compose_multi_result(run: AgentRun, language: str) -> dict:
@@ -82,6 +114,9 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
                 'status': public_status,
             }
         else:
+            handoff = _handoff_confirmation(meta, raw)
+            if handoff is not None:
+                confirmations.append(handoff)
             raw_answer = raw.get('answer')
             raw_citations = raw.get('citations') if isinstance(raw.get('citations'), list) else []
             raw_sources = raw.get('sources') if isinstance(raw.get('sources'), list) else []
@@ -139,7 +174,7 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
         task_plan.append({
             'id': objective.id, 'capability': objective.capability,
             'depends_on': list(objective.depends_on), 'risk_tier': 0,
-            'requires_confirmation': False, 'status': public,
+            'requires_confirmation': objective.capability == 'handoff_staff', 'status': public,
         })
 
     # Backward-compatible public ordering: expose read-only work before prepared
@@ -170,8 +205,9 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
     result = {
         'answer': answer,
         'sources': sources,
-        'citations': citations,
+        'citations': rebase_citations(answer, citations),
         'suggested_action': confirmations[0] if confirmations else None,
+        'service_payload': confirmations[0].get('payload', {}) if confirmations else {},
         'action_options': ([{'kind': item.get('kind')} for item in confirmations]
                            if len(confirmations) > 1 else []),
         'proposed_actions': confirmations,
@@ -181,7 +217,7 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
         'generation_mode': 'governed_dynamic_agent',
         'request_completed': False,
         'grounding': 'agentic_multi',
-        'requires_staff_review': bool(confirmations),
+        'requires_staff_review': bool(confirmations) or run.business_write_count() > 0,
         'fast_path': False,
         'task_graph': {
             'goal_contract': run.state.goal_contract.public(),
@@ -189,7 +225,7 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
             'tasks': [item.public() for item in run.state.objectives],
         },
         'task_plan': task_plan,
-        'agent_action': {'status': 'multi_task_ready', 'business_writes': 0},
+        'agent_action': {'status': 'multi_task_ready', 'business_writes': run.business_write_count()},
         'agent_trace': run.trace(),
         'tool_calls': list(run.trace().get('tool_calls') or []),
         'agent_progress': [
@@ -208,7 +244,7 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
         result['agent_clarification'] = dict(run.state.pending_question)
         field = str(run.state.pending_question.get('field') or 'preference')
         allowed_reply_fields = {
-            'room_number', 'quantity', 'preferred_time', 'party_size',
+            'room_number', 'quantity', 'preferred_time', 'party_size', 'requested_date',
             'destination', 'activity_preference', 'meal_preference',
             'restaurant_style', 'time_window', 'preference', 'choice', 'confirm',
         }
@@ -235,11 +271,18 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
 def validate_multi_result(run: AgentRun, result: dict) -> None:
     if result.get('request_completed') is not False or result.get('grounding') != 'agentic_multi':
         raise RuntimeError('Invalid multi-goal result')
-    if result.get('agent_action', {}).get('business_writes') != 0:
-        raise RuntimeError('inference cannot commit a business write')
+    if result.get('agent_action', {}).get('business_writes') != run.business_write_count():
+        raise RuntimeError('Business write projection differs from governed workflow receipts')
     candidates = {item.id: item for item in run.state.service_candidates}
+    handoffs = {item['task_id']: item for meta, raw in zip(run.observations, run.raw_results)
+                if (item := _handoff_confirmation(meta, raw)) is not None}
     seen = set()
     for item in result.get('proposed_actions') or []:
+        if isinstance(item, dict) and item.get('task_id') in handoffs:
+            if item != handoffs[item['task_id']] or item['task_id'] in seen:
+                raise RuntimeError('handoff projection exceeded observed confirmation boundary')
+            seen.add(item['task_id'])
+            continue
         candidate = candidates.get(item.get('task_id')) if isinstance(item, dict) else None
         if (candidate is None or candidate.risk_tier not in {1, 2} or
                 item.get('service_code') != candidate.service_code or

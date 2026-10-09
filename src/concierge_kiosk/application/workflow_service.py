@@ -1,6 +1,7 @@
 """Application boundary for guest proposal preparation and confirmation."""
 from __future__ import annotations
 
+import json
 import logging
 from typing import Callable
 
@@ -19,8 +20,12 @@ class WorkflowApplicationService:
         self._logger = logger
 
     def prepare(self, session: str, body) -> tuple[dict, str]:
+        payload = body.payload.model_dump(exclude_none=True, exclude_unset=getattr(body, 'change', None) is not None) if body.payload is not None else None
+        if getattr(body, 'change', None) is not None:
+            proposal = self._workflows.prepare_change(session, body.change.request_id,
+                body.change.action, body.language, body.nonce, payload)
+            return proposal, 'not_applicable'
         graph = self._get_graph()
-        payload = body.payload.model_dump(exclude_none=True) if body.payload is not None else None
         proposal = self._workflows.prepare(
             session, body.kind, body.language, body.details, body.nonce, payload,
             service_code=getattr(body, 'service', None))
@@ -32,6 +37,12 @@ class WorkflowApplicationService:
         return proposal, 'ok'
 
     def confirm(self, session: str, body) -> dict:
+        with self._store.connection() as con:
+            proposal = con.execute('SELECT payload_json FROM proposals WHERE id=? AND session_id=? AND property_id=?',
+                (body.proposal_id, session, self._property_id)).fetchone()
+        if proposal is not None and isinstance(json.loads(proposal['payload_json']).get('_request_change'), dict):
+            return {**self._workflows.confirm(session, body.proposal_id, body.confirmed),
+                    'orchestration_sync': 'not_applicable'}
         try:
             verification = body.verification.model_dump() if body.verification is not None else None
             return self._get_graph().confirm(session, body.proposal_id, body.confirmed,

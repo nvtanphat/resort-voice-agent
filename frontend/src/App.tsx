@@ -168,7 +168,9 @@ export const App:React.FC=()=>{
   try{await api.endSession();}catch{}await connect();};
  const handleSelectService=(service:ServiceItem)=>{setSelectedServiceId(service.id);if(service.requestKind)setRequestType(service.requestKind);
   if(service.question)void handleSendMessage(service.question);};
- const applySuggested=(kind:RequestKind,details:string,service?:string)=>{if(!allowedRequestKinds.includes(kind))return;if(pendingProposal){showToast(t(selectedLanguage,'cancel'));return;}setRequestType(kind);setSuggestedDetails(details.trim()?{kind,details,service}:null);setNote(details);draftNonce.current=null;
+ const applySuggested=(kind:RequestKind,details:string,service?:string,payload?:api.ServicePayload,change?:api.RequestChangeTarget)=>{if(!allowedRequestKinds.includes(kind))return;if(pendingProposal){showToast(t(selectedLanguage,'cancel'));return;}setRequestType(kind);setSuggestedDetails(details.trim()?{kind,details,service,payload,change}:null);setNote(details);draftNonce.current=null;
+  if(payload?.room_number)setRoomNumber(payload.room_number);if(payload?.quantity)setQuantity(payload.quantity);
+  if(payload?.preferred_time)setRequestTime(payload.preferred_time);if(payload?.party_size)setPartySize(String(payload.party_size));
   if(details.trim())showToast(t(selectedLanguage,'reviewRequest'));else setIsEditModalOpen(true);};
  const handleSendMessage=async(textToSend?:string,voiceTurn?:string,voiceSignal?:AbortSignal,turnLanguage?:LanguageCode,
                                endedAt?:number,source:'dialogue'|'sos_button'='dialogue')=>{
@@ -223,7 +225,7 @@ export const App:React.FC=()=>{
    previousRef.current=text;setLastQuery(text);
    const clearSuggestions=result.clear_suggestions===true;
    setMessages(items=>[...(clearSuggestions?items.map(item=>({...item,suggestedAction:undefined})):items),{id:uuid(),sender:'assistant',time:clock(language),text:result.answer,answerTitle:result.answer_title,
-     citations:result.citations||[],suggestedAction:clearSuggestions?null:(result.suggested_action&&allowedRequestKinds.includes(result.suggested_action.kind)?result.suggested_action:null),speechTurnId:result.speech_turn_id,
+     citations:result.citations||[],suggestedAction:clearSuggestions?null:(result.suggested_action&&allowedRequestKinds.includes(result.suggested_action.kind)?{...result.suggested_action,payload:result.service_payload}:null),speechTurnId:result.speech_turn_id,
      planIsDraft:result.plan_is_draft,missingTopics:result.missing_topics,mapGuidance:result.map_guidance,
      plan:result.plan,evidenceStatus:result.evidence_status,omittedClaims:result.omitted_claims,
      relatedTopics:result.related_topics||[],supportContact:result.support_contact||null,
@@ -665,15 +667,15 @@ export const App:React.FC=()=>{
   fields.has('party_size')&&partySize?`${t(langRef.current,'partySize')}: ${partySize}`:'',note.trim()].filter(Boolean).join('\n');
   if(text.length<8||text.length>500)throw new Error(t(langRef.current,'detailRange'));return text;};
  const handleCreateRequest=async()=>{if(!sessionReady||submitting||pendingProposal||!requestType||!uiContract?.capabilities.create_request)return;
-  try{const details=buildDetails();setSubmitting(true);const epoch=sessionEpoch.current;
-   const payload:api.ServicePayload={note:note.trim()};const fields=requestFields(requestType);
+  try{const details=suggestedDetails?.change?suggestedDetails.details:buildDetails();setSubmitting(true);const epoch=sessionEpoch.current;
+   const payload:api.ServicePayload={...(suggestedDetails?.kind===requestType?suggestedDetails.payload:{}),...(suggestedDetails?.change?{}:{note:note.trim()})};const fields=suggestedDetails?.change?new Set<string>():requestFields(requestType);
    if(fields.has('room_number')&&roomNumber.trim())payload.room_number=roomNumber.trim();
    if(fields.has('quantity'))payload.quantity=quantity;
    if(fields.has('preferred_time')&&requestTime)payload.preferred_time=requestTime;
    if(fields.has('party_size')&&partySize)payload.party_size=Number(partySize);
    if(serverConfig?.data_consent_required&&!dataConsent){showToast(({vi:'Vui lòng đồng ý chính sách dữ liệu.',en:'Please agree to the data notice.',zh:'请同意数据说明。',ko:'데이터 안내에 동의해 주세요.'} as Record<LanguageCode,string>)[selectedLanguage]);return;}
    const proposal=await api.prepare(requestType,selectedLanguage,details,draftNonce.current||(draftNonce.current=uuid()),payload,dataConsent,
-     suggestedDetails?.kind===requestType?suggestedDetails.service:undefined);
+     suggestedDetails?.kind===requestType?suggestedDetails.service:undefined, suggestedDetails?.change);
    if(epoch!==sessionEpoch.current)return;setPendingProposal(proposal);setPriceAcknowledged(false);showToast(t(selectedLanguage,'reviewRequest'));
   }catch(err){expireIfAuth(err);showToast(!navigator.onLine?t(langRef.current,'networkLost'):err instanceof api.RequestTimeoutError?t(langRef.current,'requestPending'):err instanceof api.ApiError&&[401,403].includes(err.status)?t(langRef.current,'sessionExpired'):t(langRef.current,'prepareError'));}finally{setSubmitting(false);}};
  const handleConfirmRequest=async(confirmedVerification?:api.GuestVerificationInput)=>{if(!pendingProposal||submitting)return;if(pendingProposal.price_disclosure_required&&!priceAcknowledged){showToast(t(langRef.current,'priceDisclosureAcknowledgement'));return;}if(confirmedVerification===undefined&&pendingProposal.staff_verification_required&&roomNumber.trim()){setVerificationModalOpen(true);return;}setSubmitting(true);
@@ -682,7 +684,7 @@ export const App:React.FC=()=>{
    if(epoch!==sessionEpoch.current)return;setPendingProposal(null);setPriceAcknowledged(false);setSuggestedDetails(null);draftNonce.current=null;setNote('');setRoomNumber('');setQuantity(1);setRequestTime('');setPartySize('');setSuggestedDetails(null);setIsEditModalOpen(false);
    await refreshRequests();setDataConsent(false);
    if(result.confirmation_code&&result.status_url){setLatestStatus({code:result.confirmation_code,url:result.status_url,qr:result.status_url.replace('/status/','/api/status/')+'/qr.svg'});}
-   showToast(`${t(langRef.current,'bookingDisclaimer')} ${result.confirmation_code||''}`);
+   showToast(result.change_state?result.message:`${t(langRef.current,'bookingDisclaimer')} ${result.confirmation_code||''}`);
   }catch(err){if(!expireIfAuth(err))void refreshRequests();showToast(err instanceof api.ApiError&&[401,403].includes(err.status)?t(langRef.current,'sessionExpired'):t(langRef.current,'confirmError'));}
   finally{setSubmitting(false);}};
  const handleCancelProposal=async()=>{if(!pendingProposal)return;setSubmitting(true);
@@ -711,15 +713,17 @@ export const App:React.FC=()=>{
   const handleSaveEdit=(values:{kind:RequestKind;room:string;quantity:number;time:string;party:string;note:string;dataConsent:boolean})=>{
     if(changeTargetId){
       const target=changeTargetId;
+      const epoch=sessionEpoch.current;
       const payload:api.ServicePayload={};
       if(values.room.trim())payload.room_number=values.room.trim();
-      if(values.quantity>0)payload.quantity=values.quantity;
+      if(requestProgress?.payload?.quantity!==undefined&&values.quantity>0)payload.quantity=values.quantity;
       if(values.time.trim())payload.preferred_time=values.time.trim();
       if(values.party.trim())payload.party_size=Number(values.party);
       if(values.note.trim())payload.note=values.note.trim();
       setChangeBusy(true);
-      void api.requestChange(target,'modify',uuid(),payload).then(async()=>{
-        setChangeTargetId(null);setIsEditModalOpen(false);showToast(t(langRef.current,'modifyQueued'));
+      void api.requestChange(target,'modify',uuid(),payload).then(async proposal=>{
+        if(epoch!==sessionEpoch.current)return;
+        setPendingProposal(proposal);setChangeTargetId(null);setIsEditModalOpen(false);showToast(t(langRef.current,'reviewRequest'));
         await refreshRequests();
       }).catch(err=>{if(!expireIfAuth(err))showToast(t(langRef.current,'changeError'));})
         .finally(()=>setChangeBusy(false));
@@ -731,14 +735,15 @@ export const App:React.FC=()=>{
     setIsEditModalOpen(false);
   };
   const requestCancelSubmitted=async()=>{
-    if(!requestProgress?.can_cancel||changeBusy)return;
+    if(!requestProgress?.can_cancel||changeBusy||pendingProposal||submitting)return;
+    const epoch=sessionEpoch.current;
     setChangeBusy(true);
-    try{await api.requestChange(requestProgress.id,'cancel',uuid());showToast(t(langRef.current,'cancelQueued'));await refreshRequests();}
+    try{const proposal=await api.requestChange(requestProgress.id,'cancel',uuid());if(epoch!==sessionEpoch.current)return;setPendingProposal(proposal);showToast(t(langRef.current,'reviewRequest'));await refreshRequests();}
     catch(err){if(!expireIfAuth(err))showToast(t(langRef.current,'changeError'));}
     finally{setChangeBusy(false);}
   };
   const requestModifySubmitted=()=>{
-    if(!requestProgress?.can_modify||changeBusy)return;
+    if(!requestProgress?.can_modify||changeBusy||pendingProposal||submitting)return;
     const p=requestProgress.effective_payload||requestProgress.payload||{};
     setChangeTargetId(requestProgress.id);setRequestType(requestProgress.kind);
     setRoomNumber(p.room_number||'');setQuantity(p.quantity||1);setRequestTime(p.preferred_time||'');

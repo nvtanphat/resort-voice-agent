@@ -150,6 +150,9 @@ class AutonomousConciergeRuntime:
             slots = candidate.existing_slots
             typed_payload: dict[str, object] = {'service_code': candidate.service_code}
             slot_aliases = {
+                'requested_date': ('requested_date',),
+                'requested_item': ('requested_item',),
+                'unit': ('unit',),
                 'room': ('room', 'room_number'),
                 'quantity': ('quantity',),
                 'time': ('time', 'preferred_time'),
@@ -182,6 +185,9 @@ class AutonomousConciergeRuntime:
                     'mode': candidate.service_code,
                     'details': candidate.guest_text,
                     'slots': dict(candidate.existing_slots),
+                    'missing': (request.task_context.get('missing', ())
+                                if request.task_context and request.task_context.get('mode') == candidate.service_code
+                                else ()),
                     # One service draft per session: a turn with a single
                     # service keeps it editable even beside reads.
                     'persist_pending': len(state.service_candidates) == 1,
@@ -219,6 +225,11 @@ class AutonomousConciergeRuntime:
                     })
         elif isinstance(action.query, str) and action.query.strip():
             child = replace(request, query=action.query.strip()[:300])
+        if capability == 'knowledge':
+            command = next((command for command in state.commands
+                            if command.type == 'AskInfo' and command.query == child.query), None)
+            if command is not None:
+                child = replace(child, decision=replace(child.decision, facet=command.facet))
 
         # Keep the public evaluation trace aligned with the typed registry even
         # though legacy capability handlers still receive AgentToolRequest.

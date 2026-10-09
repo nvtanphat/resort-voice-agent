@@ -62,6 +62,15 @@ def answerable(query_keys, query: str, source: dict, *, language: str,
     # the requested facet exactly.
     if requested_types and source_type and source_type not in requested_types:
         return False
+    entities = set(_query_key_value(query_keys, 'entity_ids') or ())
+    source_entity = str(source.get('entity_id') or '')
+    if entities and source_entity:
+        if source_entity not in entities:
+            return False
+        if requested_types and source_type in requested_types:
+            # Canonical entity+facet identity supports multilingual lookup
+            # without requiring accidental lexical overlap across scripts.
+            return True
 
     source_language = source.get('language') or language
     asked = query_terms(query, language)
@@ -80,15 +89,26 @@ def answerable(query_keys, query: str, source: dict, *, language: str,
         source_language,
     )
     overlap = _term_intersection(subject_terms, available)
-    dense_similarity = source.get('dense_similarity')
-    try:
-        # Runtime profiles own the learned-embedding threshold. Standalone
-        # callers without one fail closed to lexical evidence.
-        threshold = float('inf') if dense_threshold is None else float(dense_threshold)
-        if dense_similarity is not None and float(dense_similarity) >= threshold:
-            return True
-    except (TypeError, ValueError):
-        pass
+    # A geographic token in a passage (or a strong dense score) cannot make
+    # an unrelated entity fact answer a question about another subject. For
+    # unscoped typed facts require a subject match in the fact's own label.
+    # Typed facets are checked above; legacy untyped passages retain the
+    # existing lexical gate rather than requiring new metadata.
+    labels = _text_terms(' '.join(str(source.get(key) or '')
+                                  for key in ('title', 'heading')), source_language)
+    if source_type and not requested_types:
+        label_overlap = _term_intersection(subject_terms, labels)
+        if not label_overlap:
+            return False
+        # Matching the place name alone cannot answer an unclassified aspect.
+        # With no canonical entity identity, require remaining request words
+        # in the passage. Canonical unscoped questions retain the lexical
+        # recall gate below; only entity+facet identity above certifies a
+        # typed aspect independently of surface wording.
+        if not (entities and source_entity):
+            aspect_terms = subject_terms - label_overlap
+            if aspect_terms - _term_intersection(aspect_terms, available):
+                return False
     required = 1 if len(subject_terms) <= 2 else 2
     return len(overlap) >= required and len(overlap) / len(subject_terms) >= 0.40
 

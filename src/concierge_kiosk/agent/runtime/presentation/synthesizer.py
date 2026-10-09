@@ -9,6 +9,7 @@ from __future__ import annotations
 from ..runtime import AgentRun
 from .clarification import clarification_text
 from concierge_kiosk.core.domain_profile import ui_policy
+from concierge_kiosk.rag.grounding.citations import rebase_citations
 
 _PRESENTATION_LIMITS = ui_policy().presentation_limits
 
@@ -90,7 +91,7 @@ def compose_agent_result(run: AgentRun, language: str, route_hint: str) -> dict:
     substantive = any(raw.get('grounding') in {'extractive', 'model_assisted_semantic', 'map_verified'}
                       for _, raw in reads)
     for meta, raw in reads:
-        if substantive and raw.get('grounding') == 'no_evidence':
+        if substantive and raw.get('grounding') == 'no_evidence' and route_hint != 'multi_task':
             continue
         if meta.get('status') not in {'completed', 'safe_fallback'}:
             continue
@@ -148,6 +149,7 @@ def compose_agent_result(run: AgentRun, language: str, route_hint: str) -> dict:
             'value': field if field in expected_fields else 'choice',
         }
 
+    base['citations'] = rebase_citations(base.get('answer', ''), base.get('citations') or [])
     base['agent_trace'] = run.trace()
     base['tool_calls'] = list(run.trace().get('tool_calls') or [])
     base['agent_progress'] = _progress(run)

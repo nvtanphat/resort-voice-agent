@@ -4,7 +4,9 @@ from __future__ import annotations
 import copy
 import logging
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from contextvars import ContextVar
 from typing import Callable
 from fastapi import HTTPException
@@ -29,7 +31,6 @@ from concierge_kiosk.agent.understanding.service_selector import (
     ServiceSelector,
 )
 from concierge_kiosk.domain.service_registry import service_definition
-from concierge_kiosk.core.operational_policy import service_code_for_anchor
 from concierge_kiosk.agent.orchestration.composite_tasks import composite_review_plan, validate_composite_review, wants_knowledge_read
 from concierge_kiosk.agent.runtime.runtime import AutonomousConciergeRuntime, AgentBudget
 from concierge_kiosk.agent.runtime.planner import model_action_plan, model_next_action
@@ -41,7 +42,8 @@ from concierge_kiosk.agent.runtime.presentation.turn import (
 )
 from concierge_kiosk.agent.runtime.persistence import checkpoint_projection, semantic_memory_projection
 from concierge_kiosk.api.shared.contracts import Ask
-from concierge_kiosk.application.service_actions import ServiceActionService
+from concierge_kiosk.application.service_actions import ServiceActionService, _structured_entity_data
+from concierge_kiosk.domain.entity_resolver import property_entity_matches
 from concierge_kiosk.application import TurnCoordinator, CoordinatedTurn
 from concierge_kiosk.domain.service_registry import route_branch_for_request_kind
 from concierge_kiosk.agent.understanding.domain_nlu import (
@@ -56,6 +58,8 @@ from concierge_kiosk.agent.understanding.intent import EMERGENCY_TEXT
 from concierge_kiosk.core.domain_profile import memory_policy, preference_policy
 from concierge_kiosk.agent.memory.preferences import PendingPreferenceStore
 from concierge_kiosk.runtime.local_http import slm_turn_budget
+from concierge_kiosk.runtime.local_http import slm_turn_expired
+from concierge_kiosk.agent.memory.reference_resolver import model_reference_choice
 from concierge_kiosk.integrations.synthetic_operations import SyntheticOperations
 from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
 
@@ -80,6 +84,10 @@ def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDe
     starts = [item for item in commands if item.type == 'StartGoal']
     reads = [item for item in commands if item.type in {'AskInfo', 'Navigate'}]
     handoffs = [item for item in commands if item.type == 'Handoff']
+    if len(commands) > 1 and reads:
+        # A consequential command cannot suppress an independent validated
+        # read. The loop preserves each verb's own confirmation boundary.
+        return RouteDecision('multi_task', False)
     if any(item.type == 'Confirm' for item in commands):
         return RouteDecision('confirmation', True)
     if handoffs:
@@ -91,12 +99,6 @@ def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDe
         return RouteDecision('multi_task', False)
     if has_change:
         return RouteDecision('request_change', False)
-    if len(commands) > 1 and reads:
-        # A read-only compound such as "when does the pool open and how do I
-        # get there?" is still a multi-task turn.  Keeping both validated
-        # commands lets the governed loop compose the two read results instead
-        # of letting the navigation branch discard the information question.
-        return RouteDecision('multi_task', False)
     if starts:
         if len(starts) == 1 and not reads and len(commands) == 1 and not starts[0].conditional:
             definition = service_definition(starts[0].goal or '')
@@ -230,6 +232,45 @@ class _TurnRuntimeSupport:
     emergency_gate: EmergencyGate | None = None
     _pending_emergency_checks: set[str] = field(default_factory=set)
 
+    def live_context_anchors(self, session: str, language: str):
+        """Reauthorize memory pointers against current public source revisions."""
+        anchors = self.conversations.recent_anchors(session, language)
+        if not anchors:
+            return ()
+        store = getattr(self.workflows, 'store', None)
+        if store is None:
+            return ()
+        today = datetime.now(ZoneInfo(self.cfg.property_timezone)).date().isoformat()
+        with store.connection() as con:
+            return tuple(a for a in anchors if con.execute(
+                "SELECT 1 FROM knowledge WHERE id=? AND source=? AND revision=? AND property_id=? "
+                "AND language=? AND classification='public' AND active=1 AND effective_from<=? "
+                "AND (effective_to IS NULL OR effective_to>=?)",
+                (a.chunk_id, a.source_id, a.revision, self.cfg.property_id, a.language, today, today)
+            ).fetchone() is not None)
+
+    def reference_command_for_session(self, query: str, language: str, session: str):
+        """One bounded recovery call only after failed commands and with live context."""
+        anchors = self.live_context_anchors(session, language)
+        if (not anchors or not self.cfg.llm_base_url or not self.cfg.llm_model
+                or slm_turn_expired() or not self.slm_permitted()
+                or not self.audio_admission.try_enter_slm(session)):
+            return None
+        version = self.conversations.topic_version(session)
+        try:
+            models = self.cfg.llm_candidates()
+            resolved = model_reference_choice(
+                query=query, language=language, candidates=anchors,
+                base_url=self.cfg.llm_base_url, model=models[0], num_gpu=self.cfg.slm_num_gpu,
+                should_cancel=lambda: self.audio_admission.slm_cancelled(session),
+                timeout_seconds=min(1.8, self.cfg.intent_parser_timeout_seconds), read_intent=True) if models else None
+            if (self.conversations.topic_version(session) != version or not resolved
+                    or (resolved[1] is not None and resolved[1] not in self.live_context_anchors(session, language))):
+                return None
+            return resolved
+        finally:
+            self.audio_admission.leave_slm()
+
     def looks_like_emergency(self, query: str) -> bool:
         """The same semantic safety gate ``understand_turn`` uses, for callers that must not
         let an affirmation word hide an emergency."""
@@ -285,7 +326,8 @@ class _TurnRuntimeSupport:
                 return None
             candidates = None
             examples: tuple = ()
-            anchor = self.conversations.recent_anchor(session, language)
+            anchors = self.live_context_anchors(session, language)
+            anchor = anchors[0] if len(anchors) == 1 else None
             context_topic = anchor.title if anchor is not None and anchor.title else None
             if self.service_selector is not None:
                 try:
@@ -405,6 +447,12 @@ class _TurnRuntimeSupport:
             commands = self.fallback_commands(
                 execution_query, language, enabled_request_kinds=enabled_request_kinds,
                 pending_field=pending_field)
+        if not commands and pending_field is None and not expects_confirm:
+            resolved = self.reference_command_for_session(query, language, session)
+            if resolved is not None:
+                command, anchor = resolved
+                execution_query = f'{anchor.title}. {query}'[:500] if anchor is not None else query
+                commands = (command,)
         return self._apply_commands(
             tuple(commands or ()), decision, query=query, execution_query=execution_query,
             language=language, session=session, pending_task=pending_task,
@@ -419,6 +467,16 @@ class _TurnRuntimeSupport:
         if not commands:
             return decision, None, execution_query, None
         execution_query = self._referenced_topic_query(commands, query, language, session, execution_query)
+        if execution_query != query:
+            # Each loop read carries its own query; changing only the route
+            # query otherwise loses the reference in a multi-command turn.
+            anchors = self.live_context_anchors(session, language)
+            prefix = next((anchor.title for anchor in anchors
+                           if execution_query.startswith(f'{anchor.title}. ')), None)
+            commands = tuple(replace(command, query=f'{prefix}. {command.query}'[:300])
+                             if command.refers_to_context and command.type in {'AskInfo', 'Navigate'}
+                             and prefix is not None
+                             else command for command in commands)
 
         if 'Cancel' in types and (pending_task is not None or has_pending_proposal):
             # Withdrawing the draft on screen is a server-owned state change;
@@ -442,7 +500,15 @@ class _TurnRuntimeSupport:
             if continues_draft:
                 branch = route_branch_for_request_kind(pending_task.kind)
                 if branch in {'service', 'handoff'}:
-                    return RouteDecision(branch, True), pending_task.context(), execution_query, None
+                    context = pending_task.context()
+                    updates = {slot.name: slot.text for command in starts for slot in command.slots
+                               if slot.name in {'requested_item', 'unit', 'requested_date'}}
+                    updates.update({command.field: command.value for command in commands
+                                    if command.type in {'SetSlot', 'CorrectSlot'}
+                                    and command.field in {'requested_item', 'unit', 'requested_date'}})
+                    if updates:
+                        context['slots'] = {**context.get('slots', {}), **updates}
+                    return RouteDecision(branch, True), context, execution_query, None
             if starts:
                 # A different service replaces the unfinished draft.
                 self.agent_tasks.clear(session)
@@ -450,8 +516,6 @@ class _TurnRuntimeSupport:
         if types <= {'SetSlot', 'CorrectSlot'}:
             # A bare value with no open question is read as an ordinary turn.
             return decision, None, execution_query, None
-        if len(commands) == 1 and starts:
-            execution_query = self._anchor_venue(query, language, session, starts[0], execution_query)
         dec = _decision_from_commands(commands, decision)
         ctx = None
         if dec.branch == 'check_schedule':
@@ -470,24 +534,33 @@ class _TurnRuntimeSupport:
         """
         if execution_query != query or not any(command.refers_to_context for command in commands):
             return execution_query
-        anchor = self.conversations.recent_anchor(session, language)
+        anchors = self.live_context_anchors(session, language)
+        anchor = anchors[0] if len(anchors) == 1 else None
         if anchor is None or not anchor.title or anchor.title.casefold() in query.casefold():
             return execution_query
-        return f'{anchor.title}. {query}'[:500]
-
-    def _anchor_venue(self, query: str, language: str, session: str, command, execution_query: str) -> str:
-        """Name the conversation's verified place for "book it there" style turns.
-
-        The anchor is a verified evidence row from memory and its service
-        mapping comes from the registry; no phrase list is consulted.
-        """
-        if execution_query != query:
-            return execution_query
-        anchor = self.conversations.recent_anchor(session, language)
-        if anchor is None or not anchor.title:
-            return execution_query
-        if service_code_for_anchor(anchor, cfg=self.cfg) != command.goal:
-            return execution_query
+        if any(command.type == 'Navigate' for command in commands):
+            try:
+                guidance = map_guidance(self.workflows.store,
+                    path=self.cfg.map_release_path, expected_sha256=self.cfg.map_release_sha256,
+                    property_id=self.cfg.property_id, query=query, language=language)
+                if guidance.get('status') in {'verified', 'ambiguous'}:
+                    return execution_query  # explicit destinations take precedence
+            except (MapUnavailable, OSError, ValueError, AttributeError):
+                pass
+        else:
+            try:
+                aliases, entities = _structured_entity_data(self.cfg.structured_dataset_dir)
+                named = property_entity_matches(query, language, aliases)
+                start = next((command for command in commands if command.type == 'StartGoal'), None)
+                definition = service_definition(start.goal or '') if start is not None else None
+                if definition is not None and definition.venue_slot is not None:
+                    named = tuple(entity_id for entity_id in named
+                                  if entities.get(entity_id, {}).get('entity_type')
+                                  == definition.venue_slot.get('entity_type'))
+                if named:
+                    return execution_query
+            except (OSError, ValueError, TypeError, AttributeError):
+                pass
         return f'{anchor.title}. {query}'[:500]
 
     def resolve_execution_context(self, query: str, language: str, session: str,
@@ -606,10 +679,13 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
     def _agent_navigation(request: AgentToolRequest) -> dict:
         result = _turn_grounded_answer(request.query, request.language, request.session,
                                        effective_date=request.effective_date,
-                                       question_type=request.decision.question_type)
+                                       question_type=request.decision.question_type, facet='location')
         map_query = request.query
         try:
-            map_query = localized_map_query(store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256, property_id=cfg.property_id, query=map_query, language=request.language, anchor=conversations.resolve(request.session, request.query, request.language), as_of=request.effective_date)
+            anchors = turn_support.live_context_anchors(request.session, request.language)
+            referred = next((anchor for anchor in anchors
+                             if request.query.startswith(f'{anchor.title}. ')), None)
+            map_query = localized_map_query(store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256, property_id=cfg.property_id, query=map_query, language=request.language, anchor=referred, as_of=request.effective_date)
             result['map_guidance'] = map_guidance(store, path=cfg.map_release_path, expected_sha256=cfg.map_release_sha256, property_id=cfg.property_id, query=map_query, language=request.language, start_id=request.start_location, as_of=request.effective_date)
             result = apply_verified_map_answer(result, request.language, request.query, has_navigate_command=True)
         except (MapUnavailable, OSError, RuntimeError, ValueError):
@@ -940,6 +1016,10 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             if decision.branch == 'multi_task':
                 result = compose_multi_result(agent_run, body.language)
                 validate_multi_result(agent_run, result)
+                if read_graph is not None and all(command.type in {'AskInfo', 'Navigate', 'CheckAvailability'}
+                                                  for command in loop_commands):
+                    project_read_workflow(result=result, agent_run=agent_run, query=query,
+                                          language=body.language, read_graph=read_graph)
                 unresolved = result.get('missing_actions') or []
                 if len(unresolved) == 1:
                     item = unresolved[0]

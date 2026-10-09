@@ -776,7 +776,8 @@
             "clock_dayparts",
             "short_time_markers",
             "clock_daypart_patterns",
-            "slot_labels"
+            "slot_labels",
+            "relative_date_offsets"
           ],
           "properties": {
             "number_words": {
@@ -976,6 +977,19 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 128
+                }
+              }
+            },
+            "relative_date_offsets": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 32,
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 366
                 }
               }
             }

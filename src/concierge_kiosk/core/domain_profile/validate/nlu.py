@@ -94,6 +94,7 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     validate_language_keys(slots["relative_time_terms"], languages, label="nlu.slots.relative_time_terms", require_all=True)
     for key in ("slot_labels",):
         validate_language_keys(slots[key], languages, label=f"nlu.slots.{key}", require_all=True)
+    validate_language_keys(slots["relative_date_offsets"], languages, label="nlu.slots.relative_date_offsets", require_all=True)
     configured_slots = {slot for service in payload["services"] for slot in (*service["required_slots"], *service["autonomous_required_slots"], *service["optional_slots"])}
     for language, labels in slots["slot_labels"].items():
         if not configured_slots <= set(labels):

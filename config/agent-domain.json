@@ -63,7 +63,8 @@
       "code": "amenity_delivery",
       "request_kind": "facilities",
       "required_slots": [
-        "room_number"
+        "room_number",
+        "requested_item"
       ],
       "risk": "low",
       "reversible": true,
@@ -74,10 +75,11 @@
       "tool": "service_action",
       "default_for_kind": false,
       "optional_slots": [
-        "quantity"
+        "quantity",
+        "unit"
       ],
       "approval": "none",
-      "catalog_service_id": "service.bath_towels",
+      "catalog_service_id": "",
       "description": "Bring extra in-room items or supplies to the guest room (towels, water, toiletries, adapters, small items)."
     },
     {
@@ -257,7 +259,8 @@
       "tool": "service_action",
       "default_for_kind": false,
       "optional_slots": [
-        "room_number"
+        "room_number",
+        "requested_date"
       ],
       "approval": "staff",
       "catalog_service_id": "service.wake_up_calls",
@@ -1004,6 +1007,8 @@
       },
       "slot_labels": {
         "en": {
+          "requested_item": "requested item (staff to verify availability)",
+          "unit": "unit",
           "room_number": "room number",
           "quantity": "quantity",
           "preferred_time": "preferred time",
@@ -1011,9 +1016,12 @@
           "restaurant_name": "restaurant",
           "destination": "destination",
           "issue": "issue",
-          "note": "note"
+          "note": "note",
+          "requested_date": "requested date"
         },
         "vi": {
+          "requested_item": "vật phẩm yêu cầu (nhân viên kiểm tra khả năng cung cấp)",
+          "unit": "đơn vị",
           "room_number": "số phòng",
           "quantity": "số lượng",
           "preferred_time": "thời gian mong muốn",
@@ -1021,9 +1029,12 @@
           "restaurant_name": "nhà hàng",
           "destination": "điểm đến",
           "issue": "vấn đề",
-          "note": "ghi chú"
+          "note": "ghi chú",
+          "requested_date": "ngày yêu cầu"
         },
         "zh": {
+          "requested_item": "请求物品（由员工确认供应情况）",
+          "unit": "单位",
           "room_number": "房号",
           "quantity": "数量",
           "preferred_time": "期望时间",
@@ -1031,9 +1042,12 @@
           "restaurant_name": "餐厅",
           "destination": "目的地",
           "issue": "问题",
-          "note": "备注"
+          "note": "备注",
+          "requested_date": "请求日期"
         },
         "ko": {
+          "requested_item": "요청 물품 (직원이 제공 가능 여부 확인)",
+          "unit": "단위",
           "room_number": "객실 번호",
           "quantity": "수량",
           "preferred_time": "희망 시간",
@@ -1041,7 +1055,32 @@
           "restaurant_name": "식당",
           "destination": "목적지",
           "issue": "문제",
-          "note": "메모"
+          "note": "메모",
+          "requested_date": "요청 날짜"
+        }
+      },
+      "relative_date_offsets": {
+        "en": {
+          "today": 0,
+          "tomorrow": 1,
+          "day after tomorrow": 2
+        },
+        "vi": {
+          "hôm nay": 0,
+          "ngày mai": 1,
+          "sáng mai": 1,
+          "mai": 1,
+          "ngày kia": 2
+        },
+        "zh": {
+          "今天": 0,
+          "明天": 1,
+          "后天": 2
+        },
+        "ko": {
+          "오늘": 0,
+          "내일": 1,
+          "모레": 2
         }
       }
     },

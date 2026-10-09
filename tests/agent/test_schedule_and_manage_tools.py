@@ -44,9 +44,9 @@ def test_manage_request_is_a_session_scoped_staff_review_change():
         def guest_request_progress(self, session, request_id):
             return {'details': 'Two towels to room 305'}
 
-        def request_guest_change(self, session, request_id, action, nonce, *, payload, note):
+        def review_change(self, session, request_id, action, language, payload):
             assert (session, request_id, action) == ('session-a', request_id, 'cancel')
-            return {'change_state': 'cancel_requested', 'status': 'pending_staff'}
+            return {'kind':'facilities','service':'amenity_delivery','details':'Review cancellation for this ticket', 'payload':payload,'change':{'request_id':request_id,'action':action}}
 
     service = ServiceActionService(
         workflows=Workflows(), task_memory=None, conversations=None, get_graph=lambda: None,
@@ -60,10 +60,11 @@ def test_manage_request_is_a_session_scoped_staff_review_change():
         change_action='cancel',
     ))
     assert result['tool_route'] == 'manage_request'
-    assert result['request_change']['change_state'] == 'cancel_requested'
+    assert result['request_change']['needs_confirmation'] is True
+    assert result['suggested_action']['change']['action'] == 'cancel'
     assert result['requires_staff_review'] is True
     assert result['agent_action']['status'] == 'confirmation_required'
-    assert result['agent_action']['business_writes'] == 1
+    assert result['agent_action']['business_writes'] == 0
 
 
 def test_manage_request_modify_extracts_only_allowlisted_changed_slots():
@@ -78,10 +79,10 @@ def test_manage_request_modify_extracts_only_allowlisted_changed_slots():
         def guest_request_progress(self, session, request_id):
             return {'details': 'Two towels to room 305'}
 
-        def request_guest_change(self, session, request_id, action, nonce, *, payload, note):
+        def review_change(self, session, request_id, action, language, payload):
             assert action == 'modify'
             assert payload == {'room_number': '306'}
-            return {'change_state': 'modify_requested', 'status': 'pending_staff'}
+            return {'kind':'facilities','service':'amenity_delivery','details':'Review changed fields for this ticket', 'payload':payload,'change':{'request_id':request_id,'action':action}}
 
     service = ServiceActionService(
         workflows=Workflows(), task_memory=None, conversations=None, get_graph=lambda: None,
@@ -94,7 +95,8 @@ def test_manage_request_modify_extracts_only_allowlisted_changed_slots():
         decision=RouteDecision('request_change', True),
         change_action='modify',
     ))
-    assert result['request_change']['change_state'] == 'modify_requested'
+    assert result['request_change']['needs_confirmation'] is True
+    assert result['service_payload'] == {'room_number':'306'}
 
 
 def test_manage_request_without_command_action_needs_details():

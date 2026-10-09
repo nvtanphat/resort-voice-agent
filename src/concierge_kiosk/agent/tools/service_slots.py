@@ -12,12 +12,14 @@ workflows rather than model output.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 import re
 from typing import Mapping
 
 from concierge_kiosk.i18n import text as i18n_text
 from concierge_kiosk.agent.understanding.domain_nlu import PARTY_SIZE_FULL_PATTERNS as _PARTY_SIZE_FULL_PATTERNS, PARTY_SIZE_PATTERNS as _PARTY_SIZE_PATTERNS, QUANTITY_NOUNS as _QUANTITY_NOUNS, ROOM_PATTERNS as _ROOM_PATTERNS, SLOT_LABELS as _SLOT_LABELS
 from concierge_kiosk.agent.tools.numerals import corrected_time, normalize_number_words
+from concierge_kiosk.agent.tools.service_dates import requested_date
 from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVICE_SLOTS, accepted_slots,
                                                      required_slots, service_definition)
 
@@ -100,19 +102,28 @@ def _party_size(text: str, language: str) -> int | None:
 
 
 def extract_slots(query: str, language: str, kind: str, *, mode: str,
-                  existing: Mapping[str, str | int] | None = None) -> dict[str, str | int]:
+                  existing: Mapping[str, str | int] | None = None,
+                  reference_time: datetime | None = None) -> dict[str, str | int]:
     if kind not in _SERVICE_KINDS:
         raise ValueError('Unsupported service kind')
     selected_mode = mode
     supported = frozenset(accepted_slots(selected_mode))
     slots = {key: value for key, value in (existing or {}).items()
              if key in _ALLOWED_SLOTS and key in supported}
+    for name in ('quantity', 'party_size'):
+        value = slots.get(name)
+        if isinstance(value, str):
+            normalized = normalize_number_words(value, language).strip()
+            if re.fullmatch(r'\d{1,3}', normalized):
+                slots[name] = int(normalized)
     if 'room_number' in supported:
         room = _room_number(query, language)
         if room:
             slots['room_number'] = room
     if 'quantity' in supported:
         qty = _quantity(query, language)
+        if qty is None and isinstance(slots.get('unit'), str):
+            qty = _number_near(query, language, (slots['unit'],))
         if qty is not None:
             slots['quantity'] = qty
     if 'party_size' in supported:
@@ -123,15 +134,34 @@ def extract_slots(query: str, language: str, kind: str, *, mode: str,
         preferred = corrected_time(query, language, slots.get('preferred_time'))
         if preferred:
             slots['preferred_time'] = preferred
+    if 'requested_date' in supported:
+        value, mentioned = requested_date(query, language, reference_time)
+        if not mentioned and isinstance(slots.get('requested_date'), str):
+            value, mentioned = requested_date(slots['requested_date'], language, reference_time)
+            mentioned = True
+        if mentioned:
+            if value:
+                slots['requested_date'] = value
+            elif reference_time is not None:
+                slots.pop('requested_date', None)
     return slots
 
 
 def assess_service(query: str, language: str, kind: str, *, mode: str,
-                   existing: Mapping[str, str | int] | None = None) -> ServiceSlotAssessment:
+                   existing: Mapping[str, str | int] | None = None,
+                   reference_time: datetime | None = None) -> ServiceSlotAssessment:
     selected_mode = mode
-    slots = extract_slots(query, language, kind, existing=existing, mode=selected_mode)
+    slots = extract_slots(query, language, kind, existing=existing, mode=selected_mode,
+                          reference_time=reference_time)
     required = required_slots(selected_mode)
     missing = tuple(name for name in required if not slots.get(name))
+    if 'requested_date' in accepted_slots(selected_mode):
+        value, mentioned = requested_date(query, language, reference_time)
+        if not mentioned and isinstance((existing or {}).get('requested_date'), str):
+            value, mentioned = requested_date(existing['requested_date'], language, reference_time)
+            mentioned = True
+        if mentioned and value is None:
+            missing += ('requested_date',)
     return ServiceSlotAssessment(kind=kind, mode=selected_mode, slots=slots, missing=missing)
 
 

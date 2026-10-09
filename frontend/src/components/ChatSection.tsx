@@ -1,13 +1,13 @@
 import React, {useEffect, useRef} from 'react';
 import type {ChatMessage} from '../types';
-import type {LanguageCode, MapPlace, RequestKind} from '../api';
+import type {LanguageCode, MapPlace, RequestKind, ServicePayload} from '../api';
 import {localeFor,t,taskLabel} from '../i18n';
 import MarkdownText from './MarkdownText';
 interface ChatSectionProps {
   propertyName:string; language:LanguageCode; messages:ChatMessage[]; value:string;
   onChange:(text:string)=>void; onSendMessage:(text:string)=>void; isThinking:boolean;
   ready:boolean; error:string|null; onRetry:()=>void;
-  onSuggested:(kind:RequestKind,details:string,service?:string)=>void; kindLabel:(kind:RequestKind)=>string;
+  onSuggested:(kind:RequestKind,details:string,service?:string,payload?:ServicePayload,change?:import('../api').RequestChangeTarget)=>void; kindLabel:(kind:RequestKind)=>string;
   onStartRequest:()=>void; canCreateRequest:boolean; onVoice:()=>void; voiceAvailable:boolean;
   mapPlaces:MapPlace[]; startLocation:string; onStartLocation:(id:string)=>void;
   requestPreview:string|null; prepared:boolean; pending:boolean;
@@ -45,7 +45,7 @@ export const ChatSection:React.FC<ChatSectionProps>=({propertyName,language,mess
       {!!msg.agentProgress?.length&&<details className="mt-2 rounded border border-[#E9E1D2] bg-[#FAF7F2] p-2"><summary className="cursor-pointer font-semibold text-brand-navy">{t(language,'agentProgress')}</summary><ol className="mt-1 space-y-1 list-decimal pl-4">{msg.agentProgress.map(item=><li key={`${item.step}:${item.requirement_id||''}`}><span className="font-medium">{item.capability||t(language,'agentStep')}</span><span className="text-gray-500"> · {item.status}</span></li>)}</ol></details>}
       {!!msg.supportContact&&<div className="mt-2 rounded border border-[#D9E5D7] bg-[#F6FAF5] p-2"><strong>{t(language,'supportContact')}: {msg.supportContact.label}</strong>{!!msg.supportContact.extensions.length&&<p>{t(language,'extension')}: {msg.supportContact.extensions.join(' / ')}</p>}{!!msg.supportContact.phones.length&&<p>{t(language,'phone')}: {msg.supportContact.phones.join(' / ')}</p>}{msg.supportContact.email&&<p>{t(language,'email')}: {msg.supportContact.email}</p>}</div>}
       {!!msg.relatedTopics?.length&&<div className="mt-2"><p className="text-[11px] font-semibold text-brand-navy">{t(language,'relatedTopics')}</p><div className="flex flex-wrap gap-2 mt-1">{msg.relatedTopics.map(topic=><button key={`${topic.language}:${topic.label}`} type="button" onClick={()=>onSendMessage(topic.query)} className="min-h-11 border border-[#D8E6F5] bg-[#F4F8FC] rounded-full px-3 py-1.5 hover:bg-[#EAF2FA]">{topic.label}</button>)}</div></div>}
-      {!!msg.suggestedAction&&<button type="button" onClick={()=>onSuggested(msg.suggestedAction!.kind,msg.suggestedAction!.details,msg.suggestedAction!.service)} className="mt-2 min-h-11 rounded-full border border-[#B89B6A] text-[#73532C] px-3 py-1.5 hover:bg-[#F8F1E7]">{t(language,'reviewKind').replace('{kind}',kindLabel(msg.suggestedAction.kind))}</button>}
+      {!!msg.suggestedAction&&<button type="button" onClick={()=>onSuggested(msg.suggestedAction!.kind,msg.suggestedAction!.details,msg.suggestedAction!.service,msg.suggestedAction!.payload,msg.suggestedAction!.change)} className="mt-2 min-h-11 rounded-full border border-[#B89B6A] text-[#73532C] px-3 py-1.5 hover:bg-[#F8F1E7]">{t(language,'reviewKind').replace('{kind}',kindLabel(msg.suggestedAction.kind))}</button>}
       {!!msg.actionOptions?.length&&<div className="flex flex-wrap gap-2 mt-2">{msg.actionOptions.map((a,i)=><button key={i} type="button" onClick={()=>onSuggested(a.kind,'')} className="min-h-11 border border-stone-300 rounded-full px-3 py-1 hover:bg-stone-50">{kindLabel(a.kind)}</button>)}</div>}
      </>}
      <div className="mt-1 text-[10px] text-gray-400 text-right">{msg.time}</div>

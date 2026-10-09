@@ -66,6 +66,26 @@ class AgentRun:
             return self.raw_results[-1]
         raise RuntimeError('agent produced no observation')
 
+    def business_write_count(self) -> int:
+        """Count staff-review change receipts; drafts never authorize writes."""
+        total = 0
+        for meta, raw in zip(self.observations, self.raw_results):
+            action = raw.get('agent_action') or {}
+            count = action.get('business_writes', 0)
+            if not count:
+                continue
+            change = raw.get('request_change') or {}
+            if (type(count) is not int or count != 1
+                    or meta.get('capability') != 'manage_request'
+                    or meta.get('verified') is not True
+                    or raw.get('business_state_verified') is not True
+                    or action.get('write_kind') != 'staff_review_change_request'
+                    or change.get('action') not in {'cancel', 'modify'}
+                    or not change.get('request_id')):
+                raise RuntimeError('Unrecognized business write observation')
+            total += count
+        return total
+
     def trace(self) -> dict:
         business_intents = 0
         verification = self.verification
@@ -137,7 +157,7 @@ class AgentRun:
             'plan_replans': self.plan_replans,
             'action_plan': (self.pending_plan.public() if self.pending_plan is not None else None),
             'business_write_intent': business_intents,
-            'business_writes': 0,
+            'business_writes': self.business_write_count(),
             'budget': {
                 'elapsed_ms': self.elapsed_ms,
                 'planner_calls': self.planner_calls,

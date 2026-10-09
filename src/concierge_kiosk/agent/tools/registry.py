@@ -58,6 +58,9 @@ class HotelNowParams(_ContractModel):
 
 class ServiceRequestCreateParams(_ContractModel):
     service_code: str = Field(min_length=1, max_length=96)
+    requested_date: str | None = Field(default=None, max_length=120)
+    requested_item: str | None = Field(default=None, min_length=1, max_length=120)
+    unit: str | None = Field(default=None, min_length=1, max_length=40)
     room: str | None = Field(default=None, min_length=1, max_length=32)
     quantity: int | None = Field(default=None, ge=1, le=100)
     time: str | None = Field(default=None, min_length=1, max_length=64)

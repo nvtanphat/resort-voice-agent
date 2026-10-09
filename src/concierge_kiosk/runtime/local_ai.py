@@ -8,6 +8,9 @@ Neither successful loading nor NLI labels establish factual accuracy.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import contextmanager
+from enum import Enum
+from threading import Lock
 import http.client
 import json
 import re
@@ -18,6 +21,110 @@ from ..agent.understanding.nli import local_model_fingerprint, _load_local_nli
 from .local_http import LOOPBACK_HOSTS
 
 _HEX = re.compile(r'(?:sha256:)?([0-9a-f]{64})\Z')
+
+
+class ModelState(str, Enum):
+    NOT_LOADED = 'MODEL_NOT_LOADED'
+    LOADING = 'MODEL_LOADING'
+    READY = 'MODEL_READY'
+    UNAVAILABLE = 'MODEL_UNAVAILABLE'
+
+
+_loads: set[tuple[str, str]] = set()
+_load_lock = Lock()
+
+
+def _ollama_models(base_url: str, endpoint: str, timeout: float) -> list[dict] | None:
+    url = urlsplit(base_url)
+    if (url.scheme != 'http' or url.hostname not in LOOPBACK_HOSTS
+            or url.path not in {'', '/'} or url.username or url.password or url.query or url.fragment):
+        return None
+    connection = None
+    try:
+        connection = http.client.HTTPConnection(url.hostname, url.port or 80, timeout=timeout)
+        connection.request('GET', endpoint)
+        response = connection.getresponse()
+        raw = response.read(65537)
+        if response.status != 200 or len(raw) > 65536:
+            return None
+        data = json.loads(raw)
+        models = data.get('models') if isinstance(data, dict) else None
+        return models if isinstance(models, list) and all(isinstance(m, dict) for m in models) else None
+    except (OSError, ValueError, http.client.HTTPException):
+        return None
+    finally:
+        if connection is not None:
+            connection.close()
+
+
+def model_residency(base_url: str, model: str, expected_digest: str, *, timeout: float = 1.5) -> dict:
+    """Installed identity and actual residency; GET only, never loads a model.
+
+    LOADING denotes this process's registered preload, not a guess from tags.
+    External in-progress loads cannot be identified from an empty /api/ps.
+    """
+    pin = expected_digest.removeprefix('sha256:')
+    installed = _ollama_models(base_url, '/api/tags', timeout)
+    resident = _ollama_models(base_url, '/api/ps', timeout)
+    result = {'state': ModelState.UNAVAILABLE.value, 'installed': installed, 'resident': resident}
+    if installed is None or resident is None or not _HEX.fullmatch(pin):
+        return result
+    matches = [m for m in installed if m.get('name') == model]
+    def matches_pin(item):
+        digest = item.get('digest')
+        return isinstance(digest, str) and digest.removeprefix('sha256:') == pin
+
+    if len(matches) != 1 or not matches_pin(matches[0]):
+        return result
+    with _load_lock:
+        loading = (base_url.rstrip('/'), model) in _loads
+    loaded = [m for m in resident if m.get('name') == model]
+    if loaded and (len(loaded) != 1 or not matches_pin(loaded[0])):
+        return result
+    result['state'] = (ModelState.LOADING if loading else
+                       ModelState.READY if loaded else ModelState.NOT_LOADED).value
+    return result
+
+
+@contextmanager
+def _model_loading(base_url: str, model: str):
+    key = (base_url.rstrip('/'), model)
+    with _load_lock:
+        if key in _loads:
+            raise RuntimeError('Model preload already active')
+        _loads.add(key)
+    try:
+        yield
+    finally:
+        with _load_lock:
+            _loads.discard(key)
+
+
+def preload_local_slm(base_url: str, model: str, *, timeout: float = 30.0,
+                      num_gpu: int = 0, should_cancel=None) -> dict:
+    """One finite empty-message Ollama load. Caller owns admission and accounting."""
+    from urllib.request import Request
+    from ..core.settings import SLM_NUM_CTX
+    from .local_http import local_chat_open
+    if not 0 < timeout <= 90:
+        raise ValueError('Invalid preload deadline')
+    if should_cancel and should_cancel():
+        raise InterruptedError('Model preload cancelled before HTTP')
+    body = json.dumps({'model': model, 'stream': False, 'keep_alive': '5m',
+        'messages': [], 'options': {'num_predict': 1, 'num_ctx': SLM_NUM_CTX,
+                                    'num_gpu': num_gpu}}).encode('utf-8')
+    request = Request(base_url.rstrip('/') + '/api/chat', data=body,
+                      headers={'Content-Type': 'application/json'}, method='POST')
+    with _model_loading(base_url, model), local_chat_open(request, timeout=timeout) as response:
+        raw = response.read(65537)
+        if should_cancel and should_cancel():
+            raise InterruptedError('Model preload cancelled after HTTP')
+        if int(response.status) != 200 or len(raw) > 65536:
+            raise ValueError('Invalid preload response')
+        result = json.loads(raw)
+        if not isinstance(result, dict) or result.get('done') is not True or result.get('error'):
+            raise ValueError('Model preload did not finish')
+        return result
 
 
 @dataclass(frozen=True)
@@ -92,17 +199,14 @@ def inspect_local_ai(settings, *, check_runtime: bool = True) -> LocalAIReadines
 
 
 def warm_local_slm(base_url: str, model: str, *, timeout: float = 90.0,
-                   num_gpu: int = -1) -> bool:
-    """Load the local model into memory with a 1-token request (startup only)."""
-    from urllib.request import Request
-    from .local_http import local_chat_open
-    body = json.dumps({
-        'model': model, 'stream': False, 'keep_alive': '30m',
-        'messages': [{'role': 'user', 'content': 'ok'}],
-        'options': {'num_predict': 1, 'num_gpu': num_gpu},
-    }).encode('utf-8')
-    request = Request(base_url.rstrip('/') + '/api/chat', data=body,
-                      headers={'Content-Type': 'application/json'}, method='POST')
-    with local_chat_open(request, timeout=timeout) as response:
-        response.read(65_536)
-        return 200 <= int(getattr(response, 'status', 200)) < 300
+                   num_gpu: int = -1, admission=None) -> bool:
+    """Startup-only empty-message preload; no dummy guest generation."""
+    if admission is not None and not admission.try_enter_slm():
+        return False
+    try:
+        return preload_local_slm(base_url, model, timeout=timeout, num_gpu=num_gpu).get('done') is True
+    finally:
+        # This runs in the warm-up worker, even if its asyncio waiter is
+        # cancelled. Native/socket work retains its CPU permit until it ends.
+        if admission is not None:
+            admission.leave_slm()

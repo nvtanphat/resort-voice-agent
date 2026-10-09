@@ -1,7 +1,7 @@
 import {useState} from 'react';
-import type {RequestKind} from '../api';
+import type {RequestKind,ServicePayload} from '../api';
 
-export type SuggestedRequest = {kind:RequestKind;details:string;service?:string};
+export type SuggestedRequest = {kind:RequestKind;details:string;change?:import('../api').RequestChangeTarget;service?:string;payload?:ServicePayload};
 export type PendingProposal = {
   proposal_id:string;kind:RequestKind;details:string;expires_at:number;
   staff_verification_required?:boolean;price_disclosure_required?:boolean;

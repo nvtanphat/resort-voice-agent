@@ -21,6 +21,27 @@ class CitationResult:
     citations: list[dict]
 
 
+def rebase_citations(answer: str, citations: list[dict]) -> list[dict]:
+    """Relocate already verified claims after deterministic observation composition."""
+    rebased = []
+    for citation in citations:
+        claim = citation.get('claim')
+        if not isinstance(claim, str) or not claim:
+            continue
+        start = answer.find(claim)
+        if start < 0:
+            continue
+        offset = start - int(citation.get('claim_start') or 0)
+        spans = [{**span, 'claim_start': span['claim_start'] + offset,
+                  'claim_end': span['claim_end'] + offset}
+                 for span in citation.get('claim_spans', [])
+                 if isinstance(span, dict) and type(span.get('claim_start')) is int
+                 and type(span.get('claim_end')) is int]
+        rebased.append({**citation, 'citation_id': f'C{len(rebased) + 1}',
+                        'claim_start': start, 'claim_end': start + len(claim), 'claim_spans': spans})
+    return rebased
+
+
 def _source_claim_span(source: dict, passage: str, claim: str) -> tuple[int, int] | None:
     """Match exact evidence or a server-rendered structured-fact template."""
     span = exact_span(passage, claim)
