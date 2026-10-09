@@ -45,6 +45,7 @@ ENUMS = {
                'failure', 'approved', 'paused',
                'rejected', 'completed', 'safe_fallback', 'needs_user_input', 'confirmation_required',
                'action_ready', 'denied', 'executed', 'draft', 'prepared', 'pending_staff',
+               'awaiting_confirmation', 'confirmed', 'expired',
                'queued', 'acknowledged', 'in_progress', 'fulfilled', 'cancelled', 'rejected_by_validation',
                'partially_accepted', 'unsupported_semantics', 'no_response', 'malformed_output',
                'turn_budget_expired', 'not_run', 'ok', 'error', 'busy', 'deferred'},
@@ -142,11 +143,14 @@ def mask_otel_spans(*, params, model_names=(), tracing_environment='development'
         for key, value in attrs.items():
             if key.startswith(prefix):
                 name = key[len(prefix):]
-                if name in {'slot_names', 'source_links'} and isinstance(value, str):
+                # SDK v4 preserves ints/bools but JSON-serializes floats.
+                # Decode only known numeric/list fields before typed allowlist;
+                # arbitrary strings/nested state are still rejected.
+                if name in NUMBER_KEYS | {'slot_names', 'source_links'} and isinstance(value, str):
                     try:
                         value = json.loads(value)
                     except ValueError:
-                        value = None
+                        pass
                 meta[name] = value
         kept = {prefix + key: json.dumps(value) if isinstance(value, list) else value
                 for key, value in sanitize(meta, model_names=model_names).items()}
