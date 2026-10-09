@@ -149,7 +149,8 @@ def test_a_preference_answer_is_not_a_service_confirmation(tmp_path: Path, under
     language, query, evidence, yes, _ = VEGETARIAN[1]
     understand(query, _pref(query, evidence))
     understand("towels", Command("StartGoal", goal="amenity_delivery",
-                                 slots=(CommandSlot("room_number", "305"), CommandSlot("quantity", "2"))))
+                                 slots=(CommandSlot("room_number", "305"), CommandSlot("quantity", "2"),
+                                        CommandSlot("requested_item", "towels"))))
     app = _client(tmp_path)
     with TestClient(app, raise_server_exceptions=False) as client:
         session_id, headers = _session(client)
@@ -164,7 +165,8 @@ def test_a_preference_answer_is_not_a_service_confirmation(tmp_path: Path, under
 def test_a_waiting_service_confirmation_is_never_confused_with_a_preference(tmp_path: Path, understand):
     language, query, evidence, yes, _ = VEGETARIAN[1]
     understand("towels", Command("StartGoal", goal="amenity_delivery",
-                                 slots=(CommandSlot("room_number", "305"), CommandSlot("quantity", "2"))))
+                                 slots=(CommandSlot("room_number", "305"), CommandSlot("quantity", "2"),
+                                        CommandSlot("requested_item", "towels"))))
     understand(query, _pref(query, evidence))
     app = _client(tmp_path)
     with TestClient(app, raise_server_exceptions=False) as client:
