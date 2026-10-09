@@ -94,7 +94,7 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
             if not assets["stt_available"] or set(assets["tts_languages"]) != LANGUAGES:
                 raise HTTPException(status_code=503, detail="Offline speech assets not provisioned")
             if cfg.real_runtime_required and cfg.voice_final_require_manifest:
-                from concierge_kiosk.voice.runtime.final_assets import check_final_voice_manifest
+                from concierge_kiosk.voice.runtime.assets import check_final_voice_manifest
                 if not check_final_voice_manifest(cfg, cfg.voice_final_manifest_path):
                     raise HTTPException(status_code=503, detail="Pinned final speech assets changed after startup")
         from concierge_kiosk.rag.index.health import dense_index_status

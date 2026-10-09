@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 from concierge_kiosk.core.settings import load_settings
-from concierge_kiosk.voice.runtime.final_assets import final_voice_manifest, verify_final_voice_manifest
+from concierge_kiosk.voice.runtime.assets import final_voice_manifest, verify_final_voice_manifest
 
 
 def main() -> None:

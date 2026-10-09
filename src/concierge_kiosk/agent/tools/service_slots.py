@@ -113,13 +113,19 @@ def _alternation(terms, spaced: bool) -> str | None:
     return rf'(?<!\w)(?:{body})(?!\w)' if spaced else f'(?:{body})'
 
 
-def _item_cut(query: str, start: int, language: str, grammar: Mapping) -> int:
+def _item_cut(query: str, start: int, language: str, grammar: Mapping, *, enumerated: bool = False) -> int:
     """End of the item phrase that starts at ``start``: the first boundary after it."""
     ends = [len(query)]
     found = _ITEM_PUNCTUATION.search(query, start)
     if found:
         ends.append(found.start())
-    boundary = _alternation(grammar.get('boundaries', ()), bool(grammar.get('spaced')))
+    boundaries = grammar.get('boundaries', ())
+    if enumerated:
+        connectors = grammar.get('enumeration_terms', ())
+        # A conjunction joins requested objects as well as actions. The model's
+        # validated item span already owns the enumeration; do not truncate it.
+        boundaries = [term for term in boundaries if term not in connectors]
+    boundary = _alternation(boundaries, bool(grammar.get('spaced')))
     if boundary:
         found = re.compile(boundary, re.IGNORECASE).search(query, start)
         if found:
@@ -128,7 +134,7 @@ def _item_cut(query: str, start: int, language: str, grammar: Mapping) -> int:
         plain = fold(query)
         if len(plain) == len(query) and plain == query.casefold():
             # Typed without tone marks: the boundary words cannot be told apart by marks.
-            folded = _alternation([fold(term) for term in grammar.get('boundaries', ())], bool(grammar.get('spaced')))
+            folded = _alternation([fold(term) for term in boundaries], bool(grammar.get('spaced')))
             found = re.compile(folded, re.IGNORECASE).search(plain, start)
             if found:
                 ends.append(found.start())
@@ -137,7 +143,7 @@ def _item_cut(query: str, start: int, language: str, grammar: Mapping) -> int:
         if found:
             ends.append(found.start())
     digit = re.compile(r'\d').search(query, start)
-    if digit:
+    if digit and not enumerated:
         ends.append(digit.start())
     return min(ends)
 
@@ -203,6 +209,23 @@ def item_and_unit(query: str, language: str, *,
                     break
                 position = skipped.end()
             item = _bounded_item(query[position:_item_cut(query, position, language, grammar)], grammar)
+            if item:
+                # Extend only count-and-object enumerations. A new request verb
+                # after the conjunction belongs to another action, not this item.
+                end = _item_cut(query, position, language, grammar)
+                conjunction = _alternation(grammar.get('enumeration_terms', ()), spaced)
+                while conjunction:
+                    link = re.compile(r'\s*' + conjunction + r'\s*', re.IGNORECASE).match(query, end)
+                    following = re.compile(quantity, re.IGNORECASE).match(query, link.end()) if link else None
+                    if following is None or following.end() <= end:
+                        break
+                    next_end = _item_cut(query, following.end(), language, grammar)
+                    if not _bounded_item(query[following.end():next_end], grammar):
+                        break
+                    end = next_end
+                    if end - position > 120:
+                        break
+                    item = query[position:end].strip()
         else:
             boundary = set(grammar.get('boundaries', ()))
             tokens = [token for token in query[:match.start()].split() if token not in boundary]
@@ -250,11 +273,16 @@ def extract_slots(query: str, language: str, kind: str, *, mode: str,
             slots['requested_item'] = item
             if unit and 'unit' in supported and not slots.get('unit'):
                 slots['unit'] = unit
+    elif 'requested_item' in supported and isinstance(slots.get('requested_item'), str):
+        complete, _ = item_and_unit(query, language, anchors=item_anchors(selected_mode, language))
+        terms = (_QUANTITY_ITEM.get(language) or {}).get('enumeration_terms', ())
+        if complete and slots['requested_item'] in complete and any(term in complete for term in terms):
+            slots['requested_item'] = complete
     if isinstance(slots.get('requested_item'), str) and _QUANTITY_ITEM.get(language):
         # An item phrase (from any source) ends at the first boundary word ("... to room").
         item = slots['requested_item']
-        trimmed = _bounded_item(item[:_item_cut(item, 0, language, _QUANTITY_ITEM[language])],
-                                _QUANTITY_ITEM[language])
+        # Preserve bounded validated enumerations, including per-item quantities.
+        trimmed = item[:_item_cut(item, 0, language, _QUANTITY_ITEM[language], enumerated=True)].strip()
         if trimmed and trimmed != item:
             slots['requested_item'] = trimmed
     if 'quantity' in supported:

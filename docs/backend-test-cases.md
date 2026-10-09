@@ -1,58 +1,26 @@
-# Danh mục kiểm thử backend qua API
+# Danh mục kiểm thử backend
 
-Cập nhật: 2026-10-07. Tài liệu này chỉ gồm cách chạy, gate CI, danh mục ca test và mẫu báo cáo. Lộ trình sửa lỗi, dữ liệu, clean code và bỏ hardcode nằm ở [COMPLETION-PLAN.md](COMPLETION-PLAN.md); các bước ở đó trỏ tới ID ca test trong tài liệu này.
+Danh mục này giữ nguyên utterances/IDs/expectations của các tình huống độc lập. Không copy đề sang training hoặc domain policy. Mô tả implementation nằm ở [Architecture](ARCHITECTURE.md), API contract ở [API](API.md), kết quả thực tế ở [Testing](TESTING.md).
 
-Trạng thái ca test: ❌ đã thấy lỗi · ⚠️ nghi ngờ · ✅ đã pass lần trước · (trống) chưa test.
+Ký hiệu PASS/FAIL trong case là ghi nhận lịch sử, không tự là trạng thái working tree hiện tại. Các chỉ tiêu latency trong bảng là mục tiêu/spec chưa đủ distribution; không tuyên bố đã đạt. Nếu expectation khác guest_confirm_all/ownership/receipt contract, đưa vào review thay vì nới production policy.
 
-**Không chép câu trong tài liệu này vào `datasets/training/` hay `config/agent-domain.json`.** Đây là đề kiểm tra; câu bị hiểu sai được sửa bằng ví dụ khác cách nói (COMPLETION-PLAN §4.4). Bản máy đọc của các ca sẽ nằm ở `datasets/evaluation/backend_plan/cases.jsonl` (COMPLETION-PLAN G0-2).
+## Chuẩn bị thực thi
 
-Nhóm ca: INF hạ tầng · SEC bảo mật · CHAT xã giao · KB thông tin/chỉ đường · SVC dịch vụ một lượt · NEG bẫy keyword · WR luồng ghi · SAFE injection · CMP câu ghép · EMG khẩn cấp · NOREQ chưa có yêu cầu · DLG đa lượt · REF hỏi tiếp · PREF sở thích · PLAN kế hoạch · ROB bền vững · STF staff · VOC giọng nói · LAT độ trễ.
+- Dùng authenticated application và DB/checkpoint copy hoặc system temp. Không chạy write/staff/emergency tests trên live hoặc tracked DB.
+- Mỗi case một session, trừ multi-turn; giữ cookie ck_session và X-CSRF-Token, đúng Origin đã cấu hình.
+- Qwen/BGE chỉ dùng nếu task có budget/authorization rõ ràng, RAM preflight và stop condition. Không gửi một câu khách bất kỳ chỉ để “warm” model.
+- Chạy tuần tự, finite timeout. Dùng provider timings khi có; missing counters báo NOT_RETURNED.
+- Phân biệt script/mock, API in-process, real-model và browser/voice. Ghi route/action, source/citations, confirmation state, receipt/idempotency và DB deltas; HTTP 200 không tự là task PASS.
 
----
+Existing HTTP runner là tools/evaluation/run_backend_test_plan.py, đọc datasets/evaluation/backend_plan/turn_cases.jsonl. Source hiện có Origin/credential demo và reset rate counters trên DB thử: chỉ dùng với isolated server/DB tương thích, kiểm tra arguments/source trước khi chạy. --base không tự đổi Origin hoặc credentials trong runner. Không chạy toàn bộ mặc định chỉ để lấy báo cáo.
 
-## 1. Môi trường và quy ước
+Ví dụ chọn nhóm nhỏ sau khi operator đã chuẩn bị isolated app:
 
-1. Copy DB để test các ca ghi (không làm bẩn DB demo):
-   `cp data/concierge.sqlite3 data/test.sqlite3` và `cp data/concierge-graph.sqlite3 data/test-graph.sqlite3`.
-2. Khởi động server:
-   ```bash
-   set -a; . ./.env.example; set +a
-   export CONCIERGE_STAFF_TOKEN=demo-staff-token-2026
-   export CONCIERGE_DB_PATH=./data/test.sqlite3      # bắt buộc khi chạy ca [CONFIRM]
-   python -m concierge_kiosk
-   ```
-3. Warm-up: gửi 1 câu bất kỳ trước khi đo (lượt đầu ~16 s do model nguội).
-4. Ghi rõ chế độ đo: GPU (mặc định dev) hoặc CPU (`num_gpu=0`, profile edge).
-
-Quy ước gọi API:
-- `/api/*`: header `Origin: http://localhost:8000`, `Content-Type: application/json`, `X-CSRF-Token` lấy từ `POST /api/session`; giữ cookie `ck_session`.
-- `POST /api/ask`: `{"query", "language": "vi|en|zh|ko", "turn_nonce": "<uuid hex mới mỗi lượt>"}`; thêm `"source": "sos_button"` khi cần.
-- `/staff/*`: header `Authorization: Bearer <CONCIERGE_STAFF_TOKEN>`.
-- Mỗi ca một session mới, trừ ca nhiều lượt (dùng chung session).
-- Ghi mỗi lượt: HTTP, `tool_route`, `grounding`, `evidence_status`, `suggested_action`, `answer` (≤150 ký tự), thời gian. Bất kỳ 500 nào = FAIL.
-- Ca **[CONFIRM]** tạo ticket thật → chỉ chạy trên DB copy.
-
----
-
-## 2. Gate CI (chạy KHÔNG source `.env.example`)
-
-```bash
-python -m compileall -q src tools
-python tools/config/repin_configs.py --check
-python tools/config/build_runtime_profiles.py --check
-python tools/validate/audit_data.py
-python datasets/schemas/validate_contracts.py
-PYTHONPATH=src python tools/validate/agent_domain.py
-python -m pytest -q -W error::ResourceWarning
-python -m pip_audit --strict
-bandit -q -r src/concierge_kiosk tools -ll
-cd frontend && npm ci && npm run build && cd ..
-for f in web/guest.js web/staff.js web/status.js web/pcm-worklet.js web/sos.js; do node --check "$f"; done
+```powershell
+python tools/evaluation/run_backend_test_plan.py --base http://127.0.0.1:8001 --db <copied-db-path> --only cases --group REF --output reports/e2e/backend-cases.jsonl
 ```
-Sau BUG-7 (COMPLETION-PLAN §3): thêm kiểm `source-sha256` của bundle và smoke Playwright `/`, `/staff`.
 
-
----
+Ở chế độ offline dùng targeted tests/runner ở [Testing](TESTING.md). Không tự bật Cloud/model để chạy danh mục này.
 
 ## 3. Ca kiểm thử
 
@@ -285,9 +253,9 @@ Sau BUG-7 (COMPLETION-PLAN §3): thêm kiểm `source-sha256` của bundle và s
 
 ---
 
-## 4. Mẫu báo cáo
 
-| ID | Lượt | Input | HTTP | route | action | answer | ms | PASS/FAIL | Ghi chú |
-|---|---|---|---|---|---|---|---|---|---|
+## Ghi kết quả
 
-Cuối báo cáo: danh sách FAIL gồm input, kết quả thực tế, kỳ vọng, nghi ngờ nguyên nhân, và ID liên quan trong [COMPLETION-PLAN.md](COMPLETION-PLAN.md) (`BUG-*`, `DAT-*`, `HC-*`).
+Mỗi lượt ghi input synthetic, HTTP, route/failure class, model/provider timings nếu có, action/confirmation, source evidence và business DB delta. Giữ FAIL, NOT_RUN, NEEDS_ADJUDICATION và RESOURCE_BLOCKED đúng nghĩa; không sửa nhãn/assertion để có PASS.
+
+Các expectation writes trước confirmation đang chờ review ở [Limitations](LIMITATIONS.md). Tiêu chí business safety: zero unauthorized writes, owned context/proposal và idempotent replay. Xác nhận service request chưa có nghĩa staff đã thực hiện.

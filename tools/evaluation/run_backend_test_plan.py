@@ -1,4 +1,4 @@
-"""HTTP evaluation runner for docs/BACKEND-TEST-PLAN.md.
+"""HTTP evaluation runner for docs/backend-test-cases.md.
 
 This is intentionally a black-box probe.  It starts no application and never
 uses FastAPI TestClient; pass it the isolated server and copied SQLite DB used

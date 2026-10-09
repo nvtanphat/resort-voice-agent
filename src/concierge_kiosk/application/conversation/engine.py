@@ -27,7 +27,7 @@ from concierge_kiosk.agent.understanding.routing import (
 )
 from concierge_kiosk.agent.understanding.intent import normalize_intent_text
 from concierge_kiosk.agent.understanding.commands import Command, model_commands
-from concierge_kiosk.core.domain_profile import nlu_policy
+from concierge_kiosk.core.domain_profile import nlu_policy, get_domain_profile
 from concierge_kiosk.agent.understanding.service_selector import (
     ServiceSelector,
 )
@@ -55,7 +55,9 @@ from concierge_kiosk.agent.understanding.commands import commands_from_items, va
 from concierge_kiosk.agent.understanding.fast_router import FastRouter, TurnContext
 from concierge_kiosk.agent.understanding.grounded_service import GroundedServiceResolver
 from concierge_kiosk.agent.understanding.intent_evidence import (mentioned_services, room_access_models,
-                                                                  states_room_access_conflict, turn_defers)
+                                                                  states_room_access_conflict, turn_defers,
+                                                                  explicit_draft_cancel, clear_information_turn,
+                                                                  booking_reference, command_supported, information_facet)
 from concierge_kiosk.core.operational_policy import service_access_model
 from concierge_kiosk.agent.understanding.emergency_gate import EmergencyGate, emergency_confirm_question
 from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS
@@ -473,6 +475,35 @@ class _TurnRuntimeSupport:
                         execution_query, None)
 
         commands = None
+        if (pending_task is not None or expects_confirm) and explicit_draft_cancel(query, language):
+            commands = (Command('Cancel'),)
+        if (commands is None and pending_task is None and not expects_confirm
+                and booking_reference(query, language) and not mentioned_services(query, language)):
+            anchors = self.live_context_anchors(session, language)
+            if len(anchors) == 1 and not mentioned_services(query, language):
+                topic = anchors[0].title
+                candidates = tuple(Command('StartGoal', goal=definition.code, refers_to_context=True)
+                                   for definition in get_domain_profile().services
+                                   if definition.request_kind in enabled_request_kinds
+                                   and 'preferred_time' in definition.required_slots
+                                   and command_supported(Command('StartGoal', goal=definition.code,
+                                                                  refers_to_context=True), query, language,
+                                                         context_topic=topic))
+                if len(candidates) == 1:
+                    commands = candidates
+            if commands is None:
+                return RouteDecision('clarification', True), None, execution_query, None
+        if commands is None and clear_information_turn(query, language):
+            # Read-only before Qwen; it cannot prepare/confirm a service or repair
+            # an execution request whose intent is unknown.
+            try:
+                aliases, _ = _structured_entity_data(self.cfg.structured_dataset_dir)
+            except (OSError, ValueError, TypeError):
+                aliases = {}
+            if (not self.live_context_anchors(session, language)
+                    or property_entity_matches(query, language, aliases)):
+                return (RouteDecision('knowledge', False, facet=information_facet(query, language), read_only=True),
+                        None, execution_query, None)
         if expects_confirm and _is_expected_confirmation(query, language):
             # Layer A: the confirmation gate stays deterministic.
             commands = (Command('Confirm', confirmed=True),)
@@ -754,7 +785,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
     turn_read_cache: ContextVar[dict | None] = ContextVar('turn_read_cache', default=None)
 
     def _turn_grounded_answer(query: str, language: str, session: str, *, effective_date: str,
-                              question_type: str = 'fact', facet: str | None = None) -> dict:
+                              question_type: str = 'fact', facet: str | None = None, read_only: bool = False) -> dict:
         """One grounded read per (query, language) per turn.
 
         The knowledge and navigation tools often read the same question in one
@@ -763,12 +794,12 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         """
         voice_turn = voice_input_context.get()
         cache = turn_read_cache.get()
-        key = (query, language, session, effective_date, voice_turn, question_type, facet)
+        key = (query, language, session, effective_date, voice_turn, question_type, facet, read_only)
         if cache is not None and key in cache:
             return copy.deepcopy(cache[key])
         result = grounded_answer(query, language, session,
                                  effective_date=effective_date, voice_turn=voice_turn,
-                                 question_type=question_type, facet=facet)
+                                 question_type=question_type, facet=facet, read_only=read_only)
         if cache is not None:
             cache[key] = copy.deepcopy(result)
         return result
@@ -777,7 +808,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         return _turn_grounded_answer(request.query, request.language, request.session,
                                      effective_date=request.effective_date,
                                      question_type=request.decision.question_type,
-                                     facet=request.decision.facet)
+                                     facet=request.decision.facet, read_only=request.decision.read_only)
 
     def _agent_navigation(request: AgentToolRequest) -> dict:
         result = _turn_grounded_answer(request.query, request.language, request.session,
@@ -1009,7 +1040,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                 query, body.language, session, decision,
                 enabled_request_kinds=frozenset(enabled_request_kinds), voice_turn=voice_input)
         else:
-            decision = RouteDecision('service', True)
+            status = (voice_reply_result.get('agent_action') or {}).get('status')
+            decision = RouteDecision('confirmation' if status == 'cancelled' else 'service', True)
             task_context = None
             execution_query = query
             understanding_commands = None

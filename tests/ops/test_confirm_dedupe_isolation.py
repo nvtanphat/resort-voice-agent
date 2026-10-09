@@ -16,7 +16,7 @@ from concierge_kiosk.persistence.sqlite_store import Store
 ROOT = Path(__file__).resolve().parents[2]
 PROPERTY = 'TEST_PROPERTY'
 DETAILS = 'Fresh bath towels for room 1203.'
-PAYLOAD = {'room_number': '1203', 'quantity': 2}
+PAYLOAD = {'room_number': '1203', 'quantity': 2, 'requested_item': 'bath towels'}
 
 
 def _prepare(workflows: Workflows, session: str, nonce: str, details: str = DETAILS) -> dict:

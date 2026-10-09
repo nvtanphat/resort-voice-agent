@@ -39,7 +39,7 @@ def prepare_runtime(settings: Settings | None, embedder, reranker):
         assets = voice_assets(cfg)
         if not assets['stt_available'] or set(assets['tts_languages']) != LANGUAGES:
             raise RuntimeError('Real multilingual STT and licensed local voices are required')
-        from .voice.runtime.final_assets import check_final_voice_manifest, probe_final_tts
+        from .voice.runtime.assets import check_final_voice_manifest, probe_final_tts
         if cfg.voice_final_require_manifest and not check_final_voice_manifest(cfg, cfg.voice_final_manifest_path):
             raise RuntimeError('Pinned final Whisper/Piper assets are unavailable or changed')
         from .voice.runtime.adapters import _whisper

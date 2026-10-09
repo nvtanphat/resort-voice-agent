@@ -377,8 +377,10 @@ class ServiceActionService:
         pending = self._task_memory.load_voice_proposal(request.session, request.language)
         if pending is None or pending.expected_reply != 'confirm':
             return None
-        affirmed = _voice_term_match(request.query, AFFIRM_TERMS, request.language)
-        denied = _voice_term_match(request.query, DENY_TERMS, request.language, prefix=True)
+        from concierge_kiosk.agent.understanding.intent_evidence import explicit_draft_cancel
+        cancelled = explicit_draft_cancel(request.query, request.language)
+        affirmed = not cancelled and _voice_term_match(request.query, AFFIRM_TERMS, request.language)
+        denied = cancelled or _voice_term_match(request.query, DENY_TERMS, request.language, prefix=True)
         if not affirmed and not denied:
             return None
 
@@ -403,8 +405,8 @@ class ServiceActionService:
 
         updated_slots: dict[str, str | int] | None = None
         assessment = None
-        for parse_language in (request.language,) + tuple(
-                code for code in supported_languages() if code != request.language):
+        for parse_language in (() if cancelled else (request.language,) + tuple(
+                code for code in supported_languages() if code != request.language)):
             candidate = extract_slots(
                 request.query, parse_language, pending.kind,
                 existing=pending.slots, mode=pending.mode, reference_time=self._reference_time())

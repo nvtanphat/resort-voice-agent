@@ -281,6 +281,8 @@ def service_evidence(command, query, language, *, context_topic=None, pending_go
                     if not conflicts and any(a_end <= obj_start for _, a_end in delivery for obj_start, _ in objects):
                         return 'object_delivery'
             references = spans(clause, policy['reference_terms'][code])
+            if command.refers_to_context and context_topic and booking_reference(clause, code):
+                references = references or [(0, len(clause))]
             if command.conditional and references and actions and previous_condition:
                 return 'conditional_reference'
             if mentions and spans(clause, policy['conditional_terms'][code]):
@@ -311,6 +313,69 @@ def mentioned_services(query, language):
     views = clause_views(query, policy, language)
     return frozenset(goal for goal in policy['services']
                      if any(concept_spans(clause, goal, policy, language, accented) for clause, accented in views))
+
+
+def explicit_draft_cancel(query, language):
+    """Present, unquoted cancellation; denies neither a negated nor an informational action."""
+    policy = get_domain_profile().semantic_authorization
+    found = False
+    for clause, accented in clause_views(query, policy, language):
+        hits = spans(clause, policy.get('cancellation_terms', {}).get(language, ()))
+        if not clause.strip():
+            continue
+        if not hits or not affirmative(clause, hits, policy, language, accented=accented):
+            return False
+        if completed_action(clause, hits, policy, language, accented):
+            return False
+        found = True
+    return found
+
+
+def booking_reference(query, language):
+    """A booking verb plus a backward reference or singular count, never a bare clock value."""
+    from concierge_kiosk.agent.understanding.domain_nlu import NUMBER_WORDS
+    policy = get_domain_profile().semantic_authorization
+    text = fold(unquoted(query))
+    counts = [word for word, value in NUMBER_WORDS.get(language, {}).items() if int(value) == 1]
+    return bool(spans(text, policy.get('booking_actions', {}).get(language, ())) and
+                spans(text, (*policy['reference_terms'].get(language, ()), *counts)))
+
+
+def clear_information_turn(query, language):
+    """All meaningful clauses ask for information; mixed or unrecognized actions abstain."""
+    policy = get_domain_profile().semantic_authorization
+    # Implicit references and navigation still require their explicit command
+    # contract. This fast path covers clear informational facets, not every WH turn.
+    if spans(fold(unquoted(query)), policy['reference_terms'].get(language, ())):
+        return False
+    found = False
+    for clause, accented in clause_views(query, policy, language):
+        if not clause.strip():
+            continue
+        informational = information_request(clause, accented, policy, language)
+        if not (informational or information_facet(clause, language)):
+            return False
+        actions = spans(clause, policy['request_actions'].get(language, ()))
+        # A question word cannot relabel an explicit execution request as a read.
+        if actions and not informational:
+            return False
+        consequential = (*policy.get('booking_actions', {}).get(language, ()),
+                         *policy['delivery_actions'].get(language, ()))
+        if spans(clause, consequential) and not spans(clause, policy.get('information_verbs', {}).get(language, ())):
+            return False
+        if spans(clause, policy.get('modification_terms', {}).get(language, ())) or spans(
+                clause, policy.get('cancellation_terms', {}).get(language, ())):
+            return False
+        found = True
+    return found
+
+
+def information_facet(query, language):
+    policy = get_domain_profile().semantic_authorization
+    text = fold(unquoted(query))
+    facets = [facet for facet, terms in policy.get('information_facets', {}).items()
+              if spans(text, terms.get(language, ()))]
+    return facets[0] if len(facets) == 1 else None
 
 
 def states_condition(query, language):

@@ -81,7 +81,7 @@ BOOL_KEYS = frozenset({'proposal_allowed', 'confirmation_required', 'confirmatio
     'idempotent_replay', 'verified', 'anchor_existed', 'anchor_accepted',
     'session_ownership_verified', 'ttl_valid', 'pending_task_continuation', 'rrf_used'})
 NUMBER_KEYS = frozenset({'latency_ms', 'prompt_tokens', 'completion_tokens', 'prompt_eval_ms',
-    'generation_ms', 'total_model_ms', 'command_count', 'command_index', 'policy_version',
+    'generation_ms', 'load_ms', 'total_model_ms', 'command_count', 'command_index', 'policy_version',
     'schema_version', 'candidate_count', 'top_k', 'citation_count', 'business_writes',
     'service_proposal_count', 'source_count', 'rerank_ms'})
 HEX_KEYS = {'correlation_id': 32, 'session_pseudonym': 64, 'proposal_link': 64, 'request_link': 64,
@@ -554,7 +554,8 @@ def provider_metadata(event_data):
         value = event_data.get(source)
         if type(value) is int and 0 <= value <= 1000000:
             metadata[target] = value
-    for source, target in [('prompt_eval_duration', 'prompt_eval_ms'), ('eval_duration', 'generation_ms'), ('total_duration', 'total_model_ms')]:
+    for source, target in [('load_duration', 'load_ms'), ('prompt_eval_duration', 'prompt_eval_ms'),
+                           ('eval_duration', 'generation_ms'), ('total_duration', 'total_model_ms')]:
         value = event_data.get(source)
         if type(value) is int and 0 <= value <= 1e15:
             metadata[target] = value / 1e6

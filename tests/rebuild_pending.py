@@ -1,7 +1,7 @@
 """Tests whose behaviour was removed with the keyword logic and returns with a rebuild step.
 
 Each entry is ``(node-id prefix, rebuild step)``.  The step names refer to the
-rebuild list in plan.md / the Phase B plan:
+rebuild list (open work is tracked in docs/LIMITATIONS.md):
 
 * B1 facet     - facet taken from the validated AskInfo/Navigate command, mapped to fact types
 * B2 follow-up - conversation state (anchor, pending question) in the command prompt

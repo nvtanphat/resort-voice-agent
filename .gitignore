@@ -43,4 +43,5 @@ frontend/dist/
 scratch/
 scratch_*.txt
 .pytest_cache/
+.ruff_cache/
 edge_test-graph.sqlite3

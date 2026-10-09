@@ -89,7 +89,7 @@ class ConversationMemory:
         with self._lock:
             self._active(session, language, time.monotonic())
             # Until follow-up resolution is rebuilt from conversation state in the
-            # command prompt (plan.md "Hỏi tiếp"), no turn inherits an anchor or a
+            # command prompt (explicit context-reference contract "Hỏi tiếp"), no turn inherits an anchor or a
             # rewritten query: every question is a fresh topic.
             return ConversationSnapshot(self._version_locked(session), None, "none", query, False)
 

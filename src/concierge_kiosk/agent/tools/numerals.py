@@ -277,7 +277,16 @@ def _preferred_time_core(text: str, language: str) -> str | None:
     for pattern in _TIME_PATTERNS:
         match = re.search(pattern, normalized, flags=re.IGNORECASE)
         if match:
-            return match.group(1).strip()
+            value = match.group(1).strip()
+            for marker in _SHORT_TIME_MARKERS.get(language, ()):
+                # Canonical clock periods already present in the reviewed
+                # marker table have the existing _hour_for_period semantics.
+                if marker not in {'am', 'pm', 'noon'}:
+                    continue
+                clock = re.fullmatch(r'(\d{1,2})(?::(\d{2}))?\s*' + re.escape(marker), value)
+                if clock and 1 <= int(clock.group(1)) <= 12:
+                    return f'{_hour_for_period(int(clock.group(1)), marker):02d}:{int(clock.group(2) or 0):02d}'
+            return value
     for term in _RELATIVE_TIME_TERMS.get(language, ()):
         if term in normalized:
             return term

@@ -64,15 +64,15 @@ def check_no_leakage(queries: list[str]) -> None:
                         if n:
                             ref_data.append((p.name, t, n, set(n.split())))
 
-    # 3. docs/BACKEND-TEST-PLAN.md
-    bp = ROOT / "docs" / "BACKEND-TEST-PLAN.md"
+    # 3. docs/backend-test-cases.md
+    bp = ROOT / "docs" / "backend-test-cases.md"
     if bp.is_file():
         for line in bp.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line:
                 n = norm(line)
                 if len(n.split()) >= 2:
-                    ref_data.append(("BACKEND-TEST-PLAN.md", line, n, set(n.split())))
+                    ref_data.append(("backend-test-cases.md", line, n, set(n.split())))
 
     collisions = []
     for q in queries:
@@ -91,7 +91,7 @@ def check_no_leakage(queries: list[str]) -> None:
         for q, src, raw, j in collisions[:10]:
             print(f"  '{q}' trùng với [{src}] '{raw}' (jaccard={j})")
         sys.exit(1)
-    print("Kiểm trùng tự động: PASS (0 trùng lặp với training, evaluation và BACKEND-TEST-PLAN.md)")
+    print("Kiểm trùng tự động: PASS (0 trùng lặp với training, evaluation và backend-test-cases.md)")
 
 
 # ===========================================================================

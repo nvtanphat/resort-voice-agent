@@ -467,7 +467,7 @@ class Settings(BaseSettings):
         if self.voice_final_require_manifest and not self.voice_final_manifest_path:
             raise ValueError("Production final speech assets require an operator-approved manifest")
         if self.voice_final_manifest_path and self.real_runtime_required:
-            from ..voice.runtime.final_assets import verify_final_voice_manifest
+            from ..voice.runtime.assets import verify_final_voice_manifest
             if not verify_final_voice_manifest(self, self.voice_final_manifest_path):
                 raise ValueError("Final Whisper/Piper manifest integrity check failed")
         if self.nli_require_manifest and not (self.nli_model_path and self.nli_manifest_path):

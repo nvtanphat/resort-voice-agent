@@ -1,81 +1,99 @@
-# API
+# API và authentication
 
-## 1. Tổng quan
+Nguồn contract: `api/shared/contracts.py`; routes ở `api/{public,guest,staff,internal,voice}/`, `main.py` và voice transport. OpenAPI được bật ngoài production; không import app để đọc schema trên máy thật vì có startup/storage/model side effects.
 
-Backend dùng FastAPI. OpenAPI được bật ngoài production và bị tắt trong production configuration hiện tại.
+## Authentication
 
-Các endpoint dưới đây được tổng hợp từ route registration trong source. Request/response schema chi tiết nằm trong `src/concierge_kiosk/api/shared/contracts.py` và các module API tương ứng.
+| Client | Cách gọi |
+|---|---|
+| Guest | Tạo session, giữ cookie ck_session và gửi X-CSRF-Token |
+| Staff | Authorization: Bearer với read/write scopes; production thêm staff gateway ingress |
+| Internal agent | X-Agent-Token |
+| Voice WebSocket | Same-origin, session và token theo transport contract |
 
-## 2. Public và health
+POST public dùng đúng `Origin` của `CONCIERGE_PUBLIC_ORIGIN`; cookie/CSRF vẫn bắt buộc cho guest endpoints đã bảo vệ. Không đặt raw session_id vào request để thay authorization. Staff bearer không bypass gateway production.
 
-| Method | Path | Mục đích |
-|---|---|---|
-| GET | `/` | giao diện kiosk |
-| GET | `/ops` | giao diện vận hành nếu asset có sẵn |
-| GET | `/healthz` | process health |
-| GET | `/readyz` | runtime readiness |
-| GET | `/api/config` | cấu hình public cần cho UI |
-| GET | `/api/ui-contract` | UI contract |
-| GET | `/api/services` | service catalog public |
-| GET | `/api/map/places` | danh sách địa điểm/map data |
+`X-Request-ID`/`X-Trace-ID` trong response do server tạo cho HTTP correlation; không tin trace ID client hoặc mặc định đồng nhất với SDK trace ID.
 
-## 3. Guest session và conversation
+## Luồng guest cơ bản
 
-| Method | Path | Mục đích |
-|---|---|---|
-| POST | `/api/session` | tạo guest session |
-| POST | `/api/session/end` | kết thúc session |
-| POST | `/api/ask` | gửi câu hỏi/turn |
-| GET | `/api/turns/{turn_id}/events` | đọc lifecycle của turn |
+1. `POST /api/session`: trả session_id, csrf_token, expires_in và session cookie.
+2. `POST /api/ask`: query (2–500 ký tự), language, source và turn_nonce nếu dùng.
+3. Response có answer/sources/citations, grounding/retrieval/generation metadata và action/voice fields theo contract. Dùng machine-readable state/receipt, không suy ra hoàn thành từ answer.
+4. Prepare → explicit confirm theo policy; kết thúc bằng `POST /api/session/end`.
 
-## 4. Guest service requests
+Ví dụ body hỏi, dùng dữ liệu synthetic khi thử:
 
-| Method | Path | Mục đích |
-|---|---|---|
-| POST | `/api/requests/prepare` | chuẩn bị proposal |
-| POST | `/api/requests/confirm` | xác nhận proposal |
-| POST | `/api/requests/cancel` | hủy request theo contract |
-| POST | `/api/requests/{request_id}/change` | yêu cầu thay đổi |
-| GET | `/api/requests/mine` | danh sách request của session |
-| GET | `/api/requests/{request_id}/status` | trạng thái request |
-| GET | `/api/requests/{request_id}/progress` | progress view |
+```json
+{"query":"What time does the spa open?","language":"en","source":"dialogue","turn_nonce":"synthetic_turn_01"}
+```
 
-## 5. Voice
+Prepare yêu cầu kind/language/details/nonce; service, payload, change và data_consent theo contract. Confirm:
 
-| Method | Path | Mục đích |
-|---|---|---|
-| POST | `/api/audio/turn/start` | bắt đầu voice turn |
-| POST | `/api/audio/turn/cancel` | hủy voice turn |
-| POST | `/api/audio/transcribe/partial` | partial transcription |
-| POST | `/api/audio/transcribe` | final transcription |
-| WS | `/api/audio/stream` | stream audio |
-| POST | `/api/audio/proof` | playback proof contract |
-| POST | `/api/audio/played` | acknowledge playback |
-| POST | `/api/audio/playback-failed` | báo playback lỗi |
-| POST | `/api/audio/speak` | TTS |
-| GET | `/api/audio/turn/proof` | legacy proof path |
-| POST | `/api/audio/turn/played` | legacy playback acknowledgement |
-| POST | `/api/audio/turn/playback-failed` | legacy playback failure |
-| POST | `/api/audio/speak` | legacy TTS path |
+```json
+{"proposal_id":"<32-character-owned-proposal-id>","confirmed":true,"price_acknowledged":false}
+```
 
-## 6. Staff
+Giá trị price_acknowledged/verification phải phản ánh consent thật, không tự đặt true để bypass policy. Proposal ID lấy từ response, không fabricate. Pending/approved/in_progress/paused thường trả 202; service completed dựa trên business row. Confirm replay không tạo duplicate request.
 
-| Method | Path | Mục đích |
-|---|---|---|
-| GET | `/staff/requests` | đọc request list |
-| GET | `/staff/requests/page` | paged request list |
-| GET | `/staff/queue/summary` | queue summary |
-| GET | `/staff/requests/{request_id}` | request detail |
-| GET | `/staff/requests/{request_id}/audit` | audit history |
-| GET | `/staff/metrics` | operational metrics |
-| POST | `/staff/requests/{request_id}/guest-change` | xử lý guest change |
-| POST | `/staff/requests/{request_id}/transition` | business transition |
-| POST | `/staff/requests/{request_id}/orchestration/reconcile` | reconcile orchestration state |
-| POST | `/staff/orchestration/reconcile-deferred` | reconcile deferred records |
+## Endpoint catalog
 
-Staff endpoints dùng auth dependency và scope kiểm tra tại API layer.
+### Public, health và client telemetry
 
-## 7. Internal agent
+| Method | Path |
+|---|---|
+| POST | `/api/telemetry` |
+| GET | `/` |
+| GET | `/staff` |
+| GET | `/healthz` |
+| GET | `/readyz` |
+| GET | `/api/config` |
+| GET | `/api/ui-contract` |
+| GET | `/api/services` |
+| GET | `/api/map/places` |
+
+### Guest session, requests và status
+
+| Method | Path |
+|---|---|
+| GET | `/status/{token}` |
+| GET | `/api/status/{token}` |
+| GET | `/api/status/{token}/events` |
+| GET | `/api/status/{token}/qr.svg` |
+| GET | `/api/status/lookup/{confirmation_code}` |
+| POST | `/api/session` |
+| POST | `/api/session/end` |
+| POST | `/api/ask` |
+| GET | `/api/turns/{turn_id}/events` |
+| GET | `/api/proactive/suggestions` |
+| POST | `/api/requests/prepare` |
+| POST | `/api/consent` |
+| POST | `/api/requests/confirm` |
+| POST | `/api/requests/cancel` |
+| POST | `/api/requests/{request_id}/change` |
+| GET | `/api/requests/mine` |
+| GET | `/api/requests/{request_id}/status` |
+| GET | `/api/requests/{request_id}/progress` |
+| POST | `/api/requests/{request_id}/feedback` |
+
+### Staff
+
+| Method | Path |
+|---|---|
+| GET | `/staff/emergencies` |
+| POST | `/staff/emergencies/{alert_id}/transition` |
+| GET | `/staff/requests` |
+| GET | `/staff/requests/page` |
+| GET | `/staff/queue/summary` |
+| GET | `/staff/requests/{request_id}` |
+| GET | `/staff/requests/{request_id}/audit` |
+| GET | `/staff/metrics` |
+| POST | `/staff/requests/{request_id}/guest-change` |
+| POST | `/staff/requests/{request_id}/transition` |
+| POST | `/staff/requests/{request_id}/orchestration/reconcile` |
+| POST | `/staff/orchestration/reconcile-deferred` |
+
+### Internal agent
 
 | Method | Path |
 |---|---|
@@ -84,12 +102,33 @@ Staff endpoints dùng auth dependency và scope kiểm tra tại API layer.
 | POST | `/internal/agent/prepare` |
 | POST | `/internal/agent/confirm` |
 
-Các endpoint này dùng `require_agent` dependency.
+### Voice
 
-## 8. Telemetry
+| Method | Path |
+|---|---|
+| POST | `/api/audio/turn/start` |
+| POST | `/api/audio/greeting` |
+| POST | `/api/audio/turn/cancel` |
+| POST | `/api/audio/transcribe/partial` |
+| POST | `/api/audio/transcribe` |
+| POST | `/api/audio/proof` |
+| POST | `/api/audio/played` |
+| POST | `/api/audio/playback-failed` |
+| POST | `/api/audio/speak` |
+| GET | `/api/audio/turn/proof` |
+| POST | `/api/audio/turn/played` |
+| POST | `/api/audio/turn/playback-failed` |
+| WS | `/api/audio/stream` |
+| WS | `/api/voice/agent` |
 
-`POST /api/telemetry` nhận client latency event. Source hiện tránh gắn raw text/audio vào metric record tại endpoint này.
+`/api/telemetry` dùng guest session/CSRF; `/staff` UI trong production cần staff gateway. Catalog theo nơi đăng ký route, không hàm ý mọi endpoint trong nhóm đầu đều anonymous.
 
-## 9. Contract source
+Voice endpoints đăng ký/sử dụng theo profile và assets; `/api/voice/agent` là Pipecat transport. Status link/token là capability riêng có expiry; không công khai token hoặc suy ra quyền session khác từ nó.
 
-Khi tài liệu và code khác nhau, code/schema trong repository là nguồn cần kiểm tra lại trước khi tích hợp client.
+## Failure và ownership
+
+Schema/payload sai trả validation errors; origin/ownership/auth/scope không hợp lệ bị từ chối. Expired proposal, missing consent, price/guest verification và invalid transition có state-specific errors. API không dùng 500 để diễn đạt expected business rejection.
+
+NLU unavailable/timeout/semantic rejection có thể trả response hội thoại an toàn với failure metadata; HTTP 200 không nghĩa task thành công. So sánh route/action, clarification và DB receipts khi nghiệm thu.
+
+Chi tiết safety ở [Security](SECURITY.md); các tình huống độc lập ở [backend cases](backend-test-cases.md). Catalog được đối chiếu tĩnh với source, không phải bằng chứng live endpoint acceptance.

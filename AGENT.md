@@ -25,7 +25,7 @@ Nếu một giá trị xuất hiện vì “chỉ có một khách sạn hiện 
 
 - `config/agent-domain.json`: vocabulary, NLU, RAG policy, locale/voice rendering, service rules.
 - `config/runtime-profiles/src/`: model path, timeout, budget, feature flag và deployment setting.
-- `i18n/` và `frontend/src/i18n.ts`: text hiển thị theo ngôn ngữ.
+- `locales/`, `src/concierge_kiosk/i18n/` và `frontend/src/i18n.ts`: text hiển thị theo ngôn ngữ.
 - property profile/release: property-specific facts, contacts và enabled languages.
 - `datasets/` và `knowledge/`: dữ liệu khách sạn, benchmark và corpus; không chép lại các giá trị này vào Python.
 
@@ -57,7 +57,7 @@ Không sửa bằng cách thêm một `if language == ...` hoặc một string n
 Không "học đề":
 
 - Không thêm cụm từ vào `config/agent-domain.json` để một câu cụ thể được hiểu đúng. Ý định (dịch vụ, hỏi thông tin, huỷ/đổi, hỏi tiếp, xã giao, sở thích, kế hoạch) được học từ ví dụ trong `datasets/training/agent/`, không từ danh sách cụm từ.
-- Không chép câu từ `datasets/evaluation/` hay `docs/BACKEND-TEST-PLAN.md` vào training. Khi một câu tự nhiên bị hiểu sai, thêm 2–3 ví dụ **khác cách nói** với nhãn đúng; `gold_status: GOLD` chỉ khi người đã duyệt, ví dụ do agent viết dùng `CANDIDATE`.
+- Không chép câu từ `datasets/evaluation/` hay `docs/backend-test-cases.md` vào training. Khi một câu tự nhiên bị hiểu sai, thêm 2–3 ví dụ **khác cách nói** với nhãn đúng; `gold_status: GOLD` chỉ khi người đã duyệt, ví dụ do agent viết dùng `CANDIDATE`.
 - Không thêm đường tắt tra cứu nguyên văn (câu khách trùng câu train → trả nhãn) hay ngưỡng đếm từ để đoán ý định.
 - `tests/agent/test_no_case_specific_rules.py` chặn các điểm trên; `tests/agent_domain_keyword_budget.json` chỉ được giảm.
 

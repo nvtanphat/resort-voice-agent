@@ -81,9 +81,8 @@ def journey(tmp_path, shipped_db, request, monkeypatch):
             return [redact(item) for item in value]
         return value
     encoded = json.dumps(redact(events),ensure_ascii=False,indent=2)
-    output = Path('reports/agent-e2e-deterministic')
-    output.mkdir(parents=True,exist_ok=True)
-    (output/f'{request.node.name}.json').write_text(encoded,encoding='utf-8')
+    output = tmp_path/'api-transcript.json'
+    output.write_text(encoded,encoding='utf-8')
 
 
 def test_tc01_water_draft(journey, understand):

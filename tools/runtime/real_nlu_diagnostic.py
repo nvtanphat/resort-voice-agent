@@ -64,7 +64,7 @@ def classify_failure(case_number, parsed, validated, passed, body, errors):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--expected-digest', required=True)
-    parser.add_argument('--output', default='reports/wp12-real-nlu.json')
+    parser.add_argument('--output', default='reports/nlu/real-diagnostic.json')
     args = parser.parse_args()
     output = Path(args.output)
     if output.exists():

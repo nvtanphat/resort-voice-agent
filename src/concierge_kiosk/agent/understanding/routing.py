@@ -32,6 +32,8 @@ class RouteDecision:
     # Facet of a single AskInfo (rag.facet_fact_types key); scopes retrieval, never routes.
     facet: str | None = None
     failure_class: str | None = None
+    # Server-owned read boundary: no optional model generation for this turn.
+    read_only: bool = False
 
 
 # Routing vocabulary is profile-owned. Request changes and status checks are

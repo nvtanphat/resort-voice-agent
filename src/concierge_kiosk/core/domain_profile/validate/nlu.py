@@ -97,6 +97,14 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     routing = nlu["routing"]
     for key in ('affirm_terms', 'deny_terms'):
         validate_language_keys(routing[key], languages, label=f'nlu.routing.{key}', require_all=True)
+    semantic = payload['semantic_authorization']
+    for key in ('cancellation_terms', 'booking_actions'):
+        if key in semantic:
+            validate_language_keys(semantic[key], languages, label=f'semantic_authorization.{key}', require_all=True)
+    for facet, terms in semantic.get('information_facets', {}).items():
+        if facet not in payload['rag']['facet_fact_types']:
+            raise ValueError('Unknown information facet')
+        validate_language_keys(terms, languages, label=f'semantic_authorization.information_facets.{facet}', require_all=True)
     for category, values in routing["static_text"].items():
         validate_language_keys(values, languages, label=f"nlu.routing.static_text.{category}", require_all=True)
 

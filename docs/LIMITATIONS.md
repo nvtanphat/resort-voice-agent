@@ -1,52 +1,101 @@
-# Giới hạn và phần cần xác minh
+# Giới hạn và phần chưa nghiệm thu
 
-## 1. Benchmark
+Tài liệu này là danh sách blocker hiện hành, không phải roadmap theo WP. Implementation/configured feature không đồng nghĩa model/Cloud/browser/voice đã được nghiệm thu.
 
-Tài liệu hiện tại không dùng benchmark retrieval, generation hoặc voice để kết luận chất lượng hệ thống. Các metric này cần chạy trên bộ đánh giá và model artifact tương ứng với môi trường mục tiêu.
+## Trạng thái
 
-## 2. Model artifact
+| Hạng mục | Trạng thái và bằng chứng còn thiếu |
+|---|---|
+| Qwen latency và NLU thực tế | **BLOCKED**: warm NLU vẫn timeout trong smoke gần nhất; chưa có successful replay sửa lỗi |
+| Multi-item và multi-intent | Mock/scripted contract có regression; real-model task acceptance chưa đạt |
+| Transcript S01–S15 | Nguyên bản inputs/harness/failed node IDs chưa có; không thay bằng probe khác rồi gọi cùng suite |
+| Current real Qwen accuracy | **REAL_MODEL_ACCURACY_NOT_MEASURED**; không suy ra từ oracle/test PASS |
+| BGE Recall@K và Emergency Tier2 | **NOT_MEASURED** tại model/hardware hiện hành; Tier1 recall không thay whole-system recall |
+| Langfuse Cloud | **CLOUD_INGESTION_NOT_VERIFIED**; chưa controlled ingestion/read-back có quyền |
+| Live voice/browser E2E | Chưa nghiệm thu STT/TTS/browser/streaming/audio lifecycle trên thiết bị mục tiêu |
+| Production operation | Chưa đủ evidence về TLS/proxy, rotation, backup/restore, crash/disk-full/load/network isolation |
 
-Runtime profile tham chiếu nhiều model local nhưng không phải mọi model đều được đóng gói trong repository. Trước khi bật feature tương ứng cần kiểm tra model path, manifest và dependency.
+Chi tiết transcript/timings và offline passes ở [Testing](TESTING.md). 714 tests/11 failures/4 skips là historical operator claim, exact node IDs chưa đối chiếu; không được tự báo tất cả PASS.
 
-## 3. LangGraph dependency
+## Coverage và authority còn cần review
 
-Agent orchestration mặc định dùng LangGraph. Các integration test liên quan chỉ phản ánh execution thực tế khi LangGraph và checkpoint dependency đã được cài.
+- Emergency domain chưa đủ reviewed evidence cho sudden speech/facial symptoms CORE-VI-EMERGENCY-14 và flooding/trapped person CORE-VI-EMERGENCY-18.
+- Một số active-hazard examples có label service/status thay emergency: NEEDS_ADJUDICATION; không hạ safety hoặc sửa nhãn theo output.
+- Verified spa anchor follow-up đã đi đúng boundary trong API model-unavailable; đây chưa phải real NLU hiểu ngữ cảnh massage trên transcript gốc.
+- Similarity/candidate coverage cần đo với learned embedder sẵn sàng. Không thay unavailable similarity bằng keyword classifier.
+- Implicit information/reference wording ngoài contract có thể cần Qwen hoặc clarification. Read-only fallback không cấp service authority.
+- Training balance, missing examples và translation concepts cần source/human review; không tự grant business authority cho bản dịch chưa duyệt.
 
-## 4. SQLite
+## Giới hạn triển khai
 
-SQLite phù hợp với kiến trúc single-appliance hiện tại nhưng giới hạn concurrency và operational model khác database server. Nếu thay đổi sang multi-node hoặc write concurrency cao cần đánh giá lại persistence design.
+SQLite và process-local pending state phù hợp appliance hiện tại; multi-node/concurrency/restart behavior cần nghiệm thu theo topology thực. Property identity do config/pin cấp, không là multi-tenant user input.
 
-## 5. Single-property assumption
+Models lớn/secrets không có đầy đủ trong checkout. Default/template production cần operator provision digest, manifests, keys và assets; không chỉ đổi ENV rồi coi ready.
 
-Code hiện đặt `property_id` từ cấu hình appliance. Hệ thống không được mô tả như multi-tenant runtime trong tài liệu này.
+Knowledge freshness phụ thuộc nguồn/review, không suy ra từ checksum PASS. Synthetic operations/PMS/inventory không chứng minh kết nối business system thật. React source và bundle cần build consistency; voice cần assets/hardware đo thật.
 
-## 6. Voice
+## Review queue: 55 business-write expectations
 
-STT/TTS phụ thuộc local model, executable và hardware. Latency, quality và language coverage cần đo trên thiết bị mục tiêu.
+Đối chiếu dataset hiện tại: 10/63 semantic frames và 45/270 production scenarios có expected_business_writes_before_confirmation >0. Policy guest_confirm_all yêu cầu explicit consent trước persisted service receipt. Draft/proposal/audit event và emergency alert khác service write.
 
-## 7. Frontend bundle
+Đây là dataset contract mismatch, không là bằng chứng Agent đã ghi DB trái phép. Chưa sửa gold labels; proposed value 0 cần adjudication đúng giai đoạn và authoritative release/review process. Source-family descendants không được đếm như independent holdout.
 
-`web/` là runtime asset và có thể chứa file build lớn. Source chỉnh sửa nằm trong `frontend/src/`. Sau thay đổi frontend cần build lại bundle và kiểm tra contract với backend.
+Machine-readable output lịch sử đã bị xóa khi cleanup; IDs/giá trị review được giữ nguyên:
 
-## 8. Production configuration và production operation
-
-Tên profile `production`, startup validation, signoff tool hoặc security option trong container không đồng nghĩa deployment đã được kiểm thử đầy đủ. Cần xác minh riêng:
-
-- TLS/reverse proxy;
-- credential rotation;
-- backup/restore;
-- crash recovery;
-- disk-full behavior;
-- sustained load;
-- model availability;
-- network isolation;
-- monitoring/alerting;
-- hardware resource budget.
-
-## 9. Data freshness
-
-Knowledge và structured dataset có version/release metadata, nhưng độ mới của nội dung phụ thuộc quy trình cập nhật nguồn. Không nên suy ra dữ liệu đang mới chỉ từ việc schema validation pass.
-
-## 10. Evaluation và regression
-
-Regression tests cho biết behavior đã encode trong test suite. Chúng không tự đo trải nghiệm người dùng hoặc factual accuracy trên dữ liệu ngoài test set.
+| Source | ID | Existing before-confirmation writes | Review |
+| --- | --- | --- | --- |
+| frames/semantic_frames.jsonl | FRAME-AC_HOT | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-EXTRA_PILLOW | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-LIGHT_BROKEN | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-MULTI_TOWEL_CLEAN | 2 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-MULTI_TOWEL_LATE | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-SINK_LEAK | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-TOILET_BLOCKED | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-TOWEL_TWO | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-TV_SIGNAL | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| frames/semantic_frames.jsonl | FRAME-WATER_FOUR | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | vi_light | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | vi_clean | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | vi_multi | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | vi_towel | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_vi_leaking_sink | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | scenario_vi_31 | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | en_ac | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | en_clean | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | en_light | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | en_multi | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | en_towel | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_en_ac_not_cooling | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_en_clean_at_time | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_en_flooded_room_balance | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_en_leaking_sink | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_en_multi_towel_late | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_en_towel_direct | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | scenario_en_31 | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | scenario_en_32 | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | ko_ac | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | ko_clean | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | ko_light | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | ko_multi | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | ko_towel | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_ko_ac_not_cooling | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_ko_clean_at_time | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_ko_dnd_clean_balance | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_ko_leaking_sink | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_ko_multi_towel_late | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_ko_towel_direct | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | scenario_ko_31 | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | scenario_ko_32 | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_zh_clean_at_time | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_zh_dnd_clean_balance | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_zh_flooded_room_balance | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_zh_leaking_sink | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_zh_multi_towel_late | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | production_zh_towel_direct | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | scenario_zh_31 | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | scenario_zh_32 | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | zh_ac | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | zh_clean | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | zh_light | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | zh_multi | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |
+| end_to_end/scenarios/production.jsonl | zh_towel | 1 | Propose0; NEEDS_ADJUDICATION; NOT_APPLIED |

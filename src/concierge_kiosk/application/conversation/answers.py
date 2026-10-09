@@ -280,7 +280,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
 
     def grounded_answer(query: str, language: str, session: str, *, effective_date: str,
                         voice_turn: bool = False, question_type: str = 'fact',
-                        facet: str | None = None) -> dict:
+                        facet: str | None = None, read_only: bool = False) -> dict:
         ensure_active_context_session(session)
         q = query.strip()
         # Capture bounded public pointers/facet state under the memory lock.
@@ -385,7 +385,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
             cfg.slm_generation_timeout_seconds,
             cfg.voice_slm_caps["generation"] if voice_turn else cfg.text_generation_timeout_seconds,
         )
-        if (result.sources and strict_model_current and
+        if (not read_only and result.sources and strict_model_current and
                 audio_admission.try_enter_slm(session)):
             try:
                 for model in cfg.llm_candidates():
@@ -570,7 +570,7 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         spoken claim must be an exact current citation in the business DB.
 
         ``topics`` are the planning categories taken from the validated ``Plan``
-        command (plan.md, section "Ke hoach"); the guest's words are never scanned for
+        command (the explicit Plan command contract); the guest's words are never scanned for
         them, so an empty list is an unavailable plan, not a guess.
         """
         if not topics:

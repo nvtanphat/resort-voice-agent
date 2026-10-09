@@ -1011,6 +1011,16 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 12
+                  },
+                  "enumeration_terms": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
                   }
                 }
               }
@@ -2622,42 +2632,45 @@
             "additionalProperties": false,
             "properties": {
               "lead": {
-            "type": "array",
-            "maxItems": 24,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 48
-            }
-          },
+                "type": "array",
+                "maxItems": 24,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 48
+                }
+              },
               "clause_final": {
-            "type": "array",
-            "maxItems": 24,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 48
-            }
-          },
+                "type": "array",
+                "maxItems": 24,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 48
+                }
+              },
               "standalone": {
-            "type": "array",
-            "maxItems": 24,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 48
-            }
-          }
+                "type": "array",
+                "maxItems": 24,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 48
+                }
+              }
             }
           }
         },
         "room_access_conflicts": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["access_models", "terms"],
+          "required": [
+            "access_models",
+            "terms"
+          ],
           "properties": {
             "access_models": {
               "type": "array",
@@ -2673,15 +2686,15 @@
               "type": "object",
               "maxProperties": 8,
               "additionalProperties": {
-            "type": "array",
-            "maxItems": 24,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 48
-            }
-          }
+                "type": "array",
+                "maxItems": 24,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 48
+                }
+              }
             }
           }
         },
@@ -2742,6 +2755,52 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 48
+            }
+          }
+        },
+        "cancellation_terms": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        },
+        "booking_actions": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        },
+        "information_facets": {
+          "type": "object",
+          "maxProperties": 16,
+          "additionalProperties": {
+            "type": "object",
+            "maxProperties": 8,
+            "additionalProperties": {
+              "type": "array",
+              "maxItems": 24,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              }
             }
           }
         }

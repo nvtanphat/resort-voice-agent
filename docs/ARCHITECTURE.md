@@ -1,137 +1,60 @@
-# Kiến trúc hệ thống
+# Kiến trúc và luồng thực thi
 
-## 1. Mô hình tổng quát
+## Thành phần
 
-Hệ thống được tổ chức theo hướng tách API, application workflow, agent runtime, RAG, domain và persistence.
+Hệ thống dùng FastAPI, SQLite và LangGraph theo mô hình một property/appliance. Frontend React được build thành assets trong `web/`. Ngôn ngữ domain hiện tại: VI/EN/ZH/KO.
 
-```text
-Web / Client
-  |
-FastAPI routes
-  |
-Application services
-  |---------------------|
-  |           |
-Agent runtime     Workflow service
-  |           |
-RAG / tools / memory  Domain rules
-  |           |
-  |---------- SQLite ---|
+```mermaid
+flowchart TD
+    UI[Guest / Voice / Staff UI] --> API[FastAPI: auth, origin, contracts]
+    API --> APP[Application services]
+    APP --> U[Understanding + semantic authorization]
+    U --> G[Governed LangGraph]
+    G --> R[RAG / navigation / memory]
+    G --> W[Proposal / workflow]
+    APP --> C[Explicit guest confirmation]
+    C --> B[Authoritative business write]
+    B --> S[Staff review / transition]
+    R --> DB[(SQLite + vector state)]
+    W --> DB
+    B --> DB
+    S --> DB
+    APP -. metadata .-> O[Optional Langfuse]
 ```
 
-Sơ đồ trên phản ánh dependency chính trong mã nguồn, không mô tả toàn bộ call graph.
+`main.py` ghép dependencies và lifecycle; `bootstrap.py` validate settings và chuẩn bị runtime. API không thay domain policy; LangGraph/tool output không tự chứng minh business action đã commit.
 
-## 2. Composition root
+## Một guest turn
 
-`src/concierge_kiosk/main.py` tạo `FastAPI` app và nối các thành phần runtime. Các nhóm được khởi tạo tại đây gồm:
+1. API xác minh origin, session/CSRF và request schema; conversation engine serialize theo session.
+2. Emergency Tier1 chạy theo domain policy. Tier2 kiểm tra semantic khi selector/embedder sẵn sàng; emergency rõ ràng ưu tiên hơn draft và normal NLU. Review zone dùng `emergency_check`.
+3. Server xử lý các boundary có đủ evidence: clear pending draft, verified booking referent, câu hỏi thông tin read-only, pending confirmation/context continuation.
+4. Fast router và similarity path có thể tạo proposal grounded; nếu không đủ điều kiện, Qwen đề xuất Structured Commands. ServiceSelector cung cấp candidates/examples, không cấp authority và không loại bỏ registry goals ngoài shortlist.
+5. Server validate command/slots, semantic evidence, negation/quoted/past/question/conditional scope. Command sai bị bỏ; sibling hợp lệ được giữ khi contract cho phép.
+6. Command-to-route projection và governed execution chọn read/tool/proposal. Memory chỉ cấp anchor còn hợp lệ, owned và đúng source revision.
+7. Response phân biệt thông tin, draft, clarification, failure và receipt thực tế. Không hiểu execution request thì không đổi thành knowledge để tạo cảm giác thành công.
 
-- settings và runtime profiles;
-- property/domain profile;
-- SQLite store;
-- workflow service;
-- RAG/answer services;
-- agent runtime;
-- memory/checkpoint stores;
-- voice services;
-- route groups;
-- metrics và lifecycle resources.
+Qwen timeout/unavailable/invalid output có failure class. Deadline và cancellation thuộc transport/runtime; telemetry không retry model. Provider timings phân biệt loading, prompt evaluation và generation khi provider thực sự trả metadata.
 
-Logic nghiệp vụ chính được đặt ngoài route registration để route chủ yếu xử lý request/response và dependency.
+## Authority và workflow
 
-## 3. Domain và workflow
+- Command model là đề xuất. Room/time/confidence/rank không thay semantic evidence.
+- `guest_confirm_all` giữ explicit consent trước service write; draft/proposal/audit event không được đếm như persisted service receipt.
+- Prepare/confirm kiểm tra ownership, expiry, registry/service contract, disclosure/verification theo policy. Duplicate confirmation dùng idempotency; replay không tạo ticket thứ hai.
+- Staff xử lý state transition riêng. Queued/approved chưa có nghĩa fulfilled.
+- Hủy pending draft khác với hủy/đổi committed request. Request change giữ luồng review/confirmation hiện có.
+- Emergency alert là workflow safety riêng; chỉ thông báo queued khi có receipt hợp lệ. Staff acknowledgement không được suy ra từ việc enqueue.
 
-Các rule liên quan service request nằm tại:
+## RAG, memory và voice
 
-```text
-src/concierge_kiosk/domain/
-src/concierge_kiosk/application/
-```
+RAG và anchor lifecycle được mô tả ở [RAG](RAG.md). Voice có admission/cancellation, partial/final transcription, playback proof và transport theo profile. Voice/STT/TTS cần assets đã provision; source integration không chứng minh chất lượng audio.
 
-Business request được lưu trong SQLite. LangGraph checkpoint được dùng cho orchestration state, không thay thế bảng business request.
+Checkpoints và business SQLite có vai trò riêng; reconcile xử lý orchestration sync bị deferred mà không phát lại business action tùy tiện.
 
-Các transition được kiểm tra ở application/domain layer. Một số constraint cũng được đặt ở persistence layer.
+## Observability
 
-## 4. Agent runtime
+Existing metrics, AgentRun/tool observations và evaluation harness là nguồn dữ liệu; Langfuse là adapter optional. Một guest turn có root và children của bước thực sự chạy. Không tạo spans cho NOT_RUN hay capture arbitrary graph state.
 
-Agent code nằm tại:
+Correlation dùng SDK trace ID và internal IDs; session/proposal links được pseudonym hóa. Confirmation ở request khác liên kết metadata, không giả parent context đã kết thúc. HTTP request trace headers là correlation tại API, không được giả định là cùng ID với SDK.
 
-```text
-src/concierge_kiosk/agent/
-```
-
-Các phần chính:
-
-- `core/`: capability và tool contracts;
-- `runtime/`: execution loop, planner, verifier, state;
-- `orchestration/`: graph và mixed workflows;
-- `memory/`: conversation, preference và task memory;
-- `tools/`: navigation, planning, scheduling và read tools;
-- `understanding/`: intent, routing, NLI và semantic parsing.
-
-Agent có budget theo step, planner call, read call và wall time. Giá trị được lấy từ runtime profile.
-
-## 5. RAG
-
-RAG code nằm tại:
-
-```text
-src/concierge_kiosk/rag/
-```
-
-Pipeline có các bước theo cấu hình runtime:
-
-```text
-query
- -> lexical retrieval
- -> dense retrieval khi embedding được cấu hình
- -> fusion / relevance filtering
- -> rerank khi model được cấu hình
- -> context construction
- -> claim/citation checks
-```
-
-Không phải mọi bước đều hoạt động trong mọi profile; model path và feature flag quyết định thành phần nào được dùng.
-
-## 6. Persistence
-
-`src/concierge_kiosk/persistence/sqlite_store.py` quản lý SQLite cho session, request, knowledge, metric và các dữ liệu runtime khác.
-
-Runtime sử dụng một property trên một appliance. `property_id` được lấy từ cấu hình thay vì nhận trực tiếp từ guest request.
-
-## 7. Voice
-
-Voice API và runtime nằm trong:
-
-```text
-src/concierge_kiosk/api/voice/
-src/concierge_kiosk/voice/
-```
-
-Hệ thống hỗ trợ các đường xử lý:
-
-- tạo/cancel voice turn;
-- HTTP transcription;
-- WebSocket audio streaming;
-- TTS playback acknowledgement;
-- tùy chọn incremental STT.
-
-Các model voice không được nhúng đầy đủ vào repository và cần được provision riêng nếu profile yêu cầu.
-
-## 8. Frontend
-
-`frontend/` chứa source React/TypeScript. `web/` chứa asset được backend phục vụ.
-
-Không nên chỉnh trực tiếp bundle sinh ra nếu thay đổi có thể thực hiện tại `frontend/src/` rồi build lại.
-
-## 9. Runtime profiles
-
-Bốn profile hiện có:
-
-| Profile | Mục đích trong repo | Đặc điểm cấu hình |
-|---|---|---|
-| `test` | chạy test | tắt model-assisted intent/planner mặc định |
-| `development` | phát triển local | cho phép fallback model và embedding candidate |
-| `edge` | cấu hình tài nguyên thấp hơn | budget agent thấp hơn development |
-| `production` | cấu hình kiểm soát chặt hơn | strict SLM, manifest/signoff và ingress constraints |
-
-Tên profile không phải là chứng nhận môi trường. Runtime vẫn kiểm tra các asset và setting bắt buộc khi load cấu hình.
+Export metadata allowlist và masking; lỗi export không đổi authority/transaction/deadline. Xem [Operations](OPERATIONS.md), [Security](SECURITY.md), [Testing](TESTING.md).

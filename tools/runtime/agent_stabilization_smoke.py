@@ -17,7 +17,13 @@ from urllib.parse import urlsplit
 
 def prompt_diagnostics(payload: dict) -> dict:
     messages = payload.get('messages', [])
-    user = json.loads(messages[-1]['content']) if messages else {}
+    # Empty preload / non-JSON prompts are valid Ollama requests, not NLU payloads.
+    try:
+        user = json.loads(messages[-1]['content']) if messages else {}
+    except (KeyError, TypeError, ValueError):
+        user = {}
+    if not isinstance(user, dict):
+        user = {}
     schema = payload.get('format', {})
     variants = schema.get('properties', {}).get('commands', {}).get('items', {}).get('anyOf', [])
     goals = {}
@@ -43,7 +49,7 @@ def prompt_diagnostics(payload: dict) -> dict:
 class CallBoundary:
     """Count actual model POSTs, holding a permit until the response closes."""
     def __init__(self, open_request, model, persist=lambda: None, *,
-                 max_calls=2, allowed_phases=None, allow_repeat=None):
+                 max_calls=2, allowed_phases=None, allow_repeat=None, stop_on_failure=False):
         self.open_request,self.model,self.persist=open_request,model,persist
         self.calls,self.errors=[],[]
         self.phase='AUDIT'
@@ -51,11 +57,12 @@ class CallBoundary:
         self.max_calls = max_calls
         self.allowed_phases = frozenset(allowed_phases or {'PRELOAD', 'NLU'})
         self.allow_repeat = allow_repeat
+        self.stop_on_failure = stop_on_failure
 
     def open(self, request, *, timeout):
         path=urlsplit(request.full_url).path
         payload=json.loads(request.data or b'{}')
-        if (path!='/api/chat' or payload.get('model')!=self.model
+        if ((self.stop_on_failure and self.errors) or path!='/api/chat' or payload.get('model')!=self.model
                 or payload.get('options',{}).get('num_gpu')!=0
                 or self.phase not in self.allowed_phases or len(self.calls)>=self.max_calls
                 or (any(c['purpose']==self.phase for c in self.calls)
@@ -97,12 +104,18 @@ class CallBoundary:
             def observe(self,raw):
                 try: event=json.loads(raw)
                 except ValueError: return
+                if not isinstance(event, dict):
+                    return
                 call['events'].append(event)
                 if event.get('message',{}).get('content') and 'first_content_seconds' not in call:
                     call['first_content_seconds']=time.monotonic()-started
-                if event.get('done'):
+                if isinstance(event, dict) and event.get('done'):
                     call['timings']={k:event[k] for k in ('total_duration','load_duration','prompt_eval_count',
                         'prompt_eval_duration','eval_count','eval_duration','done_reason') if k in event}
+                    call['provider_ms'] = {k: event[source] / 1e6 for k, source in (
+                        ('model_loading', 'load_duration'), ('prompt_prefill', 'prompt_eval_duration'),
+                        ('generation', 'eval_duration'), ('total', 'total_duration'))
+                        if type(event.get(source)) is int and event[source] >= 0}
             def read(self,size=-1):
                 raw=response.read(size);self.observe(raw);return raw
             def __iter__(self):
@@ -126,7 +139,7 @@ def _memory():
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--expected-digest',required=True)
-    parser.add_argument('--output',default='reports/agent-warm-nlu-smoke.json')
+    parser.add_argument('--output',default='reports/e2e/model-smoke.json')
     parser.add_argument('--preload-timeout',type=float,default=30)
     parser.add_argument('--prompt-only',action='store_true')
     args=parser.parse_args();output=Path(args.output)

@@ -1,119 +1,56 @@
-# Concierge Kiosk Agent
+# Resort Voice Agent
 
-## 1. Mục đích
+Trợ lý khách sạn đa ngôn ngữ, chạy theo mô hình một property trên một appliance. Backend FastAPI điều phối Agent bằng LangGraph, trả lời từ knowledge có nguồn, chuẩn bị yêu cầu dịch vụ và chuyển sang quy trình xác nhận/nhân viên.
 
-Repository này chứa mã nguồn cho một kiosk trợ lý khách sạn chạy theo mô hình single-property. Hệ thống kết hợp API, RAG, agent orchestration, workflow dịch vụ, bộ nhớ phiên, giao diện web và tùy chọn xử lý giọng nói.
+Repository: `nvtanphat/resort-voice-agent`; nhánh làm việc hiện tại: `phase4-handoff`. Tài liệu mô tả working tree, bao gồm sửa đổi chưa commit; Git HEAD riêng lẻ không đại diện toàn bộ trạng thái đó.
 
-Tài liệu này mô tả những thành phần đang có trong mã nguồn. Các mô tả về vận hành thực tế, độ chính xác của mô hình hoặc khả năng chịu tải cần được xác minh trong môi trường triển khai tương ứng.
+## Chức năng đang có
 
-## 2. Phạm vi hiện tại
+- Hội thoại VI/EN/ZH/KO; Structured Command NLU qua Ollama, candidate selection và Semantic Authorization phía server.
+- Emergency Tier1 theo domain policy; Tier2 dùng embedding và logistic classifier khi sẵn sàng.
+- RAG lexical/dense/hybrid, kiểm tra grounding/citations và context anchor của phiên.
+- Draft/proposal, explicit confirmation, staff review, trạng thái yêu cầu và idempotency.
+- React guest UI, staff/status UI; STT/TTS và voice transport tùy profile/model đã provision.
+- Metrics và evaluation hiện có; Langfuse optional, mặc định tắt, chỉ export telemetry được lọc.
 
-Hệ thống có các nhóm chức năng sau:
+Model đề xuất command; server quyết định authority. Draft/proposal chưa phải service request đã commit. Xác nhận của khách và xử lý của nhân viên là các bước riêng.
 
-- hỏi đáp dựa trên knowledge base của khách sạn;
-- tìm dịch vụ và thông tin theo property profile;
-- tạo, xác nhận, thay đổi và hủy yêu cầu dịch vụ;
-- theo dõi trạng thái yêu cầu của khách;
-- orchestration bằng LangGraph hoặc runtime loop tương ứng;
-- lưu state và business data bằng SQLite;
-- giao diện web cho khách và trang vận hành;
-- tùy chọn STT/TTS cục bộ;
-- cấu hình runtime theo profile `test`, `development`, `edge`, `production`.
+## Cấu trúc
 
-## 3. Cấu trúc thư mục chính
+| Thư mục | Vai trò |
+|---|---|
+| `src/concierge_kiosk/` | API, application, Agent, RAG, domain, persistence và voice |
+| `frontend/`, `web/` | Source React và assets backend phục vụ |
+| `config/`, `releases/` | Domain/runtime profiles, schemas, hashes và releases |
+| `locales/` | Nội dung hiển thị theo ngôn ngữ |
+| `datasets/`, `knowledge/` | Dữ liệu canonical, synthetic operations, training/evaluation và knowledge biên dịch |
+| `data/`, `models/` | SQLite/vector state và model assets |
+| `tests/`, `tools/` | Regression tests và công cụ dùng lại |
+| `reports/`, `.cache/` | Output sinh tự động và cache local; không phải tài liệu nguồn |
 
-```text
-docs/           Tài liệu kỹ thuật của dự án
-src/concierge_kiosk/    Backend Python
-frontend/         Source React/TypeScript
-web/            Web bundle được phục vụ bởi backend
-config/          Runtime/domain profiles và schema
-datasets/furama/      Dữ liệu cấu trúc của property hiện tại
-knowledge/approved/    Knowledge đã được chuẩn bị cho ingestion
-knowledge/compiled/    Knowledge đã biên dịch theo ngôn ngữ
-releases/          Property/map/planning release hiện tại
-tests/           Regression và integration tests
-tools/           Công cụ data, packaging, operation và evaluation
-data/            SQLite runtime data
-```
+Markdown trong `knowledge/` là dữ liệu runtime. Không dọn chúng như báo cáo kỹ thuật.
 
-`knowledge/**` và `datasets/furama/**` là dữ liệu khách sạn dùng cho hệ thống. Không nên xem chúng là tài liệu kỹ thuật của repository.
+## Bắt đầu
 
-## 4. Yêu cầu môi trường
+Đọc [Setup](SETUP.md) để cài và chọn profile. Package hỗ trợ Python ≥3.11; các kiểm tra gần nhất dùng Python 3.12. Cài dependencies không đồng nghĩa đã provision model, pin digest hoặc nghiệm thu voice.
 
-- Python 3.11 trở lên
-- các dependency trong `pyproject.toml`
-- LangGraph khi dùng orchestrator mặc định
-- Ollama hoặc endpoint SLM loopback nếu bật các chức năng model-assisted
-- model local tương ứng nếu bật embedding, reranker, NLI hoặc voice
+## Tài liệu
 
-Cài backend cho development:
+| Nhu cầu | Tài liệu |
+|---|---|
+| Cài đặt và chạy local | [SETUP.md](SETUP.md) |
+| Kiến trúc và luồng command | [Architecture](docs/ARCHITECTURE.md) |
+| API và authentication | [API](docs/API.md) |
+| Nguồn dữ liệu, schema và review | [Data](docs/DATA.md) |
+| Retrieval, grounding và memory | [RAG](docs/RAG.md) |
+| Profile, lifecycle, model và Langfuse | [Operations](docs/OPERATIONS.md) |
+| Trust boundaries và privacy | [Security](docs/SECURITY.md) |
+| Cách test và bằng chứng hiện có | [Testing](docs/TESTING.md), [backend cases](docs/backend-test-cases.md) |
+| Blocker và phần chưa đo | [Limitations](docs/LIMITATIONS.md) |
+| Quy tắc sửa code | [AGENT.md](AGENT.md), [CLAUDE.md](CLAUDE.md) |
 
-```bash
-python -m pip install -e ".[test,ops]"
-```
+## Trạng thái nghiệm thu
 
-For the local multilingual RAG path, install the optional OpenVINO adapter and
-provision the pinned INT4 `bge-reranker-v2-m3` asset:
+Chưa nghiệm thu production. Qwen timeout, real-model multi-item/multi-intent, replay nguyên bản S01–S15, learned Emergency Tier2, live voice/browser và Langfuse Cloud còn thiếu bằng chứng. Test offline/mock không thay thế các phép nghiệm thu này.
 
-```bash
-python -m pip install -e ".[test,ops,reranker]"
-python tools/runtime/download_reranker_model.py
-```
-
-The generated manifest is required at runtime; the model directory is local
-runtime state and is intentionally excluded from source control.
-
-Chạy test:
-
-```bash
-python -m pytest -q
-```
-
-Chạy API:
-
-```bash
-python -m concierge_kiosk
-```
-
-API mặc định lắng nghe tại `0.0.0.0:8000` khi chạy qua `__main__.py`.
-
-## 5. Cấu hình
-
-Các biến môi trường mẫu nằm ở:
-
-```text
-.env.example
-config/local-runtime.env.example
-```
-
-Runtime profile nằm ở:
-
-```text
-config/runtime-profiles/test.json
-config/runtime-profiles/development.json
-config/runtime-profiles/edge.json
-config/runtime-profiles/production.json
-```
-
-Một số profile yêu cầu thêm model, manifest, hash hoặc credential trước khi khởi động. Chi tiết xem `docs/OPERATIONS.md` và `docs/SECURITY.md`.
-
-## 6. Tài liệu kỹ thuật
-
-- `docs/ARCHITECTURE.md`: cấu trúc và luồng xử lý
-- `AGENT.md`: agent runtime và orchestration
-- `docs/RAG.md`: ingestion, retrieval và grounding
-- `docs/API.md`: nhóm endpoint
-- `docs/DATA.md`: dữ liệu property và knowledge
-- `docs/OPERATIONS.md`: chạy local, maintenance và deployment
-- `docs/TESTING.md`: test và kiểm tra
-- `docs/SECURITY.md`: boundary và cấu hình liên quan bảo mật
-- `docs/LIMITATIONS.md`: giới hạn và phần chưa được xác minh
-
-`Dockerfile` là image edge/production; `Dockerfile.local` đi cùng `compose.local.yaml` cho chạy thử local với bind mounts. Hai file phục vụ hai môi trường khác nhau.
-
-## 7. Ghi chú về kết luận kỹ thuật
-
-Repository có các cơ chế kiểm tra, profile, test và operation tool. Các cơ chế này cho biết cách hệ thống được thiết kế và kiểm tra trong codebase; chúng không tự động chứng minh hiệu năng, độ chính xác hoặc mức độ phù hợp với mọi môi trường triển khai.
-
-# resort-voice-agent
+Tên tài liệu theo chức năng, một đường dẫn ổn định; không tạo báo cáo theo WP/phiên bản. Lịch sử thuộc Git.

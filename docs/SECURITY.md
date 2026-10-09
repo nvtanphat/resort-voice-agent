@@ -1,66 +1,45 @@
-# Security boundaries
+# Security và privacy
 
-## 1. Phạm vi tài liệu
+## Trust boundaries
 
-Tài liệu này liệt kê các kiểm soát đang có trong code/config. Nó không phải chứng nhận bảo mật và không thay thế threat model hoặc security assessment độc lập.
+| Boundary | Kiểm tra hiện có |
+|---|---|
+| Guest | Cookie `ck_session` + `X-CSRF-Token`, expiry và ownership |
+| HTTP ingress | Origin/Fetch Metadata, CIDR khi cấu hình, security headers |
+| Staff | Bearer identity với `requests:read`/`requests:write`; production còn yêu cầu staff gateway |
+| Internal agent | `X-Agent-Token`, không dùng guest/staff token thay thế |
+| Model/knowledge | Untrusted proposals/evidence; schema, semantic gate và citation checks |
+| Business | Explicit confirmation, authorization, receipts và idempotency |
+| Telemetry | Optional export, allowlist, masking và keyed correlation |
 
-## 2. Guest, staff và internal agent
+Origin chỉ là một lớp ingress; không thay session authorization. Public kiosk không có quyền staff chỉ vì biết bearer. Session A không được dùng request/proposal/anchor của session B.
 
-API được chia thành các nhóm access khác nhau:
+## Configuration và secrets
 
-```text
-guest/public
-staff
-internal agent
-```
+Settings đọc môi trường/profile có pin. Thiếu environment chọn production; production validate origin HTTPS, staff boundary, credentials, model/signature/manifest requirements theo cấu hình. Startup PASS không chứng minh triển khai đã đủ an toàn.
 
-Staff và internal agent dùng dependency xác thực riêng. Production settings yêu cầu staff origin tách khỏi public origin.
+Không commit secrets. Các secret được hỗ trợ qua environment hoặc `*_FILE` tại nơi contract cho phép; không cấu hình đồng thời hai nguồn. File phải được provision và process cần restart khi rotation. Không in credential, token, raw state hoặc guest PII vào log/report.
 
-## 3. Production origin validation
+SLM HTTP endpoint được giới hạn loopback; Langfuse base URL là endpoint operator cấu hình riêng. Không auto-register Cloud hay export chỉ vì tìm thấy credentials.
 
-Khi `environment=production`, settings validation kiểm tra các điều kiện như:
+## Business safety
 
-- public origin dùng HTTPS;
-- staff origin dùng HTTPS;
-- public và staff hostname khác nhau;
-- credential tối thiểu theo rule của code;
-- CIDR/ingress configuration khi được yêu cầu;
-- runtime/property/release hashes và trust material theo cấu hình.
+Semantic Gate không tin confidence/rank hoặc room number như bằng chứng ý định. Negation, quoted speech, completed reports và informational mentions không tự cấp service authority.
 
-Các check này xảy ra trong application startup/config loading.
+Draft/proposal khác committed write. Confirm kiểm tra owned proposal và policy; request replay không nhân đôi action. DND, guest verification, price disclosure và staff transitions vẫn thuộc server/domain contract.
 
-## 4. Secret input
+Emergency safety route không cần Qwen; Tier2 lỗi vẫn để Tier1 hoạt động. Queue receipt khác với staff acknowledgement/dispatch/completion; không tuyên bố đã liên hệ thành công khi thiếu receipt.
 
-Settings hỗ trợ đọc secret từ environment hoặc file provisioned. Không nên commit credential thật vào repository hoặc ZIP release.
+## Langfuse privacy
 
-`.env.example` và `config/local-runtime.env.example` chỉ nên chứa placeholder/cấu hình mẫu.
+Mặc định disabled: không tạo SDK exporter/sender. Enabled dùng sanitized metadata và export-stage masking; không auto-capture arbitrary LangGraph state.
 
-## 5. Model endpoint
+Không export raw utterances/audio/transcripts, guest identity/contact/room-linked identity, tokens, full model prompt/output, tool payload hoặc database records. Session/proposal links dùng HMAC/pseudonym thay identity thô. Không tự upload training/gold/holdout.
 
-`llm_base_url` được validation để dùng HTTP trên loopback cho local SLM. Production strict mode còn kiểm tra model digest và NLI/manifest requirement theo settings.
+Lỗi telemetry không cấp/revoke business authority và không trigger retry action. SDK/mock privacy checks có bằng chứng ở [Testing](TESTING.md); Cloud ingestion chưa xác minh ở [Limitations](LIMITATIONS.md).
 
-## 6. Signed artifacts
+## Artifacts và deployment
 
-Source có logic cho:
+Hashes/signatures bảo vệ property/model/knowledge/map/planning/release contracts tại các điểm loader kiểm tra. Chúng cần keys/artifacts thực tế; không tự chứng minh source freshness.
 
-- property profile hash/signature;
-- production signoff receipt/signature;
-- knowledge signed bundle;
-- model/voice artifact manifest;
-- map/planning release hash.
-
-Việc signature có giá trị hay không phụ thuộc key provisioning, artifact thực tế và quy trình vận hành.
-
-## 7. Knowledge là untrusted input đối với model
-
-RAG/grounding code tách evidence khỏi instruction path và có claim/citation validation. Đây là một phần của defense against prompt-injection-like content trong knowledge; vẫn cần test các mẫu tấn công phù hợp với deployment.
-
-## 8. Container configuration
-
-Các Docker/compose file hiện có các option như non-root user, read-only filesystem, dropped capabilities và `no-new-privileges` ở một số profile.
-
-Host security, reverse proxy, firewall, TLS key management và OS patching nằm ngoài phạm vi Python process.
-
-## 9. Logging và telemetry
-
-Telemetry endpoint hiện ghi latency event và không cần lưu raw transcript/audio tại call site đó. Cần kiểm tra logging configuration toàn hệ thống nếu có yêu cầu privacy cụ thể.
+Production signed knowledge update khác directory ingestion development. Container hardening, TLS/proxy, OS patches, credential rotation, backup/restore và network isolation phải được nghiệm thu trên target. Xem [Operations](OPERATIONS.md).

@@ -13,7 +13,9 @@ same service in the guest's own words.  Either signal may carry the decision:
   before it); a service that takes an object must also have its ``requested_item``
   extracted from the guest text.
 
-In both paths no other service may be grounded or even named in the turn.
+Within a single request no other service may be grounded or even named. A compound
+turn may use the similarity path independently for every explicit request clause;
+all clauses must pass, and no below-threshold evidence path fills a missing sibling.
 
 The turn must also be a plain request: no negation, past, question or (with a live
 anchor) context-reference wording in any clause.  Anything else returns ``None`` and the
@@ -23,12 +25,14 @@ the service.  Slots are verbatim spans of the guest text, and the command still 
 guest confirmation.  Nothing here writes.
 """
 from __future__ import annotations
+import re
 
 from concierge_kiosk.agent.tools.service_slots import item_and_unit, item_anchors
 from concierge_kiosk.agent.understanding.commands import Command, CommandSlot, validate_commands
 from concierge_kiosk.agent.understanding.intent_evidence import (DIRECT_EVIDENCE, clause_views, clauses,
                                                                   command_supported, concept_spans, marker_spans, mentioned_services,
                                                                   request_segments, service_evidence, spans)
+from concierge_kiosk.agent.understanding.intent_evidence import fold, term_pattern, unquoted
 from concierge_kiosk.agent.understanding.service_selector import ServiceSelector
 from concierge_kiosk.core.domain_profile import get_domain_profile
 from concierge_kiosk.domain.service_registry import accepted_slots, service_definition
@@ -47,7 +51,7 @@ def plain_request(query: str, language: str, *, live_anchor: bool) -> bool:
                 or marker_spans(clause, accented, policy['past_terms'].get(language, ()))):
             return False
     # Two requested actions chained in one clause are two requests, not one.
-    return request_segments(query, language) <= 1
+    return request_segments(query, language) <= 1 and single_request_clause(query, language)
 
 
 def object_fits_service(goal: str, query: str, language: str) -> bool:
@@ -108,8 +112,28 @@ class GroundedServiceResolver:
         confident = self._goal(self.selector.nearest(
             query, min_score=self.min_score, min_margin=self.min_margin))
         if confident is not None:
-            return self.ground(confident, query, language, enabled_request_kinds=enabled_request_kinds,
-                               live_anchor=live_anchor)
+            grounded = self.ground(confident, query, language, enabled_request_kinds=enabled_request_kinds,
+                                   live_anchor=live_anchor)
+            if grounded is not None:
+                return grounded
+        # Each independently phrased request must clear the same calibrated
+        # similarity threshold and semantic gate. Never synthesize a missing
+        # sibling from keywords, or accept only the first part of a compound.
+        if not live_anchor:
+            parts = request_clauses(query, language)
+            if 1 < len(parts) <= 8:
+                combined = []
+                for part in parts:
+                    goal = self._goal(self.selector.nearest(
+                        part, min_score=self.min_score, min_margin=self.min_margin))
+                    resolved = self.ground(goal, part, language, enabled_request_kinds=enabled_request_kinds) if goal else None
+                    if resolved is None:
+                        break
+                    combined.extend(resolved)
+                else:
+                    if len({command.goal for command in combined}) == len(combined):
+                        return validate_commands(combined, query=query, language=language,
+                                                 enabled_request_kinds=enabled_request_kinds)
         if not self.evidence_path:
             return None
         # Below the similarity thresholds the router's top label still has to name the
@@ -177,3 +201,22 @@ class GroundedServiceResolver:
 
 
 __all__ = ['GroundedServiceResolver', 'plain_request', 'single_request_clause']
+
+
+def request_clauses(query: str, language: str) -> tuple[str, ...]:
+    """Original guest spans, split only by the existing reviewed clause grammar."""
+    policy = get_domain_profile().semantic_authorization
+    text = fold(unquoted(query))
+    if len(text) != len(query):
+        return (query,)
+    connectors = policy['clause_connectors'].get(language, ())
+    pattern = '|'.join(term_pattern(term).pattern for term in connectors)
+    separator = r'[;,.!?\n\u3002\uff0c\uff1b\uff1f]' + (f'|{pattern}' if pattern else '')
+    parts, start = [], 0
+    for match in re.finditer(separator, text):
+        if query[start:match.start()].strip():
+            parts.append(query[start:match.start()].strip())
+        start = match.end()
+    if query[start:].strip():
+        parts.append(query[start:].strip())
+    return tuple(parts)

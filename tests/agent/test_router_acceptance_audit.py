@@ -118,7 +118,7 @@ def test_real_sdk_fastapi_wrong_and_valid_mock_nlu_with_existing_scores(tmp_path
                 'attributes':dict(s.attributes)} for s in spans],
             'existing_score_names':[s['name'] for s in first],
             'score_trace_id':association, 'reexport_identity_equal':first == queued[len(first):]}
-        output = Path(__file__).resolve().parents[2]/'reports/wp141-sdk-offline.json'
+        output = tmp_path/'observability-acceptance.json'
         output.write_text(json.dumps(evidence,indent=2)+'\n',encoding='utf-8')
 
 

@@ -1124,13 +1124,16 @@
             "để",
             "được không",
             "cho",
-          "nữa",
-          "luôn",
-          "ngay",
-          "rồi"
+            "nữa",
+            "luôn",
+            "ngay",
+            "rồi"
           ],
           "particles": [],
-          "max_words": 4
+          "max_words": 4,
+          "enumeration_terms": [
+            "và"
+          ]
         },
         "en": {
           "order": "after",
@@ -1153,7 +1156,10 @@
             "up"
           ],
           "particles": [],
-          "max_words": 4
+          "max_words": 4,
+          "enumeration_terms": [
+            "and"
+          ]
         },
         "zh": {
           "order": "after",
@@ -1174,7 +1180,10 @@
             "过"
           ],
           "particles": [],
-          "max_words": 8
+          "max_words": 8,
+          "enumeration_terms": [
+            "和"
+          ]
         },
         "ko": {
           "order": "before",
@@ -1195,7 +1204,10 @@
             "는",
             "도"
           ],
-          "max_words": 1
+          "max_words": 1,
+          "enumeration_terms": [
+            "그리고"
+          ]
         }
       },
       "party_size_patterns": {
@@ -3877,6 +3889,44 @@
         "anh ấy nói",
         "cô ấy nói"
       ]
+    },
+    "cancellation_terms": {
+      "vi": [
+        "hủy"
+      ],
+      "en": [
+        "cancel"
+      ],
+      "zh": [
+        "取消"
+      ],
+      "ko": [
+        "취소"
+      ]
+    },
+    "booking_actions": {
+      "en": [
+        "book",
+        "reserve"
+      ],
+      "vi": [
+        "đặt"
+      ],
+      "zh": [
+        "预订",
+        "预约"
+      ],
+      "ko": [
+        "예약"
+      ]
+    },
+    "information_facets": {
+      "hours": {
+        "en": ["what time", "opening hours", "when"],
+        "vi": ["mấy giờ", "giờ mở cửa", "giờ đóng cửa"],
+        "zh": ["几点", "营业时间"],
+        "ko": ["몇 시", "영업시간"]
+      }
     }
   }
 }
