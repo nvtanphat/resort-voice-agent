@@ -42,19 +42,24 @@ def prompt_diagnostics(payload: dict) -> dict:
 
 class CallBoundary:
     """Count actual model POSTs, holding a permit until the response closes."""
-    def __init__(self, open_request, model, persist=lambda: None):
+    def __init__(self, open_request, model, persist=lambda: None, *,
+                 max_calls=2, allowed_phases=None, allow_repeat=None):
         self.open_request,self.model,self.persist=open_request,model,persist
         self.calls,self.errors=[],[]
         self.phase='AUDIT'
         self.lock=Lock()
+        self.max_calls = max_calls
+        self.allowed_phases = frozenset(allowed_phases or {'PRELOAD', 'NLU'})
+        self.allow_repeat = allow_repeat
 
     def open(self, request, *, timeout):
         path=urlsplit(request.full_url).path
         payload=json.loads(request.data or b'{}')
         if (path!='/api/chat' or payload.get('model')!=self.model
                 or payload.get('options',{}).get('num_gpu')!=0
-                or self.phase not in {'PRELOAD','NLU'} or len(self.calls)>=2
-                or any(c['purpose']==self.phase for c in self.calls)):
+                or self.phase not in self.allowed_phases or len(self.calls)>=self.max_calls
+                or (any(c['purpose']==self.phase for c in self.calls)
+                    and not (self.allow_repeat and self.allow_repeat(self.phase, payload, self.calls)))):
             self.errors.append({'failure_class':'PROTOCOL_BLOCKED','path':path,'phase':self.phase})
             self.persist()
             raise ValueError('Unexpected model call denied at HTTP boundary')
