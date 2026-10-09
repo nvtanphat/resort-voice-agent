@@ -51,7 +51,8 @@ def client(tmp_path: Path, monkeypatch):
 
 def test_where_is_it_after_hours_question_returns_localized_route(client, understand):
     from concierge_kiosk.agent.understanding.commands import Command
-    understand("nó ở đâu", Command("Navigate", query="nó ở đâu"))
+    understand("hồ bơi mở cửa lúc mấy giờ", Command("AskInfo", query="hồ bơi mở cửa lúc mấy giờ", facet="hours"))
+    understand("nó ở đâu", Command("Navigate", query="nó ở đâu", refers_to_context=True))
     client("hồ bơi mở cửa lúc mấy giờ", "vi")
     body = client("nó ở đâu", "vi")
     assert body["grounding"] == "map_verified"
@@ -62,7 +63,8 @@ def test_where_is_it_after_hours_question_returns_localized_route(client, unders
 
 def test_english_where_is_it_with_question_mark_is_a_followup(client, understand):
     from concierge_kiosk.agent.understanding.commands import Command
-    understand("where is it?", Command("Navigate", query="where is it?"))
+    understand("what time does the pool open", Command("AskInfo", query="what time does the pool open", facet="hours"))
+    understand("where is it?", Command("Navigate", query="where is it?", refers_to_context=True))
     client("what time does the pool open", "en")
     body = client("where is it?", "en")
     assert body["map_guidance"]["status"] == "verified"
@@ -71,6 +73,7 @@ def test_english_where_is_it_with_question_mark_is_a_followup(client, understand
 def test_followup_after_map_only_answer_uses_the_place(client, understand):
     from concierge_kiosk.agent.understanding.commands import Command
     understand("spa ở đâu", Command("Navigate", query="spa ở đâu"))
+    understand("mấy giờ mở cửa", Command("AskInfo", query="mấy giờ mở cửa", facet="hours", refers_to_context=True))
     first = client("spa ở đâu", "vi")
     assert first["map_guidance"]["status"] == "verified"
     body = client("mấy giờ mở cửa", "vi")
@@ -80,7 +83,8 @@ def test_followup_after_map_only_answer_uses_the_place(client, understand):
 
 def test_cross_language_followup_uses_target_language_map_label(client, understand):
     from concierge_kiosk.agent.understanding.commands import Command
-    understand("where is it?", Command("Navigate", query="where is it?"))
+    understand("hồ bơi mở cửa lúc mấy giờ", Command("AskInfo", query="hồ bơi mở cửa lúc mấy giờ", facet="hours"))
+    understand("where is it?", Command("Navigate", query="where is it?", refers_to_context=True))
     client("hồ bơi mở cửa lúc mấy giờ", "vi")
     body = client("where is it?", "en")
     assert body["tool_route"] == "navigation"

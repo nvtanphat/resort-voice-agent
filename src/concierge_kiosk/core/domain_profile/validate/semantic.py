@@ -30,6 +30,8 @@ def semantic_validate(payload: dict[str, Any]) -> None:
             if any(len(term.split()) > 4 for term in value):
                 raise ValueError('Semantic authorization terms must be bounded concepts, not guest sentences')
     bounded_terms(authority)
+    validate_language_keys(authority.get('reported_speech_terms', {}), language_set,
+                           label='semantic_authorization.reported_speech_terms')
     for name in ('request_actions', 'delivery_actions', 'reference_terms', 'negation_terms',
                  'question_terms', 'past_terms', 'clause_connectors', 'conditional_terms'):
         validate_language_keys(authority[name], language_set, label=f'semantic_authorization.{name}', require_all=True)
@@ -38,6 +40,11 @@ def semantic_validate(payload: dict[str, Any]) -> None:
         raise ValueError('Semantic authorization must cover exactly all registry services')
     for code, evidence in authority['services'].items():
         validate_language_keys(evidence['concepts'], language_set, label=f'semantic_authorization.services.{code}', require_all=True)
+        symptom_requests = evidence.get('symptom_requests', {})
+        validate_language_keys(symptom_requests, language_set, label=f'semantic_authorization.services.{code}.symptom_requests')
+        for language, symptom in symptom_requests.items():
+            if not set(symptom['actions']) <= set(authority['request_actions'][language]):
+                raise ValueError('Symptom request actions must use approved request actions')
         accepted = set(services[code]['required_slots'] + services[code]['optional_slots'] + services[code]['autonomous_required_slots'])
         if not set(evidence['object_slots']) <= accepted:
             raise ValueError('Semantic object slots must be owned by their service')

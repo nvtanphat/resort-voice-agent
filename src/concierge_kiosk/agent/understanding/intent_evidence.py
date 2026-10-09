@@ -32,13 +32,41 @@ def spans(text, terms):
     return [match.span() for term in terms for match in term_pattern(term).finditer(text)]
 
 
+def unquoted(text):
+    """Quoted/reported instructions supply no guest action authority.
+
+    Unicode quotation punctuation is structural syntax, independent of locale.
+    Apostrophes inside words (contractions) do not open a quotation.
+    An unfinished quotation remains masked to the end, failing closed.
+    """
+    result = []
+    closing = None
+    for index, char in enumerate(text):
+        category = unicodedata.category(char)
+        if closing:
+            if char == closing or (closing == 'unicode' and category == 'Pf'):
+                closing = None
+            result.append(' ')
+        elif char == '"' or (char == "'" and (index == 0 or not text[index-1].isalnum())):
+            closing = char
+            result.append(' ')
+        elif category == 'Pi':
+            closing = 'unicode'
+            result.append(' ')
+        else:
+            result.append(char)
+    return ''.join(result)
+
+
 def clauses(query, policy, language):
     connectors = policy['clause_connectors'].get(language, ())
     pattern = '|'.join(term_pattern(term).pattern for term in connectors)
-    return re.split(r'[;,.!?\n\u3002\uff0c\uff1b\uff1f]' + (f'|{pattern}' if pattern else ''), fold(query[:500]))
+    return re.split(r'[;,.!?\n\u3002\uff0c\uff1b\uff1f]' + (f'|{pattern}' if pattern else ''), fold(unquoted(query[:500])))
 
 
 def affirmative(clause, concept_spans, policy, language, *, read_only=False):
+    if spans(clause, policy.get('reported_speech_terms', {}).get(language, ())):
+        return False
     if spans(clause, policy['past_terms'].get(language, ())):
         return False
     if not read_only and spans(clause, policy['question_terms'].get(language, ())):
@@ -59,6 +87,10 @@ def service_supported(command, query, language, *, context_topic=None, pending_g
     languages = (language,) if language in evidence['concepts'] else tuple(evidence['concepts'])
     for code in languages:
         concepts = evidence['concepts'][code]
+        symptom = evidence.get('symptom_requests', {}).get(code)
+        if symptom and command.type == 'StartGoal' and not command.conditional:
+            if symptom_request_supported(query, symptom, policy, code, goal):
+                return True
         previous_condition = None
         for clause in clauses(query, policy, code):
             mentions = spans(clause, concepts)
@@ -109,6 +141,41 @@ def service_supported(command, query, language, *, context_topic=None, pending_g
                 if actions or any(slot.name == pending_reply and spans(clause, (slot.text,))
                                   for slot in command.slots):
                     return True
+    return False
+
+
+def symptom_request_supported(query, evidence, policy, language, goal):
+    """Bind a reviewed device symptom to an explicit local support request.
+
+    No cross-sentence/context carry: at most one comma separates the symptom
+    statement from the request. Bounded object/symptom distance excludes an
+    unrelated device mention. Competing service, delivery, negation, questions,
+    past/conditional speech and quoted evidence cannot grant this authority.
+    """
+    for sentence in re.split(r'[;.!?\n\u3002\uff1b\uff1f]', fold(unquoted(query[:500]))):
+        parts = re.split(r'[,\uff0c]', sentence)
+        if len(parts) > 2:
+            continue
+        statement, request = parts if len(parts) == 2 else (sentence, sentence)
+        objects = spans(statement, evidence['objects'])
+        symptoms = spans(statement, evidence['symptoms'])
+        if not any(max(a-d, c-b, 0) <= 80 for a,b in objects for c,d in symptoms):
+            continue
+        if not spans(request, evidence['actions']):
+            continue
+        if not affirmative(statement, symptoms, policy, language) or not affirmative(request, symptoms if request == statement else (), policy, language):
+            continue
+        if spans(sentence, policy['conditional_terms'][language]) or spans(request, policy['delivery_actions'][language]):
+            continue
+        # The domain's request actions can overlap generic assistance concepts;
+        # remove only the configured action spans before checking other goals.
+        neutral = request
+        for start, end in sorted(spans(request, evidence['actions']), reverse=True):
+            neutral = neutral[:start] + ' ' * (end-start) + neutral[end:]
+        if any(spans(neutral, other['concepts'].get(language, ()))
+               for other_goal, other in policy['services'].items() if other_goal != goal):
+            continue
+        return True
     return False
 
 

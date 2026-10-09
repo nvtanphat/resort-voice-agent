@@ -16,10 +16,6 @@ that import code the removal deleted; fix the import or delete the test, then dr
 from __future__ import annotations
 
 REBUILD_PENDING: tuple[tuple[str, str], ...] = (
-    ("tests/agent/test_conversation_memory_followups.py::test_cross_language_followup_uses_target_language_map_label", "B2"),
-    ("tests/agent/test_conversation_memory_followups.py::test_english_where_is_it_with_question_mark_is_a_followup", "B2"),
-    ("tests/agent/test_conversation_memory_followups.py::test_followup_after_map_only_answer_uses_the_place", "B2"),
-    ("tests/agent/test_conversation_memory_followups.py::test_where_is_it_after_hours_question_returns_localized_route", "B2"),
     ("tests/agent/test_multilingual_conversation_e2e.py::test_directions_use_guest_wording_and_never_fail_without_evidence", "B2"),
     ("tests/agent/test_multilingual_conversation_e2e.py::test_mixed_language_conversation_stays_grounded", "B2"),
     ("tests/agent/test_multilingual_hours.py::test_p0_4_breakfast_hours_are_recalled_in_guest_language", "B1"),
