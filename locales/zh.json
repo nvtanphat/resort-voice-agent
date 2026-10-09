@@ -1,4 +1,5 @@
 {
+  "backend.request.change.select": "您想更改哪项请求？请提供以下请求编号之一：{codes}。",
   "backend.smalltalk.reply": "很高兴为您服务！您需要查询酒店信息、指路，还是提交服务请求？",
   "backend.out_of_scope.reply": "这个问题超出了酒店礼宾服务范围，但我可以为您提供酒店信息、路线指引或住客服务帮助。",
   "backend.emergency.alert_queued": " 已向工作人员队列提交高优先级警报；这不表示公共应急人员已经出动。",
@@ -208,5 +209,9 @@
   "backend.service.need_slots": "我可以继续准备此请求，但还需要：{names}。目前尚未提交任何请求。",
   "backend.operations.synthetic_which_option": "我需要知道您指的是哪一个选项。请告诉我您想查询的餐厅或服务名称。",
   "backend.preference.confirm_question": "您希望我在本次对话中记住“{evidence}”作为偏好吗？请回答是或否。",
-  "backend.preference.declined": "好的，我不会记住这一点。"
+  "backend.preference.declined": "好的，我不会记住这一点。",
+  "backend.request.change.recorded": "工单 {code} 的更改已记录。请查看工单状态以了解员工的决定。",
+  "backend.request.change.cancel_label": "申请取消",
+  "backend.request.change.modify_label": "申请修改",
+  "backend.request.change.review": "审核工单 {code}: {action}。更改字段：{changes}。确认后提交员工审核。"
 }

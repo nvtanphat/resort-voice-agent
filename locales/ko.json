@@ -1,4 +1,5 @@
 {
+  "backend.request.change.select": "어떤 요청을 변경하시겠습니까? 다음 요청 번호 중 하나를 알려 주세요: {codes}.",
   "backend.smalltalk.reply": "도와드리게 되어 기쁩니다! 호텔 정보, 길 안내 또는 서비스 요청이 필요하신가요?",
   "backend.out_of_scope.reply": "이 질문은 호텔 컨시어지의 지원 범위를 벗어나지만, 호텔 정보와 길 안내 또는 투숙객 서비스를 도와드릴 수 있습니다.",
   "backend.emergency.alert_queued": " 직원 대기열에 최우선 긴급 경보를 등록했습니다. 이는 공공 긴급 구조대가 출동했다는 확인이 아닙니다.",
@@ -209,5 +210,9 @@
   "backend.service.need_slots": "이 요청을 계속 준비하려면 다음 정보가 더 필요합니다: {names}. 아직 요청은 전송되지 않았습니다.",
   "backend.operations.synthetic_which_option": "어떤 항목을 말씀하시는지 알려 주세요. 확인하실 식당이나 서비스 이름을 말씀해 주세요.",
   "backend.preference.confirm_question": "“{evidence}” 내용을 이번 세션의 선호로 기억할까요? 예 또는 아니요로 답해 주세요.",
-  "backend.preference.declined": "알겠습니다. 그 내용은 기억하지 않겠습니다."
+  "backend.preference.declined": "알겠습니다. 그 내용은 기억하지 않겠습니다.",
+  "backend.request.change.recorded": "티켓 {code}의 변경이 기록되었습니다. 직원의 결정은 티켓 상태에서 확인하세요.",
+  "backend.request.change.cancel_label": "취소 요청",
+  "backend.request.change.modify_label": "변경 요청",
+  "backend.request.change.review": "티켓 {code} 검토: {action}. 변경 필드: {changes}. 확인하면 직원 검토에 제출됩니다."
 }

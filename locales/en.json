@@ -19,6 +19,7 @@
   "backend.request.merged_with_existing": "This service is already queued for the same room, so no second request was sent. The reference shown is the existing request's.",
   "backend.request.escalated": "I sent one reminder to the assigned department.",
   "backend.request.change.none": "I could not find an active request in this kiosk session to change.",
+  "backend.request.change.select": "Which request would you like to change? Please give one of these request references: {codes}.",
   "backend.request.change.need_details": "What would you like to change? Please state the new room, quantity, time, or party size.",
   "backend.request.change.cancel_submitted": "I sent a cancellation request for {code} to staff for review. The original request is not cancelled until staff confirm it.",
   "backend.request.change.modify_submitted": "I sent the changes for request {code} to staff for review. They take effect only after staff approve them.",
@@ -208,5 +209,9 @@
   "backend.service.need_slots": "I can continue this request, but I still need: {names}. Nothing has been submitted yet.",
   "backend.operations.synthetic_which_option": "I need to know which option you mean. Please tell me the restaurant or service you have in mind.",
   "backend.preference.confirm_question": "Would you like me to remember “{evidence}” as a preference for this session? Please answer yes or no.",
-  "backend.preference.declined": "Understood, I will not remember that."
+  "backend.preference.declined": "Understood, I will not remember that.",
+  "backend.request.change.recorded": "Your change for ticket {code} is recorded. Check the ticket status for the staff decision.",
+  "backend.request.change.cancel_label": "cancel",
+  "backend.request.change.modify_label": "modify",
+  "backend.request.change.review": "Review ticket {code}: {action}. Changed fields: {changes}. Confirm to send this change for staff review."
 }

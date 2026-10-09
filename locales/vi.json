@@ -1,4 +1,5 @@
 {
+  "backend.request.change.select": "Bạn muốn thay đổi yêu cầu nào? Vui lòng chọn một mã yêu cầu: {codes}.",
   "backend.smalltalk.reply": "Rất vui được hỗ trợ bạn! Bạn cần tôi tra cứu thông tin, chỉ đường hay gửi yêu cầu dịch vụ nào không?",
   "backend.out_of_scope.reply": "Câu này nằm ngoài phạm vi hỗ trợ của khách sạn, nhưng tôi có thể giúp bạn về thông tin, chỉ đường hoặc dịch vụ lưu trú.",
   "backend.emergency.alert_queued": " Đã tạo cảnh báo ưu tiên cao trên hàng đợi của nhân viên; đây không phải xác nhận rằng lực lượng cứu hộ đã được điều động.",
@@ -208,5 +209,9 @@
   "backend.service.need_slots": "Tôi có thể tiếp tục yêu cầu này, nhưng vẫn cần: {names}. Chưa có yêu cầu nào được gửi.",
   "backend.operations.synthetic_which_option": "Mình cần biết bạn muốn kiểm tra lựa chọn nào. Vui lòng nói rõ tên nhà hàng hoặc dịch vụ.",
   "backend.preference.confirm_question": "Bạn muốn mình ghi nhớ “{evidence}” làm sở thích cho phiên này không? Hãy trả lời có hoặc không.",
-  "backend.preference.declined": "Đã rõ, mình sẽ không ghi nhớ điều đó."
+  "backend.preference.declined": "Đã rõ, mình sẽ không ghi nhớ điều đó.",
+  "backend.request.change.recorded": "Thay đổi cho ticket {code} đã được ghi nhận. Xem trạng thái ticket để biết quyết định của nhân viên.",
+  "backend.request.change.cancel_label": "xin hủy",
+  "backend.request.change.modify_label": "xin sửa",
+  "backend.request.change.review": "Xem lại ticket {code}: {action}. Trường thay đổi: {changes}. Xác nhận để gửi nhân viên xét duyệt."
 }
