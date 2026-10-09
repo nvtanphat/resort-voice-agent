@@ -1,4 +1,8 @@
 {
+  "backend.request.deferred_nothing": "No problem, take your time. Just tell me when you're ready. Nothing has been sent.",
+  "backend.request.deferred_pending": "No problem, take your time. Your pending request is kept as it is and nothing has been sent.",
+  "backend.request.deferred_draft": "I've noted the details and nothing has been sent. When you're ready, just tell me and I'll prepare it for confirmation.",
+  "backend.service.room_access_conflict": "Your room is set to Do Not Disturb, so staff will not enter. Would you like to turn it off so they can come in? Nothing has been sent yet.",
   "backend.smalltalk.reply": "Happy to help! Would you like hotel information, directions, or a service request?",
   "backend.out_of_scope.reply": "That is outside my hotel concierge scope, but I can help with hotel information, directions, or guest services.",
   "backend.emergency.alert_queued": " A high-priority alert has been placed in the staff queue; this does not confirm that emergency responders were dispatched.",

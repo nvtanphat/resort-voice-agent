@@ -18,7 +18,7 @@ from concierge_kiosk.runtime.local_http import slm_turn_expired
 from concierge_kiosk.core.domain_profile import preference_policy, rag_policy, supported_languages
 from concierge_kiosk.core.settings import SLM_NUM_CTX
 from concierge_kiosk.domain.service_registry import accepted_slots, service_definition
-from concierge_kiosk.agent.understanding.intent_evidence import command_supported
+from concierge_kiosk.agent.understanding.intent_evidence import command_supported, states_condition
 
 
 COMMAND_TYPES = frozenset({
@@ -322,9 +322,11 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                          and _text(slot.text, 120) and _verbatim(query, slot.text))
             if kept != command.slots:
                 command = replace(command, slots=kept)
-            if command.conditional and definition.availability_source is None:
+            if command.conditional and (definition.availability_source is None
+                                        or not states_condition(query, language)):
                 # "If available" cannot be checked for a service without an
                 # availability source; the proposal still needs guest consent.
+                # A model flag alone is no condition: the guest must state one.
                 command = replace(command, conditional=False)
             signature = (command.goal, tuple((s.name, s.text) for s in command.slots),
                          command.conditional, command.refers_to_context)

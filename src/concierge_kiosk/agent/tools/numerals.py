@@ -223,15 +223,32 @@ def corrected_time(text: str, language: str, previous: object) -> str | None:
     An explicit daypart or a written minute (8:30) is taken as stated.
     """
     value = preferred_time(text, language)
-    if (value is None or not re.fullmatch(r'\d{2}:\d{2}', value)
-            or not isinstance(previous, str) or not re.fullmatch(r'\d{2}:\d{2}', previous)):
+    if (value is not None and re.fullmatch(r'\d{2}:\d{2}', value) and isinstance(previous, str)
+            and not re.search(r'\d', previous)):
+        # The draft held a window ("tonight"): a bare 12-hour clock takes its half of the day.
+        return _within_window(text, language, value, previous)
+    previous_clock = re.search(r'(?<!\d)(\d{2}):(\d{2})(?!\d)', previous) if isinstance(previous, str) else None
+    if value is None or not re.fullmatch(r'\d{2}:\d{2}', value) or previous_clock is None:
         return value
+    previous = previous_clock.group(0)
     hour = int(value[:2])
     pattern = _CLOCK_DAYPART_PATTERNS.get(language)
     if (not 1 <= hour <= 11 or ':' in _normalize_number_words(text, language)
             or (pattern is not None and pattern.search(normalize_with_spans(text, language).text))):
         return value
     return f'{hour + 12:02d}:{value[3:]}' if int(previous[:2]) >= 12 else value
+
+
+def _within_window(text: str, language: str, value: str, window: str) -> str:
+    hour = int(value[:2])
+    pattern = _CLOCK_DAYPART_PATTERNS.get(language)
+    if (not 1 <= hour <= 12 or ':' in _normalize_number_words(text, language)
+            or (pattern is not None and pattern.search(normalize_with_spans(text, language).text))):
+        return value
+    periods = {period for daypart, period in _CLOCK_DAYPARTS.get(language, {}).items() if daypart in window}
+    if len(periods) != 1:
+        return value
+    return f'{_hour_for_period(hour, next(iter(periods))):02d}:{value[3:]}'
 
 
 def _preferred_time_core(text: str, language: str) -> str | None:

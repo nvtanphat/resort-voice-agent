@@ -26,6 +26,7 @@ from ..agent.tools.service_slots import (assess_service, clarification_text, rea
                                           extract_slots)
 
 from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, accepted_slots, default_service_for,
+                                                     required_slots,
                                                      route_branch_for_request_kind, service_definition,
                                                      VOICE_NUMERIC_SLOTS)
 from concierge_kiosk.core.operational_policy import service_catalog_entry
@@ -118,9 +119,10 @@ def _canonical_service_review(*, mode: str, language: str,
         name = mode.replace('_', ' ')
 
     labels = SLOT_LABELS.get(language, {})
-    # Item-bearing services describe a guest request, not a fixed catalog item
-    # or an inventory promise. The labeled item is preserved verbatim below.
-    lines = [] if 'requested_item' in accepted_slots(mode) else [name.strip()]
+    # Services defined by the item (it is required) describe a guest request, not a
+    # fixed catalog item or an inventory promise; the labeled item is preserved
+    # verbatim below. A service where the item is optional keeps its own name.
+    lines = [] if 'requested_item' in required_slots(mode) else [name.strip()]
     for key in accepted_slots(mode):
         value = slots.get(key)
         if value in (None, ''):

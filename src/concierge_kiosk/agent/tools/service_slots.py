@@ -17,6 +17,7 @@ import re
 from typing import Mapping
 
 from concierge_kiosk.i18n import text as i18n_text
+from concierge_kiosk.agent.understanding.domain_nlu import NUMBER_WORDS as _NUMBER_WORDS, QUANTITY_ITEM as _QUANTITY_ITEM, QUANTITY_UNITS as _QUANTITY_UNITS
 from concierge_kiosk.agent.understanding.domain_nlu import PARTY_SIZE_FULL_PATTERNS as _PARTY_SIZE_FULL_PATTERNS, PARTY_SIZE_PATTERNS as _PARTY_SIZE_PATTERNS, QUANTITY_NOUNS as _QUANTITY_NOUNS, ROOM_PATTERNS as _ROOM_PATTERNS, SLOT_LABELS as _SLOT_LABELS
 from concierge_kiosk.agent.tools.numerals import corrected_time, normalize_number_words
 from concierge_kiosk.agent.tools.service_dates import requested_date
@@ -101,6 +102,126 @@ def _party_size(text: str, language: str) -> int | None:
     return None
 
 
+_ITEM_PUNCTUATION = re.compile('[,.;:!?()\\[\\]"\u3002\uff0c\uff1b\uff1f\uff01\u3001\n]')
+
+
+def _alternation(terms, spaced: bool) -> str | None:
+    parts = sorted({term for term in terms if term}, key=len, reverse=True)
+    if not parts:
+        return None
+    body = '|'.join(re.escape(term) for term in parts)
+    return rf'(?<!\w)(?:{body})(?!\w)' if spaced else f'(?:{body})'
+
+
+def _item_cut(query: str, start: int, language: str, grammar: Mapping) -> int:
+    """End of the item phrase that starts at ``start``: the first boundary after it."""
+    ends = [len(query)]
+    found = _ITEM_PUNCTUATION.search(query, start)
+    if found:
+        ends.append(found.start())
+    boundary = _alternation(grammar.get('boundaries', ()), bool(grammar.get('spaced')))
+    if boundary:
+        found = re.compile(boundary, re.IGNORECASE).search(query, start)
+        if found:
+            ends.append(found.start())
+        from concierge_kiosk.agent.understanding.intent_evidence import fold
+        plain = fold(query)
+        if len(plain) == len(query) and plain == query.casefold():
+            # Typed without tone marks: the boundary words cannot be told apart by marks.
+            folded = _alternation([fold(term) for term in grammar.get('boundaries', ())], bool(grammar.get('spaced')))
+            found = re.compile(folded, re.IGNORECASE).search(plain, start)
+            if found:
+                ends.append(found.start())
+    for pattern in _ROOM_PATTERNS.get(language, ()):
+        found = re.compile(pattern, re.IGNORECASE).search(query, start)
+        if found:
+            ends.append(found.start())
+    digit = re.compile(r'\d').search(query, start)
+    if digit:
+        ends.append(digit.start())
+    return min(ends)
+
+
+def _bounded_item(text: str, grammar: Mapping) -> str | None:
+    item = ' '.join(text.split()).strip(' -')
+    if not item or any(ch.isdigit() for ch in item):
+        return None
+    size = len(item.split()) if grammar.get('spaced') else len(item)
+    return item if size <= int(grammar.get('max_words', 4)) else None
+
+
+def _strip_particle(token: str, grammar: Mapping) -> str:
+    for particle in sorted(grammar.get('particles', ()), key=len, reverse=True):
+        if token.endswith(particle) and len(token) > len(particle):
+            return token[:-len(particle)]
+    return token
+
+
+def item_anchors(goal: str, language: str) -> tuple[str, ...]:
+    """Reviewed object concepts that can locate an item; generic nouns ("supplies") name none."""
+    from concierge_kiosk.core.domain_profile import get_domain_profile
+    evidence = get_domain_profile().semantic_authorization['services'].get(goal) or {}
+    generic = set((evidence.get('generic_concepts') or {}).get(language, ()))
+    return tuple(term for term in (evidence.get('concepts') or {}).get(language, ()) if term not in generic)
+
+
+def item_and_unit(query: str, language: str, *,
+                  anchors: tuple[str, ...] = ()) -> tuple[str | None, str | None]:
+    """Verbatim requested item and measure word of a quantity phrase, or ``None``.
+
+    Only the grammar of quantity expressions is configured (measure words, the side
+    the item sits on, joiners and boundaries); the item itself is whatever the guest
+    named, so a novel item needs no catalogue entry.  ``anchors`` (the service's own
+    object concepts) locate an item that carries no quantity.  Both values are spans
+    of ``query``, so the command validator's verbatim check still applies.
+    """
+    grammar = _QUANTITY_ITEM.get(language)
+    if not isinstance(query, str) or not grammar:
+        return None, None
+    spaced = bool(grammar.get('spaced'))
+    words = [word for word, value in _NUMBER_WORDS.get(language, {}).items() if 0 < int(value) < 100]
+    number = '|'.join([r'\d{1,3}', *(re.escape(word) for word in sorted(words, key=len, reverse=True))])
+    number = rf'(?<!\w)(?:{number})' if spaced else f'(?:{number})'
+    unit = _alternation(_QUANTITY_UNITS.get(language, ()), False)
+    unit_part = (rf'(?P<unit>{unit})(?!\w)' if spaced else f'(?P<unit>{unit})') if unit else None
+    rooms = [match.span() for pattern in _ROOM_PATTERNS.get(language, ())
+             for match in re.finditer(pattern, query, re.IGNORECASE)]
+    joiner = _alternation(grammar.get('joiners', ()), spaced)
+    after = grammar.get('order') != 'before'
+    quantity = rf'(?P<number>{number})\s*' + (f'(?:{unit_part})?' if after and unit_part else (unit_part or ''))
+    if not after and not unit_part:
+        quantity = ''
+    for match in (re.finditer(quantity, query, re.IGNORECASE) if quantity else ()):
+        if any(start <= match.start() < end for start, end in rooms):
+            continue
+        found_unit = match.groupdict().get('unit')
+        if after:
+            position = match.end()
+            while joiner:
+                skipped = re.compile(r'\s*' + joiner + r'\s*', re.IGNORECASE).match(query, position)
+                if not skipped or skipped.end() == position:
+                    break
+                position = skipped.end()
+            item = _bounded_item(query[position:_item_cut(query, position, language, grammar)], grammar)
+        else:
+            boundary = set(grammar.get('boundaries', ()))
+            tokens = [token for token in query[:match.start()].split() if token not in boundary]
+            item = _bounded_item(_strip_particle(tokens[-1], grammar), grammar) if tokens else None
+        if item:
+            return item, found_unit
+    folded = query.casefold()
+    hits = sorted((folded.find(anchor.casefold()), anchor) for anchor in anchors
+                  if anchor and anchor.casefold() in folded)
+    if not hits:
+        return None, None
+    start = hits[0][0]
+    if after:
+        return _bounded_item(query[start:_item_cut(query, start + len(hits[0][1]), language, grammar)],
+                             grammar), None
+    token_end = next((index for index in range(start, len(query)) if query[index].isspace()), len(query))
+    return _bounded_item(_strip_particle(query[start:token_end], grammar), grammar), None
+
+
 def extract_slots(query: str, language: str, kind: str, *, mode: str,
                   existing: Mapping[str, str | int] | None = None,
                   reference_time: datetime | None = None) -> dict[str, str | int]:
@@ -120,6 +241,22 @@ def extract_slots(query: str, language: str, kind: str, *, mode: str,
         room = _room_number(query, language)
         if room:
             slots['room_number'] = room
+    if isinstance(slots.get('unit'), str) and not any(ch.isalpha() for ch in slots['unit']):
+        slots.pop('unit')  # a measure word, never a bare number
+    if 'requested_item' in supported and not slots.get('requested_item'):
+        # The guest named what they want even when no model supplied the slot.
+        item, unit = item_and_unit(query, language, anchors=item_anchors(selected_mode, language))
+        if item:
+            slots['requested_item'] = item
+            if unit and 'unit' in supported and not slots.get('unit'):
+                slots['unit'] = unit
+    if isinstance(slots.get('requested_item'), str) and _QUANTITY_ITEM.get(language):
+        # An item phrase (from any source) ends at the first boundary word ("... to room").
+        item = slots['requested_item']
+        trimmed = _bounded_item(item[:_item_cut(item, 0, language, _QUANTITY_ITEM[language])],
+                                _QUANTITY_ITEM[language])
+        if trimmed and trimmed != item:
+            slots['requested_item'] = trimmed
     if 'quantity' in supported:
         qty = _quantity(query, language)
         if qty is None and isinstance(slots.get('unit'), str):
@@ -155,6 +292,12 @@ def assess_service(query: str, language: str, kind: str, *, mode: str,
                           reference_time=reference_time)
     required = required_slots(selected_mode)
     missing = tuple(name for name in required if not slots.get(name))
+    if ('preferred_time' in required and isinstance(slots.get('preferred_time'), str)
+            and not re.search(r'\d{1,2}:\d{2}', slots['preferred_time'])
+            and 'preferred_time' not in missing):
+        # A service that books a moment needs a clock time; a window such as "tonight"
+        # is kept (it fixes the half of the day of the hour given next) but still asked.
+        missing += ('preferred_time',)
     if 'requested_date' in accepted_slots(selected_mode):
         value, mentioned = requested_date(query, language, reference_time)
         if not mentioned and isinstance((existing or {}).get('requested_date'), str):

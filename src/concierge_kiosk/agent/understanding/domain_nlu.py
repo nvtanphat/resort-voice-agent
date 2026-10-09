@@ -54,6 +54,10 @@ QUANTITY_NOUNS = {
     language: tuple(dict.fromkeys((*items, *service_terms(language))))
     for language, items in _terms(SLOTS["quantity_nouns"]).items()
 }
+# Optional quantity grammar (measure words and where the item phrase sits);
+# a language without it simply yields no item/unit span.
+QUANTITY_UNITS = _terms(SLOTS.get("quantity_units") or {})
+QUANTITY_ITEM = {language: dict(values) for language, values in (SLOTS.get("quantity_item") or {}).items()}
 PARTY_SIZE_PATTERNS = {language: tuple(patterns) for language, patterns in SLOTS["party_size_patterns"].items()}
 PARTY_SIZE_FULL_PATTERNS = dict(SLOTS["party_size_full_patterns"])
 CLOCK_DAYPARTS = {language: dict(values) for language, values in SLOTS["clock_dayparts"].items()}

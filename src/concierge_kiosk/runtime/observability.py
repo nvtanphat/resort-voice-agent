@@ -23,7 +23,7 @@ from urllib.parse import urlsplit
 
 
 SPAN_NAMES = frozenset({
-    'guest_turn', 'business_workflow', 'understanding', 'fast_router',
+    'guest_turn', 'business_workflow', 'understanding', 'fast_router', 'grounded_service',
     'candidate_selection', 'qwen_nlu', 'command_validation', 'semantic_authorization',
     'model_proposed', 'server_validated', 'semantically_authorized',
     'agent_execution', 'route_projection', 'memory_resolution', 'memory_lookup',
@@ -38,7 +38,8 @@ SPAN_NAMES = frozenset({
 ENUMS = {
     'stage': {'model_proposed', 'server_validated', 'semantically_authorized'},
     'outcome': {'accepted', 'rejected', 'success', 'failure', 'none', 'expired', 'valid', 'missing'},
-    'reason_code': {'unsupported_semantics', 'structural_validation', 'none', 'expired', 'source_revoked'},
+    'reason_code': {'unsupported_semantics', 'structural_validation', 'none', 'expired', 'source_revoked',
+                    'not_plain', 'competing_service'},
     'evidence_category': {'domain_policy', 'not_checked'},
     'invocation_type': {'NLU', 'planner', 'reference', 'generation', 'goal', 'other'},
     'status': {'success', 'timeout', 'unavailable', 'invalid_output', 'cancelled', 'accepted',

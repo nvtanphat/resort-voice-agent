@@ -24,6 +24,13 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
         value = selector.get(key)
         if not isinstance(value, (int, float)) or isinstance(value, bool) or not low <= value <= 1.0:
             raise ValueError(f"nlu.service_selector.{key} must be a number in [{low}, 1]")
+    if not isinstance(selector.get("fast_path_evidence_enabled", False), bool):
+        raise ValueError("nlu.service_selector.fast_path_evidence_enabled must be a boolean")
+    for key, low in (("fast_path_min_score", -1.0), ("fast_path_min_margin", 0.0)):
+        value = selector.get(key)
+        if value is not None and (not isinstance(value, (int, float)) or isinstance(value, bool)
+                                  or not low <= value <= 1.0):
+            raise ValueError(f"nlu.service_selector.{key} must be a number in [{low}, 1]")
     if selector["emergency_review_prob"] > selector["emergency_min_prob"]:
         raise ValueError("nlu.service_selector.emergency_review_prob must not exceed emergency_min_prob")
     l2 = selector.get("emergency_l2")
@@ -103,6 +110,9 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for key in ("slot_labels",):
         validate_language_keys(slots[key], languages, label=f"nlu.slots.{key}", require_all=True)
     validate_language_keys(slots["relative_date_offsets"], languages, label="nlu.slots.relative_date_offsets", require_all=True)
+    for key in ("quantity_units", "quantity_item"):
+        if key in slots:
+            validate_language_keys(slots[key], languages, label=f"nlu.slots.{key}")
     configured_slots = {slot for service in payload["services"] for slot in (*service["required_slots"], *service["autonomous_required_slots"], *service["optional_slots"])}
     for language, labels in slots["slot_labels"].items():
         if not configured_slots <= set(labels):

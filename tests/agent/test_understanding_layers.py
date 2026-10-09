@@ -36,6 +36,7 @@ def _profile(tmp: Path, ids: tuple[str, ...], *, verified_room: bool = False):
         "service.bath_towels": "facilities",
         "service.late_checkout": "front_office",
         "dining.restaurant_reservation": "dining",
+        "service.room_cleaning": "housekeeping",
     }
     catalog = []
     for sid in ids:

@@ -933,6 +933,88 @@
                 }
               }
             },
+            "quantity_units": {
+              "type": "object",
+              "maxProperties": 16,
+              "propertyNames": {
+                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
+              },
+              "additionalProperties": {
+                "type": "array",
+                "maxItems": 64,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                }
+              }
+            },
+            "quantity_item": {
+              "type": "object",
+              "maxProperties": 16,
+              "propertyNames": {
+                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "order",
+                  "spaced",
+                  "joiners",
+                  "boundaries",
+                  "particles",
+                  "max_words"
+                ],
+                "properties": {
+                  "order": {
+                    "enum": [
+                      "after",
+                      "before"
+                    ]
+                  },
+                  "spaced": {
+                    "type": "boolean"
+                  },
+                  "joiners": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "boundaries": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "particles": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "max_words": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  }
+                }
+              }
+            },
             "quantity_nouns": {
               "type": "object",
               "maxProperties": 16,
@@ -1141,6 +1223,19 @@
             "fallback_min_score": {
               "type": "number",
               "minimum": -1,
+              "maximum": 1
+            },
+            "fast_path_evidence_enabled": {
+              "type": "boolean"
+            },
+            "fast_path_min_score": {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            "fast_path_min_margin": {
+              "type": "number",
+              "minimum": 0,
               "maximum": 1
             },
             "fallback_min_margin": {
@@ -2343,6 +2438,34 @@
                   }
                 }
               },
+              "measure_words": {
+                "type": "object",
+                "maxProperties": 8,
+                "additionalProperties": {
+                  "type": "array",
+                  "maxItems": 24,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  }
+                }
+              },
+              "generic_concepts": {
+                "type": "object",
+                "maxProperties": 8,
+                "additionalProperties": {
+                  "type": "array",
+                  "maxItems": 40,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 48
+                  }
+                }
+              },
               "object_slots": {
                 "type": "array",
                 "maxItems": 8,
@@ -2434,6 +2557,177 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 64
+        },
+        "information_verbs": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        },
+        "information_nouns": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        },
+        "sequence_terms": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        },
+        "indefinite_articles": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        },
+        "deferral_terms": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "lead": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 48
+            }
+          },
+              "clause_final": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 48
+            }
+          },
+              "standalone": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 48
+            }
+          }
+            }
+          }
+        },
+        "room_access_conflicts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["access_models", "terms"],
+          "properties": {
+            "access_models": {
+              "type": "array",
+              "maxItems": 8,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            },
+            "terms": {
+              "type": "object",
+              "maxProperties": 8,
+              "additionalProperties": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 48
+            }
+          }
+            }
+          }
+        },
+        "modification_terms": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        },
+        "perfective_terms": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "before_action": {
+                "type": "array",
+                "maxItems": 16,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24
+                }
+              },
+              "clause_final": {
+                "type": "array",
+                "maxItems": 16,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24
+                }
+              }
+            }
+          }
         },
         "reported_speech_terms": {
           "type": "object",

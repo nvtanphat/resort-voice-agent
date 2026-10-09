@@ -215,7 +215,9 @@
       "autonomous_required_slots": [],
       "tool": "service_action",
       "default_for_kind": false,
-      "optional_slots": [],
+      "optional_slots": [
+        "requested_item"
+      ],
       "approval": "staff",
       "catalog_service_id": "service.in_room_dining",
       "description": "Order food or drinks delivered to the guest room (room service)."
@@ -1021,6 +1023,181 @@
           "목욕 수건"
         ]
       },
+      "quantity_units": {
+        "vi": [
+          "chai",
+          "lon",
+          "hộp",
+          "gói",
+          "cuộn",
+          "bộ",
+          "cái",
+          "chiếc",
+          "ly",
+          "cốc",
+          "tấm",
+          "đôi",
+          "túi",
+          "hũ",
+          "bình"
+        ],
+        "en": [
+          "bottle",
+          "bottles",
+          "can",
+          "cans",
+          "pack",
+          "packs",
+          "packet",
+          "packets",
+          "box",
+          "boxes",
+          "roll",
+          "rolls",
+          "set",
+          "sets",
+          "piece",
+          "pieces",
+          "pair",
+          "pairs",
+          "cup",
+          "cups",
+          "glass",
+          "glasses",
+          "jug",
+          "jugs"
+        ],
+        "zh": [
+          "瓶",
+          "罐",
+          "盒",
+          "包",
+          "卷",
+          "套",
+          "个",
+          "條",
+          "条",
+          "件",
+          "双",
+          "杯",
+          "张",
+          "份",
+          "支",
+          "壶"
+        ],
+        "ko": [
+          "병",
+          "개",
+          "캔",
+          "팩",
+          "상자",
+          "통",
+          "롤",
+          "세트",
+          "장",
+          "벌",
+          "잔",
+          "켤레"
+        ]
+      },
+      "quantity_item": {
+        "vi": {
+          "order": "after",
+          "spaced": true,
+          "joiners": [
+            "thêm"
+          ],
+          "boundaries": [
+            "lên",
+            "đến",
+            "tới",
+            "vào",
+            "giúp",
+            "giùm",
+            "nhé",
+            "nha",
+            "ạ",
+            "với",
+            "và",
+            "ở",
+            "tại",
+            "để",
+            "được không",
+            "cho",
+          "nữa",
+          "luôn",
+          "ngay",
+          "rồi"
+          ],
+          "particles": [],
+          "max_words": 4
+        },
+        "en": {
+          "order": "after",
+          "spaced": true,
+          "joiners": [
+            "of",
+            "more",
+            "extra",
+            "additional"
+          ],
+          "boundaries": [
+            "to",
+            "for",
+            "in",
+            "at",
+            "please",
+            "and",
+            "asap",
+            "now",
+            "up"
+          ],
+          "particles": [],
+          "max_words": 4
+        },
+        "zh": {
+          "order": "after",
+          "spaced": false,
+          "joiners": [],
+          "boundaries": [
+            "送",
+            "到",
+            "给",
+            "拿",
+            "来",
+            "带",
+            "吧",
+            "谢谢",
+            "和",
+            "在",
+            "请",
+            "过"
+          ],
+          "particles": [],
+          "max_words": 8
+        },
+        "ko": {
+          "order": "before",
+          "spaced": true,
+          "joiners": [],
+          "boundaries": [
+            "좀",
+            "더",
+            "추가로",
+            "추가"
+          ],
+          "particles": [
+            "을",
+            "를",
+            "이",
+            "가",
+            "은",
+            "는",
+            "도"
+          ],
+          "max_words": 1
+        }
+      },
       "party_size_patterns": {
         "en": [
           "\\b(?:for|party of)\\s*(\\d{1,2})\\b",
@@ -1207,6 +1384,9 @@
       ],
       "fallback_min_score": 0.88,
       "fallback_min_margin": 0.13,
+      "fast_path_min_score": 0.87,
+      "fast_path_min_margin": 0.07,
+      "fast_path_evidence_enabled": false,
       "router_min_score": 0.87,
       "router_min_margin": 0.08,
       "emergency_min_prob": 0.64,
@@ -2613,7 +2793,10 @@
         "维修",
         "打扫",
         "检查",
-        "延迟"
+        "延迟",
+        "想点",
+        "点餐",
+        "点菜"
       ],
       "ko": [
         "주세요",
@@ -2767,7 +2950,8 @@
       "en": [
         "already",
         "yesterday",
-        "previously"
+        "previously",
+        "earlier"
       ],
       "vi": [
         "đã đặt",
@@ -2776,17 +2960,23 @@
         "trước đây",
         "đã dọn",
         "đã sửa",
-        "đã hoàn thành"
+        "đã hoàn thành",
+        "lúc nãy",
+        "hồi nãy",
+        "ban nãy",
+        "vừa nãy"
       ],
       "zh": [
         "已经",
         "昨天",
-        "以前"
+        "以前",
+        "刚才"
       ],
       "ko": [
         "이미",
         "어제",
-        "전에"
+        "전에",
+        "아까"
       ]
     },
     "conditional_terms": {
@@ -2862,6 +3052,26 @@
             "용품",
             "물품",
             "어댑터"
+          ]
+        },
+        "generic_concepts": {
+          "vi": [
+            "vật phẩm",
+            "đồ dùng",
+            "tiện nghi"
+          ],
+          "en": [
+            "amenities",
+            "supplies",
+            "items"
+          ],
+          "zh": [
+            "用品",
+            "物品"
+          ],
+          "ko": [
+            "용품",
+            "물품"
           ]
         },
         "object_slots": [
@@ -2951,28 +3161,51 @@
             "manager",
             "assistance",
             "complaint",
-            "help"
+            "help",
+            "wheelchair",
+            "stroller"
           ],
           "vi": [
             "nhân viên",
             "lễ tân",
             "quản lý",
             "hỗ trợ",
-            "phàn nàn"
+            "phàn nàn",
+            "xe lăn",
+            "xe đẩy"
           ],
           "zh": [
             "工作人员",
             "前台",
             "经理",
             "帮助",
-            "投诉"
+            "投诉",
+            "轮椅",
+            "婴儿车"
           ],
           "ko": [
             "직원",
             "프런트",
             "매니저",
             "도움",
-            "불만"
+            "불만",
+            "휠체어",
+            "유모차"
+          ]
+        },
+        "generic_concepts": {
+          "vi": [
+            "hỗ trợ"
+          ],
+          "en": [
+            "assistance",
+            "help"
+          ],
+          "zh": [
+            "帮助"
+          ],
+          "ko": [
+            "도움"
           ]
         },
         "object_slots": []
@@ -3057,6 +3290,29 @@
             "식사",
             "피자",
             "룸서비스"
+          ]
+        },
+        "measure_words": {
+          "vi": [
+            "tô",
+            "phần",
+            "đĩa",
+            "bát"
+          ],
+          "en": [
+            "bowl of",
+            "plate of",
+            "portion of",
+            "serving of"
+          ],
+          "zh": [
+            "碗",
+            "盘",
+            "份"
+          ],
+          "ko": [
+            "그릇",
+            "인분"
           ]
         },
         "object_slots": []
@@ -3211,6 +3467,22 @@
             "차량",
             "셔틀",
             "픽업"
+          ]
+        },
+        "generic_concepts": {
+          "vi": [
+            "xe"
+          ],
+          "en": [
+            "car",
+            "transport",
+            "transfer"
+          ],
+          "zh": [
+            "交通"
+          ],
+          "ko": [
+            "차량"
           ]
         },
         "object_slots": []
@@ -3378,6 +3650,222 @@
       }
     },
     "handoff_goal": "human_assistance",
+    "information_verbs": {
+      "vi": [
+        "biết",
+        "tìm hiểu",
+        "tham khảo"
+      ],
+      "en": [
+        "know",
+        "find out",
+        "learn about"
+      ],
+      "zh": [
+        "知道",
+        "了解"
+      ],
+      "ko": [
+        "알고 싶",
+        "궁금"
+      ]
+    },
+    "information_nouns": {
+      "vi": [
+        "giá",
+        "mức phí",
+        "chi phí",
+        "giờ mở cửa",
+        "giờ đóng cửa",
+        "giờ hoạt động"
+      ],
+      "en": [
+        "price",
+        "cost",
+        "fee",
+        "opening hours"
+      ],
+      "zh": [
+        "价格",
+        "费用",
+        "营业时间"
+      ],
+      "ko": [
+        "가격",
+        "요금",
+        "영업시간"
+      ]
+    },
+    "sequence_terms": {
+      "vi": [
+        "rồi",
+        "sau đó",
+        "tiện thể",
+        "đồng thời",
+        "với lại"
+      ],
+      "en": [
+        "then",
+        "after that",
+        "as well as"
+      ],
+      "zh": [
+        "然后",
+        "另外",
+        "顺便",
+        "同时"
+      ],
+      "ko": [
+        "그리고",
+        "그다음"
+      ]
+    },
+    "indefinite_articles": {
+      "en": [
+        "a",
+        "an"
+      ]
+    },
+    "deferral_terms": {
+      "vi": {
+        "lead": [
+          "để mình",
+          "để tôi",
+          "để em",
+          "cho mình",
+          "cho tôi"
+        ],
+        "clause_final": [
+          "đã"
+        ],
+        "standalone": [
+          "khoan đã",
+          "từ từ đã",
+          "chưa vội"
+        ]
+      },
+      "en": {
+        "lead": [
+          "let me",
+          "i will",
+          "i'll",
+          "i need to"
+        ],
+        "clause_final": [
+          "first",
+          "later"
+        ],
+        "standalone": [
+          "hold on",
+          "not yet",
+          "give me a moment",
+          "give me a minute"
+        ]
+      },
+      "zh": {
+        "lead": [
+          "我先",
+          "让我"
+        ],
+        "clause_final": [
+          "再说",
+          "再告诉你",
+          "再决定"
+        ],
+        "standalone": [
+          "先不要",
+          "稍等"
+        ]
+      },
+      "ko": {
+        "lead": [
+          "제가"
+        ],
+        "clause_final": [
+          "볼게요",
+          "알려 드릴게요"
+        ],
+        "standalone": [
+          "잠시만요"
+        ]
+      }
+    },
+    "room_access_conflicts": {
+      "access_models": [
+        "room_entry_subject_to_dnd_and_guest_access"
+      ],
+      "terms": {
+        "vi": [
+          "dnd",
+          "không làm phiền",
+          "đừng làm phiền"
+        ],
+        "en": [
+          "dnd",
+          "do not disturb",
+          "don't disturb"
+        ],
+        "zh": [
+          "请勿打扰",
+          "勿扰"
+        ],
+        "ko": [
+          "방해 금지"
+        ]
+      }
+    },
+    "modification_terms": {
+      "vi": [
+        "đổi",
+        "dời",
+        "lùi lại",
+        "sửa lại"
+      ],
+      "en": [
+        "change",
+        "reschedule",
+        "postpone",
+        "move my"
+      ],
+      "zh": [
+        "改",
+        "更改",
+        "推迟",
+        "换成"
+      ],
+      "ko": [
+        "변경",
+        "바꿔",
+        "미뤄"
+      ]
+    },
+    "perfective_terms": {
+      "vi": {
+        "before_action": [
+          "đã",
+          "vừa"
+        ],
+        "clause_final": [
+          "rồi"
+        ]
+      },
+      "en": {
+        "before_action": [
+          "already"
+        ],
+        "clause_final": [
+          "already"
+        ]
+      },
+      "zh": {
+        "before_action": [
+          "已经"
+        ],
+        "clause_final": [
+          "了"
+        ]
+      }
+    },
     "reported_speech_terms": {
       "en": [
         "he said",

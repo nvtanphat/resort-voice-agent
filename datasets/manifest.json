@@ -14,8 +14,8 @@
     },
     {
       "path": "evaluation/challenges/natural.jsonl",
-      "bytes": 280247,
-      "sha256": "1e5f75c37e44815c69d7f50798d23a7a704fcfa09ce0bd7ac3b8851137b87fd4",
+      "bytes": 280227,
+      "sha256": "13f546de8b079f17d026b8ae52a5aa69806a31cb7d72d40e2ba0ad41b95b4c63",
       "records": 595
     },
     {
@@ -111,8 +111,8 @@
     },
     {
       "path": "evaluation/gold/vi_dev.jsonl",
-      "bytes": 36229,
-      "sha256": "17f271ba1fb50c9afcec8ad8d1e94b500f47bc9acb2e82c6e4e540e33a2ef72f",
+      "bytes": 36225,
+      "sha256": "fe21f189a887fbfb354f04e2bef2a6e016f13c3c4572fe66645b1c40b63d9ba0",
       "records": 60
     },
     {
@@ -123,8 +123,8 @@
     },
     {
       "path": "evaluation/gold/vi_test.jsonl",
-      "bytes": 48686,
-      "sha256": "dd53870d82299e11798da90af1ad94d9cf8e4ec6b76975668adb01178df331ac",
+      "bytes": 48682,
+      "sha256": "70239c6b12ee24f87b2b9b0ce597822b3b575f5a096079a5566548dcf51fc650",
       "records": 80
     },
     {
@@ -667,8 +667,8 @@
     },
     {
       "path": "training/agent/multilingual_support.jsonl",
-      "bytes": 187148,
-      "sha256": "adef811c4736a0867d31c09256b9c632ec45e6bf6eb87e6db72d7c8f3627acb9",
+      "bytes": 187124,
+      "sha256": "cc6c1b3fd5b436ef47060731266b6d252c724c290d9a1ab920ca4e497091e471",
       "records": 281
     },
     {
@@ -685,8 +685,8 @@
     },
     {
       "path": "training/agent/vi_gold.jsonl",
-      "bytes": 432072,
-      "sha256": "61eba01ddbf23d33fb9157b4e3b26e61b2077ab49917a3c9b29cf45a2b548027",
+      "bytes": 432044,
+      "sha256": "f9c937092feaf7ff56cc15741a2903a18b3b4ae2ac003f4f03897a148b0c49b3",
       "records": 705
     }
   ]

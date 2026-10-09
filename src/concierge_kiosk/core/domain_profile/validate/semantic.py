@@ -32,6 +32,16 @@ def semantic_validate(payload: dict[str, Any]) -> None:
     bounded_terms(authority)
     validate_language_keys(authority.get('reported_speech_terms', {}), language_set,
                            label='semantic_authorization.reported_speech_terms')
+    validate_language_keys(authority.get('deferral_terms', {}), language_set,
+                           label='semantic_authorization.deferral_terms')
+    validate_language_keys(authority.get('room_access_conflicts', {}).get('terms', {}), language_set,
+                           label='semantic_authorization.room_access_conflicts.terms')
+    for name in ('information_verbs', 'information_nouns', 'sequence_terms', 'indefinite_articles'):
+        validate_language_keys(authority.get(name, {}), language_set, label=f'semantic_authorization.{name}')
+    validate_language_keys(authority.get('modification_terms', {}), language_set,
+                           label='semantic_authorization.modification_terms')
+    validate_language_keys(authority.get('perfective_terms', {}), language_set,
+                           label='semantic_authorization.perfective_terms')
     for name in ('request_actions', 'delivery_actions', 'reference_terms', 'negation_terms',
                  'question_terms', 'past_terms', 'clause_connectors', 'conditional_terms'):
         validate_language_keys(authority[name], language_set, label=f'semantic_authorization.{name}', require_all=True)
@@ -40,6 +50,13 @@ def semantic_validate(payload: dict[str, Any]) -> None:
         raise ValueError('Semantic authorization must cover exactly all registry services')
     for code, evidence in authority['services'].items():
         validate_language_keys(evidence['concepts'], language_set, label=f'semantic_authorization.services.{code}', require_all=True)
+        validate_language_keys(evidence.get('measure_words', {}), language_set,
+                               label=f'semantic_authorization.services.{code}.measure_words')
+        generic = evidence.get('generic_concepts', {})
+        validate_language_keys(generic, language_set, label=f'semantic_authorization.services.{code}.generic_concepts')
+        for language, terms in generic.items():
+            if not set(terms) <= set(evidence['concepts'].get(language, ())):
+                raise ValueError('Generic concepts must be reviewed concepts of the same service')
         symptom_requests = evidence.get('symptom_requests', {})
         validate_language_keys(symptom_requests, language_set, label=f'semantic_authorization.services.{code}.symptom_requests')
         for language, symptom in symptom_requests.items():

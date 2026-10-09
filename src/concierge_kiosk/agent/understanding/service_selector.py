@@ -28,7 +28,7 @@ from concierge_kiosk.domain.service_registry import (
     service_code_for_catalog_id,
     service_definition,
 )
-from concierge_kiosk.rag.embedding.base import cosine
+from concierge_kiosk.rag.embedding.base import cosine, valid_vector
 
 
 class _Embedder(Protocol):
@@ -328,6 +328,11 @@ class ServiceSelector:
         # recency window so repeated turns cannot grow memory without bound.
         self._query_vectors: OrderedDict[str, list[float]] = OrderedDict()
         self._query_lock = threading.Lock()
+        # Unit-normalised example matrix (built once per example index) and the
+        # scored ranking of the last few query vectors: one turn asks for the same
+        # ranking from the fast router, the grounded fast path and the candidate set.
+        self._example_matrix: tuple[object, Any, Any] | None = None
+        self._recent_scores: list[tuple[list[float], list[tuple[float, CommandExample]]]] = []
 
     def _query_vector(self, query: str) -> list[float]:
         """Return a cached query embedding keyed by stripped guest text."""
@@ -475,9 +480,10 @@ class ServiceSelector:
             return self._example_vectors
 
     def warm(self) -> None:
-        """Build both indexes ahead of the first guest turn."""
+        """Build both indexes (and the example score matrix) ahead of the first guest turn."""
         self._ensure_index()
-        self._ensure_example_index()
+        if self.examples:
+            self._matrix(self._ensure_example_index())
 
     @staticmethod
     def _mode_for_entry(entry: ServiceCatalogEntry, enabled_request_kinds: frozenset[str]) -> str | None:
@@ -521,13 +527,44 @@ class ServiceSelector:
             ))
         return result
 
+    def _matrix(self, vectors: tuple[list[float], ...]):
+        """Unit-normalised example matrix; rows whose vector is invalid score -1."""
+        import numpy as np
+
+        cached = self._example_matrix
+        if cached is not None and cached[0] is vectors:
+            return cached[1], cached[2]
+        valid = np.array([valid_vector(vector) for vector in vectors], dtype=bool)
+        width = max((len(vector) for vector, ok in zip(vectors, valid) if ok), default=0)
+        matrix = np.zeros((len(vectors), width), dtype=np.float64)
+        for row, (vector, ok) in enumerate(zip(vectors, valid)):
+            if ok and len(vector) == width:
+                matrix[row] = vector
+            else:
+                valid[row] = False
+        norms = np.linalg.norm(matrix, axis=1)
+        matrix[valid] /= norms[valid, None]
+        self._example_matrix = (vectors, matrix, valid)
+        return matrix, valid
+
     def _example_scores(self, query_vector: list[float]) -> list[tuple[float, CommandExample]]:
         if not self.examples:
             return []
-        vectors = self._ensure_example_index()
-        return sorted(((cosine(query_vector, vector), example)
-                       for example, vector in zip(self.examples, vectors)),
-                      key=lambda item: -item[0])
+        for vector, scored in self._recent_scores:
+            if vector is query_vector:
+                return scored
+        import numpy as np
+
+        matrix, valid = self._matrix(self._ensure_example_index())
+        if not valid_vector(query_vector) or len(query_vector) != matrix.shape[1]:
+            similarities = np.full(len(self.examples), -1.0)
+        else:
+            query = np.asarray(query_vector, dtype=np.float64)
+            similarities = np.where(valid, matrix @ (query / np.linalg.norm(query)), -1.0)
+        order = np.argsort(-similarities, kind='stable')
+        scored = [(float(similarities[index]), self.examples[index]) for index in order]
+        self._recent_scores = [(query_vector, scored), *self._recent_scores[:7]]
+        return scored
 
     @observed('candidate_selection', project=lambda result: {'candidate_count': len(result[0])})
     def understand(self, query: str, *, language: str,

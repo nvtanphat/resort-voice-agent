@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grounded service fast-path acceptance holdout row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "classification", "truth_status", "author", "holdout_part", "category",
+               "language", "utterance", "expected_route", "service_code", "expected_slots",
+               "expected_dialogue_action"],
+  "properties": {
+    "case_id": {"type": "string", "pattern": "^FPH-[0-9]{4}$"},
+    "classification": {"const": "fast_path_acceptance_holdout"},
+    "truth_status": {"const": "independent_author_unreviewed"},
+    "author": {"const": "independent_agent_2026_10_09"},
+    "holdout_part": {"enum": ["trigger", "traffic"]},
+    "category": {"enum": ["plain_request", "missing_slot", "time_window", "negation", "completed_report",
+                          "information_question", "status_or_change", "cancel", "multi_intent",
+                          "department_object_mismatch", "food_with_item", "mobility_aid", "deferral",
+                          "dnd_conflict", "no_diacritics", "chitchat", "emergency", "other"]},
+    "language": {"enum": ["vi", "en", "zh", "ko"]},
+    "utterance": {"type": "string", "minLength": 1, "maxLength": 400},
+    "expected_route": {"enum": ["service", "knowledge", "navigation", "status", "request_change", "cancel",
+                                "clarification", "multi_step", "emergency", "chitchat", "non_action",
+                                "escalation"]},
+    "service_code": {"type": ["string", "null"],
+                     "enum": [null, "amenity_delivery", "maintenance", "housekeeping", "human_assistance",
+                              "spa_reservation", "dining_reservation", "food_order", "tour_reservation",
+                              "wake_up_call", "facility_request", "dining_request", "tour_request",
+                              "transport_request", "late_checkout"]},
+    "expected_slots": {"type": "object", "additionalProperties": {"type": ["string", "integer"]}},
+    "expected_dialogue_action": {"enum": ["create_service_request", "ask_missing_slot", "clarify",
+                                          "answer_information", "hold", "no_action", "emergency"]}
+  }
+}

@@ -53,6 +53,10 @@ from concierge_kiosk.agent.understanding.domain_nlu import (
 from concierge_kiosk.i18n import text as i18n_text
 from concierge_kiosk.agent.understanding.commands import commands_from_items, validate_commands
 from concierge_kiosk.agent.understanding.fast_router import FastRouter, TurnContext
+from concierge_kiosk.agent.understanding.grounded_service import GroundedServiceResolver
+from concierge_kiosk.agent.understanding.intent_evidence import (mentioned_services, room_access_models,
+                                                                  states_room_access_conflict, turn_defers)
+from concierge_kiosk.core.operational_policy import service_access_model
 from concierge_kiosk.agent.understanding.emergency_gate import EmergencyGate, emergency_confirm_question
 from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS
 from concierge_kiosk.agent.understanding.intent import EMERGENCY_TEXT
@@ -232,6 +236,7 @@ class _TurnRuntimeSupport:
     service_selector: ServiceSelector | None = None
 
     fast_router: FastRouter | None = None
+    grounded_service: GroundedServiceResolver | None = None
     emergency_gate: EmergencyGate | None = None
     _pending_emergency_checks: set[str] = field(default_factory=set)
     _pending_emergency_details: dict[str, str] = field(default_factory=dict)
@@ -456,6 +461,16 @@ class _TurnRuntimeSupport:
         if unsafe_knowledge_text(query):
             # Injection-shaped guest text is neither a question nor a request.
             return RouteDecision('out_of_scope', True), None, execution_query, None
+        if turn_defers(query, language):
+            pending = pending_task is not None or expects_confirm or bool(pending_field)
+            if pending or not mentioned_services(query, language):
+                # "Let me check first": neither a confirmation nor a cancellation. Keep any
+                # pending draft, question or proposal exactly as it is; with nothing pending
+                # and no service named there is nothing for the model to understand.
+                return (RouteDecision('confirmation', True),
+                        {'held_answer': i18n_text('request.deferred_pending' if pending
+                                                  else 'request.deferred_nothing', language)},
+                        execution_query, None)
 
         commands = None
         if expects_confirm and _is_expected_confirmation(query, language):
@@ -468,6 +483,19 @@ class _TurnRuntimeSupport:
                     has_draft=pending_task is not None or expects_confirm))
             except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
                 LOGGER.warning('fast_router_unavailable', exc_info=True)
+        if (commands is None and self.grounded_service is not None and pending_field is None
+                and pending_task is None and not expects_confirm):
+            # A plain single-service request the router and the evidence gate agree on
+            # needs no command model; anything else still goes to it below.
+            try:
+                commands = self.grounded_service.resolve(
+                    query, language, enabled_request_kinds=enabled_request_kinds,
+                    live_anchor=bool(self.live_context_anchors(session, language)))
+            except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
+                LOGGER.warning('grounded_service_unavailable', exc_info=True)
+                commands = None
+            if commands is not None:
+                LOGGER.info('slm_commands outcome=skipped_grounded_service goal=%s', commands[0].goal)
         if commands is None:
             token = _COMMAND_OUTCOME.set(None)
             try:
@@ -527,6 +555,14 @@ class _TurnRuntimeSupport:
         types = {command.type for command in commands}
         if not commands:
             return decision, None, execution_query, None
+        if states_room_access_conflict(query, language) and any(
+                command.type == 'StartGoal'
+                and service_access_model(command.goal, cfg=self.cfg) in room_access_models()
+                for command in commands):
+            # The guest says the room is not to be entered (do-not-disturb) but asks for a
+            # service that needs room entry. Ask; never override the room-access rule.
+            return (RouteDecision('confirmation', True),
+                    {'held_answer': i18n_text('service.room_access_conflict', language)}, execution_query, None)
         execution_query = self._referenced_topic_query(commands, query, language, session, execution_query)
         if execution_query != query:
             # Each loop read carries its own query; changing only the route
@@ -910,11 +946,17 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                               min_score=float(selector_policy['router_min_score']),
                               min_margin=float(selector_policy['router_min_margin']))
                    if service_selector is not None else None)
+    grounded_service = (GroundedServiceResolver(
+        service_selector, min_score=float(selector_policy['fast_path_min_score']),
+        min_margin=float(selector_policy['fast_path_min_margin']),
+        evidence_path=bool(selector_policy.get('fast_path_evidence_enabled', False)))
+        if service_selector is not None and 'fast_path_min_score' in selector_policy
+        and 'fast_path_min_margin' in selector_policy else None)
     turn_support = _TurnRuntimeSupport(
         cfg=cfg, workflows=workflows, conversations=conversations, agent_tasks=agent_tasks,
         agent_checkpoints=agent_checkpoints,
         audio_admission=audio_admission, slm_permitted=slm_permitted,
-        service_selector=service_selector, fast_router=fast_router,
+        service_selector=service_selector, fast_router=fast_router, grounded_service=grounded_service,
         emergency_gate=emergency_gate)
 
     def _execute_turn(body: Ask, session: str, turn_id: str | None,
@@ -1030,6 +1072,11 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             result['answer'] = task_context['cancelled_answer']
             result['agent_action'] = {'status': 'cancelled', 'business_writes': 0}
             result['clear_suggestions'] = bool(task_context.get('clear_suggestions'))
+        elif task_context is not None and 'held_answer' in task_context:
+            # A clarification that leaves every pending state untouched.
+            result = fast_response(decision, query, body.language)
+            result['answer'] = task_context['held_answer']
+            result['agent_action'] = {'status': 'needs_user_input', 'business_writes': 0}
         elif decision.branch == 'emergency':
             emergency_details = (task_context or {}).get('emergency_details', query)
             result = emergency_answer(emergency_details, body.language, session, source=body.source)
@@ -1214,6 +1261,14 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
                             safe[internal_key] = result[internal_key]
                     result = safe
 
+        # A guest who postpones ("let me check first") keeps the draft but is not offered
+        # a confirmation in the same turn; nothing is prepared until they come back.
+        held = result.get('agent_action')
+        if (isinstance(held, dict) and held.get('status') == 'confirmation_required'
+                and turn_defers(query, body.language)):
+            result['agent_action'] = {**held, 'status': 'needs_user_input'}
+            result['suggested_action'] = None
+            result['answer'] = i18n_text('request.deferred_draft', body.language)
         # Signed property profile is an authority boundary, not a UI hint. The
         # domain write path checks it again; this response filter avoids offering
         # a review CTA that the property has disabled.

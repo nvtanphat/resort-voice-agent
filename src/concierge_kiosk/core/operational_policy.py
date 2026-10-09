@@ -400,6 +400,27 @@ def _synthetic_dispatch_policy(cfg, service_code: str) -> DispatchPolicy | None:
     return None
 
 
+def service_access_model(service_code: str, *, cfg=None) -> str | None:
+    """How staff reach the guest for a service (``access_model`` in the synthetic policy)."""
+    cfg = cfg or _legacy_config()
+    path = _synthetic_policy_path(cfg)
+    if not path.is_file() or path.is_symlink():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None
+    if (not isinstance(payload, dict) or payload.get('property_id') != getattr(cfg, 'property_id', None)
+            or payload.get('classification') != 'synthetic_operational'
+            or not isinstance(payload.get('services'), list)):
+        return None
+    for row in payload['services']:
+        if isinstance(row, dict) and row.get('service_code') == service_code:
+            value = row.get('access_model')
+            return value if isinstance(value, str) else None
+    return None
+
+
 def _legacy_config():
     """Build a temporary config for old direct callers during migration."""
     root = _dataset_root(SimpleNamespace())
