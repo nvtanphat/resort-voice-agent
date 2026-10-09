@@ -4,6 +4,7 @@ Model output is never presented (or synthesized) until it matches the exact
 approved evidence sent in this request. Business actions never originate here.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import provider_metadata, observed_generation
 
 import json
 import re
@@ -109,6 +110,7 @@ def _model_answer(response, on_observation: Callable[[str, float], None] | None 
         event = json.loads(raw)
         if not isinstance(event, dict) or event.get('error'):
             return None
+        provider_metadata(event)
         content = event.get('message', {}).get('content', '')
         if isinstance(content, str) and content and on_observation:
             on_observation('slm_ttft_ms', (time.monotonic() - stream_started) * 1000)
@@ -141,6 +143,7 @@ def _model_answer(response, on_observation: Callable[[str, float], None] | None 
             if sum(map(len, parts)) > max_chars:
                 return None
         if event.get('done') is True:
+            provider_metadata(event)
             # Ollama's actual eval_count and eval_duration (nanoseconds), not
             # a word-count estimate; omitted when the provider lacks metadata.
             count, duration = event.get('eval_count'), event.get('eval_duration')
@@ -190,6 +193,13 @@ def build_slm_payload(model: str, question: str, evidence: list[dict], language:
     }
 
 
+@observed_generation
+def _generation_transport(*, request: Request, model: str, timeout: float,
+                          on_observation, should_cancel):
+    with urlopen(request, timeout=timeout) as response:
+        return _model_answer(response, on_observation, should_cancel)
+
+
 def grounded_response(*, base_url: str, model: str, question: str,
                       evidence: list[dict], language: str, timeout: float = 8,
                       question_type: str = 'fact',
@@ -210,8 +220,8 @@ def grounded_response(*, base_url: str, model: str, question: str,
     try:
         req = Request(base_url.rstrip('/') + '/api/chat', data=payload,
                       headers={"Content-Type": "application/json"}, method="POST")
-        with urlopen(req, timeout=timeout) as response:
-            answer = _model_answer(response, on_observation, should_cancel)
+        answer = _generation_transport(request=req, model=model, timeout=timeout,
+                                       on_observation=on_observation, should_cancel=should_cancel)
     except (OSError, URLError, ValueError, KeyError, TypeError, AttributeError):
         return None
     if not answer or (should_cancel and should_cancel()):

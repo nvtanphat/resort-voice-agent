@@ -1,5 +1,6 @@
 """Governed concierge runtime; the turn loop is the LangGraph adapter in ``langgraph_loop``."""
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import observed, tool_projection, current_scope
 
 from dataclasses import replace
 import hashlib
@@ -83,6 +84,7 @@ class AutonomousConciergeRuntime:
             return 'internal_tool_error'
         return 'capability_unavailable'
 
+    @observed('tool_execution', project=tool_projection)
     def _execute(self, request: AgentToolRequest, state: AgentState,
                  action: NextAction, step_id: str) -> tuple[dict, dict]:
         """Execute a tool without allowing contract/setup errors to escape."""
@@ -409,6 +411,7 @@ class AutonomousConciergeRuntime:
         # whether another capability can still satisfy the same goal requirement.
         return meta.get('status') in {'completed', 'safe_fallback'}
 
+    @observed('agent_execution')
     def run(self, request: AgentToolRequest, *, continuation_context: dict | None = None,
             required_reads: tuple[str, ...] = (), planner: Planner | None = None,
             goal_interpreter: GoalInterpreter | None = None,
@@ -431,6 +434,10 @@ class AutonomousConciergeRuntime:
             memory_facts=memory_facts, preferences=preferences,
             commands=commands, context_topic=context_topic)
         run = AgentRun(state=state)
+        scope = current_scope()
+        if scope is not None:
+            run.observability_trace_id = scope.trace_id
+            run.observability_correlation_id = scope.correlation_id
         if state.termination_reason == 'unsupported_semantics':
             run.raw_results.append({'answer': i18n_text('nlu.clarify', request.language),
                                     'failure_class': 'AMBIGUOUS_INTENT', 'citations': []})

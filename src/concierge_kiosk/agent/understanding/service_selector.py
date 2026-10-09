@@ -6,6 +6,7 @@ the understanding model; it never authorizes a request and never returns a
 service code that is not present in the signed registry.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import observed
 
 from dataclasses import dataclass, replace
 from collections import OrderedDict
@@ -528,6 +529,7 @@ class ServiceSelector:
                        for example, vector in zip(self.examples, vectors)),
                       key=lambda item: -item[0])
 
+    @observed('candidate_selection', project=lambda result: {'candidate_count': len(result[0])})
     def understand(self, query: str, *, language: str,
                    enabled_request_kinds: frozenset[str],
                    pending_field: str | None = None,

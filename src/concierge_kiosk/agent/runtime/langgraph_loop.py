@@ -7,6 +7,7 @@ The graph is intentionally in-memory for a guest turn. Durable service-request
 authority remains in the separate SQLite-backed workflow graph and business DB.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import observed
 
 import time
 from typing import Callable, TYPE_CHECKING, TypedDict
@@ -67,11 +68,13 @@ class GovernedAgentGraph:
     def _route(state: AgentLoopState) -> str:
         return state.get("route", "done")
 
+    @observed('verify_goal', project=lambda result: {'route': result['route']})
     def _verify_goal(self, graph_state: AgentLoopState) -> dict:
         verification, route = self.semantics.verify_goal(
             graph_state["run"], graph_state["started"])
         return {"verification": verification, "route": route}
 
+    @observed('plan_next_action', project=lambda result: {'route': result['route']})
     def _plan_next_action(self, graph_state: AgentLoopState) -> dict:
         action, verification, route = self.semantics.plan_next_action(
             graph_state["run"],
@@ -80,6 +83,7 @@ class GovernedAgentGraph:
         )
         return {"verification": verification, "action": action, "route": route}
 
+    @observed('execute_tool', project=lambda result: {'route': result['route']})
     def _execute_tool(self, graph_state: AgentLoopState) -> dict:
         action = graph_state.get("action")
         if action is None:
@@ -92,6 +96,7 @@ class GovernedAgentGraph:
                 graph_state["request"], graph_state["run"], action)
         return {"action": None, "route": route}
 
+    @observed('langgraph_execution')
     def invoke(
         self,
         request: AgentToolRequest,

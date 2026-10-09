@@ -8,6 +8,7 @@ Below the thresholds the router abstains and the turn goes to the command
 model.  Nothing here is a phrase list, and the router never starts a service.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import observed
 
 from dataclasses import dataclass
 
@@ -29,6 +30,7 @@ class FastRouter:
         self.min_score = min_score
         self.min_margin = min_margin
 
+    @observed('fast_router')
     def route(self, query: str, language: str, context: TurnContext) -> tuple[Command, ...] | None:
         """Return validated commands for a confident social/slot/cancel turn, else ``None``."""
         example = self.selector.nearest(

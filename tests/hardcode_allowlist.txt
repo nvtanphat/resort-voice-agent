@@ -1,5 +1,5 @@
 # Only Unicode mechanics and security-sensitive recognizers remain here.
-src/concierge_kiosk/agent/understanding/semantic.py:41:protected numeric literal grammar
+src/concierge_kiosk/agent/understanding/semantic.py:42:protected numeric literal grammar
 src/concierge_kiosk/rag/text/normalize.py:8:localized documentation
 src/concierge_kiosk/rag/text/normalize.py:14:diacritic translation table
 src/concierge_kiosk/rag/text/normalize.py:16:Unicode script mechanics

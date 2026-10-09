@@ -1,5 +1,6 @@
 """Primary lexical/dense/hybrid retrieval execution."""
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import observed, retrieval_projection, update_current
 import json
 import logging
 import math
@@ -50,6 +51,7 @@ def _record_metric(store, metric: str, language: str) -> None:
     except Exception as exc:
         LOGGER.debug("retrieval_metric_unavailable metric=%s type=%s", metric, type(exc).__name__)
 
+@observed('retrieval', project=retrieval_projection)
 def retrieve(store: Store, *, property_id: str, language: str, query: str,
              embedder: Embedder | None = None, reranker: LocalReranker | None = None,
              vector_store: VectorStore | None = None,
@@ -63,6 +65,7 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
              _allow_language_fallback: bool = True,
              _shared_deadline_ns: int | None = None) -> Retrieval:
     policy = policy or RAGPolicy()
+    update_current(top_k=top_k, retrieval_mode=mode)
     policy.validate()
     if language not in LANGUAGES or not query.strip() or len(query) > 500 or not 1 <= top_k <= 10:
         raise ValueError("Unsupported language, query, or result limit")
@@ -196,6 +199,7 @@ def retrieve(store: Store, *, property_id: str, language: str, query: str,
         query_terms.issubset({unicodedata.normalize('NFC', word) for word in tokens(lexical[0]['search_text'], language=language, limit=None, stem=True)}) and
         len(query_terms.intersection(unicodedata.normalize('NFC', word) for word in tokens(lexical[1]['search_text'], language=language, limit=None, stem=True)))
         <= len(query_terms) - 2) if expression else False
+    update_current(candidate_count=len(candidates), rrf_used=len(rankings) > 1)
     rerank_status = 'not_run'
     rerank_ms: float | None = None
     # Conflict is a correctness gate, not a ranking feature. Do it before

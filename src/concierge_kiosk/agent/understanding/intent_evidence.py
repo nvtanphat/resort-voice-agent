@@ -5,6 +5,7 @@ name, retrieval score, or context flag alone supplies no authority. Unknown
 paraphrases abstain; this gate never chooses a replacement goal or inventory item.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import observed, semantic_gate_metadata
 
 from functools import lru_cache
 import re
@@ -159,7 +160,12 @@ def preference_supported(command, query, language):
     return False
 
 
+@observed('semantic_authorization', project=lambda accepted: {
+    'outcome': 'accepted' if accepted else 'rejected',
+    'reason_code': 'none' if accepted else 'unsupported_semantics',
+    'evidence_category': 'domain_policy', 'proposal_allowed': bool(accepted)})
 def command_supported(command, query, language, **context):
+    semantic_gate_metadata(command)
     if command.type in {'StartGoal', 'CheckAvailability', 'Handoff'}:
         return service_supported(command, query, language, **context)
     if command.type == 'SetPreference':

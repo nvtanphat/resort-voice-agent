@@ -40,6 +40,8 @@ class AgentRun:
     pending_plan: ActionPlan | None = None
     completed_plan_steps: set[str] = field(default_factory=set)
     plan_replans: int = 0
+    observability_trace_id: str | None = None
+    observability_correlation_id: str | None = None
 
     def service_results(self) -> list[tuple[dict, dict]]:
         return [(meta, raw) for meta, raw in zip(self.observations, self.raw_results)
@@ -165,4 +167,7 @@ class AgentRun:
                 'budget_exhausted': self.state.budget_exhausted or None,
             },
             'termination_reason': self.state.termination_reason,
+            **({'observability': {'trace_id': self.observability_trace_id,
+                                  'correlation_id': self.observability_correlation_id}}
+               if self.observability_trace_id else {}),
         }

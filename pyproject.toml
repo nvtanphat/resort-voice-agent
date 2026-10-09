@@ -20,6 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+observability = ["langfuse==4.17.0"]
 test = ["pytest>=8,<9"]
 voice = [
   "faster-whisper>=1.1",

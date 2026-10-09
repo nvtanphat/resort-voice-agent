@@ -5,6 +5,7 @@ re-authorized and the final answer is located within that child passage.
 This is extractive attribution, not semantic verification of arbitrary prose.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import observed, citation_projection
 
 from dataclasses import dataclass
 
@@ -52,6 +53,7 @@ def _source_claim_span(source: dict, passage: str, claim: str) -> tuple[int, int
     return None
 
 
+@observed('citation_validation', project=citation_projection)
 def bind_citations(store: Store, *, property_id: str, language: str,
                    answer: str, sources: list[dict], effective_date: str) -> CitationResult:
     """Attach only citations that back the entire final extractive answer.
@@ -157,6 +159,7 @@ def bind_citations(store: Store, *, property_id: str, language: str,
     return CitationResult(verified, citations)
 
 
+@observed('citation_validation', project=citation_projection)
 def bind_semantic_citations(store: Store, *, property_id: str, language: str,
                             answer: str, sources: list[dict], claims: tuple,
                             effective_date: str) -> CitationResult:

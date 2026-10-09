@@ -1,6 +1,6 @@
 """Aggregate service-request workflow composed from focused mixins."""
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from typing import Callable
 from .base import StorePort, KINDS, LANGUAGES
@@ -25,6 +25,7 @@ class Workflows(SessionWorkflowMixin, SubmissionWorkflowMixin, GuestRequestQuery
     # Optional PMS/property-inventory boundary.  ``None`` means the inventory
     # is unavailable, never that an arbitrary room number is valid.
     room_validator: Callable[[str], bool | None] | None = None
+    observability: object | None = field(default=None, repr=False, compare=False)
 
     def _is_emergency(self, details: str, language: str) -> bool:
         return bool(self.emergency_detector and self.emergency_detector(details, language))

@@ -5,6 +5,7 @@ database write.  Service names and slot names are checked against the signed
 runtime registry before a command stream is accepted.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import observed, command_event, invocation, update_current
 
 from dataclasses import dataclass, replace
 from copy import deepcopy
@@ -251,6 +252,7 @@ def _preference_value(command: Command, query: str, language: str | None) -> str
     return value
 
 
+@observed('command_validation')
 def validate_commands(commands: Iterable[Command], *, query: str,
                       enabled_request_kinds: frozenset[str] = frozenset(),
                       pending_reply: str | None = None,
@@ -272,7 +274,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
         return None
     validated: list[Command] = []
     started: set[tuple] = set()
-    for command in values:
+    for command_index, command in enumerate(values):
         original_value = command.value if isinstance(command, Command) else None
         if (not isinstance(command, Command) or not isinstance(command.type, str)
                 or command.type not in COMMAND_TYPES
@@ -280,28 +282,35 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                 or any(value is not None and not isinstance(value, str)
                        for name in _OPTIONAL_FIELDS if name != 'confirmed'
                        for value in (getattr(command, name),))):
+            command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
             continue
         if len(command.slots) > MAX_SLOTS:
+            command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
             continue
         if any(not isinstance(slot, CommandSlot) for slot in command.slots):
+            command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
             continue
         if ((command.kind is not None and command.type != 'ChitChat')
                 or (command.target is not None and command.type != 'SwitchLanguage')
                 or (command.facet is not None and command.type != 'AskInfo')
                 or (command.evidence is not None and command.type != 'SetPreference')
                 or (command.refers_to_context and command.type not in {'StartGoal', 'AskInfo', 'Navigate'})):
+            command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
             continue
         if command.conditional and command.type != 'StartGoal':
+            command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
             continue
 
         if command.type == 'StartGoal':
             definition = service_definition(command.goal or '')
             if (definition is None or definition.request_kind not in enabled_request_kinds
                     or definition.request_kind == 'directions'):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             if any(value is not None for value in (command.query, command.field,
                                                     command.value, command.reason,
                                                     command.confirmed)) or command.keys:
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             # A slot the guest did not literally state, or one the service
             # does not accept, is dropped rather than trusted. The goal is
@@ -320,6 +329,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             signature = (command.goal, tuple((s.name, s.text) for s in command.slots),
                          command.conditional, command.refers_to_context)
             if signature in started:
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue  # the same request stated twice is one request
             started.add(signature)
         elif command.type == 'CheckAvailability':
@@ -327,10 +337,12 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             if (definition is None or definition.availability_source is None
                     or (enabled_request_kinds and definition.request_kind not in enabled_request_kinds)
                     or definition.request_kind == 'directions'):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             if any(value is not None for value in (command.query, command.field,
                                                     command.value, command.reason,
                                                     command.confirmed)) or command.keys or command.conditional:
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             allowed = set(accepted_slots(command.goal or ''))
             kept = tuple(slot for slot in command.slots
@@ -340,17 +352,21 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                 command = replace(command, slots=kept)
         elif command.type in {'SetSlot', 'CorrectSlot'}:
             if command.goal is not None or command.query is not None or command.keys or command.slots:
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             if (not _text(command.field, 64) or not _text(command.value, 120)
                     or not _verbatim(query, command.value)):
                 # An unstated value is never applied; the pending question stays open.
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
         elif command.slots:
+            command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
             continue
         elif command.type == 'AskInfo':
             if (not _text(command.query, MAX_TEXT) or command.goal is not None
                     or command.slots or command.field is not None or command.value is not None
                     or command.confirmed is not None or command.reason is not None):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             if not _verbatim(query, command.query):
                 command = replace(command, query=query[:MAX_TEXT])
@@ -362,34 +378,42 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                     or command.slots or command.keys or command.field is not None
                     or command.value is not None or command.confirmed is not None
                     or command.reason is not None):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             if not _verbatim(query, command.query):
                 command = replace(command, query=query[:MAX_TEXT])
         elif command.type == 'Confirm':
             if pending_reply != 'confirm':
                 # Nothing is waiting for a confirmation: drop the claim, keep the rest of the turn.
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             if (command.confirmed is not True
                     or command.goal is not None or command.slots or command.query is not None
                     or command.keys or command.field is not None or command.value is not None
                     or command.reason is not None):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
         elif command.type in {'Cancel', 'Modify'}:
             if any(value is not None for value in (command.goal, command.query, command.field,
                                                     command.value, command.confirmed, command.reason)):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             if command.slots or command.keys:
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
         elif command.type == 'Handoff':
             if (not _text(command.reason, 160) or command.goal is not None or command.slots
                     or command.query is not None or command.keys or command.field is not None
                     or command.value is not None or command.confirmed is not None):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
         elif command.type == 'Plan':
             if not _text(command.query, MAX_TEXT) or not _only(command, 'query'):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
         elif command.type == 'SwitchLanguage':
             if command.target not in supported_languages() or not _only(command, 'target'):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
         elif command.type == 'SetPreference':
             preference = _preference_value(command, query, language)
@@ -398,19 +422,29 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                             and _verbatim(query, command.evidence)))
             if preference is None or not grounded or not _only(command, 'field', 'value', 'evidence'):
                 # An unstated or out-of-range preference is not remembered.
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             command = replace(command, value=str(preference))
         elif command.type in {'AskStatus', 'Clarify', 'Emergency'}:
             if not _only(command):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
         else:  # ChitChat
             if not _only(command, 'kind') or command.kind not in (None, *CHITCHAT_KINDS):
+                command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue
             if command.kind is None:
                 command = replace(command, kind='smalltalk')
         semantic_command = replace(command, value=original_value) if command.type == 'SetPreference' else command
-        if require_evidence and not command_supported(semantic_command, query, language,
-                context_topic=context_topic, pending_goal=pending_goal, pending_reply=pending_reply):
+        command_event('server_validated', command, index=command_index)
+        supported = True
+        if require_evidence:
+            supported = command_supported(semantic_command, query, language,
+                context_topic=context_topic, pending_goal=pending_goal, pending_reply=pending_reply)
+            command_event('semantically_authorized', command, index=command_index,
+                          outcome='accepted' if supported else 'rejected',
+                          reason='none' if supported else 'unsupported_semantics')
+        if not supported:
             if rejections is not None:
                 rejections.append({'command': command.public(), 'reason': 'unsupported_semantics'})
             continue
@@ -474,12 +508,15 @@ def parse_commands(raw: str, *, query: str,
     commands = commands_from_items(payload.get('commands'))
     if commands is None:
         return None
+    for index, command in enumerate(commands):
+        command_event('model_proposed', command, index=index)
     return validate_commands(commands, query=query,
                              enabled_request_kinds=enabled_request_kinds,
                              pending_reply=pending_reply, language=language,
                              context_topic=context_topic, pending_goal=pending_goal, rejections=rejections)
 
 
+@observed('qwen_nlu')
 def model_commands(*, query: str, language: str, base_url: str, model: str,
                    enabled_request_kinds: frozenset[str],
                    service_candidates: Sequence[Mapping[str, Any]] | None = None,
@@ -507,6 +544,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
     ``partially_accepted`` (some proposed commands were dropped), ``accepted``.
     """
     def note(outcome: str) -> None:
+        update_current(status=outcome)
         if on_outcome is not None:
             on_outcome(outcome)
 
@@ -633,13 +671,14 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         'options': {'temperature': 0, 'num_predict': 220, 'num_ctx': SLM_NUM_CTX,
                     'num_gpu': num_gpu},
     }
-    with capture_chat_failure() as failures:
+    with capture_chat_failure() as failures, invocation('NLU'):
         raw = _chat(base_url, payload, min(10.0, max(0.05, timeout_seconds)), should_cancel)
     if not raw:
         note('turn_budget_expired' if slm_turn_expired() else
              failures[-1] if failures else 'no_response')
         return None
     rejections: list[dict] = []
+    update_current(command_count=_proposed_count(raw))
     parsed = parse_commands(
         raw, query=query, enabled_request_kinds=enabled_request_kinds,
         pending_reply=pending_reply, language=language, context_topic=context_topic,

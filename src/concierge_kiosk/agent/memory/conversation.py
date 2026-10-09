@@ -1,5 +1,6 @@
 """Thread-safe bounded conversation memory orchestration."""
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import memory_lookup
 import threading
 import time
 import hashlib
@@ -70,6 +71,7 @@ class ConversationMemory:
 
     def _active(self, session: str, language: str, now: float) -> SessionTopics | None:
         current = self._sessions.get(session)
+        memory_lookup(session, current, now)
         if current is not None and current.deadline <= now:
             self._sessions.pop(session, None)
             self._bump_version_locked(session)

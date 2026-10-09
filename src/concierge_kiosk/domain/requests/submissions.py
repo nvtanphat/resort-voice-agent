@@ -1,5 +1,6 @@
 """Proposal and guest-confirmation writes."""
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import business_observed
 import json
 import secrets
 import time
@@ -129,6 +130,7 @@ class SubmissionWorkflowMixin:
             'quantity_limit': policy.max_quantity if policy else None,
         }
 
+    @business_observed('emergency_alert', action_type='emergency')
     def queue_emergency_alert(self, session_id: str, language: str, details: str,
                               *, source: str = 'dialogue') -> dict:
         """Durably place an active emergency at the top of the staff queue.
@@ -181,6 +183,7 @@ class SubmissionWorkflowMixin:
                  f'priority=100;source={source}'))
             return alert
 
+    @business_observed('prepare', action_type='prepare')
     def prepare(self, session_id: str, kind: str, language: str, details: str, nonce: str,
                 payload: dict | None = None, *, service_code: str | None = None,
                 _change: dict | None = None) -> dict:
@@ -273,6 +276,7 @@ class SubmissionWorkflowMixin:
                 proposal['quantity_requires_staff_review'] = payload['quantity'] > flags['quantity_limit']
             return proposal
 
+    @business_observed('confirmation', action_type='confirm')
     def confirm(self, session_id: str, proposal_id: str, confirmed: bool, *,
                 verification: dict | None = None, price_acknowledged: bool = False) -> dict:
         if not confirmed:
@@ -513,6 +517,7 @@ class SubmissionWorkflowMixin:
             raise PermissionError('Request not found for this session')
         return dict(row)
 
+    @business_observed('proposal_review', action_type='review')
     def review_change(self, session_id: str, request_id: str, action: str,
                       language: str, payload: dict | None = None) -> dict:
         row = self.change_ticket(session_id, request_id)
@@ -537,12 +542,14 @@ class SubmissionWorkflowMixin:
         return {'kind': row['kind'], 'service': row['service_code'], 'details': details,
                 'payload': changes, 'change': {'request_id': request_id, 'action': action}}
 
+    @business_observed('modification', action_type='modify')
     def prepare_change(self, session_id: str, request_id: str, action: str,
                        language: str, nonce: str, payload: dict | None = None) -> dict:
         review = self.review_change(session_id, request_id, action, language, payload)
         return self.prepare(session_id, review['kind'], language, review['details'], nonce,
             review['payload'], service_code=review['service'], _change=review['change'])
 
+    @business_observed('cancellation', action_type='cancel')
     def cancel_proposal(self, session_id: str, proposal_id: str) -> dict:
         """Cancel a review-stage proposal; never undo a queued staff request.
 

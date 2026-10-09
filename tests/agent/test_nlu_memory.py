@@ -45,6 +45,10 @@ def test_new_preference_is_a_config_only_extension(tmp_path: Path):
         "type": "enum",
         "values": ["romantic"],
     }
+    # WP13 requires evidence for a new preference as part of the same config.
+    payload['semantic_authorization']['preferences']['ambience'] = {
+        'romantic': {language: ['romantic'] for language in payload['languages']['supported']},
+    }
 
     target = tmp_path / "agent-domain.json"
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

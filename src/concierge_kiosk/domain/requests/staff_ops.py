@@ -1,5 +1,6 @@
 """Staff queue projections, pagination, audit and state transitions."""
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import business_observed
 import base64
 import binascii
 import json
@@ -257,6 +258,7 @@ class StaffWorkflowMixin:
                 "FROM audit_events WHERE request_id=? AND property_id=? AND id>? "
                 "ORDER BY id ASC LIMIT ?", (request_id, self.property_id, after_id, limit))]
 
+    @business_observed('staff_review', action_type='review')
     def staff_review_guest_change(self, request_id: str, action: str, actor: str, *, note: str) -> dict:
         """Approve or reject a guest-requested change without rewriting original evidence.
 
@@ -350,6 +352,7 @@ class StaffWorkflowMixin:
                  f'provider={provider or "none"};error={error or "none"}'))
         return self.request_detail(request_id)
 
+    @business_observed('status_transition', action_type='transition')
     def staff_transition(self, request_id: str, action: str, actor: str = "development-staff",
                          *, verified: bool = False, note: str = "", eta_minutes: int | None = None,
                          assignee: str | None = None,

@@ -4,6 +4,7 @@ HTTP handlers project the committed business state; they do not directly modify
 service_requests and do not accept natural-language confirmation as consent.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import turn_observed
 import sqlite3
 import json
 import time
@@ -161,6 +162,7 @@ def register_guest_routes(app: FastAPI, *, cfg, workflows, store, voice_turns, t
         return {"status": "ended"}
 
     @app.post("/api/ask", response_model=AskResponse)
+    @turn_observed(lambda _: app.state.observability)
     def ask(body: Ask, request: Request, session: str = Depends(guest_session),
             voice_turn_id: str | None = Header(default=None, alias='X-Voice-Turn-ID')):
         rate(request, f"ask:{session}", 40)

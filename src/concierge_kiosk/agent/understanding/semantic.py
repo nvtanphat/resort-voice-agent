@@ -7,6 +7,7 @@ extractive. Every admitted claim is re-bound to CURRENT public SQLite evidence
 before display, and voice independently rechecks the same proof before speech.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import model_failure, observed_model
 
 from dataclasses import dataclass
 from contextlib import contextmanager
@@ -181,6 +182,7 @@ def capture_chat_failure():
 
 
 def _chat_failed(reason: str) -> None:
+    model_failure(reason)
     failures = _CHAT_FAILURE.get()
     if failures is not None:
         failures.append(reason)
@@ -191,6 +193,12 @@ def _chat(base_url: str, payload: dict, timeout: float,
     if cancel and cancel():
         _chat_failed('cancelled')
         return None
+    return _chat_transport(base_url, payload, timeout, cancel)
+
+
+@observed_model
+def _chat_transport(base_url: str, payload: dict, timeout: float,
+                    cancel: Callable[[], bool] | None) -> str | None:
     body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
     try:
         request = Request(base_url.rstrip('/') + '/api/chat', data=body,

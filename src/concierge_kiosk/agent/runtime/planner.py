@@ -5,6 +5,7 @@ never receives database authority and cannot create write candidates.  Completio
 is decided by the goal verifier, not by the model saying ``finish``.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import invoked
 
 from dataclasses import dataclass
 import json
@@ -363,6 +364,7 @@ def action_plan_schema() -> dict:
     }
 
 
+@invoked('planner')
 def model_action_plan(*, state: AgentState, base_url: str, model: str,
                       should_cancel: Callable[[], bool] | None = None,
                       timeout_seconds: float = 3.5, num_gpu: int = -1) -> ActionPlan | None:
@@ -398,6 +400,7 @@ def model_action_plan(*, state: AgentState, base_url: str, model: str,
     return parse_model_action_plan(raw, state) if raw is not None else None
 
 
+@invoked('planner')
 def model_next_action(*, state: AgentState, base_url: str, model: str,
                       should_cancel: Callable[[], bool] | None = None,
                       timeout_seconds: float = 3.5, num_gpu: int = -1) -> NextAction | None:

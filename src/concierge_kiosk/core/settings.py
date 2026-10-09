@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Mapping
 
-from pydantic import AliasChoices, Field, PrivateAttr, field_validator
+from pydantic import AliasChoices, Field, PrivateAttr, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +44,29 @@ class _BootstrapSettings(BaseSettings):
 
 
 class Settings(BaseSettings):
+    # Process-level optional infrastructure; invalid flags/rates safely disable.
+    langfuse_enabled: bool = Field(False, validation_alias='LANGFUSE_ENABLED')
+    langfuse_public_key: SecretStr = Field(SecretStr(''), validation_alias='LANGFUSE_PUBLIC_KEY', repr=False)
+    langfuse_secret_key: SecretStr = Field(SecretStr(''), validation_alias='LANGFUSE_SECRET_KEY', repr=False)
+    langfuse_base_url: str = Field('', validation_alias='LANGFUSE_BASE_URL', repr=False)
+    langfuse_tracing_environment: str = Field('development', validation_alias='LANGFUSE_TRACING_ENVIRONMENT')
+    langfuse_sample_rate: float = Field(0.1, validation_alias='LANGFUSE_SAMPLE_RATE')
+    langfuse_pseudonym_key: SecretStr = Field(SecretStr(''), validation_alias='LANGFUSE_PSEUDONYM_KEY', repr=False)
+
+    @field_validator('langfuse_enabled', mode='before')
+    @classmethod
+    def _safe_langfuse_enabled(cls, value):
+        return value is True or (isinstance(value, str) and value.strip().lower() in {'true', '1'})
+
+    @field_validator('langfuse_sample_rate', mode='before')
+    @classmethod
+    def _safe_langfuse_rate(cls, value):
+        try:
+            rate = float(value)
+            return rate if 0 <= rate <= 1 else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+
     model_config = SettingsConfigDict(
         env_prefix="CONCIERGE_", env_file=None,
         env_nested_delimiter="__", extra="ignore",

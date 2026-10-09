@@ -6,6 +6,7 @@ candidates, grant permissions, or authorize writes.  All proposed outcomes are
 mapped back onto a server-owned capability policy before the agent loop starts.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import invoked
 
 from dataclasses import dataclass
 import json
@@ -88,6 +89,7 @@ def parse_goal_interpretation(raw: str) -> GoalInterpretation | None:
     return GoalInterpretation(tuple(clean_goals), tuple(clean_constraints))
 
 
+@invoked('goal')
 def model_goal_interpretation(*, state: AgentState, base_url: str, model: str,
                               should_cancel: Callable[[], bool] | None = None,
                               timeout_seconds: float = 2.5, num_gpu: int = -1) -> GoalInterpretation | None:

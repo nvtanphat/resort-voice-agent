@@ -5,6 +5,7 @@ public anchors.  It may select one anchor index or decline.  It cannot author
 facts, queries, permissions, service candidates, or business actions.
 """
 from __future__ import annotations
+from concierge_kiosk.runtime.observability import invoked
 
 import json
 from typing import Callable
@@ -16,6 +17,7 @@ from .models import EvidenceAnchor
 from concierge_kiosk.agent.understanding.commands import Command
 
 
+@invoked('reference')
 def _reference_proposal(*, query: str, language: str, candidates: tuple[EvidenceAnchor, ...],
                             base_url: str, model: str, should_cancel=None,
                             timeout_seconds: float = 1.8, num_gpu: int = -1,

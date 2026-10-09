@@ -202,6 +202,9 @@ def _build_lifespan(graph_holder, store, workflows, cfg=None):
             graph = graph_holder["instance"]
             if graph is not None:
                 graph.close()
+            telemetry = getattr(_app.state, 'observability', None)
+            if telemetry is not None:
+                await asyncio.to_thread(telemetry.shutdown)
     return lifespan
 
 
@@ -385,6 +388,9 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
     app.state.store = store
     app.state.workflows = workflows
     app.state.config = cfg
+    from .runtime.observability import Observability
+    app.state.observability = Observability.configured(cfg)
+    workflows.observability = app.state.observability
     app.state.property_profile = property_profile
     app.state.domain_profile = domain_profile
     app.state.vector_store = vector_store

@@ -123,7 +123,7 @@ def test_deduplicated_proposal_confirmation_replay_is_idempotent(tmp_path: Path)
         "en",
         "Fresh bath towels for room 1203.",
         "towels-request-001",
-        {"room_number": "1203", "quantity": 2},
+        {"room_number": "1203", "quantity": 2, "requested_item": "bath towels", "unit": "towels"},
         service_code="amenity_delivery",
     )
     checkpoint = tmp_path / "workflow-deduplicated-replay.sqlite3"
@@ -137,7 +137,7 @@ def test_deduplicated_proposal_confirmation_replay_is_idempotent(tmp_path: Path)
         "en",
         "Fresh bath towels for room 1203.",
         "towels-request-002",
-        {"room_number": "1203", "quantity": 2},
+        {"room_number": "1203", "quantity": 2, "requested_item": "bath towels", "unit": "towels"},
         service_code="amenity_delivery",
     )
     graph.begin(session_id, duplicate["id"])

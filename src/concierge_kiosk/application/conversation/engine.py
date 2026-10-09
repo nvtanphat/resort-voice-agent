@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import logging
+from concierge_kiosk.runtime.observability import observed, turn_observed, event, update_current
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -70,6 +71,7 @@ LOGGER = logging.getLogger(__name__)
 _COMMAND_OUTCOME: ContextVar[str | None] = ContextVar('command_outcome', default=None)
 
 
+@observed('route_projection', project=lambda result: {'route': result.branch})
 def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDecision:
     """Project a validated Command stream onto the bounded route vocabulary.
 
@@ -233,22 +235,28 @@ class _TurnRuntimeSupport:
     emergency_gate: EmergencyGate | None = None
     _pending_emergency_checks: set[str] = field(default_factory=set)
 
+    @observed('memory_resolution', project=lambda result: {'anchor_accepted': bool(result)})
     def live_context_anchors(self, session: str, language: str):
         """Reauthorize memory pointers against current public source revisions."""
         anchors = self.conversations.recent_anchors(session, language)
+        update_current(anchor_existed=bool(anchors))
         if not anchors:
+            update_current(context_invalidation_reason='missing')
             return ()
         store = getattr(self.workflows, 'store', None)
         if store is None:
+            update_current(context_invalidation_reason='missing')
             return ()
         today = datetime.now(ZoneInfo(self.cfg.property_timezone)).date().isoformat()
         with store.connection() as con:
-            return tuple(a for a in anchors if con.execute(
+            verified = tuple(a for a in anchors if con.execute(
                 "SELECT 1 FROM knowledge WHERE id=? AND source=? AND revision=? AND property_id=? "
                 "AND language=? AND classification='public' AND active=1 AND effective_from<=? "
                 "AND (effective_to IS NULL OR effective_to>=?)",
                 (a.chunk_id, a.source_id, a.revision, self.cfg.property_id, a.language, today, today)
             ).fetchone() is not None)
+        update_current(context_invalidation_reason='source_revoked' if len(verified) < len(anchors) else 'none')
+        return verified
 
     def reference_command_for_session(self, query: str, language: str, session: str):
         """One bounded recovery call only after failed commands and with live context."""
@@ -395,6 +403,7 @@ class _TurnRuntimeSupport:
         return validate_commands(commands, query=query, enabled_request_kinds=enabled_request_kinds,
                                  pending_reply=pending_field, language=language) if commands else None
 
+    @observed('understanding')
     def understand_turn(self, query: str, language: str, session: str, decision: RouteDecision,
                         *, enabled_request_kinds: frozenset[str], voice_turn: bool = False):
         """Understand one non-voice-reply turn: layer A, then B, then C.
@@ -430,6 +439,7 @@ class _TurnRuntimeSupport:
                     self.set_pending_emergency_check(session)
                     return gate_decision, None, query, None
         pending_task = self.agent_tasks.load(session, language)
+        update_current(pending_task_continuation=pending_task is not None)
         workflow = self.conversations.workflow_projection(session, language)
         expects_confirm = isinstance(workflow, dict) and workflow.get('expected_reply') == 'confirm'
         pending_field = self.pending_field(session, language, pending_task)
@@ -567,6 +577,7 @@ class _TurnRuntimeSupport:
                 ctx = {'availability_service_code': chk.goal}
         return dec, ctx, execution_query, commands
 
+    @observed('memory_resolution')
     def _referenced_topic_query(self, commands, query: str, language: str, session: str,
                                 execution_query: str) -> str:
         """Name the last verified topic when the model says the guest points back at it.
@@ -576,10 +587,12 @@ class _TurnRuntimeSupport:
         wording of the guest turn is consulted.
         """
         if execution_query != query or not any(command.refers_to_context for command in commands):
+            update_current(reference_resolution='none')
             return execution_query
         anchors = self.live_context_anchors(session, language)
         anchor = anchors[0] if len(anchors) == 1 else None
         if anchor is None or not anchor.title or anchor.title.casefold() in query.casefold():
+            update_current(reference_resolution='ambiguous' if len(anchors) > 1 else 'rejected')
             return execution_query
         if any(command.type == 'Navigate' for command in commands):
             try:
@@ -587,6 +600,7 @@ class _TurnRuntimeSupport:
                     path=self.cfg.map_release_path, expected_sha256=self.cfg.map_release_sha256,
                     property_id=self.cfg.property_id, query=query, language=language)
                 if guidance.get('status') in {'verified', 'ambiguous'}:
+                    update_current(reference_resolution='rejected')
                     return execution_query  # explicit destinations take precedence
             except (MapUnavailable, OSError, ValueError, AttributeError):
                 pass
@@ -601,9 +615,11 @@ class _TurnRuntimeSupport:
                                   if entities.get(entity_id, {}).get('entity_type')
                                   == definition.venue_slot.get('entity_type'))
                 if named:
+                    update_current(reference_resolution='rejected')
                     return execution_query
             except (OSError, ValueError, TypeError, AttributeError):
                 pass
+        update_current(reference_resolution='accepted')
         return f'{anchor.title}. {query}'[:500]
 
     def resolve_execution_context(self, query: str, language: str, session: str,
@@ -1265,6 +1281,7 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
         timezone=cfg.property_timezone, ensure_session=ensure_active_context_session,
         memory_version=conversations.topic_version, classifier=classify_dialogue,
         executor=_execute_turn)
+    @turn_observed(lambda _: app.state.observability)
     def answer(body: Ask, session: str, turn_id: str | None = None, *, voice_input: bool = False) -> dict:
         if body.language not in property_profile.enabled_languages:
             raise HTTPException(status_code=422, detail='Language is not enabled for this property')
