@@ -49,7 +49,7 @@ def _start(*slots: tuple[str, str], flag: bool = True) -> Command:
 @pytest.mark.parametrize("marker,query,slots,expected_time", [
     ("ở đó", "Vậy đặt bàn ở đó cho 4 người lúc 7 giờ tối, à không, 8 giờ nhé. Nhưng chưa xác nhận đặt bàn vội.",
      (("party_size", "4"), ("preferred_time", "8 giờ")), "20:00"),
-    ("chỗ vừa rồi", "Giữ cho mình 2 người ở chỗ vừa rồi lúc 6 giờ chiều",
+    ("chỗ ấy", "Giữ bàn cho mình 2 người ở chỗ ấy lúc 6 giờ chiều",
      (("party_size", "2"), ("preferred_time", "6 giờ chiều")), "18:00"),
 ])
 def test_the_referred_venue_comes_from_the_verified_anchor(tmp_path, shipped_db, understand,
@@ -71,6 +71,24 @@ def test_the_referred_venue_comes_from_the_verified_anchor(tmp_path, shipped_db,
     assert second["requires_staff_review"] is True
     # Only a draft: nothing was written, and exactly one task is waiting for confirmation.
     assert app.state.agent_tasks.load(session["session_id"], "vi") is not None
+    with app.state.store.connection() as con:
+        assert con.execute("select count(*) from proposals where session_id=?",
+                           (session["session_id"],)).fetchone()[0] == 0
+
+
+def test_a_reference_the_ontology_does_not_cover_abstains_instead_of_drafting(
+        tmp_path, shipped_db, understand):
+    # The model claims a context reference, but the guest wording carries no reference signal the
+    # pinned ontology knows.  The semantic gate fails closed: no draft, no write, no guessed venue.
+    understand("chỗ vừa rồi", _start(("party_size", "2"), ("preferred_time", "6 giờ chiều")))
+    app = _app(tmp_path, shipped_db)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        session = client.post("/api/session").json()
+        headers = {"X-CSRF-Token": session["csrf_token"]}
+        _turn(client, headers, FIRST_TURN)
+        second = _turn(client, headers, "Giữ cho mình 2 người ở chỗ vừa rồi lúc 6 giờ chiều")
+    assert "Indochine" not in str(second.get("suggested_action"))
+    assert app.state.agent_tasks.load(session["session_id"], "vi") is None
     with app.state.store.connection() as con:
         assert con.execute("select count(*) from proposals where session_id=?",
                            (session["session_id"],)).fetchone()[0] == 0

@@ -468,7 +468,7 @@ def test_fast_router_returns_none_when_selector_abstains():
 # ---------------------------------------------------------------------------
 
 def test_set_preference_is_proposed_then_persisted_only_after_confirmation(tmp_path: Path, understand):
-    understand("vegan", Command("SetPreference", field="dietary", value="vegetarian",
+    understand("vegan", Command("SetPreference", field="dietary", value="vegan",
                                 evidence="I am vegan"))
     app = _client(tmp_path)
     with TestClient(app, raise_server_exceptions=False) as client:
@@ -489,7 +489,7 @@ def test_set_preference_is_proposed_then_persisted_only_after_confirmation(tmp_p
         )
         assert second.status_code == 200
     stored = app.state.preference_memory.load(session["session_id"])
-    assert stored.get("dietary") == "vegetarian"
+    assert stored.get("dietary") == "vegan"
 
 
 # ---------------------------------------------------------------------------
@@ -578,7 +578,8 @@ def test_check_availability_validation():
     # Slot validation: slot verbatim in query is preserved
     cmd_slot = Command('CheckAvailability', goal='dining_reservation',
                        slots=(CommandSlot('party_size', '4'),))
-    res = validate_commands((cmd_slot,), query='cho 4 người tối nay', enabled_request_kinds=ACTION_REQUEST_KINDS)
+    assert validate_commands((cmd_slot,), query='cho 4 người tối nay', enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+    res = validate_commands((cmd_slot,), query='bàn cho 4 người tối nay', enabled_request_kinds=ACTION_REQUEST_KINDS)
     assert res is not None
     assert len(res[0].slots) == 1
     assert res[0].slots[0].name == 'party_size'
@@ -587,7 +588,7 @@ def test_check_availability_validation():
     # Slot not accepted by service is dropped
     cmd_bad_slot = Command('CheckAvailability', goal='dining_reservation',
                            slots=(CommandSlot('fake_slot', '4'),))
-    res_bad = validate_commands((cmd_bad_slot,), query='cho 4 người tối nay', enabled_request_kinds=ACTION_REQUEST_KINDS)
+    res_bad = validate_commands((cmd_bad_slot,), query='bàn cho 4 người tối nay', enabled_request_kinds=ACTION_REQUEST_KINDS)
     assert res_bad is not None
     assert len(res_bad[0].slots) == 0
 

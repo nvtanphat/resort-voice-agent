@@ -358,6 +358,7 @@ class _TurnRuntimeSupport:
                 service_candidates=candidates, examples=examples,
                 pending_reply=pending_reply,
                 context_topic=context_topic,
+                pending_goal=(task.mode if (task := self.agent_tasks.load(session, language)) is not None else None),
                 on_outcome=record_outcome,
                 should_cancel=lambda: self.audio_admission.slm_cancelled(session),
                 num_gpu=self.cfg.slm_num_gpu,
@@ -465,6 +466,7 @@ class _TurnRuntimeSupport:
                     'timeout': 'NLU_TIMEOUT', 'turn_budget_expired': 'NLU_TIMEOUT',
                     'malformed_output': 'INVALID_MODEL_OUTPUT',
                     'rejected_by_validation': 'INVALID_MODEL_OUTPUT',
+                    'unsupported_semantics': 'AMBIGUOUS_INTENT',
                 }.get(outcome, 'NLU_UNAVAILABLE')
                 # Transport/validation failure is not a new guest intent. Do
                 # not retry via resolver, model planner, or service fallback.
@@ -490,6 +492,20 @@ class _TurnRuntimeSupport:
                         execution_query: str, language: str, session: str, pending_task,
                         has_pending_proposal: bool,
                         enabled_request_kinds: frozenset[str] = frozenset()):
+        from concierge_kiosk.agent.understanding.intent_evidence import command_supported
+        anchors = (self.live_context_anchors(session, language)
+                   if any(command.refers_to_context and command.type in {'StartGoal', 'CheckAvailability', 'Handoff'}
+                          for command in commands) else ())
+        topic = anchors[0].title if len(anchors) == 1 else None
+        pending_reply = self.pending_field(session, language, pending_task)
+        supported = tuple(command for command in commands if command_supported(
+            command, query, language, context_topic=topic,
+            pending_goal=pending_task.mode if pending_task is not None else None,
+            pending_reply=pending_reply))
+        if commands and not supported:
+            return (RouteDecision('nlu_failure', True, failure_class='AMBIGUOUS_INTENT'),
+                    {'understanding_outcome': 'unsupported_semantics'}, execution_query, None)
+        commands = supported
         types = {command.type for command in commands}
         if not commands:
             return decision, None, execution_query, None
@@ -1025,11 +1041,13 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             try:
                 if turn_id is not None:
                     turn_events.emit_diagnostic(session, turn_id, 'agent.plan.started')
+                live_anchors = turn_support.live_context_anchors(session, body.language)
                 agent_run = concierge_agent.run(
                     request, continuation_context=task_context, planner=_planner_for_turn,
                     goal_interpreter=_goal_interpreter_for_turn,
                     resume_projection=resume_projection, memory_facts=memory_facts,
                     preferences=effective_preferences,
+                    context_topic=live_anchors[0].title if len(live_anchors) == 1 else None,
                     commands=loop_commands)
             finally:
                 voice_input_context.reset(voice_token)

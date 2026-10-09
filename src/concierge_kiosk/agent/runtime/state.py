@@ -362,8 +362,34 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                         resume_projection: dict | None = None,
                         memory_facts: list[dict] | None = None,
                         preferences: dict | None = None,
+                        context_topic: str | None = None,
                         commands: tuple[Command, ...] | None = None) -> AgentState:
     """Create a goal contract without pre-computing an execution sequence."""
+    from concierge_kiosk.agent.understanding.intent_evidence import command_supported
+    def unsupported_state():
+        return AgentState(
+            goal=query[:500], language=language, route_hint='nlu_failure',
+            original_query=query[:500], objectives=[], service_candidates=[],
+            goal_contract=GoalContract(summary='nlu_failure:unsupported_semantics',
+                desired_outcomes=(), constraints=(), requirements=()),
+            status='needs_user_input', termination_reason='unsupported_semantics')
+
+    if (commands is None and continuation_context is None
+            and decision.branch in {'service', 'handoff'} and decision.semantic_service_code
+            and not command_supported(Command('StartGoal', goal=decision.semantic_service_code),
+                                      query, language)):
+        return unsupported_state()
+    rejected = False
+    if commands:
+        task = continuation_context or {}
+        supported = tuple(command for command in commands if command_supported(
+            command, query, language, context_topic=context_topic,
+            pending_goal=task.get('mode'),
+            pending_reply=(task.get('missing') or (None,))[0]))
+        rejected = len(supported) != len(commands)
+        if not supported:
+            return unsupported_state()
+        commands = supported
     candidates: list[ServiceCandidate] = []
     service_deps: list[tuple[str, ...]] = []
 
@@ -402,7 +428,8 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                 risk_tier=service_risk_tier(code), conditional=command.conditional,
                 existing_slots=slots))
             service_deps.append(())
-        if not candidates and isinstance(continuation_context, dict):
+        if (not candidates and isinstance(continuation_context, dict)
+                and (not rejected or any(c.type in {'SetSlot', 'CorrectSlot', 'Confirm'} for c in commands))):
             code = continuation_context.get('mode')
             kind = continuation_context.get('kind')
             details = continuation_context.get('details')

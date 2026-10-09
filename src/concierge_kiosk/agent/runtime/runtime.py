@@ -414,6 +414,7 @@ class AutonomousConciergeRuntime:
             goal_interpreter: GoalInterpreter | None = None,
             resume_projection: dict | None = None, memory_facts: list[dict] | None = None,
             preferences: dict | None = None,
+            context_topic: str | None = None,
             commands: tuple[Command, ...] | None = None) -> AgentRun:
         if request.decision is None:
             raise RuntimeError('runtime requires deterministic safety/write-candidate classification')
@@ -428,8 +429,12 @@ class AutonomousConciergeRuntime:
             query=request.query, language=request.language, decision=request.decision,
             continuation_context=continuation_context, resume_projection=resume_projection,
             memory_facts=memory_facts, preferences=preferences,
-            commands=commands)
+            commands=commands, context_topic=context_topic)
         run = AgentRun(state=state)
+        if state.termination_reason == 'unsupported_semantics':
+            run.raw_results.append({'answer': i18n_text('nlu.clarify', request.language),
+                                    'failure_class': 'AMBIGUOUS_INTENT', 'citations': []})
+            return run
         if goal_interpreter is not None:
             try:
                 apply_goal_interpretation(state, goal_interpreter(state))

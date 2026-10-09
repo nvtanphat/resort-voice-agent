@@ -40,6 +40,27 @@ def allow_reference_call(phase, payload, calls):
             and 'anchor_index' in payload.get('format', {}).get('properties', {}))
 
 
+def classify_failure(case_number, parsed, validated, passed, body, errors):
+    """Report the first incorrect boundary, rather than masking a wrong goal as slots."""
+    if body.get('failure_class') == 'NLU_TIMEOUT' or any(e['failure_class'] == 'TIMEOUT' for e in errors):
+        return 'NLU_TIMEOUT'
+    if errors:
+        return 'PROTOCOL_BLOCKED'
+    if body.get('failure_class') in {'MODEL_NOT_READY', 'MODEL_BUSY', 'NLU_UNAVAILABLE'}:
+        return body['failure_class']
+    if parsed is None:
+        return 'INVALID_MODEL_OUTPUT'
+    if not validated:
+        return 'COMMAND_VALIDATION_FAILURE'
+    expected = ('StartGoal', 'AskInfo', 'Navigate')[case_number - 1]
+    if not any(c.get('type') == expected and
+               (case_number != 1 or c.get('goal') == 'amenity_delivery') for c in validated):
+        return 'WRONG_INTENT'
+    if passed:
+        return 'SUCCESS'
+    return 'SLOT_FIDELITY_FAILURE' if case_number == 1 else 'TOOL_EXECUTION_FAILURE'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--expected-digest', required=True)
@@ -235,12 +256,7 @@ def main():
                                     and body.get('map_guidance', {}).get('status') == 'verified'
                                     and bool(captures[-1]['anchors_before']))
                             passed = passed and writes == 0 and response.status_code == 200 and not boundary.errors
-                            failure = ('NLU_TIMEOUT' if any(e['failure_class'] == 'TIMEOUT' for e in boundary.errors)
-                                else 'PROTOCOL_BLOCKED' if boundary.errors else
-                                'INVALID_MODEL_OUTPUT' if parsed is None else
-                                'COMMAND_VALIDATION_FAILURE' if not validated else
-                                'SLOT_FIDELITY_FAILURE' if i == 1 and not passed else
-                                'TOOL_EXECUTION_FAILURE' if not passed else 'SUCCESS')
+                            failure = classify_failure(i, parsed, validated, passed, body, boundary.errors)
                             record['cases'][case] = {'result': 'REAL_MODEL_PASS' if passed else
                                 'TIMEOUT' if failure == 'NLU_TIMEOUT' else 'FAIL', 'failure_class': failure,
                                 'session': 'A-anonymized' if i == 1 else 'B-anonymized', 'input': query,

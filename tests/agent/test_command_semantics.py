@@ -34,7 +34,7 @@ def test_confirm_is_valid_only_while_a_confirmation_is_pending():
 
 @pytest.mark.parametrize("pending", [None, "party_size"])
 def test_a_stray_confirm_does_not_swallow_the_real_intent(pending):
-    kept = validate_commands([BOOK, Command("Confirm", confirmed=True)], query="book for 4 and fine",
+    kept = validate_commands([BOOK, Command("Confirm", confirmed=True)], query="book a table for 4 and fine",
                              enabled_request_kinds=KINDS, pending_reply=pending)
     assert _types(kept) == ["StartGoal"]
     assert _decision_from_commands(kept, RouteDecision("knowledge", False)).branch != "confirmation"
@@ -59,7 +59,7 @@ def test_exact_duplicate_goals_collapse_but_distinct_requests_stay_separate():
     kept = validate_commands([BOOK, twin], query="book a table for 4", enabled_request_kinds=KINDS)
     assert _types(kept) == ["StartGoal"], "the same request stated twice must create one draft"
     other = Command("StartGoal", goal="dining_reservation", slots=(CommandSlot("party_size", "2"),))
-    both = validate_commands([BOOK, other], query="a table for 4 and another for 2",
+    both = validate_commands([BOOK, other], query="please book a table for 4 and another for 2",
                              enabled_request_kinds=KINDS)
     assert _types(both) == ["StartGoal", "StartGoal"]
 

@@ -74,6 +74,7 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
         request_kind_routes=dict(payload["request_kind_routes"]),
         autonomous_policy_version=payload["autonomous_policy_version"],
         services=services,
+        semantic_authorization=payload['semantic_authorization'],
         public_catalog_kinds=dict(payload["public_catalog_kinds"]),
         preferences=PreferencePolicy(
             max_fields=payload["preferences"]["max_fields"],

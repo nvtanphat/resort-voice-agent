@@ -119,6 +119,10 @@ def test_loader_accepts_new_service_without_python_registry_edits(tmp_path: Path
         "tool": "service_action",
         "default_for_kind": False,
     })
+    payload['semantic_authorization']['services']['laundry_request'] = {
+        'concepts': {'en':['laundry'], 'vi':['giặt là'], 'zh':['洗衣'], 'ko':['세탁']},
+        'object_slots': [],
+    }
     target = tmp_path / "agent-domain.json"
     target.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     checksum = hashlib.sha256(target.read_bytes()).hexdigest()
@@ -180,4 +184,23 @@ def test_preference_constraint_map_may_only_name_declared_values(tmp_path: Path)
     target.write_text(json.dumps(payload), encoding="utf-8")
     checksum = hashlib.sha256(target.read_bytes()).hexdigest()
     with pytest.raises(ValueError, match="undeclared value"):
+        load_domain_profile(target, checksum)
+
+
+@pytest.mark.parametrize('mutation', [
+    lambda p: p['semantic_authorization']['services'].pop('housekeeping'),
+    lambda p: p['semantic_authorization']['services']['housekeeping']['concepts'].pop('ko'),
+    lambda p: p['semantic_authorization']['services']['housekeeping'].update(object_slots=['requested_item']),
+    lambda p: p['semantic_authorization']['preferences']['quiet'].update(invented={'en':['wrong']}),
+    lambda p: p['semantic_authorization'].update(handoff_goal='amenity_delivery'),
+    lambda p: p['semantic_authorization']['services']['housekeeping']['concepts']['en'].append('an entire guest request sentence'),
+])
+def test_semantic_authority_cannot_drift_from_registry_or_ontology(tmp_path, mutation):
+    path, _ = default_domain_profile_binding()
+    payload = json.loads(Path(path).read_text(encoding='utf-8'))
+    mutation(payload)
+    target = tmp_path / 'domain.json'
+    target.write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+    checksum = hashlib.sha256(target.read_bytes()).hexdigest()
+    with pytest.raises(ValueError):
         load_domain_profile(target, checksum)

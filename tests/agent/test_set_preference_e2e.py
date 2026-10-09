@@ -130,16 +130,17 @@ def test_a_preference_stated_together_with_another_request_is_not_stored_silentl
     assert not _pending(app, session_id), "no question is appended to a grounded answer"
 
 
-def test_even_a_quoted_but_wrong_preference_needs_the_guest_to_say_yes(tmp_path: Path, understand):
+def test_a_quoted_but_wrong_preference_is_rejected_before_review(tmp_path: Path, understand):
     # The model quotes real words ("không cần dọn phòng") but reads them as a diet. The guest
-    # is shown exactly what would be remembered, declines, and nothing is stored.
+    # must not be asked to review that unsupported interpretation; nothing is stored.
     query = "Mình không cần dọn phòng nữa, cảm ơn"
     understand(query, _pref(query, "không cần dọn phòng", value="vegan"))
     app = _client(tmp_path)
     with TestClient(app, raise_server_exceptions=False) as client:
         session_id, headers = _session(client)
         asked = _ask(client, headers, query, "vi")
-        assert "không cần dọn phòng" in asked["answer"]
+        assert not _pending(app, session_id)
+        assert i18n('preference.confirm_question', 'vi', evidence='không cần dọn phòng') not in asked['answer']
         assert app.state.preference_memory.load(session_id) == {}
         _ask(client, headers, "không", "vi")
     assert app.state.preference_memory.load(session_id) == {}
@@ -210,7 +211,7 @@ def test_evidence_must_be_a_verbatim_span_of_the_guest_turn():
 
 def test_an_invalid_preference_is_dropped_but_the_other_commands_stay():
     kept = _validated(Command("AskInfo", query="nhớ giúp"), _pref(GUEST, "made up"), _pref(GUEST, "ăn chay",
-                      value="vegan", field="dietary"))
+                      value="vegetarian", field="dietary"))
     assert [c.type for c in kept] == ["AskInfo", "SetPreference"]
     assert kept[1].evidence == "ăn chay"
 

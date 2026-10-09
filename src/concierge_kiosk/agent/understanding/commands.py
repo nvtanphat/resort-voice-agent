@@ -17,6 +17,7 @@ from concierge_kiosk.runtime.local_http import slm_turn_expired
 from concierge_kiosk.core.domain_profile import preference_policy, rag_policy, supported_languages
 from concierge_kiosk.core.settings import SLM_NUM_CTX
 from concierge_kiosk.domain.service_registry import accepted_slots, service_definition
+from concierge_kiosk.agent.understanding.intent_evidence import command_supported
 
 
 COMMAND_TYPES = frozenset({
@@ -254,7 +255,9 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                       enabled_request_kinds: frozenset[str] = frozenset(),
                       pending_reply: str | None = None,
                       language: str | None = None,
-                      require_evidence: bool = True) -> tuple[Command, ...] | None:
+                      require_evidence: bool = True, context_topic: str | None = None,
+                      pending_goal: str | None = None,
+                      rejections: list[dict] | None = None) -> tuple[Command, ...] | None:
     """Validate a command stream against guest text and server-owned registry.
 
     A command that fails validation is dropped alone; the valid commands of the
@@ -270,6 +273,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
     validated: list[Command] = []
     started: set[tuple] = set()
     for command in values:
+        original_value = command.value if isinstance(command, Command) else None
         if (not isinstance(command, Command) or not isinstance(command.type, str)
                 or command.type not in COMMAND_TYPES
                 or type(command.conditional) is not bool or type(command.refers_to_context) is not bool
@@ -404,6 +408,12 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                 continue
             if command.kind is None:
                 command = replace(command, kind='smalltalk')
+        semantic_command = replace(command, value=original_value) if command.type == 'SetPreference' else command
+        if require_evidence and not command_supported(semantic_command, query, language,
+                context_topic=context_topic, pending_goal=pending_goal, pending_reply=pending_reply):
+            if rejections is not None:
+                rejections.append({'command': command.public(), 'reason': 'unsupported_semantics'})
+            continue
         validated.append(command)
     return tuple(validated) or None
 
@@ -449,7 +459,9 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
 def parse_commands(raw: str, *, query: str,
                    enabled_request_kinds: frozenset[str] = frozenset(),
                    pending_reply: str | None = None,
-                   language: str | None = None) -> tuple[Command, ...] | None:
+                   language: str | None = None, context_topic: str | None = None,
+                   pending_goal: str | None = None,
+                   rejections: list[dict] | None = None) -> tuple[Command, ...] | None:
     """Parse model JSON and fail closed before it reaches runtime routing."""
     if not isinstance(raw, str) or len(raw) > 5000:
         return None
@@ -464,7 +476,8 @@ def parse_commands(raw: str, *, query: str,
         return None
     return validate_commands(commands, query=query,
                              enabled_request_kinds=enabled_request_kinds,
-                             pending_reply=pending_reply, language=language)
+                             pending_reply=pending_reply, language=language,
+                             context_topic=context_topic, pending_goal=pending_goal, rejections=rejections)
 
 
 def model_commands(*, query: str, language: str, base_url: str, model: str,
@@ -473,6 +486,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                    examples: Sequence[Mapping[str, Any]] = (),
                    pending_reply: str | None = None,
                    context_topic: str | None = None,
+                   pending_goal: str | None = None,
                    should_cancel=None, timeout_seconds: float = 1.5,
                    num_gpu: int = -1,
                    on_outcome: Callable[[str], None] | None = None
@@ -569,8 +583,8 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
                 'Interpret exactly one hotel concierge guest turn and return only the JSON schema, written compactly '
                 'on a single line with no indentation or line breaks. '
                 'When the guest wants something done, brought, fixed, booked or arranged, emit StartGoal '
-                'with the closest service_mode from AVAILABLE_SERVICES (match by meaning, using each '
-                'name and description) and put the details the guest stated into its slots. '
+                'only when the AVAILABLE_SERVICES description supports the explicitly requested action, '
+                'with grounded slots; never choose a service by department or default. '
                 'Use CheckAvailability when the guest asks whether a slot/table/seat is free, without asking to book. '
                 'Use AskInfo for a factual hotel question (including price, opening-hours or policies) and set its facet when the question asks about one aspect; '
                 'Navigate for directions, Plan when the guest asks for suggestions or an '
@@ -625,11 +639,14 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         note('turn_budget_expired' if slm_turn_expired() else
              failures[-1] if failures else 'no_response')
         return None
+    rejections: list[dict] = []
     parsed = parse_commands(
         raw, query=query, enabled_request_kinds=enabled_request_kinds,
-        pending_reply=pending_reply, language=language)
+        pending_reply=pending_reply, language=language, context_topic=context_topic,
+        pending_goal=pending_goal, rejections=rejections)
     if parsed is None:
-        note('rejected_by_validation' if _is_json_object(raw) else 'malformed_output')
+        note('unsupported_semantics' if rejections else
+             'rejected_by_validation' if _is_json_object(raw) else 'malformed_output')
     else:
         note('partially_accepted' if len(parsed) < _proposed_count(raw) else 'accepted')
     return parsed

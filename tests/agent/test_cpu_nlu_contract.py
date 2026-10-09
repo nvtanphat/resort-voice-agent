@@ -12,6 +12,7 @@ from concierge_kiosk.agent.understanding.routing import RouteDecision, fast_resp
 from concierge_kiosk.application.conversation.engine import _TurnRuntimeSupport
 from concierge_kiosk.domain.service_registry import ACTION_REQUEST_KINDS, SERVICE_DEFINITIONS, accepted_slots
 from concierge_kiosk.runtime import local_http
+from concierge_kiosk.core.domain_profile import get_domain_profile
 
 
 GOALS = {code: accepted_slots(code) for code, definition in SERVICE_DEFINITIONS.items()
@@ -43,8 +44,19 @@ def test_all_baseline_shapes_and_goals_remain_eligible():
         body = {'commands': [sample(variant)]}
         if body['commands'][0]['type'] == 'SetPreference' and 'enum' not in variant['properties']['value']:
             body['commands'][0]['value'] = '3'
+        command = body['commands'][0]
+        policy = get_domain_profile().semantic_authorization
+        query = 'guest words 3'
+        if command['type'] in {'StartGoal','CheckAvailability','Handoff'}:
+            goal = command.get('goal', policy['handoff_goal'])
+            query = 'please ' + policy['services'][goal]['concepts']['en'][0] + ' ' + query
+        if command['type'] == 'SetPreference':
+            meanings = policy['preferences'][command['field']]
+            concept = meanings.get(command['value'], meanings.get('integer'))['en'][0]
+            command['evidence'] = ('3 ' if 'integer' in meanings else '') + concept
+            query = command['evidence'] + ' ' + query
         for schema in (baseline, compact): Draft202012Validator(schema).validate(body)
-        assert commands.parse_commands(json.dumps(body), query='guest words 3',
+        assert commands.parse_commands(json.dumps(body), query=query,
             enabled_request_kinds=ACTION_REQUEST_KINDS, pending_reply='confirm')
     starts = next(v for v in compact['properties']['commands']['items']['anyOf']
                   if v['properties']['type']['const'] == 'StartGoal')
@@ -61,7 +73,7 @@ def test_item_date_unit_and_multi_intent_fixtures(compact):
              {'type':'AskInfo','query':'spa hours'}]
     body = {'commands':items}
     Draft202012Validator(commands.command_schema(GOALS, compact=compact)).validate(body)
-    kept = commands.parse_commands(json.dumps(body), query='3 bottles water 502 tomorrow 6am spa hours',
+    kept = commands.parse_commands(json.dumps(body), query='Please bring 3 bottles water to 502; wake me tomorrow 6am; spa hours',
                                    enabled_request_kinds=ACTION_REQUEST_KINDS)
     assert kept and [c.public() for c in kept] == [
         {k:v for k,v in item.items() if k != 'conditional'} for item in items]
@@ -106,7 +118,8 @@ def test_every_registry_goals_valid_slots_survive(compact):
         slots = [{'name':name,'text':values[name]} for name in names]
         body = {'commands':[{'type':'StartGoal','goal':goal,'slots':slots,'conditional':False}]}
         validator.validate(body)
-        kept = commands.parse_commands(json.dumps(body),query=' '.join(values.values()),
+        concept = get_domain_profile().semantic_authorization['services'][goal]['concepts']['en'][0]
+        kept = commands.parse_commands(json.dumps(body),query='please ' + concept + ' ' + ' '.join(values.values()),
                                        enabled_request_kinds=ACTION_REQUEST_KINDS)
         assert kept and [s.public() for s in kept[0].slots] == slots
 
@@ -121,7 +134,7 @@ def test_conditional_and_compound_confirm_handoff_context_survive(compact):
         {'type':'AskInfo','query':'spa hours','refers_to_context':False}]}
     Draft202012Validator(commands.command_schema(GOALS,compact=compact,context_topic=True,
                                                 confirm_pending=True)).validate(body)
-    kept = commands.parse_commands(json.dumps(body),query='staff assistance reach that place spa hours',
+    kept = commands.parse_commands(json.dumps(body),query='if a table is free, book it; please send staff assistance; reach that place; spa hours',
                                    enabled_request_kinds=ACTION_REQUEST_KINDS,pending_reply='confirm')
     assert kept and kept[0].conditional and kept[3].refers_to_context
     assert [c.type for c in kept] == [c['type'] for c in body['commands']]

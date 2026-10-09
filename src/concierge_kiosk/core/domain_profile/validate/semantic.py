@@ -21,6 +21,37 @@ def semantic_validate(payload: dict[str, Any]) -> None:
     if not languages or not request_kinds:
         raise ValueError("Agent domain must enable languages and request kinds")
     language_set = set(languages)
+    authority = payload['semantic_authorization']
+    def bounded_terms(value):
+        if isinstance(value, dict):
+            for child in value.values():
+                bounded_terms(child)
+        elif isinstance(value, list):
+            if any(len(term.split()) > 4 for term in value):
+                raise ValueError('Semantic authorization terms must be bounded concepts, not guest sentences')
+    bounded_terms(authority)
+    for name in ('request_actions', 'delivery_actions', 'reference_terms', 'negation_terms',
+                 'question_terms', 'past_terms', 'clause_connectors', 'conditional_terms'):
+        validate_language_keys(authority[name], language_set, label=f'semantic_authorization.{name}', require_all=True)
+    services = {item['code']: item for item in payload['services']}
+    if set(authority['services']) != set(services):
+        raise ValueError('Semantic authorization must cover exactly all registry services')
+    for code, evidence in authority['services'].items():
+        validate_language_keys(evidence['concepts'], language_set, label=f'semantic_authorization.services.{code}', require_all=True)
+        accepted = set(services[code]['required_slots'] + services[code]['optional_slots'] + services[code]['autonomous_required_slots'])
+        if not set(evidence['object_slots']) <= accepted:
+            raise ValueError('Semantic object slots must be owned by their service')
+    if authority['handoff_goal'] not in services or services[authority['handoff_goal']]['request_kind'] != 'human':
+        raise ValueError('Semantic handoff goal must bind to a human service')
+    fields = payload['preferences']['fields']
+    if set(authority['preferences']) != set(fields):
+        raise ValueError('Semantic authorization must cover exactly all preference fields')
+    for field, meanings in authority['preferences'].items():
+        expected = set(fields[field]['values']) if fields[field]['type'] == 'enum' else {'integer'}
+        if set(meanings) != expected:
+            raise ValueError('Semantic preference values must match the preference ontology')
+        for value, terms in meanings.items():
+            validate_language_keys(terms, language_set, label=f'semantic_authorization.preferences.{field}.{value}', require_all=True)
     validate_nlu(payload, language_set, request_kinds)
     validate_planning(payload, language_set)
     validate_security(payload)

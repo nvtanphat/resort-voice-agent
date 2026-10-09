@@ -55,7 +55,7 @@ def fast_response(decision: RouteDecision, query: str, language: str, *,
     """Return a bounded deterministic response without retrieval or generation."""
     if decision.branch == 'nlu_failure':
         from concierge_kiosk.i18n import text as i18n_text
-        return {'answer': i18n_text('nlu.clarify' if decision.failure_class == 'INVALID_MODEL_OUTPUT'
+        return {'answer': i18n_text('nlu.clarify' if decision.failure_class in {'INVALID_MODEL_OUTPUT', 'AMBIGUOUS_INTENT'}
                                    else 'nlu.retry', language),
                 'sources': [], 'citations': [], 'suggested_action': None,
                 'retrieval_mode': 'not_used', 'generation_mode': 'deterministic',

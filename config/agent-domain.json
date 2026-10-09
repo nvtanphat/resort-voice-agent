@@ -2482,5 +2482,813 @@
       "max_schedule_items": 3,
       "max_request_status_items": 3
     }
+  },
+  "semantic_authorization": {
+    "request_actions": {
+      "en": [
+        "bring",
+        "send",
+        "deliver",
+        "need",
+        "want",
+        "please",
+        "book",
+        "reserve",
+        "arrange",
+        "clean",
+        "tidy",
+        "fix",
+        "repair",
+        "wake",
+        "call",
+        "help",
+        "request",
+        "schedule",
+        "order",
+        "get",
+        "extend",
+        "check",
+        "would like",
+        "can you",
+        "could you",
+        "freshen up"
+      ],
+      "vi": [
+        "cho",
+        "mang",
+        "gửi",
+        "cần",
+        "muốn",
+        "đặt",
+        "gọi",
+        "đánh thức",
+        "dọn",
+        "sửa",
+        "nhờ",
+        "giúp",
+        "hỗ trợ",
+        "kiểm tra",
+        "xin",
+        "gia hạn"
+      ],
+      "zh": [
+        "请",
+        "想",
+        "要",
+        "帮",
+        "送",
+        "预订",
+        "预约",
+        "安排",
+        "叫醒",
+        "维修",
+        "打扫",
+        "检查",
+        "延迟"
+      ],
+      "ko": [
+        "주세요",
+        "부탁",
+        "원해",
+        "원합니다",
+        "예약",
+        "가져",
+        "배달",
+        "청소",
+        "수리",
+        "깨워",
+        "모닝콜",
+        "도와",
+        "신청",
+        "확인",
+        "연장"
+      ]
+    },
+    "delivery_actions": {
+      "en": [
+        "bring",
+        "send",
+        "deliver",
+        "get"
+      ],
+      "vi": [
+        "mang",
+        "gửi",
+        "cho"
+      ],
+      "zh": [
+        "送",
+        "带"
+      ],
+      "ko": [
+        "가져",
+        "배달"
+      ]
+    },
+    "reference_terms": {
+      "en": [
+        "it",
+        "that",
+        "there",
+        "same",
+        "again",
+        "more"
+      ],
+      "vi": [
+        "đó",
+        "ấy",
+        "vậy",
+        "như cũ",
+        "thêm",
+        "lại"
+      ],
+      "zh": [
+        "那里",
+        "那个",
+        "一样",
+        "再"
+      ],
+      "ko": [
+        "그곳",
+        "그것",
+        "같은",
+        "다시",
+        "추가"
+      ]
+    },
+    "negation_terms": {
+      "en": [
+        "not",
+        "no",
+        "never",
+        "don't",
+        "do not",
+        "without",
+        "cancel",
+        "dislike",
+        "hate",
+        "reject"
+      ],
+      "vi": [
+        "không",
+        "đừng",
+        "chẳng",
+        "chưa",
+        "hủy",
+        "ghét"
+      ],
+      "zh": [
+        "不",
+        "别",
+        "不要",
+        "取消",
+        "没有",
+        "讨厌"
+      ],
+      "ko": [
+        "않",
+        "말고",
+        "아니",
+        "취소",
+        "없",
+        "싫"
+      ]
+    },
+    "question_terms": {
+      "en": [
+        "what",
+        "when",
+        "where",
+        "how much",
+        "is there",
+        "do you have",
+        "does",
+        "tell",
+        "explain",
+        "describe"
+      ],
+      "vi": [
+        "mấy giờ",
+        "bao nhiêu",
+        "ở đâu",
+        "có không",
+        "thế nào",
+        "cho biết",
+        "giải thích"
+      ],
+      "zh": [
+        "几点",
+        "多少钱",
+        "在哪里",
+        "有没有",
+        "是否",
+        "告诉",
+        "解释"
+      ],
+      "ko": [
+        "몇 시",
+        "얼마",
+        "어디",
+        "있나요",
+        "알려",
+        "설명"
+      ]
+    },
+    "past_terms": {
+      "en": [
+        "already",
+        "yesterday",
+        "previously"
+      ],
+      "vi": [
+        "đã đặt",
+        "đã gọi",
+        "hôm qua",
+        "trước đây"
+      ],
+      "zh": [
+        "已经",
+        "昨天",
+        "以前"
+      ],
+      "ko": [
+        "이미",
+        "어제",
+        "전에"
+      ]
+    },
+    "conditional_terms": {
+      "en": [
+        "if"
+      ],
+      "vi": [
+        "nếu"
+      ],
+      "zh": [
+        "如果"
+      ],
+      "ko": [
+        "만약"
+      ]
+    },
+    "clause_connectors": {
+      "en": [
+        "and",
+        "but",
+        "also"
+      ],
+      "vi": [
+        "và",
+        "nhưng",
+        "với"
+      ],
+      "zh": [
+        "但是",
+        "但",
+        "并且",
+        "还有"
+      ],
+      "ko": [
+        "그리고",
+        "하지만",
+        "또한"
+      ]
+    },
+    "services": {
+      "amenity_delivery": {
+        "concepts": {
+          "en": [
+            "towels",
+            "water",
+            "toiletries",
+            "amenities",
+            "supplies",
+            "items",
+            "adapters",
+            "sewing kits"
+          ],
+          "vi": [
+            "khăn",
+            "nước",
+            "vật phẩm",
+            "đồ dùng",
+            "tiện nghi",
+            "bộ khâu"
+          ],
+          "zh": [
+            "毛巾",
+            "水",
+            "用品",
+            "物品",
+            "洗漱",
+            "转换器"
+          ],
+          "ko": [
+            "수건",
+            "물",
+            "생수",
+            "용품",
+            "물품",
+            "어댑터"
+          ]
+        },
+        "object_slots": [
+          "requested_item"
+        ]
+      },
+      "maintenance": {
+        "concepts": {
+          "en": [
+            "repair",
+            "fix",
+            "broken",
+            "not working",
+            "maintenance",
+            "leak"
+          ],
+          "vi": [
+            "sửa",
+            "hỏng",
+            "bảo trì",
+            "rò rỉ",
+            "không hoạt động"
+          ],
+          "zh": [
+            "维修",
+            "坏了",
+            "故障",
+            "漏水"
+          ],
+          "ko": [
+            "수리",
+            "고장",
+            "작동하지",
+            "누수"
+          ]
+        },
+        "object_slots": []
+      },
+      "housekeeping": {
+        "concepts": {
+          "en": [
+            "housekeeping",
+            "clean",
+            "cleaning",
+            "tidy",
+            "freshen up"
+          ],
+          "vi": [
+            "dọn phòng",
+            "dọn dẹp",
+            "vệ sinh phòng",
+            "làm sạch"
+          ],
+          "zh": [
+            "打扫",
+            "清洁房间",
+            "客房清洁"
+          ],
+          "ko": [
+            "청소",
+            "객실 정리"
+          ]
+        },
+        "object_slots": []
+      },
+      "human_assistance": {
+        "concepts": {
+          "en": [
+            "staff",
+            "reception",
+            "manager",
+            "assistance",
+            "complaint",
+            "help"
+          ],
+          "vi": [
+            "nhân viên",
+            "lễ tân",
+            "quản lý",
+            "hỗ trợ",
+            "phàn nàn"
+          ],
+          "zh": [
+            "工作人员",
+            "前台",
+            "经理",
+            "帮助",
+            "投诉"
+          ],
+          "ko": [
+            "직원",
+            "프런트",
+            "매니저",
+            "도움",
+            "불만"
+          ]
+        },
+        "object_slots": []
+      },
+      "spa_reservation": {
+        "concepts": {
+          "en": [
+            "spa",
+            "massage",
+            "treatment"
+          ],
+          "vi": [
+            "spa",
+            "massage",
+            "mát xa",
+            "trị liệu"
+          ],
+          "zh": [
+            "水疗",
+            "按摩",
+            "spa"
+          ],
+          "ko": [
+            "스파",
+            "마사지",
+            "테라피"
+          ]
+        },
+        "object_slots": []
+      },
+      "dining_reservation": {
+        "concepts": {
+          "en": [
+            "table",
+            "restaurant reservation",
+            "dinner reservation",
+            "dining reservation"
+          ],
+          "vi": [
+            "bàn",
+            "đặt nhà hàng",
+            "đặt bữa tối"
+          ],
+          "zh": [
+            "餐桌",
+            "订餐厅",
+            "餐厅预订"
+          ],
+          "ko": [
+            "테이블",
+            "식당 예약",
+            "레스토랑 예약"
+          ]
+        },
+        "object_slots": []
+      },
+      "food_order": {
+        "concepts": {
+          "en": [
+            "food",
+            "meal",
+            "pizza",
+            "sandwich",
+            "room service",
+            "in-room dining"
+          ],
+          "vi": [
+            "đồ ăn",
+            "món ăn",
+            "bữa ăn",
+            "pizza",
+            "gọi món"
+          ],
+          "zh": [
+            "食物",
+            "餐食",
+            "披萨",
+            "客房送餐"
+          ],
+          "ko": [
+            "음식",
+            "식사",
+            "피자",
+            "룸서비스"
+          ]
+        },
+        "object_slots": []
+      },
+      "tour_reservation": {
+        "concepts": {
+          "en": [
+            "tour",
+            "excursion"
+          ],
+          "vi": [
+            "tour",
+            "chuyến tham quan",
+            "đặt tham quan"
+          ],
+          "zh": [
+            "旅游",
+            "游览",
+            "观光"
+          ],
+          "ko": [
+            "투어",
+            "관광",
+            "여행"
+          ]
+        },
+        "object_slots": []
+      },
+      "wake_up_call": {
+        "concepts": {
+          "en": [
+            "wake",
+            "wake-up",
+            "alarm",
+            "wake up"
+          ],
+          "vi": [
+            "báo thức",
+            "đánh thức"
+          ],
+          "zh": [
+            "叫醒",
+            "闹钟"
+          ],
+          "ko": [
+            "모닝콜",
+            "깨워",
+            "알람"
+          ]
+        },
+        "object_slots": []
+      },
+      "facility_request": {
+        "concepts": {
+          "en": [
+            "facility",
+            "facilities",
+            "pool assistance",
+            "recreation"
+          ],
+          "vi": [
+            "tiện ích",
+            "hỗ trợ hồ bơi",
+            "giải trí"
+          ],
+          "zh": [
+            "设施",
+            "泳池帮助",
+            "娱乐"
+          ],
+          "ko": [
+            "시설",
+            "수영장 도움",
+            "레크리에이션"
+          ]
+        },
+        "object_slots": []
+      },
+      "dining_request": {
+        "concepts": {
+          "en": [
+            "dining assistance",
+            "dining options",
+            "meal arrangement",
+            "dining help"
+          ],
+          "vi": [
+            "hỗ trợ ăn uống",
+            "tư vấn ăn uống",
+            "sắp xếp bữa ăn"
+          ],
+          "zh": [
+            "餐饮帮助",
+            "餐饮安排"
+          ],
+          "ko": [
+            "식사 도움",
+            "식사 준비"
+          ]
+        },
+        "object_slots": []
+      },
+      "tour_request": {
+        "concepts": {
+          "en": [
+            "tour",
+            "excursion",
+            "sightseeing"
+          ],
+          "vi": [
+            "tour",
+            "tham quan",
+            "du lịch"
+          ],
+          "zh": [
+            "旅游",
+            "游览",
+            "观光"
+          ],
+          "ko": [
+            "투어",
+            "관광",
+            "여행"
+          ]
+        },
+        "object_slots": []
+      },
+      "transport_request": {
+        "concepts": {
+          "en": [
+            "taxi",
+            "transport",
+            "shuttle",
+            "car",
+            "pickup",
+            "transfer"
+          ],
+          "vi": [
+            "taxi",
+            "xe",
+            "đưa đón",
+            "vận chuyển"
+          ],
+          "zh": [
+            "出租车",
+            "接送",
+            "交通",
+            "班车"
+          ],
+          "ko": [
+            "택시",
+            "차량",
+            "셔틀",
+            "픽업"
+          ]
+        },
+        "object_slots": []
+      },
+      "late_checkout": {
+        "concepts": {
+          "en": [
+            "late checkout",
+            "late check-out",
+            "keep the room",
+            "extend my stay"
+          ],
+          "vi": [
+            "trả phòng muộn",
+            "gia hạn phòng"
+          ],
+          "zh": [
+            "延迟退房",
+            "晚退房"
+          ],
+          "ko": [
+            "레이트 체크아웃",
+            "늦은 체크아웃",
+            "퇴실 연장"
+          ]
+        },
+        "object_slots": []
+      }
+    },
+    "preferences": {
+      "dietary": {
+        "vegetarian": {
+          "en": [
+            "vegetarian"
+          ],
+          "vi": [
+            "ăn chay",
+            "chay"
+          ],
+          "zh": [
+            "素食",
+            "吃素"
+          ],
+          "ko": [
+            "채식"
+          ]
+        },
+        "vegan": {
+          "en": [
+            "vegan"
+          ],
+          "vi": [
+            "thuần chay"
+          ],
+          "zh": [
+            "纯素"
+          ],
+          "ko": [
+            "비건",
+            "완전 채식"
+          ]
+        }
+      },
+      "mobility": {
+        "minimal_walking": {
+          "en": [
+            "minimal walking",
+            "less walking",
+            "avoid walking"
+          ],
+          "vi": [
+            "ít đi bộ",
+            "hạn chế đi bộ"
+          ],
+          "zh": [
+            "少走路",
+            "减少步行"
+          ],
+          "ko": [
+            "걷기 최소",
+            "적게 걷"
+          ]
+        },
+        "wheelchair_access": {
+          "en": [
+            "wheelchair"
+          ],
+          "vi": [
+            "xe lăn"
+          ],
+          "zh": [
+            "轮椅"
+          ],
+          "ko": [
+            "휠체어"
+          ]
+        }
+      },
+      "quiet": {
+        "quiet": {
+          "en": [
+            "quiet",
+            "peaceful",
+            "silent"
+          ],
+          "vi": [
+            "yên tĩnh",
+            "yên lặng"
+          ],
+          "zh": [
+            "安静",
+            "宁静"
+          ],
+          "ko": [
+            "조용",
+            "고요"
+          ]
+        }
+      },
+      "party_size": {
+        "integer": {
+          "en": [
+            "people",
+            "persons",
+            "party",
+            "group",
+            "we are"
+          ],
+          "vi": [
+            "người",
+            "nhóm",
+            "chúng tôi"
+          ],
+          "zh": [
+            "人",
+            "人数"
+          ],
+          "ko": [
+            "명",
+            "인원"
+          ]
+        }
+      },
+      "children": {
+        "integer": {
+          "en": [
+            "children",
+            "child",
+            "kids"
+          ],
+          "vi": [
+            "trẻ",
+            "bé",
+            "con nhỏ"
+          ],
+          "zh": [
+            "儿童",
+            "孩子"
+          ],
+          "ko": [
+            "아이",
+            "어린이"
+          ]
+        }
+      }
+    },
+    "handoff_goal": "human_assistance"
   }
 }

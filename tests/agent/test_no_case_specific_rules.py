@@ -37,6 +37,10 @@ KEEP_PREFIXES = (
     "rag.token_stopwords", "rag.tokenization", "rag.facet_fact_types", "preferences.max",
     # preference value -> closed planning constraint kind (an ontology table, no guest wording)
     "preferences.constraints",
+    # Signed evidence ontology is explicitly owned by domain policy. Its complete
+    # goal/value/language coverage and bounded shapes are checked by the loader;
+    # this is a validator for proposals, not a phrase-driven routing replacement.
+    "semantic_authorization",
 )
 
 

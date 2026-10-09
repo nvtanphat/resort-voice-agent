@@ -5,7 +5,7 @@ from urllib.request import Request
 import pytest
 
 from tools.runtime.agent_stabilization_smoke import CallBoundary
-from tools.runtime.real_nlu_diagnostic import allow_reference_call, water_matches
+from tools.runtime.real_nlu_diagnostic import allow_reference_call, classify_failure, water_matches
 
 
 def test_wp12_counts_four_actual_calls_and_blocks_hidden_duplicate():
@@ -49,3 +49,16 @@ def test_only_one_reference_selection_can_repeat_a_live_phase():
     assert not allow_reference_call('LIVE-02', payload, calls)
     assert not allow_reference_call('LIVE-03', {'format': {'properties': {'commands': {}}}}, calls)
     assert not allow_reference_call('LIVE-03', payload, calls + [{'purpose': 'LIVE-03'}])
+
+
+def test_wrong_goal_is_the_first_failure_before_missing_slots():
+    parsed = {'commands': [{'type': 'StartGoal', 'goal': 'housekeeping', 'slots': []},
+                           {'type': 'SetPreference', 'field': 'quiet', 'value': 'quiet'}]}
+    assert classify_failure(1, parsed, parsed['commands'], False, {}, []) == 'WRONG_INTENT'
+    correct_goal = [{'type': 'StartGoal', 'goal': 'amenity_delivery'}]
+    assert classify_failure(1, {'commands': correct_goal}, correct_goal, False, {}, []) == 'SLOT_FIDELITY_FAILURE'
+
+
+def test_turn_timeout_is_not_invalid_json_or_semantic_failure():
+    assert classify_failure(1, None, [], False, {'failure_class': 'NLU_TIMEOUT'}, []) == 'NLU_TIMEOUT'
+    assert classify_failure(1, None, [], False, {'failure_class': 'MODEL_BUSY'}, []) == 'MODEL_BUSY'

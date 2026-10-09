@@ -121,6 +121,7 @@ class DomainProfile:
     request_kind_routes: Mapping[str, str]
     autonomous_policy_version: int
     services: tuple[ServiceRule, ...]
+    semantic_authorization: Mapping[str, Any]
     public_catalog_kinds: Mapping[str, str | None]
     preferences: PreferencePolicy
     nlu: NluPolicy

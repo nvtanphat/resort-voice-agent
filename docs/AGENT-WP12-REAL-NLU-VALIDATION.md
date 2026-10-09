@@ -1,10 +1,156 @@
 # WP12 — Real Qwen validation and CPU NLU diagnosis
 
-Date: 2026-10-09. **Decision: BLOCKED (RAM preflight).**
+Date: 2026-10-09. **Latest decision: REAL_NLU_FAIL_SEMANTIC.**
 
-Compact-schema real NLU was **NOT_RUN**. No preload or guest inference was
-sent. WP12 used **0/4 new HTTP Qwen calls**; historical **5/5** remains closed.
-No real-model accuracy or latency improvement is claimed.
+## Latest authorized live attempt — 05:30:52–05:31:16 UTC
+
+After the user's second explicit request to try again, available RAM had
+recovered to 5,144,571,904 bytes in the lightweight check (CPU snapshot 17%).
+The actual harness measured 4,865,028,096 bytes before preload, above the cold
+threshold. HEAD was `243de4d5be07ffbdfe2010acd8dd305a41380e6f`; the existing report
+edit and empty untracked audit were preserved. Prior blocked attempts consumed
+zero POSTs, so the four-call WP12 allowance was intact. A separate output path
+preserved both earlier preflight traces rather than overwriting them.
+
+Preload succeeded. GET ps then verified exact pinned Qwen digest, CPU
+`size_vram=0`, context 4096, exclusive residency and reported model size
+2,164,166,490 bytes. This ps size is not peak process RAM. The actual compact
+request used 11,527 payload bytes, 5,385 schema bytes, 5,693 message bytes,
+17 alternatives, all 14 goals/28 per-goal slot definitions, zero examples,
+temperature 0, predict 220, ctx 4096, gpu 0. No BGE, planner or semantic
+generation was loaded/called.
+
+### Actual inference ledger
+
+| WP12 call | Purpose | Client HTTP | Server log | Result |
+|---|---|---|---|---|
+| 1 | Empty explicit preload | 200; 5.797 s | 200; 5.7720269 s | PASS; done_reason=load, resident verified |
+| 2 | LIVE-01 actual FastAPI water NLU | 200; 16.484 s | 200; 16.4786517 s | REAL_NLU_FAIL_SEMANTIC |
+| — | LIVE-02 / LIVE-03 | No call | No POST | NOT_RUN; stopped after semantic failure |
+
+**WP12 used 2/4 calls. Historical 5/5 stays separate.** No automatic retry,
+background inference, competing request or hidden POST appeared in the shared
+client trace or captured Ollama log. The remaining two calls were not used to
+try to obtain a PASS. Socket timeout was 20 s; cumulative turn budget 30 s;
+production defaults/voice caps were not changed.
+
+### Actual LIVE-01 trace and first incorrect boundary
+
+Guest: `cho toi 3 chai nuoc suoi phong 502`, anonymized session A.
+Raw Qwen command response (unchanged):
+
+```json
+{"commands":[{"type":"StartGoal","goal":"housekeeping","slots":[],"conditional":false},{"type":"SetPreference","field":"quiet","value":"quiet","evidence":"cho toi 3 chai nuoc suoi phong 502"}]}
+```
+
+- JSON parsed successfully. Both commands passed the existing closed-schema
+  and server checks; validation outcome `accepted`. No commands were rejected.
+- **First incorrect boundary: model goal selection, WRONG_INTENT.** Expected
+  amenity_delivery, actual housekeeping. Requested item, quantity and unit were
+  absent from the model response (secondary slot fidelity failure). The model
+  also proposed quiet although the guest did not state that preference.
+- Route: `multi_task`; goal:
+  `multi_task:service:housekeeping,command:SetPreference`.
+- Tool: `service_request_create`, service_code housekeeping, room 502;
+  status confirmation_required. This tool produced a proposal, not a ticket.
+  Room 502 was recovered downstream from the guest query, not extracted by Qwen.
+- Review payload: `{"room_number":"502"}`, service_code housekeeping.
+  It was an incorrect housekeeping review, not a water review or towel
+  substitution. No stock availability claim, citation or context anchor.
+- Actual guest API: HTTP 200, **17.484 s**. Persisted service request count delta
+  **0**; Agent trace business_writes **0**. No guest confirmation was sent.
+
+The original recorded harness labeled the failure SLOT_FIDELITY_FAILURE.
+Offline review identified the earlier wrong-goal boundary. The diagnostic
+classifier was fixed and a deterministic regression proves WRONG_INTENT takes
+precedence over missing slots. The original live trace was preserved rather
+than rewritten; its overall REAL_NLU_FAIL_SEMANTIC decision remains correct.
+
+Evidence: [full real request/provider/API/log trace](../reports/wp12-authorized-real-nlu.json),
+[console](../reports/wp12-authorized-console.txt).
+
+### Actual CPU performance
+
+| Metric | Historical baseline | WP12 warm compact |
+|---|---|---|
+| Payload/schema bytes | 20,069 / 13,927 | 11,527 / 5,385 |
+| Actual prompt tokens | 1,153 historic | 1,153; cached count 0 |
+| Warm first headers/content | TIMEOUT at 3 s | 12.375 s / 12.375 s |
+| load_duration | No completed warm metric | 0.0093053 s |
+| prompt_eval_duration | NOT_MEASURED | 12.320450 s |
+| eval_count / eval_duration | NOT_MEASURED | 60 / 4.115385 s |
+| total_duration (provider) | NOT_MEASURED | 16.4786517 s |
+| Full client NLU HTTP | Timeout 3.046 s | 16.484 s, completed |
+| Full guest API | 4.281 s historic failure | 17.484 s, semantic failure |
+| Cold/preload client HTTP | Prior 4.656 s | 5.797 s |
+| Preload provider load_duration | NOT_MEASURED | NOT_MEASURED; empty preload omitted duration fields |
+| Minimum sampled available RAM | Not peak model RAM | 2,982,043,648 bytes; max sampled system memory load 81% |
+| Whole-system CPU over load/inference window | Not comparable | Mean 49.06%, range 8.84–77.78%; not Qwen-only CPU |
+| Peak Qwen process RAM | NOT_MEASURED | NOT_MEASURED |
+
+Completed provider timings and server prompt-eval logs show the warm prompt
+phase alone took 12.32 s, beyond the historical three-second deadline. Cold
+load was completed separately and warm load_duration was only 9.3 ms. This run
+therefore establishes a CPU prompt-processing cost that prevents this particular
+uncached request from fitting the 3 s policy. It does not isolate grammar
+compilation, server queue time or memory paging; those remain NOT_MEASURED.
+Smaller schema did not reduce the textual prompt token count in this observation.
+No controlled baseline A/B was executed, so no schema-related speedup is claimed.
+
+### Root cause disposition and targeted fixes
+
+| Finding | Responsible boundary | Evidence | Disposition |
+|---|---|---|---|
+| Wrong service selected | Qwen output before parsing | housekeeping with empty slots | REAL_NLU_FAIL_SEMANTIC; no keyword patch, model-output repair or schema rollback without comparative evidence |
+| Unstated enum preference admitted | `commands._preference_value` enum branch + `validate_commands` evidence check | quiet is an allowed enum; entire guest sentence is verbatim evidence but does not entail quiet | Remaining semantic validation gap. Confirmation/unsaved preference policy remains intact; no claim this gap was fixed |
+| Warm processing exceeds 3 s | Provider prompt evaluation | 12.320450 s, 1,153 uncached tokens | Keep production defaults; diagnostic completion is not production latency PASS |
+| Diagnostic mislabeled wrong goal as missing slots | `real_nlu_diagnostic.classify_failure` | Existing earlier conditional labeled every failed service case SLOT_FIDELITY_FAILURE | Fixed taxonomy and timeout precedence with mocked regressions |
+
+Registry/shape validation cannot independently prove a registered goal matches
+guest meaning. Enum preference validation proves membership and verbatim quote,
+not semantic entailment. No existing multilingual enum-evidence mapping was
+found in the preference contract. Adding a phrase matcher or accepting a model
+self-verification would not safely resolve that gap. The wrong goal and quiet
+proposal remain unresolved; deterministic PASS is not claimed as a model fix.
+
+Post-live changes: `tools/runtime/real_nlu_diagnostic.py` adds the first-boundary
+failure classifier; `tests/agent/test_nlu_diagnostic_protocol.py` adds wrong-goal
+and turn-timeout regressions; this report records the actual outcome. No src,
+business contract, model, runtime config, CI or frontend change; no commit/push.
+
+Post-live targeted validation: **114 passed**, two existing warnings, **16.02 s**
+([output](../reports/wp12-post-live-tests.txt)): protocol, compact schema/validation,
+NLU recovery, preference confirmation, readiness, item fidelity, date/time and
+request-change confirmation/idempotency. Model HTTP was blocked throughout.
+Compileall src/tools, repin_configs --check and git diff --check passed.
+Source SQLite SHA-256 stayed
+`3d213efbf50b809b56290743935b5fa5c19ffdf45faa530747961678d32ffad7`.
+
+**Acceptance: FAIL semantic, no REAL_MODEL_PASS.** Diagnostic inference completed
+but did not understand the requested business operation. Production 3-second
+compatibility failed for this observed latency. Real pool knowledge, context
+follow-up, dense RAG, voice/browser E2E and aggregate accuracy remain NOT_RUN /
+NOT_MEASURED. A larger deadline alone would not fix this semantic failure, so
+no production timeout change is proposed from this result.
+
+## Earlier blocked attempts — retained historical evidence
+
+The sections below describe the preceding zero-call preflight attempts and
+their then-current BLOCKED status. They are superseded by the actual live
+result and 2/4 accounting above, not additional inference calls.
+
+### User-requested recheck, 2026-10-09 05:26:58 UTC
+
+After the explicit request to try again, HEAD was
+`243de4d5be07ffbdfe2010acd8dd305a41380e6f` (the prior WP12 work was committed
+outside this agent's actions); tracked working tree was clean. Read-only GET
+tags/ps again confirmed the same exact Qwen digest and MODEL_NOT_LOADED.
+Available RAM was **1,474,760,704 bytes**, memory load **91%**, below the unchanged
+cold gate of **3,003,654,256 bytes**. Result remains **BLOCKED**. No preload,
+guest API turn, model POST or automatic retry was attempted. Ollama log adds
+only two GET entries. WP12 accounting remains **0/4**. The original blocked
+trace was preserved; this check is recorded separately in
+[recheck evidence](../reports/wp12-recheck-preflight.json).
 
 ## A. Environment and safety preflight
 
