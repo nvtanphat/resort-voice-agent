@@ -213,5 +213,7 @@
   "backend.request.change.recorded": "工单 {code} 的更改已记录。请查看工单状态以了解员工的决定。",
   "backend.request.change.cancel_label": "申请取消",
   "backend.request.change.modify_label": "申请修改",
-  "backend.request.change.review": "审核工单 {code}: {action}。更改字段：{changes}。确认后提交员工审核。"
+  "backend.request.change.review": "审核工单 {code}: {action}。更改字段：{changes}。确认后提交员工审核。",
+  "backend.nlu.retry": "系统暂时无法处理您的要求。请稍后主动重试；本轮尚未提交任何请求。",
+  "backend.nlu.clarify": "我还没有理解您的要求。请更具体地说明；本轮尚未提交任何请求。"
 }

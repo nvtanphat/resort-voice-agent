@@ -31,6 +31,7 @@ class RouteDecision:
     social_kind: str | None = None
     # Facet of a single AskInfo (rag.facet_fact_types key); scopes retrieval, never routes.
     facet: str | None = None
+    failure_class: str | None = None
 
 
 # Routing vocabulary is profile-owned. Request changes and status checks are
@@ -41,8 +42,8 @@ def classify_dialogue(query: str, language: str) -> RouteDecision:
     """Layer A routing: only the deterministic safety route lives here.
 
     Emergency always wins and is decided without a model.  Every other turn
-    is a knowledge read until understanding (embedding router, then validated
-    SLM commands, then the reviewed-example fallback) says otherwise.
+    starts with a provisional read route; verified understanding supplies the
+    real intent. Explicit NLU failures replace it with a no-tool recovery route.
     """
     if emergency_response(query, language):
         return RouteDecision("emergency", True)
@@ -52,6 +53,17 @@ def classify_dialogue(query: str, language: str) -> RouteDecision:
 def fast_response(decision: RouteDecision, query: str, language: str, *,
                   evidence: str | None = None) -> dict:
     """Return a bounded deterministic response without retrieval or generation."""
+    if decision.branch == 'nlu_failure':
+        from concierge_kiosk.i18n import text as i18n_text
+        return {'answer': i18n_text('nlu.clarify' if decision.failure_class == 'INVALID_MODEL_OUTPUT'
+                                   else 'nlu.retry', language),
+                'sources': [], 'citations': [], 'suggested_action': None,
+                'retrieval_mode': 'not_used', 'generation_mode': 'deterministic',
+                'request_completed': False, 'grounding': 'not_required',
+                'requires_staff_review': False, 'fast_path': True,
+                'failure_class': decision.failure_class, 'understanding_commands': [],
+                'retryable': decision.failure_class != 'INVALID_MODEL_OUTPUT',
+                'business_writes': 0, 'evidence_status': 'UNAVAILABLE'}
     if decision.branch == "emergency":
         answer = emergency_response(query, language) or EMERGENCY_TEXT.get(language)
         if not answer:
@@ -78,7 +90,8 @@ def fast_response(decision: RouteDecision, query: str, language: str, *,
         return {"answer": i18n_text(key, language), "sources": [], "suggested_action": None,
                 "retrieval_mode": "not_used", "generation_mode": "deterministic",
                 "request_completed": False, "grounding": "not_required",
-                "requires_staff_review": False, "fast_path": True}
+                "requires_staff_review": False, "fast_path": True,
+                **({'failure_class': 'UNSUPPORTED_INTENT'} if decision.branch == 'out_of_scope' else {})}
     if decision.branch == "preference":
         from concierge_kiosk.i18n import text as i18n_text
         # A question, never a claim that something was saved: memory changes only after the guest
@@ -104,7 +117,7 @@ def fast_response(decision: RouteDecision, query: str, language: str, *,
         tasks: list[dict] = []
         # Explicit DAG metadata only; no agent/tool receives transaction authority.
         # An utterance containing "then" establishes review ordering, not a DB write.
-        return {'answer': STATIC_TEXT['clarification'][language], 'sources': [], 'citations': [], 'action_options': choices, 'task_plan': tasks, 'suggested_action': None, 'retrieval_mode': 'not_used', 'generation_mode': 'deterministic', 'request_completed': False, 'grounding': 'not_required', 'requires_staff_review': False, 'fast_path': True}
+        return {'answer': STATIC_TEXT['clarification'][language], 'sources': [], 'citations': [], 'action_options': choices, 'task_plan': tasks, 'suggested_action': None, 'retrieval_mode': 'not_used', 'generation_mode': 'deterministic', 'request_completed': False, 'grounding': 'not_required', 'requires_staff_review': False, 'fast_path': True, 'failure_class': 'AMBIGUOUS_INTENT'}
     if decision.branch == "confirmation":
         return {"answer": STATIC_TEXT["confirmation"][language], "sources": [], "suggested_action": None,
                 "retrieval_mode": "not_used", "generation_mode": "deterministic",

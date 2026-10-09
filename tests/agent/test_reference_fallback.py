@@ -48,6 +48,12 @@ def test_failed_nlu_followup_uses_live_pool_map_and_never_crosses_sessions(
     shutil.copyfile(shipped_db, tmp_path / 'edge.sqlite3')
     app = _client(tmp_path, map_release_path='releases/map-release.json',
                   map_release_sha256=Path('releases/map-release.sha256').read_text().strip())
+    # Establish evidence with an explicit validated read. An unavailable model
+    # no longer authorizes an implicit knowledge read; the following neutral
+    # mock abstention tests reference projection, not transport timeout retry.
+    monkeypatch.setattr(_TurnRuntimeSupport, 'command_for_session',
+        lambda self, query, language, session, **kw:
+        (Command('AskInfo', query=query),) if 'swimming pool' in query else None)
     def recover(self, query, language, session):
         anchors = self.live_context_anchors(session, language)
         if len(anchors) == 1:

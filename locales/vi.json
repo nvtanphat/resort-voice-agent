@@ -213,5 +213,7 @@
   "backend.request.change.recorded": "Thay đổi cho ticket {code} đã được ghi nhận. Xem trạng thái ticket để biết quyết định của nhân viên.",
   "backend.request.change.cancel_label": "xin hủy",
   "backend.request.change.modify_label": "xin sửa",
-  "backend.request.change.review": "Xem lại ticket {code}: {action}. Trường thay đổi: {changes}. Xác nhận để gửi nhân viên xét duyệt."
+  "backend.request.change.review": "Xem lại ticket {code}: {action}. Trường thay đổi: {changes}. Xác nhận để gửi nhân viên xét duyệt.",
+  "backend.nlu.retry": "Hệ thống hiện chưa xử lý được yêu cầu của bạn. Vui lòng chủ động thử lại sau; chưa có yêu cầu nào được gửi từ lượt này.",
+  "backend.nlu.clarify": "Tôi chưa hiểu rõ yêu cầu. Vui lòng nói lại cụ thể hơn; chưa có yêu cầu nào được gửi từ lượt này."
 }

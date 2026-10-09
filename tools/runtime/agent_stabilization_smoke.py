@@ -24,7 +24,12 @@ def prompt_diagnostics(payload: dict) -> dict:
     for variant in variants:
         properties = variant.get('properties', {})
         if properties.get('type', {}).get('const') == 'StartGoal':
-            goals[properties['goal']['const']] = properties['slots']['items']['properties']['name'].get('enum', [])
+            goal_schema = properties['goal']
+            codes = goal_schema.get('enum', [goal_schema.get('const')])
+            offered_slots = properties['slots']['items']['properties']['name'].get('enum', [])
+            contracts = {s['service_mode']: s['accepted_slots'] for s in user.get('available_services', [])}
+            for code in codes:
+                goals[code] = sorted(set(contracts.get(code, offered_slots)) & set(offered_slots))
     return {'http_payload_bytes':len(json.dumps(payload,ensure_ascii=False).encode()),
         'message_bytes':sum(len(m['content'].encode()) for m in messages),
         'schema_bytes':len(json.dumps(schema,ensure_ascii=False).encode()),

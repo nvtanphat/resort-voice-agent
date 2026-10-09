@@ -368,7 +368,7 @@ def validate_tool_result(decision: RouteDecision, result: dict, query: str, lang
                     raise RuntimeError('Invalid suggested business tool')
                 if result.get('requires_staff_review') is not True:
                     raise RuntimeError('Business suggestion requires staff review')
-        elif decision.branch in {'greeting', 'language', 'confirmation', 'clarification', 'preference', 'emergency_check'} and result.get('suggested_action') is not None:
+        elif decision.branch in {'greeting', 'language', 'confirmation', 'clarification', 'preference', 'emergency_check', 'nlu_failure'} and result.get('suggested_action') is not None:
             raise RuntimeError('Non-business fast route suggested a business operation')
         elif decision.branch == 'emergency':
             if (result.get('suggested_action') is not None

@@ -67,6 +67,7 @@ from .answers import AnswerServices
 
 
 LOGGER = logging.getLogger(__name__)
+_COMMAND_OUTCOME: ContextVar[str | None] = ContextVar('command_outcome', default=None)
 
 
 def _decision_from_commands(commands: tuple, fallback: RouteDecision) -> RouteDecision:
@@ -316,13 +317,19 @@ class _TurnRuntimeSupport:
         Emergency is resolved before this helper is called. A missing model,
         timeout or invalid proposal returns ``None``.
         """
-        if (not self.cfg.llm_base_url or not self.cfg.llm_model
-                or not self.slm_permitted()
-                or not self.audio_admission.try_enter_slm(session)):
+        if not self.cfg.llm_base_url or not self.cfg.llm_model:
+            _COMMAND_OUTCOME.set('unavailable')
+            return None
+        if not self.slm_permitted():
+            _COMMAND_OUTCOME.set('model_not_ready')
+            return None
+        if not self.audio_admission.try_enter_slm(session):
+            _COMMAND_OUTCOME.set('model_busy')
             return None
         try:
             models = self.cfg.llm_candidates()
             if not models:
+                _COMMAND_OUTCOME.set('unavailable')
                 return None
             candidates = None
             examples: tuple = ()
@@ -341,13 +348,17 @@ class _TurnRuntimeSupport:
                     # Candidate retrieval is advisory. A missing local embedder
                     # must not turn a bounded command proposal into an error.
                     LOGGER.warning('service_selector_unavailable', exc_info=True)
+            def record_outcome(outcome):
+                _COMMAND_OUTCOME.set(outcome)
+                LOGGER.info('slm_commands outcome=%s language=%s', outcome, language)
+
             return model_commands(
                 query=query, language=language, base_url=self.cfg.llm_base_url,
                 model=models[0], enabled_request_kinds=enabled_request_kinds,
                 service_candidates=candidates, examples=examples,
                 pending_reply=pending_reply,
                 context_topic=context_topic,
-                on_outcome=lambda outcome: LOGGER.info('slm_commands outcome=%s language=%s', outcome, language),
+                on_outcome=record_outcome,
                 should_cancel=lambda: self.audio_admission.slm_cancelled(session),
                 num_gpu=self.cfg.slm_num_gpu,
                 timeout_seconds=(min(self.cfg.intent_parser_timeout_seconds,
@@ -439,10 +450,26 @@ class _TurnRuntimeSupport:
             except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
                 LOGGER.warning('fast_router_unavailable', exc_info=True)
         if commands is None:
-            commands = self.command_for_session(
-                execution_query, language, session, enabled_request_kinds=enabled_request_kinds,
-                pending_reply=pending_field or ('confirm' if expects_confirm else None),
-                voice_turn=voice_turn)
+            token = _COMMAND_OUTCOME.set(None)
+            try:
+                commands = self.command_for_session(
+                    execution_query, language, session, enabled_request_kinds=enabled_request_kinds,
+                    pending_reply=pending_field or ('confirm' if expects_confirm else None),
+                    voice_turn=voice_turn)
+                outcome = _COMMAND_OUTCOME.get()
+            finally:
+                _COMMAND_OUTCOME.reset(token)
+            if commands is None and outcome is not None:
+                failure = {
+                    'model_not_ready': 'MODEL_NOT_READY', 'model_busy': 'MODEL_BUSY',
+                    'timeout': 'NLU_TIMEOUT', 'turn_budget_expired': 'NLU_TIMEOUT',
+                    'malformed_output': 'INVALID_MODEL_OUTPUT',
+                    'rejected_by_validation': 'INVALID_MODEL_OUTPUT',
+                }.get(outcome, 'NLU_UNAVAILABLE')
+                # Transport/validation failure is not a new guest intent. Do
+                # not retry via resolver, model planner, or service fallback.
+                return (RouteDecision('nlu_failure', True, failure_class=failure),
+                        {'understanding_outcome': outcome}, execution_query, None)
         if commands is None:
             commands = self.fallback_commands(
                 execution_query, language, enabled_request_kinds=enabled_request_kinds,
@@ -1204,6 +1231,12 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             }]
         result['tool_route'] = ('manage_request' if decision.branch == 'request_change'
                                 else decision.branch)
+        if decision.branch == 'nlu_failure' and task_context is not None:
+            result['understanding_outcome'] = task_context.get('understanding_outcome')
+        elif result.get('grounding') == 'no_evidence' and decision.branch in {'knowledge', 'planning'}:
+            result.setdefault('failure_class', 'NO_VERIFIED_EVIDENCE')
+        elif result.get('grounding') == 'map_ambiguous':
+            result.setdefault('failure_class', 'AMBIGUOUS_INTENT')
         if turn_preferences:
             result['_preference_memory'] = {'action': 'merge', 'preferences': turn_preferences}
         result.setdefault('_memory_version', turn_memory_version)

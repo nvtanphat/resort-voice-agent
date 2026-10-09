@@ -213,5 +213,7 @@
   "backend.request.change.recorded": "Your change for ticket {code} is recorded. Check the ticket status for the staff decision.",
   "backend.request.change.cancel_label": "cancel",
   "backend.request.change.modify_label": "modify",
-  "backend.request.change.review": "Review ticket {code}: {action}. Changed fields: {changes}. Confirm to send this change for staff review."
+  "backend.request.change.review": "Review ticket {code}: {action}. Changed fields: {changes}. Confirm to send this change for staff review.",
+  "backend.nlu.retry": "The system could not process your request. Please try again when ready; this turn has not sent a request.",
+  "backend.nlu.clarify": "I could not understand the request clearly. Please describe it more specifically; this turn has not sent a request."
 }

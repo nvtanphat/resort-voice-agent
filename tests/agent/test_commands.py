@@ -177,8 +177,9 @@ def test_model_commands_sends_examples_only_for_offered_goals(monkeypatch):
     content = json.loads(captured['messages'][1]['content'])
     assert [item['guest_turn'] for item in content['examples']] == ['two towels', 'late checkout', 'pool hours?']
     variants = captured['format']['properties']['commands']['items']['anyOf']
-    assert [item['properties']['goal']['const'] for item in variants
-            if item['properties']['type']['const'] == 'StartGoal'] == [service['service_mode'] for service in content['available_services']]
+    goals = [goal for item in variants if item['properties']['type']['const'] == 'StartGoal'
+             for goal in item['properties']['goal'].get('enum', [item['properties']['goal'].get('const')])]
+    assert goals == [service['service_mode'] for service in content['available_services']]
 
 
 class _AxisEmbedder:

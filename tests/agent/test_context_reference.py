@@ -181,8 +181,12 @@ def test_the_flag_is_rejected_on_commands_that_cannot_use_it():
 
     bad = commands_from_items([{"type": "Cancel", "refers_to_context": True}])
     assert validate_commands(bad, query="cancel it") is None
+    # A flag of the wrong type is rejected on its own item; a valid sibling survives.
     junk = commands_from_items([{"type": "AskInfo", "query": "hours", "refers_to_context": "yes"}])
-    assert junk is None
+    assert junk == []
+    mixed = commands_from_items([{"type": "AskInfo", "query": "hours", "refers_to_context": "yes"},
+                                 {"type": "AskInfo", "query": "pool"}])
+    assert [command.query for command in mixed] == ["pool"]
 
 
 # --- few-shot selection: follow-up examples exist only while a verified topic does ---

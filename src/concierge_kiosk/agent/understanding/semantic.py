@@ -9,6 +9,8 @@ before display, and voice independently rechecks the same proof before speech.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import contextmanager
+from contextvars import ContextVar
 import json
 import re
 from typing import Callable
@@ -164,17 +166,51 @@ def parse_verdict(raw: str, claim: SemanticClaim) -> bool:
             and obj['claim'] == claim.text)
 
 
+_CHAT_FAILURE: ContextVar[list[str] | None] = ContextVar('chat_failure', default=None)
+
+
+@contextmanager
+def capture_chat_failure():
+    """Request-local diagnostics, without changing existing chat adapter signatures."""
+    failures: list[str] = []
+    token = _CHAT_FAILURE.set(failures)
+    try:
+        yield failures
+    finally:
+        _CHAT_FAILURE.reset(token)
+
+
+def _chat_failed(reason: str) -> None:
+    failures = _CHAT_FAILURE.get()
+    if failures is not None:
+        failures.append(reason)
+
+
 def _chat(base_url: str, payload: dict, timeout: float,
           cancel: Callable[[], bool] | None) -> str | None:
     if cancel and cancel():
+        _chat_failed('cancelled')
         return None
     body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
     try:
         request = Request(base_url.rstrip('/') + '/api/chat', data=body,
                           headers={'Content-Type': 'application/json'}, method='POST')
         with urlopen(request, timeout=timeout) as response:
-            return _model_answer(response, should_cancel=cancel, max_chars=_MAX_JSON)
-    except (OSError, URLError, ValueError, KeyError, TypeError, AttributeError):
+            answer = _model_answer(response, should_cancel=cancel, max_chars=_MAX_JSON)
+            if answer is None:
+                _chat_failed('cancelled' if cancel and cancel() else 'malformed_output')
+            return answer
+    except TimeoutError:
+        _chat_failed('timeout')
+        return None
+    except URLError as exc:
+        _chat_failed('timeout' if isinstance(exc.reason, TimeoutError) else 'unavailable')
+        return None
+    except OSError:
+        _chat_failed('unavailable')
+        return None
+    except (ValueError, KeyError, TypeError, AttributeError):
+        _chat_failed('malformed_output')
         return None
 
 

@@ -7,11 +7,12 @@ runtime registry before a command stream is accepted.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from copy import deepcopy
 import json
 import unicodedata
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
-from concierge_kiosk.agent.understanding.semantic import _chat
+from concierge_kiosk.agent.understanding.semantic import _chat, capture_chat_failure
 from concierge_kiosk.runtime.local_http import slm_turn_expired
 from concierge_kiosk.core.domain_profile import preference_policy, rag_policy, supported_languages
 from concierge_kiosk.core.settings import SLM_NUM_CTX
@@ -86,7 +87,7 @@ class Command:
 
 def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
                    *, slot_reply: bool = True, context_topic: bool = False,
-                   confirm_pending: bool = False) -> dict[str, Any]:
+                   confirm_pending: bool = False, compact: bool = False) -> dict[str, Any]:
     """Return the closed JSON schema used by an understanding model.
 
     Each command type is its own schema variant carrying only that type's
@@ -96,6 +97,8 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
     ``StartGoal`` variant a closed goal and slot vocabulary. ``slot_reply``
     offers ``SetSlot``/``CorrectSlot`` only while a server-owned question is
     pending. The parser still re-validates everything against the registry.
+    ``compact=True`` merges service variants into goal and slot-name enums;
+    command shapes/state gates stay closed and per-goal slots stay server-owned.
     """
     text = {'type': 'string', 'minLength': 1, 'maxLength': 120}
 
@@ -169,6 +172,24 @@ def command_schema(goal_slots: Mapping[str, Sequence[str]] | None = None,
         value = ({'type': 'string', 'enum': list(spec.values)} if spec.kind == 'enum' else text)
         variants.append(variant('SetPreference', field={'type': 'string', 'const': name}, value=value,
                                 evidence=text))
+    if compact:
+        # Reuse the same command shapes, bounds and state gates. Only merge
+        # registry goal alternatives, never unrelated command types. The
+        # prompt retains per-goal slots; the server still filters by registry.
+        grouped = []
+        for command_type in ('StartGoal', 'CheckAvailability'):
+            members = [v for v in variants if v['properties']['type']['const'] == command_type]
+            if not members:
+                continue
+            shared = deepcopy(members[0])
+            shared['properties']['goal'] = {'type': 'string', 'enum': [
+                v['properties']['goal']['const'] for v in members]}
+            shared['properties']['slots']['items']['properties']['name'] = name_schema(
+                name for v in members
+                for name in v['properties']['slots']['items']['properties']['name'].get('enum', ()))
+            grouped.append(shared)
+        variants = grouped + [v for v in variants
+                              if v['properties']['type']['const'] not in {'StartGoal', 'CheckAvailability'}]
     return {
         'type': 'object', 'additionalProperties': False,
         'required': ['commands'],
@@ -188,7 +209,7 @@ def _verbatim(query: str, value: str) -> bool:
 
 
 def _text(value: object, maximum: int) -> str | None:
-    if not isinstance(value, str):
+    if not isinstance(value, str) or len(value) > maximum:
         return None
     cleaned = ' '.join(value.split()).strip()
     return cleaned if 1 <= len(cleaned) <= maximum else None
@@ -249,7 +270,12 @@ def validate_commands(commands: Iterable[Command], *, query: str,
     validated: list[Command] = []
     started: set[tuple] = set()
     for command in values:
-        if not isinstance(command, Command) or command.type not in COMMAND_TYPES:
+        if (not isinstance(command, Command) or not isinstance(command.type, str)
+                or command.type not in COMMAND_TYPES
+                or type(command.conditional) is not bool or type(command.refers_to_context) is not bool
+                or any(value is not None and not isinstance(value, str)
+                       for name in _OPTIONAL_FIELDS if name != 'confirmed'
+                       for value in (getattr(command, name),))):
             continue
         if len(command.slots) > MAX_SLOTS:
             continue
@@ -260,6 +286,8 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                 or (command.facet is not None and command.type != 'AskInfo')
                 or (command.evidence is not None and command.type != 'SetPreference')
                 or (command.refers_to_context and command.type not in {'StartGoal', 'AskInfo', 'Navigate'})):
+            continue
+        if command.conditional and command.type != 'StartGoal':
             continue
 
         if command.type == 'StartGoal':
@@ -382,30 +410,32 @@ def validate_commands(commands: Iterable[Command], *, query: str,
 
 def commands_from_items(raw_commands: object) -> list[Command] | None:
     """Build unvalidated commands from decoded JSON objects (model output or data)."""
-    if not isinstance(raw_commands, list):
+    if not isinstance(raw_commands, list) or not 1 <= len(raw_commands) <= MAX_COMMANDS:
         return None
     allowed = {'type', 'goal', 'slots', 'query', 'keys', 'field', 'value',
                'confirmed', 'conditional', 'reason', 'kind', 'target', 'facet', 'refers_to_context', 'evidence'}
     commands: list[Command] = []
     for item in raw_commands:
         if not isinstance(item, dict) or 'type' not in item or set(item) - allowed:
-            return None
+            continue
         if any(key in item and type(item[key]) is not bool for key in ('conditional', 'refers_to_context')):
-            return None
+            continue
         slots_raw = item.get('slots', [])
         if not isinstance(slots_raw, list):
-            return None
+            continue
         slots: list[CommandSlot] = []
         for slot in slots_raw:
             if not isinstance(slot, dict) or set(slot) != {'name', 'text'}:
-                return None
+                break
             name, text = slot.get('name'), slot.get('text')
             if not isinstance(name, str) or not isinstance(text, str):
-                return None
+                break
             slots.append(CommandSlot(name, text))
+        if len(slots) != len(slots_raw):
+            continue
         keys = item.get('keys', [])
         if not isinstance(keys, list) or any(not isinstance(key, str) for key in keys):
-            return None
+            continue
         commands.append(Command(
             type=item.get('type'), goal=item.get('goal'), slots=tuple(slots),
             query=item.get('query'), keys=tuple(keys), field=item.get('field'),
@@ -453,11 +483,12 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
     server-owned service catalog, and :func:`parse_commands` checks every
     service, slot and verb against the original guest utterance before the
     runtime sees it.  A transport, timeout or schema failure returns ``None``
-    so deterministic routing remains authoritative.
+    with an explicit outcome so the engine can recover without inventing an intent.
 
     ``on_outcome`` receives why a proposal was or was not produced, so that an unreachable
     model, an exhausted turn budget, unparseable output and a proposal the validator refused
-    are told apart (all of them return ``None``): ``unavailable``, ``no_response``,
+    are told apart (all of them return ``None``): ``timeout``, ``cancelled``,
+    ``unavailable``, ``no_response``,
     ``turn_budget_expired``, ``malformed_output``, ``rejected_by_validation``,
     ``partially_accepted`` (some proposed commands were dropped), ``accepted``.
     """
@@ -532,7 +563,7 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         'format': command_schema(
             {item['service_mode']: item['accepted_slots'] for item in services},
             slot_reply=pending_reply is not None, context_topic=bool(context_topic),
-            confirm_pending=pending_reply == 'confirm'),
+            confirm_pending=pending_reply == 'confirm', compact=True),
         'messages': [
             {'role': 'system', 'content': (
                 'Interpret exactly one hotel concierge guest turn and return only the JSON schema, written compactly '
@@ -588,9 +619,11 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         'options': {'temperature': 0, 'num_predict': 220, 'num_ctx': SLM_NUM_CTX,
                     'num_gpu': num_gpu},
     }
-    raw = _chat(base_url, payload, min(10.0, max(0.05, timeout_seconds)), should_cancel)
+    with capture_chat_failure() as failures:
+        raw = _chat(base_url, payload, min(10.0, max(0.05, timeout_seconds)), should_cancel)
     if not raw:
-        note('turn_budget_expired' if slm_turn_expired() else 'no_response')
+        note('turn_budget_expired' if slm_turn_expired() else
+             failures[-1] if failures else 'no_response')
         return None
     parsed = parse_commands(
         raw, query=query, enabled_request_kinds=enabled_request_kinds,

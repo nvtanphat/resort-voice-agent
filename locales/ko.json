@@ -214,5 +214,7 @@
   "backend.request.change.recorded": "티켓 {code}의 변경이 기록되었습니다. 직원의 결정은 티켓 상태에서 확인하세요.",
   "backend.request.change.cancel_label": "취소 요청",
   "backend.request.change.modify_label": "변경 요청",
-  "backend.request.change.review": "티켓 {code} 검토: {action}. 변경 필드: {changes}. 확인하면 직원 검토에 제출됩니다."
+  "backend.request.change.review": "티켓 {code} 검토: {action}. 변경 필드: {changes}. 확인하면 직원 검토에 제출됩니다.",
+  "backend.nlu.retry": "현재 요청을 처리하지 못했습니다. 원하실 때 다시 시도해 주세요. 이번 대화에서는 요청을 전송하지 않았습니다.",
+  "backend.nlu.clarify": "요청을 명확히 이해하지 못했습니다. 조금 더 구체적으로 말씀해 주세요. 이번 대화에서는 요청을 전송하지 않았습니다."
 }
