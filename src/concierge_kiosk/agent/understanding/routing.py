@@ -4,7 +4,7 @@ No model calls, database writes or implicit confirmation of business actions.
 """
 from __future__ import annotations
 from dataclasses import dataclass
-from concierge_kiosk.agent.understanding.intent import emergency_response, EMERGENCY_TEXT
+from concierge_kiosk.agent.understanding.intent import emergency_response, emergency_tier1, EMERGENCY_TEXT
 from concierge_kiosk.agent.understanding.domain_nlu import ROUTING_STATIC_TEXT as STATIC_TEXT
 from concierge_kiosk.domain.service_registry import (
     route_branch_for_request_kind,
@@ -45,8 +45,8 @@ def classify_dialogue(query: str, language: str) -> RouteDecision:
     starts with a provisional read route; verified understanding supplies the
     real intent. Explicit NLU failures replace it with a no-tool recovery route.
     """
-    if emergency_response(query, language):
-        return RouteDecision("emergency", True)
+    if branch := emergency_tier1(query, language):
+        return RouteDecision(branch, True)
     return RouteDecision('knowledge', False, None)
 
 

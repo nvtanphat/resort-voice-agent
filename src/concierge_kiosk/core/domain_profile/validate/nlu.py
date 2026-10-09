@@ -74,6 +74,14 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for language, patterns in intent["emergency_event_patterns"].items():
         for pattern in patterns:
             compile_regex(pattern, label=f"nlu.intent.emergency_event_patterns.{language}")
+    for key in ('emergency_review_patterns', 'emergency_context_patterns'):
+        if key in intent:
+            validate_language_keys(intent[key], languages, label=f'nlu.intent.{key}', require_all=True)
+            for language, group in intent[key].items():
+                groups = group.values() if key == 'emergency_context_patterns' else (group,)
+                for patterns in groups:
+                    for pattern in patterns:
+                        compile_regex(pattern, label=f'nlu.intent.{key}.{language}')
     for key in ("negation_patterns",):
         for language, pattern in intent[key].items():
             compile_regex(pattern, label=f"nlu.intent.{key}.{language}")

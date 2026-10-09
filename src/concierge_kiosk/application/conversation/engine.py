@@ -234,6 +234,7 @@ class _TurnRuntimeSupport:
     fast_router: FastRouter | None = None
     emergency_gate: EmergencyGate | None = None
     _pending_emergency_checks: set[str] = field(default_factory=set)
+    _pending_emergency_details: dict[str, str] = field(default_factory=dict)
 
     @observed('memory_resolution', project=lambda result: {'anchor_accepted': bool(result)})
     def live_context_anchors(self, session: str, language: str):
@@ -300,11 +301,13 @@ class _TurnRuntimeSupport:
     def is_pending_emergency_check(self, session: str) -> bool:
         return session in self._pending_emergency_checks
 
-    def set_pending_emergency_check(self, session: str) -> None:
+    def set_pending_emergency_check(self, session: str, details: str = '') -> None:
         self._pending_emergency_checks.add(session)
+        self._pending_emergency_details[session] = details[:500]
 
     def clear_pending_emergency_check(self, session: str) -> None:
         self._pending_emergency_checks.discard(session)
+        self._pending_emergency_details.pop(session, None)
 
     def pending_field(self, session: str, language: str, pending_task) -> str | None:
         """The slot the server is currently asking for, if any (server-owned state)."""
@@ -413,13 +416,18 @@ class _TurnRuntimeSupport:
         replies, draft continuation) rather than on the command loop.
         """
         if decision.branch == 'emergency':
+            self.clear_pending_emergency_check(session)
             self.agent_tasks.clear(session)
             return decision, None, query, None
         if self.is_pending_emergency_check(session):
+            emergency_details = self._pending_emergency_details.get(session, '')
             self.clear_pending_emergency_check(session)
             if _is_expected_confirmation(query, language):
                 self.agent_tasks.clear(session)
-                return RouteDecision('emergency', True), None, query, None
+                return RouteDecision('emergency', True), {'emergency_details': emergency_details or query}, query, None
+        if decision.branch == 'emergency_check':
+            self.set_pending_emergency_check(session, query)
+            return decision, None, query, None
         if self.emergency_gate is not None:
             q_vec = None
             if self.service_selector is not None:
@@ -436,7 +444,7 @@ class _TurnRuntimeSupport:
                     self.agent_tasks.clear(session)
                     return gate_decision, None, query, None
                 if gate_decision.branch == 'emergency_check':
-                    self.set_pending_emergency_check(session)
+                    self.set_pending_emergency_check(session, query)
                     return gate_decision, None, query, None
         pending_task = self.agent_tasks.load(session, language)
         update_current(pending_task_continuation=pending_task is not None)
@@ -1023,7 +1031,8 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             result['agent_action'] = {'status': 'cancelled', 'business_writes': 0}
             result['clear_suggestions'] = bool(task_context.get('clear_suggestions'))
         elif decision.branch == 'emergency':
-            result = emergency_answer(query, body.language, session, source=body.source)
+            emergency_details = (task_context or {}).get('emergency_details', query)
+            result = emergency_answer(emergency_details, body.language, session, source=body.source)
         elif decision.branch == 'emergency_check':
             result = emergency_check_answer(body.language)
             conversations.remember_expected_reply(session, body.language, 'confirm')

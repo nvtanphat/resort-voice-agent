@@ -586,7 +586,8 @@
           "\\b(?:burning|burnt)[^.!?]{0,20}\\b(?:electrical|wire|wiring|plastic)[^.!?]{0,16}\\b(?:smell|odor|odour)\\b",
           "\\b(?:is|are|keeps?|started|been)\\s+bleeding\\b|\\bbleeding\\s+(?:a lot|heavily|badly|everywhere)\\b|\\blot of blood\\b",
           "\\b(?:(?:there is|i|we)\\s+(?:see\\s+)?(?:a\\s+)?(?:fire|smoke)|(?:fire|smoke)\\s+(?:is\\s+)?(?:spreading|thick)|(?:is|are)\\s+burning)\\b",
-          "\\b(?:flames?\\s+(?:are\\s+)?(?:spreading|burning)|(?:there is|i|we)\\s+(?:thick\\s+)?smoke|smoke\\s+(?:is\\s+)?thick)\\b"
+          "\\b(?:flames?\\s+(?:are\\s+)?(?:spreading|burning)|(?:there is|i|we)\\s+(?:thick\\s+)?smoke|smoke\\s+(?:is\\s+)?thick)\\b",
+          "\\banaphylaxis\\b"
         ],
         "vi": [
           "^\\s*(?:cháy|chay|cứu|sos)\\s*[!.!?]*\\s*$",
@@ -600,7 +601,14 @@
           "(?<!\\w)(?:dây điện|ổ điện|ổ cắm|bảng điện|tủ điện)[^.!?。！？]{0,20}(?:cháy|khét)(?!\\w)",
           "(?<!\\w)(?:có người|ai đó|bị|đang|vẫn)\\s+chảy máu|chảy (?:rất )?nhiều máu|mất nhiều máu",
           "(?<!\\w)(?:b\\u1ed1c\\s+ch\\u00e1y|\\u0111ang\\s+(?:b\\u1ed1c\\s+)?ch\\u00e1y|kh\\u00f3i\\s+d\\u00e0y)(?!\\w)",
-          "(?<!\\w)(?:\\u0111\\u00e1m\\s+ch\\u00e1y|ch\\u00e1y\\s+\\u0111ang\\s+b\\u1ed1c)(?!\\w)"
+          "(?<!\\w)(?:\\u0111\\u00e1m\\s+ch\\u00e1y|ch\\u00e1y\\s+\\u0111ang\\s+b\\u1ed1c)(?!\\w)",
+          "(?<!\\w)(?:người|khách)[^.!?。！？]{0,44}(?:ngã|nằm)[^.!?。！？]{0,60}(?:không\\s+(?:trả lời|phản hồi|đứng dậy)|bất tỉnh)(?!\\w)",
+          "(?<!\\w)(?:đang|bị)\\s+(?:co giật|điện giật)(?!\\w)",
+          "(?<!\\w)rơi\\s+xuống\\s+hồ[^.!?。！？]{0,40}chưa\\s+nổi\\s+lên(?!\\w)",
+          "(?<!\\w)lửa\\s+(?:bốc|lan)[^.!?。！？]{0,45}(?:thùng rác|hành lang|phòng|sảnh)(?!\\w)",
+          "(?<!\\w)(?:con|bé|trẻ)(?:\\s+(?:tôi|của tôi))?[^.!?。！？]{0,45}(?:đi\\s+đâu\\s+mất|không\\s+thấy\\s+(?:ở\\s+)?đâu)(?!\\w)",
+          "(?<!\\w)(?:phản vệ|sốc phản vệ)(?!\\w)",
+          "(?<!\\w)dị ứng nặng[^.!?。！？]{0,40}(?:đang\\s+sưng|sưng\\s+nhanh)(?!\\w)"
         ],
         "zh": [
           "(?:着火了|发生火灾|急救|紧急情况|溺水|落水|孩子走失|儿童走失|孩子失踪|昏倒|失去意识|胸痛|心脏病发作|大量出血|呼吸困难|窒息)",
@@ -613,7 +621,10 @@
           "(?:电线|電線|插座|空调|空調|配电箱|配電箱)[^。！？]{0,22}(?:烧焦|燒焦|焦糊|焦味)",
           "(?:烧焦|燒焦|焦糊|焦味)[^。！？]{0,22}(?:电线|電線|插座|空调|空調|电气|電氣)",
           "流血|流了很多血|大出血|血流不止",
-          "(?:\\u7740\\u706b|\\u5192\\u70df)"
+          "(?:\\u7740\\u706b|\\u5192\\u70df)",
+          "(?:孩子|小孩|儿子|女儿)不见了",
+          "(?:有人|客人)[^。！？]{0,16}(?:倒下了)[^。！？]{0,18}(?:起不来)",
+          "過敏性休克"
         ],
         "ko": [
           "(?:화재가 (?:났|발생)|화재입니다|불이 났|응급 상황|긴급 상황|물에 빠졌|익사|아이가 사라졌|아이를 잃어버렸|기절|의식이 없|심장마비|심한 출혈|숨을 못 쉬|질식|쓰러졌)",
@@ -626,7 +637,8 @@
           "(?:타는|탄|그을린)[^.!?。！？]{0,16}(?:전선|전기|콘센트|에어컨)[^.!?。！？]{0,10}(?:냄새)",
           "피가\\s*(?:나요|나고|많이|멈추지)|피를\\s*(?:많이\\s*)?흘려|출혈",
           "(?:\\ubd88\\uc774\\s*(?:\\ub0ac|\\ub098|\\ubc88\\uc84c)|\\uc5f0\\uae30\\uac00\\s*(?:\\ub098|\\ubcf4\\uc774|\\uc9d9))",
-          "(?:\\uc5f0\\uae30\\uac00\\s*(?:\\ub098|\\ubcf4\\uc774|\\ubcf4\\uc5ec|\\uc9d9))"
+          "(?:\\uc5f0\\uae30\\uac00\\s*(?:\\ub098|\\ubcf4\\uc774|\\ubcf4\\uc5ec|\\uc9d9))",
+          "아나필락시스"
         ]
       },
       "negation_patterns": {
@@ -646,6 +658,63 @@
         "fire": "114",
         "resort_operator_extension": "0",
         "medical_centre_extension": "3420"
+      },
+      "emergency_review_patterns": {
+        "vi": [
+          "(?<!\\w)tiếng\\s+kêu\\s+cứu(?!\\w)",
+          "(?<!\\w)(?:người|khách)[^.!?。！？]{0,24}nằm\\s+bất\\s+động(?!\\w)"
+        ],
+        "en": [],
+        "zh": [],
+        "ko": []
+      },
+      "emergency_context_patterns": {
+        "en": {
+          "negated": [
+            "\\b(?:no|not)\\s+(?:fire|smoke|unconscious|unresponsive|choking|collapsed|having a seizure|anaphylaxis)\\b"
+          ],
+          "historical": [
+            "\\b(?:yesterday|last week|history of|used to)\\b"
+          ],
+          "informational": [
+            "^\\s*(?:what is|what if|how to prevent|tell me about|explain)\\b"
+          ]
+        },
+        "vi": {
+          "negated": [
+            "(?<!\\w)(?:không|chưa)\\s+(?:có\\s+|bị\\s+|đang\\s+)?(?:cháy|khói|bất tỉnh|co giật|điện giật|phản vệ)(?!\\w)",
+            "(?<!\\w)không\\s+có\\s+(?:người|khách)\\s+(?:đang|bị)\\s+(?:co giật|điện giật)(?!\\w)"
+          ],
+          "historical": [
+            "(?<!\\w)(?:hôm qua|trước đây)(?!\\w)"
+          ],
+          "informational": [
+            "^\\s*(?:giải thích|cho biết)[^.!?]{0,24}",
+            "(?:bất tỉnh|co giật|điện giật|phản vệ|cháy)\\s+là\\s+gì"
+          ]
+        },
+        "zh": {
+          "negated": [
+            "(?:没有|不是)(?:火灾|着火|昏倒|失去意识|過敏性休克)"
+          ],
+          "historical": [
+            "(?:昨天|以前)"
+          ],
+          "informational": [
+            "(?:什么是|如何预防)"
+          ]
+        },
+        "ko": {
+          "negated": [
+            "(?:화재가|기절|아나필락시스)[^.!?]{0,8}(?:아니|없)"
+          ],
+          "historical": [
+            "어제"
+          ],
+          "informational": [
+            "(?:무엇|뭔가요|예방)"
+          ]
+        }
       }
     },
     "routing": {

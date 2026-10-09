@@ -14,6 +14,8 @@ from functools import lru_cache
 from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_EVENT_PATTERNS as _EMERGENCY_EVENT_PATTERNS, EMERGENCY_TEXT, FILLER_TERMS as _FILLER_TERMS, SELF_CORRECTION_MARKERS as _SELF_CORRECTION_MARKERS
 from concierge_kiosk.agent.understanding.normalization import normalize_with_spans
 from concierge_kiosk.core.domain_vocab import entity_terms, service_terms
+from concierge_kiosk.core.domain_profile import nlu_policy, get_domain_profile
+from concierge_kiosk.agent.understanding.intent_evidence import unquoted
 
 
 @dataclass(frozen=True)
@@ -28,13 +30,46 @@ def emergency_response(query: str, language: str) -> str | None:
     Matching all supported languages is intentional because the selected UI
     language is not proof of the language currently spoken by the guest.
     """
+    if emergency_tier1(query, language) == 'emergency':
+        return EMERGENCY_TEXT[language]
+    return None
+
+
+def emergency_tier1(query: str, language: str) -> str | None:
+    """Apply bounded active-incident grammar, then the configured review zone.
+
+    Exclusions are scoped to clauses/matches. A negated smoke mention cannot
+    hide a different active incident. Full incidents always precede review and
+    require neither a model nor confirmation. Vocabulary stays profile-owned.
+    """
     if language not in EMERGENCY_TEXT:
         return None
-    text = _mask_catalog_terms(
-        unicodedata.normalize('NFKC', query).casefold().strip(), language)
-    if any(pattern.search(text) for patterns in _EMERGENCY_EVENT_PATTERNS.values()
-           for pattern in patterns):
-        return EMERGENCY_TEXT[language]
+    policy = nlu_policy().intent
+    text = _mask_catalog_terms(unicodedata.normalize('NFKC', unquoted(query)).casefold().strip(), language)
+    connectors = [term for terms in get_domain_profile().semantic_authorization['clause_connectors'].values() for term in terms]
+    separators = [r'[;,.!?\n\u3002\uff0c\uff1b\uff1f]'] + [
+        (r'(?<!\w)' + re.escape(term) + r'(?!\w)') if not _uses_syllabic_or_logographic_script(term) else re.escape(term)
+        for term in connectors]
+    pieces = re.split('|'.join(separators), text)
+    # Preserve approved incident relationships spanning a connector, such as
+    # underwater + not responding; fragments separately allow a current event
+    # after a historical clause to retain priority.
+    pieces += re.split(r'[;.!?\n\u3002\uff1b\uff1f]', text)
+    for branch, groups in (
+            ('emergency', policy['emergency_event_patterns']),
+            ('emergency_check', policy.get('emergency_review_patterns', {}))):
+        for code, patterns in groups.items():
+            context = policy.get('emergency_context_patterns', {}).get(code, {})
+            for piece in pieces:
+                if any(re.search(pattern, piece) for key in ('historical', 'informational')
+                       for pattern in context.get(key, ())):
+                    continue
+                negative = [match.span() for pattern in context.get('negated', ())
+                            for match in re.finditer(pattern, piece)]
+                for pattern in patterns:
+                    for match in re.finditer(pattern, piece):
+                        if not any(start < match.end() and match.start() < end for start,end in negative):
+                            return branch
     return None
 
 

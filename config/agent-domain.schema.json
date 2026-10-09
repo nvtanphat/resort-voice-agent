@@ -694,6 +694,75 @@
                   "pattern": "^[0-9]{1,6}$"
                 }
               }
+            },
+            "emergency_review_patterns": {
+              "type": "object",
+              "maxProperties": 16,
+              "propertyNames": {
+                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
+              },
+              "additionalProperties": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 64,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              }
+            },
+            "emergency_context_patterns": {
+              "type": "object",
+              "maxProperties": 16,
+              "propertyNames": {
+                "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "negated",
+                  "historical",
+                  "informational"
+                ],
+                "properties": {
+                  "negated": {
+                    "type": "array",
+                    "minItems": 0,
+                    "maxItems": 64,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    }
+                  },
+                  "historical": {
+                    "type": "array",
+                    "minItems": 0,
+                    "maxItems": 64,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    }
+                  },
+                  "informational": {
+                    "type": "array",
+                    "minItems": 0,
+                    "maxItems": 64,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    }
+                  }
+                }
+              }
             }
           }
         },

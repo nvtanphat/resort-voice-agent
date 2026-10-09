@@ -248,9 +248,14 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         ensure_active_context_session(session)
         alert = None
         try:
-            alert = workflows.queue_emergency_alert(
+            receipt = workflows.queue_emergency_alert(
                 session, language, query,
                 source='sos' if source == 'sos_button' else 'dialogue')
+            if (not isinstance(receipt, dict) or not isinstance(receipt.get('id'), str)
+                    or not receipt['id'].strip() or receipt.get('status') not in {'open', 'acknowledged'}
+                    or receipt.get('priority') != 100):
+                raise RuntimeError('Invalid emergency queue receipt')
+            alert = receipt
             if not alert.get('idempotent_replay'):
                 record_metric('safety.emergency_staff_alert', language)
         except (sqlite3.Error, OSError, RuntimeError):
