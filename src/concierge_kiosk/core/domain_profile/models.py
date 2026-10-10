@@ -66,6 +66,9 @@ class RagPolicy:
     document_domains: Mapping[str, Any]
     # Closed facet name -> fact types it covers (names the command model may emit).
     facet_fact_types: Mapping[str, tuple[str, ...]]
+    # Facet -> value pattern: a fact of another type whose value matches still
+    # answers that facet (a check-out time stored as a policy answers "what time").
+    facet_value_patterns: Mapping[str, str]
     token_stopwords: frozenset[str]
     cross_language_fallback_order: tuple[str, ...]
     tokenization: Mapping[str, Any]

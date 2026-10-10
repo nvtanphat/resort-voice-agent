@@ -36,6 +36,7 @@ from .bootstrap import prepare_runtime
 from .core.property_profile import load_property_profile, unconfigured_property_profile
 from .core.domain_profile import get_domain_profile, load_domain_profile, voice_policy
 from .agent.understanding.service_selector import ServiceSelector, load_command_examples
+from .agent.understanding.commands import command_system_message
 from .core.dataset_layout import SERVICE_CATALOG, dataset_path, training_agent_paths
 from .core.settings import Settings
 from .domain.service_requests import InvalidTransition
@@ -152,10 +153,14 @@ def _build_lifespan(graph_holder, store, workflows, cfg=None):
                 # Share the guest's CPU lane. If a guest already owns it, skip
                 # this optimization rather than starting a competing load.
                 from .runtime.local_ai import warm_local_slm
+                kinds = getattr(_app.state, 'enabled_request_kinds', frozenset())
                 try:
+                    # Prefill the static command prompt so the first guest turn
+                    # reuses its KV cache instead of paying for it on CPU.
                     await asyncio.to_thread(warm_local_slm, cfg.llm_base_url, cfg.llm_model,
                                             num_gpu=cfg.slm_num_gpu,
-                                            admission=_app.state.audio_admission)
+                                            admission=_app.state.audio_admission,
+                                            messages=[command_system_message(kinds)] if kinds else ())
                 except Exception as exc:
                     LOGGER.warning('slm_warmup_failed type=%s', type(exc).__name__)
             selector = getattr(_app.state, 'service_selector', None)
@@ -396,6 +401,7 @@ def create_app(settings: Settings | None = None, *, embedder=None, reranker=None
     app.state.vector_store = vector_store
     app.state.vector_store_error = vector_store_error
     app.state.service_selector = service_selector
+    app.state.enabled_request_kinds = enabled_request_kinds
     app.state.status_tokens = StatusTokenService(cfg.status_token_secret)
     # Suggestions are consent-gated at the route and remain read-only. The
     # engine is enabled so an explicitly opted-in kiosk can use it; without

@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 
 from concierge_kiosk.agent.understanding.commands import (
-    Command, CommandSlot, command_schema, validate_commands,
+    Command, CommandSlot, validate_commands,
 )
 from concierge_kiosk.application.conversation.engine import _decision_from_commands
 from concierge_kiosk.agent.understanding.routing import RouteDecision
@@ -38,20 +38,6 @@ def test_a_stray_confirm_does_not_swallow_the_real_intent(pending):
                              enabled_request_kinds=KINDS, pending_reply=pending)
     assert _types(kept) == ["StartGoal"]
     assert _decision_from_commands(kept, RouteDecision("knowledge", False)).branch != "confirmation"
-
-
-def _command_variants(schema):
-    variants = schema["properties"]["commands"]["items"]
-    return variants.get("oneOf") or variants.get("anyOf")
-
-
-def test_the_model_is_offered_confirm_only_while_a_confirmation_is_pending():
-    def types(**kw):
-        return {v["properties"]["type"].get("const") for v in _command_variants(command_schema({}, **kw))}
-
-    assert "Confirm" not in types()
-    assert "Confirm" not in types(slot_reply=True)
-    assert "Confirm" in types(confirm_pending=True)
 
 
 def test_exact_duplicate_goals_collapse_but_distinct_requests_stay_separate():

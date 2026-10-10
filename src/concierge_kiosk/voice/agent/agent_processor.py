@@ -93,7 +93,8 @@ else:
                 "type": "agent.progress", "event": kind, "turn_id": turn_id,
             })
 
-        async def _push_text_lease(self, lease, direction: FrameDirection) -> None:
+        async def _push_text_lease(self, lease, direction: FrameDirection) -> bool:
+            playback = self.gate.expect_playback(lease.session, lease.chunk_id)
             text_frame = TextFrame(text=lease.text)
             metadata = getattr(text_frame, "metadata", None)
             if not isinstance(metadata, dict):
@@ -106,6 +107,18 @@ else:
                 "voice_language": lease.language,
             })
             await self.push_frame(text_frame, direction)
+            try:
+                from concierge_kiosk.voice.runtime.audio import MAX_TTS_SECONDS
+                accepted = await asyncio.wait_for(
+                    playback, timeout=self.cfg.tts_timeout_seconds + MAX_TTS_SECONDS
+                    + self.cfg.voice_ws_idle_timeout_seconds)
+                return bool(accepted)
+            except asyncio.TimeoutError:
+                self.gate.playback_failed(lease.session, lease.turn_id, lease.chunk_id)
+                return False
+            except asyncio.CancelledError:
+                self.gate.playback_failed(lease.session, lease.turn_id, lease.chunk_id)
+                raise
 
         @staticmethod
         def _answer_card(result: dict, turn_id: str) -> dict:
@@ -175,7 +188,8 @@ else:
                     lease = self.gate.reserve(self.session, chunk_id)
                     if lease is None or not self.gate.complete(lease):
                         raise RuntimeError("speech chunk authorization failed")
-                    await self._push_text_lease(lease, direction)
+                    if not await self._push_text_lease(lease, direction):
+                        return  # Failed delivery does not revoke a committed workflow.
                     await self._progress(direction, "agent.step.completed", turn_id)
             except asyncio.CancelledError:
                 self.voice_turns.cancel(self.session, turn_id)

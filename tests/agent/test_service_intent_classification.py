@@ -39,7 +39,7 @@ def test_late_checkout_routes_to_front_office():
 def test_spa_massage_extracts_time_and_routes_to_spa():
     assessment = _assess('I want to book a spa massage tomorrow 3pm', 'en', 'spa_reservation')
     assert assessment.public_state()['department'] == 'spa'
-    assert assessment.slots['preferred_time'] == '3pm'
+    assert assessment.slots['preferred_time'] == '15:00'  # clock values are normalized
     assert assessment.missing == ()
 
 

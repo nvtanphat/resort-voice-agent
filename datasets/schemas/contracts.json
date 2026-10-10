@@ -194,6 +194,11 @@
       "mode": "jsonl"
     },
     {
+      "path": "datasets/quarantine/training_candidates.jsonl",
+      "schema": "datasets/schemas/quarantine/training_candidate.schema.json",
+      "mode": "jsonl"
+    },
+    {
       "path": "datasets/synthetic/operations/engineering/workflows.jsonl",
       "schema": "datasets/schemas/synthetic/engineering_workflow.schema.json",
       "mode": "jsonl"

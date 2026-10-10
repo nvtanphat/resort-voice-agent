@@ -74,7 +74,9 @@ def build_pipeline(*, websocket, cfg, session: str, language: str,
         turn_events=turn_events, answer=answer, finalize_answer=finalize_answer,
         finalize_service_turn=finalize_service_turn, gate=gate,
     )
-    tts = ConciergeTTS(cfg=cfg, gate=gate, synthesize_fn=synthesize_fn)
+    from concierge_kiosk.voice.runtime.tts import synthesize_cancellable
+    tts = ConciergeTTS(cfg=cfg, gate=gate, synthesize_fn=synthesize_fn,
+                       synthesize_cancellable_fn=synthesize_cancellable)
     return Pipeline([
         transport.input(), vad_processor, turn_processor, stt, agent, tts,
         transport.output(),

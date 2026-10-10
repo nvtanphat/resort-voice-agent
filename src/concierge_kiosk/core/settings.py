@@ -15,6 +15,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # between calls makes Ollama reload/reallocate the model context and can add
 # several seconds of latency per turn on edge hardware.
 SLM_NUM_CTX = 4096
+# How long the local runtime keeps the SLM (and its cached prompt prefix)
+# resident after a call. A kiosk is idle between guests; an evicted model
+# costs a reload plus a full prompt prefill on the next turn, which exceeds
+# the CPU turn budget. Every Ollama chat call uses this one value.
+SLM_KEEP_ALIVE = '30m'
 
 
 class _BootstrapSettings(BaseSettings):
@@ -496,11 +501,13 @@ class Settings(BaseSettings):
             raise ValueError('Agent planner-call budget must fit within max steps')
         if not 1 <= self.agent_max_read_calls <= self.agent_max_steps:
             raise ValueError('Agent read-call budget must fit within max steps')
-        if not 0.5 <= self.agent_planner_timeout_seconds <= 10.0:
+        if not 0.5 <= self.agent_planner_timeout_seconds <= 30.0:
             raise ValueError('Agent planner timeout must be between 0.5 and 10 seconds')
         if not 0.5 <= self.goal_interpreter_timeout_seconds <= 10.0:
             raise ValueError('Goal interpreter timeout must be between 0.5 and 10 seconds')
-        if not 0.5 <= self.intent_parser_timeout_seconds <= 10.0:
+        # Same ceiling as the profile schema and the per-turn SLM budget: a larger
+        # local model on CPU needs more than 10 s for one bounded command proposal.
+        if not 0.5 <= self.intent_parser_timeout_seconds <= 30.0:
             raise ValueError('Invalid intent parser timeout')
         if not 0.5 <= self.text_generation_timeout_seconds <= 30.0:
             raise ValueError('Invalid text generation timeout')

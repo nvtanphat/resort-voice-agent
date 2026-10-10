@@ -28,6 +28,11 @@ from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVI
 # checksum-pinned profile; deterministic parsing mechanics stay in code.
 _ALLOWED_SLOTS = SERVICE_SLOTS
 _SERVICE_KINDS = ACTION_REQUEST_KINDS
+# Slots that :func:`extract_slots` always reads from the guest turn itself and
+# normalizes (digits, clock, date); a model span for them is never needed. A room
+# is not among them: guests name it in too many ways ("to 1104"), so the model's
+# span remains a hint the server's own reading overrides.
+SERVER_EXTRACTED_SLOTS = frozenset({'quantity', 'party_size', 'preferred_time', 'requested_date'})
 
 # slot parsing vocabulary is checksum-pinned in agent-domain.json.
 
@@ -85,7 +90,10 @@ def _number_near(text: str, language: str, nouns: tuple[str, ...]) -> int | None
 
 
 def _quantity(text: str, language: str) -> int | None:
-    return _number_near(text, language, _QUANTITY_NOUNS.get(language, ()))
+    # A count belongs to a requested object or to its measure word ("4 bottles"),
+    # so a correction that names only the unit still states the quantity.
+    return _number_near(text, language, (*_QUANTITY_NOUNS.get(language, ()),
+                                         *_QUANTITY_UNITS.get(language, ())))
 
 
 def _party_size(text: str, language: str) -> int | None:
@@ -309,6 +317,11 @@ def extract_slots(query: str, language: str, kind: str, *, mode: str,
                 slots['requested_date'] = value
             elif reference_time is not None:
                 slots.pop('requested_date', None)
+        clock = (re.search(r'(?<!\d)(\d{2}:\d{2})$', slots['preferred_time'])
+                 if isinstance(slots.get('preferred_time'), str) else None)
+        if clock and slots.get('requested_date'):
+            # The day is its own slot here, so the time slot keeps only the clock.
+            slots['preferred_time'] = clock.group(1)
     return slots
 
 

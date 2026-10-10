@@ -7,6 +7,7 @@ delegates all state/evidence checks to the existing :class:`VoiceTurns` store.
 from __future__ import annotations
 
 import secrets
+import asyncio
 from dataclasses import dataclass
 from typing import Callable
 
@@ -56,6 +57,24 @@ class SpeechGate:
         self.current_evidence = current_evidence
         self.emit = emit or (lambda _session, _turn, _event: None)
         self._fixed_leases: dict[tuple[str, str], SpeechLease] = {}
+        self._delivery_waiters: dict[tuple[str, str], asyncio.Future] = {}
+
+    def expect_playback(self, session: str, chunk_id: str) -> asyncio.Future:
+        future = asyncio.get_running_loop().create_future()
+        self._delivery_waiters[(session, chunk_id)] = future
+        return future
+
+    def _finish_playback(self, session: str, chunk_id: str, accepted: bool):
+        future = self._delivery_waiters.pop((session, chunk_id), None)
+        if future is not None and not future.done():
+            future.set_result(accepted)
+
+    def language_for(self, session: str, turn_id: str, chunk_id: str) -> str | None:
+        fixed = self._fixed_leases.get((session, chunk_id))
+        if fixed is not None:
+            return fixed.language if fixed.turn_id == turn_id else None
+        resolved = self.voice_turns.resolve_chunk(session, chunk_id)
+        return resolved[2] if resolved is not None and resolved[0] == turn_id else None
 
     def authorize_fixed(self, session: str, turn_id: str, text: str,
                         language: str) -> SpeechLease | None:
@@ -103,19 +122,23 @@ class SpeechGate:
     def played(self, session: str, turn_id: str, chunk_id: str) -> bool:
         fixed = self._fixed_leases.pop((session, chunk_id), None)
         if fixed is not None:
+            self._finish_playback(session, chunk_id, True)
             self.emit(session, turn_id, "tts.chunk.played")
             return True
         if not self.current_evidence(session, turn_id):
+            self._finish_playback(session, chunk_id, False)
             self.voice_turns.cancel(session, turn_id)
             self.emit(session, turn_id, "turn.cancelled")
             return False
         ok = self.voice_turns.mark_chunk_spoken(session, chunk_id)
+        self._finish_playback(session, chunk_id, bool(ok))
         if ok:
             self.emit(session, turn_id, "tts.chunk.played")
             self.emit(session, turn_id, "response.played")
         return ok
 
     def playback_failed(self, session: str, turn_id: str, chunk_id: str) -> bool:
+        self._finish_playback(session, chunk_id, False)
         fixed = self._fixed_leases.pop((session, chunk_id), None)
         if fixed is not None:
             self.emit(session, turn_id, "tts.chunk.playback_failed")

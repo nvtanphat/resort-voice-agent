@@ -65,7 +65,7 @@ class _FakeTransport:
         self.processor = frame_processor(enable_direct_mode=True)
 
 
-def _build_pipeline_harness(*, transcript: str, synthesize_fn: Callable):
+def _build_pipeline_harness(*, transcript: str, synthesize_fn: Callable, auto_ack: bool = True):
     pc = _pipecat()
     FrameProcessor = pc["FrameProcessor"]
     InputAudioRawFrame = pc["InputAudioRawFrame"]
@@ -104,6 +104,14 @@ def _build_pipeline_harness(*, transcript: str, synthesize_fn: Callable):
                 self.ready.set()
             if isinstance(frame, TTSStoppedFrame):
                 self.stopped.set()
+            from pipecat.frames.frames import OutputTransportMessageFrame
+            from pipecat.processors.frameworks.rtvi.frames import RTVIClientMessageFrame
+            if isinstance(frame, OutputTransportMessageFrame):
+                data = frame.message.get('data', {})
+                if auto_ack and data.get('type') == 'speech.chunk.end':
+                    await tts.process_frame(RTVIClientMessageFrame(
+                        msg_id='test-ack', type='speech.playback',
+                        data={'token': data['token'], 'status': 'played'}), direction)
             await self.push_frame(frame, direction)
 
     transport_input = FakeTransportInput()
@@ -117,6 +125,7 @@ def _build_pipeline_harness(*, transcript: str, synthesize_fn: Callable):
         current_evidence=lambda _session, _turn: True,
         emit=lambda session, turn, event: gate_events.append((session, turn, event)),
     )
+    tts = ConciergeTTS(cfg=Settings(), gate=gate, synthesize_fn=synthesize_fn)
     return {
         "pc": pc,
         "transport_input": transport_input,
@@ -127,7 +136,7 @@ def _build_pipeline_harness(*, transcript: str, synthesize_fn: Callable):
         "gate": gate,
         "gate_events": gate_events,
         "settings": Settings(),
-        "tts": ConciergeTTS(cfg=Settings(), gate=gate, synthesize_fn=synthesize_fn),
+        "tts": tts,
         "Pipeline": Pipeline,
         "PipelineParams": PipelineParams,
         "PipelineWorker": PipelineWorker,

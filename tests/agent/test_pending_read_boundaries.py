@@ -36,6 +36,19 @@ def test_read_path_cannot_hide_execution_intent(query, expected):
     assert clear_information_turn(query, 'en') is expected
 
 
+@pytest.mark.parametrize('query,language,expected', [
+    # "Let me ask ..." puts a verb of asking after the request verb: a question.
+    ('Cho mình hỏi hồ bơi mở cửa mấy giờ', 'vi', True), ('Xin hỏi nhà hàng mấy giờ đóng cửa', 'vi', True),
+    ('Can I ask about the pool opening hours?', 'en', True), ('请问游泳池几点开门？', 'zh', True),
+    ('수영장 몇 시에 여는지 물어봐도 될까요?', 'ko', True),
+    # The same request verbs with a delivered object stay requests in every language.
+    ('Cho mình 2 chai nước lên phòng 502', 'vi', False), ('请送两瓶水到502房间', 'zh', False),
+    ('수건 두 개 가져다 주세요', 'ko', False), ('Đặt bàn nhà hàng tối nay 7 giờ cho 4 người', 'vi', False),
+])
+def test_asking_verb_after_a_request_verb_is_a_question(query, language, expected):
+    assert clear_information_turn(query, language) is expected
+
+
 def test_food_list_survives_model_slot_and_missing_slot_extraction():
     query = '我在1105房间，想点一份炒饭和一杯橙汁送到房间。'
     for existing in ({'requested_item': '一份炒饭和一杯橙汁'}, {'requested_item':'炒饭'}, {}):
@@ -154,3 +167,13 @@ def test_preload_is_not_a_json_guest_message_and_timings_are_provider_values():
     with boundary.open(Request('http://127.0.0.1:11434/api/chat',data=json.dumps(payload).encode()),timeout=30) as response:
         response.read()
     assert boundary.calls[0]['provider_ms'] == {'model_loading':9,'prompt_prefill':2,'generation':3,'total':14}
+
+
+@pytest.mark.parametrize('query,expected', [
+    # A clause-final question particle in a question is not a backward reference.
+    ('Hồ bơi mở cửa đến mấy giờ vậy em?', True),
+    # The same word without a question, or a real reference, still points back.
+    ('Đặt cái đó giúp mình', False), ('đặt lại như cũ vậy', False),
+])
+def test_question_particle_is_not_a_reference(query, expected):
+    assert clear_information_turn(query, 'vi') is expected

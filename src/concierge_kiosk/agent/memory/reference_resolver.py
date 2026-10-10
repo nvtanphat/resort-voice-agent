@@ -10,7 +10,7 @@ from concierge_kiosk.runtime.observability import invoked
 import json
 from typing import Callable
 
-from concierge_kiosk.core.settings import SLM_NUM_CTX
+from concierge_kiosk.core.settings import SLM_KEEP_ALIVE, SLM_NUM_CTX
 
 from concierge_kiosk.agent.understanding.semantic import _chat
 from .models import EvidenceAnchor
@@ -33,7 +33,7 @@ def _reference_proposal(*, query: str, language: str, candidates: tuple[Evidence
         schema['required'].append('intent')
         schema['properties']['intent'] = {'type': 'string', 'enum': ['Navigate', 'AskInfo', 'Clarify', 'abstain']}
     payload = {
-        'model': model, 'stream': True, 'keep_alive': '5m',
+        'model': model, 'stream': True, 'keep_alive': SLM_KEEP_ALIVE,
         'format': schema,
         'messages': [
             {'role': 'system', 'content': (

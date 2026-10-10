@@ -39,7 +39,7 @@ ENUMS = {
     'stage': {'model_proposed', 'server_validated', 'semantically_authorized'},
     'outcome': {'accepted', 'rejected', 'success', 'failure', 'none', 'expired', 'valid', 'missing'},
     'reason_code': {'unsupported_semantics', 'structural_validation', 'none', 'expired', 'source_revoked',
-                    'not_plain', 'competing_service'},
+                    'not_plain', 'competing_service', 'redundant_in_turn'},
     'evidence_category': {'domain_policy', 'not_checked'},
     'invocation_type': {'NLU', 'planner', 'reference', 'generation', 'goal', 'other'},
     'status': {'success', 'timeout', 'unavailable', 'invalid_output', 'cancelled', 'accepted',

@@ -6,16 +6,19 @@ Tài liệu này là danh sách blocker hiện hành, không phải roadmap theo
 
 | Hạng mục | Trạng thái và bằng chứng còn thiếu |
 |---|---|
-| Qwen latency và NLU thực tế | **BLOCKED**: warm NLU vẫn timeout trong smoke gần nhất; chưa có successful replay sửa lỗi |
-| Multi-item và multi-intent | Mock/scripted contract có regression; real-model task acceptance chưa đạt |
+| SLM latency trên CPU | **NOT MET**: với qwen2.5:7b mỗi lượt cần model mất 7–12 s (mục tiêu P95 ≤ 8 s không đạt; budget đã nâng lên 12 s). Fast path và read-only path dưới 1.1 s. Voice với 7b chưa đo và gần như chắc chắn vượt `voice_slm_caps` ([Testing](TESTING.md)) |
+| Multi-item và multi-intent | Real-model journey đạt trên mẫu nhỏ (2 proposal/1 lượt); chưa đo tỷ lệ trên bộ lớn |
 | Transcript S01–S15 | Nguyên bản inputs/harness/failed node IDs chưa có; không thay bằng probe khác rồi gọi cùng suite |
-| Current real Qwen accuracy | **REAL_MODEL_ACCURACY_NOT_MEASURED**; không suy ra từ oracle/test PASS |
+| Real-model task accuracy | **NOT MET**: 36/83 (43%) trên service holdout độc lập; vi 60%, en/zh/ko 17–33%. qwen3-4b chính xác hơn nhưng quá chậm trên CPU |
 | BGE Recall@K và Emergency Tier2 | **NOT_MEASURED** tại model/hardware hiện hành; Tier1 recall không thay whole-system recall |
 | Langfuse Cloud | **CLOUD_INGESTION_NOT_VERIFIED**; chưa controlled ingestion/read-back có quyền |
 | Live voice/browser E2E | Chưa nghiệm thu STT/TTS/browser/streaming/audio lifecycle trên thiết bị mục tiêu |
 | Production operation | Chưa đủ evidence về TLS/proxy, rotation, backup/restore, crash/disk-full/load/network isolation |
 
-Chi tiết transcript/timings và offline passes ở [Testing](TESTING.md). 714 tests/11 failures/4 skips là historical operator claim, exact node IDs chưa đối chiếu; không được tự báo tất cả PASS.
+Chi tiết ở [Testing](TESTING.md). Offline 2026-10-10: agent 910 passed, domain/data/api/voice 142 passed, ops 82 passed; còn 4 test cũ fail giống hệt trên HEAD trước thay đổi (3 test kỳ vọng knowledge read khi model unavailable, trái với contract `nlu_failure` hiện hành; 1 test kỳ vọng readback dùng tên catalog thay vì item) và 2 test RAG cần model thật bị offline runner chặn.
+
+- Khởi động: trong khoảng warm-up (model load + prefill prefix) lượt khách có thể nhận `MODEL_BUSY`.
+- Lượt cảm ơn nhắc lại việc đã làm ("khăn đã mang lên rồi, cảm ơn") có thể nhận câu "chưa hiểu rõ" thay vì lời đáp xã giao; an toàn (không write) nhưng UX kém.
 
 ## Coverage và authority còn cần review
 

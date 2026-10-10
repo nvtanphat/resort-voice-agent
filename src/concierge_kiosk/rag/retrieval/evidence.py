@@ -62,10 +62,19 @@ def evidence_passage(body: str, query: str, *, language: str | None = None,
     # span. At least one substantive query term must occur in the selected span.
     if terms and require_term_overlap:
         folded_terms = {fold_accents(term) for term in terms}
-        spans = [span for span in spans
-                if (terms.intersection(tokens(span, language=language, limit=None, stem=True))
-                     or folded_terms.intersection(
-                         fold_accents(term) for term in tokens(span, language=language, limit=None, stem=True)))]
+        asked = query.casefold()
+
+        def overlaps(span: str) -> bool:
+            span_terms = tokens(span, language=language, limit=None, stem=True)
+            # Scripts written without spaces are cut into n-grams whose length depends on
+            # the run, so a short evidence word ("check-out") and the n-grams of a longer
+            # question can differ while the word itself is in the question.
+            return bool(terms.intersection(span_terms)
+                        or folded_terms.intersection(fold_accents(term) for term in span_terms)
+                        or any(len(term) >= 2 and not re.search(r'[0-9A-Za-z]', term) and term in asked
+                               for term in span_terms))
+
+        spans = [span for span in spans if overlaps(span)]
         if not spans:
             return ''
     def rank(span: str) -> tuple[int, int, int]:

@@ -4,7 +4,7 @@
   "models": {
     "slm": {
       "base_url": "http://127.0.0.1:11434",
-      "primary_model": "qwen2.5:3b",
+      "primary_model": "qwen2.5:7b",
       "fallback_model": "",
       "num_gpu": 0,
       "digest": "",
@@ -76,7 +76,7 @@
   "budgets": {
     "agent": {
       "max_steps": 10,
-      "max_wall_time_ms": 15000,
+      "max_wall_time_ms": 45000,
       "max_planner_calls": 6,
       "max_read_calls": 6
     },
@@ -125,14 +125,14 @@
     }
   },
   "timeouts": {
-    "agent_planner_seconds": 5.0,
+    "agent_planner_seconds": 20.0,
     "stt_seconds": 30.0,
     "tts_seconds": 20.0,
     "goal_interpreter_seconds": 2.5,
     "reference_resolver_seconds": 1.8,
-    "intent_parser_seconds": 10.0,
+    "intent_parser_seconds": 20.0,
     "text_generation_seconds": 5.0,
-    "slm_generation_seconds": 6.0,
+    "slm_generation_seconds": 20.0,
     "slm_probe_seconds": 0.7
   }
 }

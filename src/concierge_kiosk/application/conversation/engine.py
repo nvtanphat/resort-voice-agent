@@ -57,7 +57,8 @@ from concierge_kiosk.agent.understanding.grounded_service import GroundedService
 from concierge_kiosk.agent.understanding.intent_evidence import (mentioned_services, room_access_models,
                                                                   states_room_access_conflict, turn_defers,
                                                                   explicit_draft_cancel, clear_information_turn,
-                                                                  booking_reference, command_supported, information_facet)
+                                                                  bind_turn_service_ranking, booking_reference,
+                                                                  command_supported, information_facet)
 from concierge_kiosk.core.operational_policy import service_access_model
 from concierge_kiosk.agent.understanding.emergency_gate import EmergencyGate, emergency_confirm_question
 from concierge_kiosk.agent.understanding.domain_nlu import EMERGENCY_CONTACTS
@@ -362,6 +363,8 @@ class _TurnRuntimeSupport:
                     # A not-yet-built index yields nothing; the model then sees
                     # the full registry rather than an empty candidate set.
                     candidates = candidates or None
+                    bind_turn_service_ranking(self.service_selector.goal_ranking(
+                        query, enabled_request_kinds=enabled_request_kinds))
                 except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
                     # Candidate retrieval is advisory. A missing local embedder
                     # must not turn a bounded command proposal into an error.
@@ -422,6 +425,7 @@ class _TurnRuntimeSupport:
         commands are ``None`` when the turn runs on a route (reads, social
         replies, draft continuation) rather than on the command loop.
         """
+        bind_turn_service_ranking(())
         if decision.branch == 'emergency':
             self.clear_pending_emergency_check(session)
             self.agent_tasks.clear(session)

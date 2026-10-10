@@ -16,7 +16,7 @@ def test_natural_towel_quantity_and_room_slots_in_all_supported_languages():
 
 def test_korean_number_before_counter_form_is_supported():
     slots = extract_slots('305호에 2장 수건 가져다 주세요', 'ko', 'facilities', mode='amenity_delivery')
-    assert slots == {'room_number': '305', 'quantity': 2}
+    assert slots == {'room_number': '305', 'quantity': 2, 'requested_item': '수건'}
 
 
 def test_written_number_towel_phrases_used_by_production_are_parsed():

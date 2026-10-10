@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from contextlib import contextmanager
 from enum import Enum
 from threading import Lock
+from typing import Sequence
 import http.client
 import json
 import re
@@ -101,17 +102,22 @@ def _model_loading(base_url: str, model: str):
 
 
 def preload_local_slm(base_url: str, model: str, *, timeout: float = 30.0,
-                      num_gpu: int = 0, should_cancel=None) -> dict:
-    """One finite empty-message Ollama load. Caller owns admission and accounting."""
+                      num_gpu: int = 0, should_cancel=None, messages: Sequence[dict] = ()) -> dict:
+    """One finite Ollama load. Caller owns admission and accounting.
+
+    ``messages`` is an optional static prompt prefix (no guest text). Prefilling
+    it with a one-token budget leaves its KV cache resident, so the first guest
+    turn that starts with the same prefix does not pay for it on CPU.
+    """
     from urllib.request import Request
-    from ..core.settings import SLM_NUM_CTX
+    from ..core.settings import SLM_KEEP_ALIVE, SLM_NUM_CTX
     from .local_http import local_chat_open
     if not 0 < timeout <= 90:
         raise ValueError('Invalid preload deadline')
     if should_cancel and should_cancel():
         raise InterruptedError('Model preload cancelled before HTTP')
-    body = json.dumps({'model': model, 'stream': False, 'keep_alive': '5m',
-        'messages': [], 'options': {'num_predict': 1, 'num_ctx': SLM_NUM_CTX,
+    body = json.dumps({'model': model, 'stream': False, 'keep_alive': SLM_KEEP_ALIVE,
+        'messages': list(messages), 'options': {'num_predict': 1, 'num_ctx': SLM_NUM_CTX,
                                     'num_gpu': num_gpu}}).encode('utf-8')
     request = Request(base_url.rstrip('/') + '/api/chat', data=body,
                       headers={'Content-Type': 'application/json'}, method='POST')
@@ -199,12 +205,13 @@ def inspect_local_ai(settings, *, check_runtime: bool = True) -> LocalAIReadines
 
 
 def warm_local_slm(base_url: str, model: str, *, timeout: float = 90.0,
-                   num_gpu: int = -1, admission=None) -> bool:
-    """Startup-only empty-message preload; no dummy guest generation."""
+                   num_gpu: int = -1, admission=None, messages: Sequence[dict] = ()) -> bool:
+    """Startup-only preload of the model and a static prompt prefix; no guest generation."""
     if admission is not None and not admission.try_enter_slm():
         return False
     try:
-        return preload_local_slm(base_url, model, timeout=timeout, num_gpu=num_gpu).get('done') is True
+        return preload_local_slm(base_url, model, timeout=timeout, num_gpu=num_gpu,
+                                 messages=messages).get('done') is True
     finally:
         # This runs in the warm-up worker, even if its asyncio waiter is
         # cancelled. Native/socket work retains its CPU permit until it ends.

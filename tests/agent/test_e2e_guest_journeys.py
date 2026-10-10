@@ -350,3 +350,30 @@ def test_draft_cannot_claim_a_business_commit_receipt():
                    raw_results=[{'agent_action':{'business_writes':1}}])
     with pytest.raises(RuntimeError,match='Unrecognized business write'):
         run.business_write_count()
+
+
+def test_restated_request_corrects_the_open_draft_quantity(journey, understand):
+    first = 'Mang giúp mình 2 chai nước suối lên phòng 905'
+    change = 'À thôi, cho mình 4 chai luôn'
+    understand(first, start('amenity_delivery', room_number='905', quantity='2'))
+    # What a model proposes when it restates the same service with the new count.
+    understand(change, start('amenity_delivery', quantity='4'))
+    guest = journey.new_guest()
+    assert journey.ask(guest, first, 'vi')['service_payload']['quantity'] == 2
+    changed = journey.ask(guest, change, 'vi')
+    assert changed['service_payload']['quantity'] == 4, changed
+    assert changed['service_payload']['room_number'] == '905'
+    assert journey.count() == 0
+
+
+@pytest.mark.parametrize('query,language', [
+    ('Mấy giờ phải trả phòng vậy em', 'vi'), ('Giờ trả phòng là mấy giờ?', 'vi'),
+    ('几点退房？', 'zh'), ('체크아웃은 몇 시예요?', 'ko'),
+])
+def test_check_out_time_is_answered_from_the_named_context(journey, query, language):
+    # The data-owned context label ("check-out time") names the fact even when the
+    # guest does not name the hotel and the fact is stored as a policy, not hours.
+    body = journey.ask(journey.new_guest(), query, language)
+    assert body['tool_route'] == 'knowledge', body
+    assert '11:00' in body['answer'], body
+    assert journey.count() == 0

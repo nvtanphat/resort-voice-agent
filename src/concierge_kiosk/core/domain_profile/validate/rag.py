@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .common import validate_language_keys
+from .common import compile_regex, validate_language_keys
 
 
 def validate_rag(payload: dict[str, Any], languages: set[str]) -> None:
@@ -16,6 +16,10 @@ def validate_rag(payload: dict[str, Any], languages: set[str]) -> None:
         for fact_type in fact_types:
             if seen.setdefault(fact_type, facet) != facet:
                 raise ValueError(f"rag.facet_fact_types: {fact_type} is in both {seen[fact_type]} and {facet}")
+    for facet, pattern in rag.get("facet_value_patterns", {}).items():
+        if facet not in rag["facet_fact_types"]:
+            raise ValueError(f"rag.facet_value_patterns: unknown facet {facet}")
+        compile_regex(pattern, label=f"rag.facet_value_patterns.{facet}")
     tokenization = rag["tokenization"]
     segmentation = tokenization["segmentation"]
     if not set(segmentation).issubset(languages):

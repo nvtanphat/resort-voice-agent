@@ -578,7 +578,7 @@
         "agent_planner_seconds": {
           "type": "number",
           "minimum": 0.5,
-          "maximum": 10
+          "maximum": 30
         },
         "stt_seconds": {
           "type": "number",

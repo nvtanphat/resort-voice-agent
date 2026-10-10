@@ -110,6 +110,7 @@ def load_domain_profile(path: str | Path, expected_sha256: str, *,
             document_domains=payload["rag"]["document_domains"],
             facet_fact_types={facet: tuple(types)
                               for facet, types in payload["rag"]["facet_fact_types"].items()},
+            facet_value_patterns=dict(payload["rag"].get("facet_value_patterns", {})),
             token_stopwords=frozenset(payload["rag"]["token_stopwords"]),
             cross_language_fallback_order=tuple(payload["rag"]["cross_language_fallback_order"]),
             tokenization=payload["rag"]["tokenization"],

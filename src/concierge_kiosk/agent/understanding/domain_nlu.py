@@ -61,7 +61,9 @@ QUANTITY_ITEM = {language: dict(values) for language, values in (SLOTS.get("quan
 PARTY_SIZE_PATTERNS = {language: tuple(patterns) for language, patterns in SLOTS["party_size_patterns"].items()}
 PARTY_SIZE_FULL_PATTERNS = dict(SLOTS["party_size_full_patterns"])
 CLOCK_DAYPARTS = {language: dict(values) for language, values in SLOTS["clock_dayparts"].items()}
-CLOCK_DAYPART_PATTERNS = _patterns(SLOTS["clock_daypart_patterns"])
+# Several word orders per language ("7 in the evening", "this evening at 7").
+CLOCK_DAYPART_PATTERNS = {key: tuple(re.compile(pattern) for pattern in patterns)
+                          for key, patterns in SLOTS["clock_daypart_patterns"].items()}
 SHORT_TIME_MARKERS = _terms(SLOTS["short_time_markers"])
 SLOT_LABELS = {language: dict(values) for language, values in SLOTS["slot_labels"].items()}
 

@@ -8,8 +8,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'src'))
 
 from concierge_kiosk.agent.understanding.commands import (
-    Command, command_schema,
-    model_commands, parse_commands, validate_commands,
+    Command, command_output_spec,
+    model_commands, parse_commands, prompt_catalog, validate_commands,
 )
 from concierge_kiosk.agent.understanding.service_selector import (
     CommandExample, ServiceSelector, load_command_examples, normalized_situation_group,
@@ -17,10 +17,9 @@ from concierge_kiosk.agent.understanding.service_selector import (
 from concierge_kiosk.core.dataset_layout import SERVICE_CATALOG, dataset_path
 
 
-def test_command_schema_is_closed():
-    schema = command_schema({'amenity_delivery': ['room_number', 'quantity']})
-    assert schema['additionalProperties'] is False
-    assert schema['properties']['commands']['maxItems'] >= 1
+def test_envelope_is_closed_and_bounded():
+    assert parse_commands('{"commands":[{"type":"Clarify"}],"extra":1}', query='hm') is None
+    assert parse_commands(json.dumps({'commands': [{'type': 'Clarify'}] * 9}), query='hm') is None
 
 
 def test_situation_group_normalizes_legacy_frame_and_concept_keys():
@@ -51,11 +50,12 @@ def test_commands_keep_confirmation_and_cancel_non_authoritative():
     assert validate_commands([Command('Modify')], query='change it to six')
 
 
-def test_command_schema_exposes_explicit_request_change_verbs():
-    variants = command_schema({'amenity_delivery': ['room_number']})[
-        'properties']['commands']['items']['anyOf']
-    types = {item['properties']['type']['const'] for item in variants}
-    assert {'Cancel', 'Modify'} <= types
+def test_output_spec_states_every_command_shape_the_server_accepts():
+    spec = command_output_spec()
+    for command_type in ('StartGoal', 'CheckAvailability', 'AskInfo', 'Navigate', 'Plan', 'AskStatus',
+                         'Cancel', 'Modify', 'Clarify', 'Confirm', 'SetSlot', 'CorrectSlot',
+                         'SetPreference', 'SwitchLanguage', 'Handoff', 'ChitChat'):
+        assert f'"{command_type}"' in spec or command_type in spec
 
 
 def test_conditional_start_goal_is_closed_and_preserved():
@@ -67,10 +67,6 @@ def test_conditional_start_goal_is_closed_and_preserved():
         raw, query='if available, book a table',
         enabled_request_kinds=frozenset({'dining'}))
     assert commands and commands[0].conditional is True
-    start = next(item for item in command_schema({'dining_reservation': []})
-                 ['properties']['commands']['items']['anyOf']
-                 if item['properties']['type']['const'] == 'StartGoal')
-    assert start['properties']['conditional']['type'] == 'boolean'
 
 
 class _ServiceEmbedder:
@@ -120,31 +116,32 @@ def test_model_command_prompt_rechecks_selector_candidates_against_registry(monk
              'name': 'Fresh Bath Towels'},
         ),
     )
-    services = json.loads(captured['messages'][1]['content'])['available_services']
+    services = prompt_catalog(captured)
+    shortlist = json.loads(captured['messages'][-1]['content'])['likely_services']
     assert result and result[0].goal == 'amenity_delivery'
-    assert all(item['service_mode'] != 'not_a_registry_service' for item in services)
-    assert services[0]['accepted_slots'] == ['room_number', 'requested_item', 'quantity', 'unit']
+    assert all(item['service_mode'] != 'not_a_registry_service' for item in services + shortlist)
+    assert shortlist == [{'service_mode': 'amenity_delivery', 'name': 'Fresh Bath Towels'}]
+    contract = next(item for item in services if item['service_mode'] == 'amenity_delivery')
+    assert contract['slots'] == ['room_number', 'requested_item', 'unit']  # counts are read by the server
 
 
-def test_command_schema_closes_goals_and_slots_per_candidate():
-    schema = command_schema({'amenity_delivery': ['room_number', 'quantity'],
-                             'late_checkout': ['room_number']}, slot_reply=False)
-    variants = schema['properties']['commands']['items']['anyOf']
-    goals = {item['properties']['goal']['const']: item for item in variants
-             if item['properties']['type']['const'] == 'StartGoal'}
-    assert set(goals) == {'amenity_delivery', 'late_checkout'}
-    slot_names = goals['late_checkout']['properties']['slots']['items']['properties']['name']
-    assert slot_names['enum'] == ['room_number']
-    types = {item['properties']['type']['const'] for item in variants}
-    # Without a pending server question there is nothing a SetSlot could answer.
-    assert not types & {'SetSlot', 'CorrectSlot'}
-    assert all(item['additionalProperties'] is False for item in variants)
-    reply_types = {item['properties']['type']['const'] for item in
-                   command_schema({'late_checkout': ['room_number']})['properties']
-                   ['commands']['items']['anyOf']}
-    assert {'SetSlot', 'CorrectSlot'} <= reply_types
-
-
+def test_prompt_offers_the_enabled_catalog_and_slot_answers_only_with_a_question():
+    captured = {}
+    import concierge_kiosk.agent.understanding.commands as module
+    module_chat = module._chat
+    module._chat = lambda _b, payload, _t, _c: captured.update(payload) or None
+    try:
+        model_commands(query='late checkout please', language='en', base_url='http://127.0.0.1:11434',
+                       model='m', enabled_request_kinds=frozenset({'front_office'}))
+    finally:
+        module._chat = module_chat
+    assert captured['format'] == 'json'
+    goals = {item['service_mode'] for item in prompt_catalog(captured)}
+    assert 'late_checkout' in goals and 'amenity_delivery' not in goals
+    # Without a pending server question a slot answer is dropped, not applied.
+    assert validate_commands([Command('SetSlot', field='room_number', value='305')], query='305') is None
+    assert validate_commands([Command('SetSlot', field='room_number', value='305')], query='305',
+                             pending_reply='room_number')
 def test_unstated_slot_reply_is_skipped_and_empty_stream_fails_closed():
     query = 'my room is 305'
     kept = validate_commands([Command('SetSlot', field='room_number', value='999'),
@@ -174,12 +171,12 @@ def test_model_commands_sends_examples_only_for_offered_goals(monkeypatch):
                 {'type': 'StartGoal', 'goal': 'late_checkout', 'slots': []}]},
             {'guest_turn': 'pool hours?', 'commands': [{'type': 'AskInfo', 'query': 'pool hours?'}]},
         ))
-    content = json.loads(captured['messages'][1]['content'])
-    assert [item['guest_turn'] for item in content['examples']] == ['two towels', 'late checkout', 'pool hours?']
-    variants = captured['format']['properties']['commands']['items']['anyOf']
-    goals = [goal for item in variants if item['properties']['type']['const'] == 'StartGoal'
-             for goal in item['properties']['goal'].get('enum', [item['properties']['goal'].get('const')])]
-    assert goals == [service['service_mode'] for service in content['available_services']]
+    shots = [json.loads(message['content']) for message in captured['messages'][1:-1]]
+    assert [item['guest_turn'] for item in shots[0::2]] == ['two towels', 'late checkout', 'pool hours?']
+    assert [message['role'] for message in captured['messages'][1:-1]] == ['user', 'assistant'] * 3
+    assert json.loads(captured['messages'][-1]['content'])['guest_turn'] == 'more towels please'
+    goals = {service['service_mode'] for service in prompt_catalog(captured)}
+    assert {'amenity_delivery', 'late_checkout'} <= goals
 
 
 class _AxisEmbedder:
@@ -261,3 +258,50 @@ def test_availability_mode_uses_only_the_best_semantic_match(monkeypatch):
     assert selector.select_availability_mode(
         'Please bring fresh bath towels', language='en',
         enabled_request_kinds=frozenset({'facilities', 'dining'})) is None
+
+
+def test_padding_commands_do_not_split_a_single_request_into_several_tasks():
+    query = 'Please send a taxi to the lobby now'
+    kinds = frozenset({'transport'})
+    start = Command('StartGoal', goal='transport_request')
+    # A read whose query names no clause of the turn, or a contradictory Clarify,
+    # is model padding beside a real request.
+    assert validate_commands([start, Command('AskInfo', query='preferred_time')],
+                             query=query, enabled_request_kinds=kinds, require_evidence=False) == (start,)
+    assert validate_commands([start, Command('Clarify')],
+                             query=query, enabled_request_kinds=kinds, require_evidence=False) == (start,)
+    # Alone, an ungrounded read is the whole turn; grounded siblings are all kept.
+    alone = validate_commands([Command('AskInfo', query='opening hours')], query='When is the gym open?')
+    assert alone and alone[0].query == 'When is the gym open?'
+    both = validate_commands([Command('AskInfo', query='When is the gym open'), Command('Navigate', query='where is the spa')],
+                             query='When is the gym open and where is the spa?')
+    assert both is not None and [command.type for command in both] == ['AskInfo', 'Navigate']
+
+
+def test_model_fields_outside_the_command_type_are_ignored_not_trusted():
+    kinds = frozenset({'facilities'})
+    query = 'Please bring 2 towels to room 706'
+    raw = json.dumps({'commands': [
+        {'type': 'StartGoal', 'goal': 'amenity_delivery', 'conditional': 'yes', 'query': 'invented',
+         'slots': ['room_number', {'name': 'quantity', 'text': '2'}, {'name': 'room_number', 'text': '999'}]},
+    ]})
+    commands = parse_commands(raw, query=query, enabled_request_kinds=kinds, language='en')
+    assert commands is not None and commands[0].goal == 'amenity_delivery'
+    # The malformed slot, the unstated room and the non-boolean flag are dropped; nothing is invented.
+    assert [(slot.name, slot.text) for slot in commands[0].slots] == [('quantity', '2')]
+    assert commands[0].conditional is False and commands[0].query is None
+    # A stray goal on a status question does not discard the question.
+    status = parse_commands(json.dumps({'commands': [{'type': 'AskStatus', 'goal': 'maintenance'}]}),
+                            query='how is my request going?', language='en')
+    assert status is not None and status[0].type == 'AskStatus' and status[0].goal is None
+
+
+def test_the_model_is_told_about_an_open_draft(monkeypatch):
+    captured = []
+    monkeypatch.setattr('concierge_kiosk.agent.understanding.commands._chat',
+                        lambda _b, payload, _t, _c: captured.append(payload) or None)
+    for goal in (None, 'transport_request'):
+        model_commands(query='Thôi khỏi taxi', language='vi', base_url='http://127.0.0.1:11434',
+                       model='m', enabled_request_kinds=frozenset({'transport'}), pending_goal=goal)
+    without, with_draft = (json.loads(p['messages'][-1]['content']) for p in captured)
+    assert 'open_draft' not in without and with_draft['open_draft'] == 'transport_request'

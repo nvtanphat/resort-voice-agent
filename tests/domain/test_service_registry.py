@@ -70,6 +70,11 @@ def test_new_service_is_registered_from_config_without_python_registry_edit(tmp_
         "tool": "service_action",
         "default_for_kind": False,
     })
+    # Every configured service also declares the reviewed concepts that ground it.
+    payload["semantic_authorization"]["services"]["laundry_request"] = {
+        "concepts": {"en": ["laundry"], "vi": ["giặt ủi"], "zh": ["洗衣"], "ko": ["세탁"]},
+        "object_slots": [],
+    }
     profile = _load_payload(tmp_path, payload)
     registry = ServiceRegistry.from_profile(profile)
 

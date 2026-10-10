@@ -6,7 +6,7 @@ import json
 import pytest
 
 from concierge_kiosk.agent.understanding.commands import (
-    Command, command_schema, commands_from_items, validate_commands,
+    Command, command_output_spec, commands_from_items, validate_commands,
 )
 from concierge_kiosk.agent.understanding.routing import RouteDecision
 from concierge_kiosk.core.dataset_layout import dataset_path
@@ -19,14 +19,12 @@ def _ask(**fields) -> list[Command]:
     return commands_from_items([{"type": "AskInfo", "query": QUERY, **fields}])
 
 
-def test_schema_offers_only_configured_facets():
-    schema = command_schema({})
-    variants = schema["properties"]["commands"]["items"]["oneOf"] \
-        if "oneOf" in schema["properties"]["commands"]["items"] \
-        else schema["properties"]["commands"]["items"]["anyOf"]
-    ask = next(v for v in variants if v["properties"]["type"].get("const") == "AskInfo")
-    assert set(ask["properties"]["facet"]["enum"]) == set(rag_policy().facet_fact_types)
-    assert "facet" not in ask["required"], "facet stays optional"
+def test_prompt_offers_only_configured_facets():
+    spec = command_output_spec()
+    offered = spec.split('optional "facet":', 1)[1].split(';', 1)[0].strip().split('|')
+    assert set(offered) == set(rag_policy().facet_fact_types)
+    # Optional: an AskInfo without a facet is still a valid read.
+    assert validate_commands(_ask(), query=QUERY)
 
 
 def test_known_facet_is_kept_unknown_facet_is_dropped_not_trusted():

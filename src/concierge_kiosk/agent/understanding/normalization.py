@@ -42,6 +42,8 @@ class NormalizationResult:
 
 
 _LATIN_WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
+_PROTECTED_TEXT = re.compile(
+    r"\b(?:https?://|www\.)\S+|[^\s@]+@[^\s@]+|\b\w*\d\w*\b", re.IGNORECASE)
 _PROFILE_LANGUAGES = frozenset(supported_languages())
 _SKIP_KEYS = frozenset({
     "patterns", "emergency_text", "emergency_contacts", "static_text",
@@ -184,6 +186,47 @@ def _token_bases_by_length(language: str | None) -> dict[int, tuple[str, ...]]:
     return {length: tuple(sorted(items)) for length, items in values.items()}
 
 
+def _protected_ranges(text: str) -> tuple[tuple[int, int], ...]:
+    return tuple(match.span() for match in _PROTECTED_TEXT.finditer(text))
+
+
+def _overlaps(start: int, end: int, ranges: tuple[tuple[int, int], ...]) -> bool:
+    return any(start < right and end > left for left, right in ranges)
+
+
+def _expand_short_forms(text: str, language: str) -> tuple[str, tuple[NormalizationEdit, ...]]:
+    forms = NORMALIZATION['short_forms'][language]
+    protected = _protected_ranges(text)
+    edits: list[NormalizationEdit] = []
+
+    def replace(match: re.Match[str]) -> str:
+        source = match.group(0)
+        replacement = forms.get(source)
+        if replacement is None or _overlaps(*match.span(), protected):
+            return source
+        edits.append(NormalizationEdit('short_form', source, replacement, *match.span()))
+        return replacement
+
+    return re.sub(r'\w+', replace, text), tuple(edits)
+
+
+@lru_cache(maxsize=8)
+def _mixed_phrase_matcher(language: str) -> tuple[re.Pattern[str], dict[str, str]] | None:
+    # Mixed text needs catalog phrases as context. Do not guess a tone for a
+    # standalone grammatical word or clock marker in an otherwise accented turn.
+    candidates: dict[str, set[str]] = {}
+    for term in (*service_terms(language), *entity_terms(language)):
+        term = ' '.join(unicodedata.normalize('NFKC', term).casefold().split())
+        base = _strip_marks(term)
+        if len(term.split()) > 1 and base != term:
+            candidates.setdefault(base, set()).add(term)
+    mapping = {base: next(iter(values)) for base, values in candidates.items() if len(values) == 1}
+    if not mapping:
+        return None
+    alternatives = '|'.join(re.escape(source) for source in sorted(mapping, key=len, reverse=True))
+    return re.compile(r'(?<!\w)(?:' + alternatives + r')(?!\w)'), mapping
+
+
 def _collapse_repeated_letters(text: str, maximum: int) -> tuple[str, tuple[NormalizationEdit, ...]]:
     if maximum < 1:
         return text, ()
@@ -191,6 +234,7 @@ def _collapse_repeated_letters(text: str, maximum: int) -> tuple[str, tuple[Norm
     edits: list[NormalizationEdit] = []
     run_char = ""
     run_length = 0
+    protected = _protected_ranges(text)
     for index, char in enumerate(text):
         folded = char.casefold()
         if char.isalpha() and folded == run_char:
@@ -198,28 +242,44 @@ def _collapse_repeated_letters(text: str, maximum: int) -> tuple[str, tuple[Norm
         else:
             run_char = folded if char.isalpha() else ""
             run_length = 1 if char.isalpha() else 0
-        if char.isalpha() and run_length > maximum:
+        if char.isalpha() and run_length > maximum and not _overlaps(index, index + 1, protected):
             edits.append(NormalizationEdit("repeat", char, "", index, index + 1))
             continue
         output.append(char)
     return "".join(output), tuple(edits)
 
 
-def _replace_phrases(text: str, language: str | None) -> tuple[str, tuple[NormalizationEdit, ...]]:
-    matcher = _phrase_matcher(language)
+def _replace_phrases(text: str, language: str | None, *, mixed: bool = False) -> tuple[str, tuple[NormalizationEdit, ...]]:
+    matcher = _mixed_phrase_matcher(language) if mixed else _phrase_matcher(language)
     if matcher is None:
         return text, ()
     pattern, mapping = matcher
     edits: list[NormalizationEdit] = []
     chunks: list[str] = []
     cursor = 0
-    for match in pattern.finditer(text):
+    # Folding may change character counts; retain offsets into the working text.
+    offsets: list[int] = []
+    folded: list[str] = []
+    for index, char in enumerate(text):
+        value = _strip_marks(char) if mixed else char
+        folded.append(value)
+        offsets.extend([index] * len(value))
+    protected = _protected_ranges(text)
+    for match in pattern.finditer(''.join(folded)):
+        start, end = offsets[match.start()], offsets[match.end() - 1] + 1
+        source = text[start:end]
         replacement = mapping[match.group(0)]
-        chunks.append(text[cursor:match.start()])
+        if source == replacement or _overlaps(start, end, protected):
+            continue
+        if mixed and any(
+            token != _strip_marks(token) and token != target
+            for token, target in zip(source.split(), replacement.split())
+        ):
+            continue  # Already typed accents outrank a folded catalog match.
+        chunks.append(text[cursor:start])
         chunks.append(replacement)
-        edits.append(NormalizationEdit("accent", match.group(0), replacement,
-                                      match.start(), match.end()))
-        cursor = match.end()
+        edits.append(NormalizationEdit("accent", source, replacement, start, end))
+        cursor = end
     if not edits:
         return text, ()
     chunks.append(text[cursor:])
@@ -243,7 +303,10 @@ def _restore_accent_tokens(text: str, language: str | None) -> tuple[str, tuple[
     }
     replacements: list[tuple[int, int, str]] = []
     edits: list[NormalizationEdit] = []
+    protected = _protected_ranges(text)
     for match in _LATIN_WORD.finditer(text):
+        if _overlaps(*match.span(), protected):
+            continue
         token = match.group(0)
         base = _strip_marks(token)
         # Only restore an actually unaccented transcript token. An accented
@@ -253,6 +316,9 @@ def _restore_accent_tokens(text: str, language: str | None) -> tuple[str, tuple[
             continue
         if base in number_bases:
             continue
+        if ((match.start() and text[match.start() - 1].isdigit())
+                or (match.end() < len(text) and text[match.end()].isdigit())):
+            continue  # a unit glued to a number ("6am", "3h") is not a word to accent
         candidates = token_map.get(base, ())
         if len(candidates) != 1:
             continue
@@ -288,7 +354,10 @@ def _fuzzy_tokens(text: str, language: str | None) -> tuple[str, tuple[Normaliza
     tokens_by_length = _token_bases_by_length(language)
     edits: list[NormalizationEdit] = []
     replacements: list[tuple[int, int, str]] = []
+    protected = _protected_ranges(text)
     for match in _LATIN_WORD.finditer(text):
+        if _overlaps(*match.span(), protected):
+            continue
         token = match.group(0)
         base = _strip_marks(token)
         # Fuzzy correction targets unaccented/noisy transcripts. An already
@@ -347,11 +416,16 @@ def normalize_with_spans(text: str, language: str | None = None) -> Normalizatio
     # Accent and fuzzy changes require an explicit spoken language.
     if language not in _PROFILE_LANGUAGES:
         return NormalizationResult(" ".join(value.split()), tuple(edits))
+    # Inspect the source before expanding abbreviations, which may introduce marks.
+    typed_marks = any(token != _strip_marks(token) for token in _LATIN_WORD.findall(value))
+    value, expanded = _expand_short_forms(value, language)
+    edits.extend(expanded)
     if NORMALIZATION.get("accent_restore", True):
-        value, accented = _replace_phrases(value, language)
+        value, accented = _replace_phrases(value, language, mixed=typed_marks)
         edits.extend(accented)
-        value, accented_tokens = _restore_accent_tokens(value, language)
-        edits.extend(accented_tokens)
+        if not typed_marks:
+            value, accented_tokens = _restore_accent_tokens(value, language)
+            edits.extend(accented_tokens)
     value, fuzzy = _fuzzy_tokens(value, language)
     edits.extend(fuzzy)
     return NormalizationResult(" ".join(value.split()), tuple(edits))

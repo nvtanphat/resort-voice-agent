@@ -106,3 +106,37 @@ def test_compound_reads_only_keep_each_questions_own_evidence(tmp_path, shipped_
                 assert 'verified information' in body['answer'].lower(), body['answer']
             else:
                 assert not body['citations'], body
+
+
+def test_a_clock_valued_fact_of_another_type_answers_a_what_time_question():
+    from concierge_kiosk.core.domain_profile import rag_policy
+    from concierge_kiosk.rag.grounding.relevance import answerable
+
+    policy = rag_policy()
+    keys = {'facets': ('hours',), 'fact_types': tuple(policy.facet_fact_types['hours']),
+            'value_patterns': (policy.facet_value_patterns['hours'],), 'entity_ids': ()}
+    checkout = {'fact_type': 'policy_rule', 'content': '- **Giờ trả phòng**: 11:00',
+                'title': 'Giờ trả phòng', 'language': 'vi'}
+    assert answerable(keys, 'Mấy giờ phải trả phòng vậy em', checkout, language='vi')
+    # A rule without a clock value, or a clock of another subject, still does not answer.
+    rule = {'fact_type': 'policy_rule', 'content': '- **Trẻ em**: phải có người lớn đi kèm',
+            'title': 'Quy định hồ bơi', 'language': 'vi'}
+    assert not answerable(keys, 'Hồ bơi mở cửa mấy giờ', rule, language='vi')
+    assert not answerable(keys, 'Hồ bơi mở cửa mấy giờ', checkout, language='vi')
+
+
+def test_evidence_word_inside_an_unspaced_question_counts_as_overlap():
+    from concierge_kiosk.rag.retrieval.evidence import evidence_passage
+    body = '- **岘港富丽华度假村 — 政策**: 11:00 (退房)'
+    assert evidence_passage(body, '几点退房？', language='zh', max_chars=400) == body
+    # Latin text keeps whole-term matching: a substring is not a shared term.
+    assert evidence_passage('- **Spa**: 09:00', 'space heater', language='en', max_chars=400) == ''
+
+
+def test_a_fact_whose_context_the_guest_named_exactly_answers():
+    from concierge_kiosk.rag.grounding.relevance import answerable
+    source = {'fact_type': 'policy_rule', 'fact_context': 'check_out_time', 'language': 'en',
+              'title': 'Furama Resort Danang', 'content': '- **Policy**: 11:00 (check-out)'}
+    assert answerable({'contexts': ('check_out_time',)}, 'What time is check-out?', source, language='en')
+    assert not answerable({'contexts': ('check_in_time',)}, 'What time is check-in?',
+                          {**source, 'content': '- **Policy**: no pets'}, language='en')

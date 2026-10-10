@@ -1,4 +1,4 @@
-/* source-sha256:e72de2ebf2953172f8376b789a9585a9d8e65837e615dd7193bfd738f9a8b54e */
+/* source-sha256:e35715453d2b0be67e62e6b5e4604346a761a595be87f8f65e4f348685fce243 */
 /* Concierge Kiosk guest UI. */
 (function(){
 'use strict';
@@ -36554,7 +36554,7 @@ const App = () => {
 exports.App = App;
 exports.default = exports.App;
 
-},{"react/jsx-runtime":1,"react":3,"./api":15,"./i18n":16,"./continuousVoice":21,"./voiceAgent":22,"./hooks/useVoiceSession":78,"./hooks/useTurnLifecycle":79,"./hooks/useSpeechPlayback":80,"./components/Header":81,"./components/SidebarNav":82,"./components/VoiceAssistant":83,"./components/MyRequests":84,"./screens/Chat":85,"./screens/RequestFlow":88,"./hooks/useRequestDraft":93}],
+},{"react/jsx-runtime":1,"react":3,"./api":15,"./i18n":16,"./continuousVoice":21,"./voiceAgent":22,"./hooks/useVoiceSession":79,"./hooks/useTurnLifecycle":80,"./hooks/useSpeechPlayback":81,"./components/Header":82,"./components/SidebarNav":83,"./components/VoiceAssistant":84,"./components/MyRequests":85,"./screens/Chat":86,"./screens/RequestFlow":89,"./hooks/useRequestDraft":94}],
 15:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -37061,6 +37061,10 @@ exports.taskLabel = taskLabel;
 },{"../../locales/vi.json":17,"../../locales/en.json":18,"../../locales/zh.json":19,"../../locales/ko.json":20}],
 17:[function(module,exports,require,process){
 module.exports={
+  "backend.request.deferred_nothing": "Không sao, bạn cứ thong thả. Khi sẵn sàng, bạn chỉ cần nói với mình. Chưa có yêu cầu nào được gửi.",
+  "backend.request.deferred_pending": "Không sao, bạn cứ xem lại. Yêu cầu đang chờ vẫn được giữ nguyên và chưa có gì được gửi đi.",
+  "backend.request.deferred_draft": "Mình đã ghi lại thông tin, chưa gửi yêu cầu nào. Khi bạn sẵn sàng, chỉ cần nói để mình chuẩn bị xác nhận.",
+  "backend.service.room_access_conflict": "Phòng đang để chế độ không làm phiền, nhân viên sẽ không vào phòng. Bạn có muốn tắt chế độ này để nhân viên vào làm không? Chưa có yêu cầu nào được gửi.",
   "backend.request.change.select": "Bạn muốn thay đổi yêu cầu nào? Vui lòng chọn một mã yêu cầu: {codes}.",
   "backend.smalltalk.reply": "Rất vui được hỗ trợ bạn! Bạn cần tôi tra cứu thông tin, chỉ đường hay gửi yêu cầu dịch vụ nào không?",
   "backend.out_of_scope.reply": "Câu này nằm ngoài phạm vi hỗ trợ của khách sạn, nhưng tôi có thể giúp bạn về thông tin, chỉ đường hoặc dịch vụ lưu trú.",
@@ -37275,12 +37279,18 @@ module.exports={
   "backend.request.change.recorded": "Thay đổi cho ticket {code} đã được ghi nhận. Xem trạng thái ticket để biết quyết định của nhân viên.",
   "backend.request.change.cancel_label": "xin hủy",
   "backend.request.change.modify_label": "xin sửa",
-  "backend.request.change.review": "Xem lại ticket {code}: {action}. Trường thay đổi: {changes}. Xác nhận để gửi nhân viên xét duyệt."
+  "backend.request.change.review": "Xem lại ticket {code}: {action}. Trường thay đổi: {changes}. Xác nhận để gửi nhân viên xét duyệt.",
+  "backend.nlu.retry": "Hệ thống hiện chưa xử lý được yêu cầu của bạn. Vui lòng chủ động thử lại sau; chưa có yêu cầu nào được gửi từ lượt này.",
+  "backend.nlu.clarify": "Tôi chưa hiểu rõ yêu cầu. Vui lòng nói lại cụ thể hơn; chưa có yêu cầu nào được gửi từ lượt này."
 }
 ;
 },{}],
 18:[function(module,exports,require,process){
 module.exports={
+  "backend.request.deferred_nothing": "No problem, take your time. Just tell me when you're ready. Nothing has been sent.",
+  "backend.request.deferred_pending": "No problem, take your time. Your pending request is kept as it is and nothing has been sent.",
+  "backend.request.deferred_draft": "I've noted the details and nothing has been sent. When you're ready, just tell me and I'll prepare it for confirmation.",
+  "backend.service.room_access_conflict": "Your room is set to Do Not Disturb, so staff will not enter. Would you like to turn it off so they can come in? Nothing has been sent yet.",
   "backend.smalltalk.reply": "Happy to help! Would you like hotel information, directions, or a service request?",
   "backend.out_of_scope.reply": "That is outside my hotel concierge scope, but I can help with hotel information, directions, or guest services.",
   "backend.emergency.alert_queued": " A high-priority alert has been placed in the staff queue; this does not confirm that emergency responders were dispatched.",
@@ -37495,12 +37505,18 @@ module.exports={
   "backend.request.change.recorded": "Your change for ticket {code} is recorded. Check the ticket status for the staff decision.",
   "backend.request.change.cancel_label": "cancel",
   "backend.request.change.modify_label": "modify",
-  "backend.request.change.review": "Review ticket {code}: {action}. Changed fields: {changes}. Confirm to send this change for staff review."
+  "backend.request.change.review": "Review ticket {code}: {action}. Changed fields: {changes}. Confirm to send this change for staff review.",
+  "backend.nlu.retry": "The system could not process your request. Please try again when ready; this turn has not sent a request.",
+  "backend.nlu.clarify": "I could not understand the request clearly. Please describe it more specifically; this turn has not sent a request."
 }
 ;
 },{}],
 19:[function(module,exports,require,process){
 module.exports={
+  "backend.request.deferred_nothing": "没问题，您慢慢来。准备好后告诉我即可，目前没有发送任何请求。",
+  "backend.request.deferred_pending": "没问题，您慢慢考虑。待处理的请求会保持不变，目前没有发送任何内容。",
+  "backend.request.deferred_draft": "我已记下这些信息，尚未发送任何请求。您准备好后告诉我，我会为您准备确认。",
+  "backend.service.room_access_conflict": "您的房间设置了请勿打扰，工作人员不会进入。您是否要取消请勿打扰以便工作人员进入？目前尚未发送任何请求。",
   "backend.request.change.select": "您想更改哪项请求？请提供以下请求编号之一：{codes}。",
   "backend.smalltalk.reply": "很高兴为您服务！您需要查询酒店信息、指路，还是提交服务请求？",
   "backend.out_of_scope.reply": "这个问题超出了酒店礼宾服务范围，但我可以为您提供酒店信息、路线指引或住客服务帮助。",
@@ -37715,12 +37731,18 @@ module.exports={
   "backend.request.change.recorded": "工单 {code} 的更改已记录。请查看工单状态以了解员工的决定。",
   "backend.request.change.cancel_label": "申请取消",
   "backend.request.change.modify_label": "申请修改",
-  "backend.request.change.review": "审核工单 {code}: {action}。更改字段：{changes}。确认后提交员工审核。"
+  "backend.request.change.review": "审核工单 {code}: {action}。更改字段：{changes}。确认后提交员工审核。",
+  "backend.nlu.retry": "系统暂时无法处理您的要求。请稍后主动重试；本轮尚未提交任何请求。",
+  "backend.nlu.clarify": "我还没有理解您的要求。请更具体地说明；本轮尚未提交任何请求。"
 }
 ;
 },{}],
 20:[function(module,exports,require,process){
 module.exports={
+  "backend.request.deferred_nothing": "괜찮습니다. 천천히 결정하세요. 준비되시면 말씀해 주세요. 아직 아무것도 전송되지 않았습니다.",
+  "backend.request.deferred_pending": "괜찮습니다. 천천히 확인해 주세요. 대기 중인 요청은 그대로 유지되며 아직 아무것도 전송되지 않았습니다.",
+  "backend.request.deferred_draft": "내용을 기록해 두었으며 아직 요청은 전송되지 않았습니다. 준비되시면 말씀해 주세요. 확인할 수 있도록 준비하겠습니다.",
+  "backend.service.room_access_conflict": "객실이 방해 금지로 설정되어 있어 직원이 들어가지 않습니다. 직원이 들어갈 수 있도록 해제하시겠어요? 아직 요청은 전송되지 않았습니다.",
   "backend.request.change.select": "어떤 요청을 변경하시겠습니까? 다음 요청 번호 중 하나를 알려 주세요: {codes}.",
   "backend.smalltalk.reply": "도와드리게 되어 기쁩니다! 호텔 정보, 길 안내 또는 서비스 요청이 필요하신가요?",
   "backend.out_of_scope.reply": "이 질문은 호텔 컨시어지의 지원 범위를 벗어나지만, 호텔 정보와 길 안내 또는 투숙객 서비스를 도와드릴 수 있습니다.",
@@ -37936,7 +37958,9 @@ module.exports={
   "backend.request.change.recorded": "티켓 {code}의 변경이 기록되었습니다. 직원의 결정은 티켓 상태에서 확인하세요.",
   "backend.request.change.cancel_label": "취소 요청",
   "backend.request.change.modify_label": "변경 요청",
-  "backend.request.change.review": "티켓 {code} 검토: {action}. 변경 필드: {changes}. 확인하면 직원 검토에 제출됩니다."
+  "backend.request.change.review": "티켓 {code} 검토: {action}. 변경 필드: {changes}. 확인하면 직원 검토에 제출됩니다.",
+  "backend.nlu.retry": "현재 요청을 처리하지 못했습니다. 원하실 때 다시 시도해 주세요. 이번 대화에서는 요청을 전송하지 않았습니다.",
+  "backend.nlu.clarify": "요청을 명확히 이해하지 못했습니다. 조금 더 구체적으로 말씀해 주세요. 이번 대화에서는 요청을 전송하지 않았습니다."
 }
 ;
 },{}],
@@ -38358,38 +38382,69 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoiceAgent = void 0;
 const client_js_1 = require("@pipecat-ai/client-js");
 const websocket_transport_1 = require("@pipecat-ai/websocket-transport");
+const speechPlayback_1 = require("./speechPlayback");
 const api_1 = require("./api");
+class OrderedFrameSerializer extends websocket_transport_1.ProtobufFrameSerializer {
+    constructor() {
+        super(...arguments);
+        this.pending = Promise.resolve();
+    }
+    deserialize(data) {
+        const parsed = this.pending.then(() => super.deserialize(data));
+        this.pending = parsed.then(() => { }, () => { });
+        return parsed;
+    }
+}
 class VoiceAgent {
     constructor(callbacks) {
         this.callbacks = callbacks;
         this.client = null;
         this.stopping = false;
+        this.playback = null;
     }
     async start(language) {
         if (this.client)
             return;
         this.stopping = false;
         this.callbacks.onState('connecting');
+        const context = new AudioContext({ sampleRate: 16000 });
+        await context.resume();
+        const playback = this.playback = new speechPlayback_1.SpeechPlayback(context, 16000, (token, status) => {
+            this.client?.sendClientMessage('speech.playback', { token, status });
+            if (status === 'played')
+                this.callbacks.onState('ready');
+        });
+        const media = new websocket_transport_1.WavMediaManager(undefined, 16000);
+        media.bufferBotAudio = (data) => {
+            const samples = data instanceof Int16Array ? data : new Int16Array(data);
+            playback.enqueue(samples);
+            return samples;
+        };
         const transport = new websocket_transport_1.WebSocketTransport({
-            serializer: new websocket_transport_1.ProtobufFrameSerializer(),
+            serializer: new OrderedFrameSerializer(),
             recorderSampleRate: 16000,
             playerSampleRate: 16000,
+            mediaManager: media,
         });
         const client = new client_js_1.PipecatClient({
             transport, enableMic: true, enableCam: false,
             callbacks: {
                 onConnected: () => this.callbacks.onState('ready'),
-                onDisconnected: () => { if (!this.stopping)
+                onDisconnected: () => { playback.interrupt(); if (!this.stopping)
                     this.callbacks.onState('off'); },
-                onUserStartedSpeaking: () => this.callbacks.onState('speaking'),
+                onUserStartedSpeaking: () => { playback.interrupt(); this.callbacks.onState('speaking'); },
                 onUserStoppedSpeaking: () => this.callbacks.onState('processing'),
                 onBotStartedSpeaking: () => this.callbacks.onState('playing'),
-                onBotStoppedSpeaking: () => this.callbacks.onState('ready'),
+                onBotStoppedSpeaking: () => { }, // Browser playback completion sets ready.
                 onUserTranscript: data => { if (data.final && data.text.trim())
                     this.callbacks.onTranscript(data.text.trim()); },
                 onServerMessage: data => {
                     const event = data;
-                    if (event.type === 'agent.progress' && event.event)
+                    if (event.type === 'speech.chunk.start')
+                        playback.begin();
+                    else if (event.type === 'speech.chunk.end' && typeof event.token === 'string')
+                        playback.end(event.token);
+                    else if (event.type === 'agent.progress' && event.event)
                         this.callbacks.onProgress(event.event);
                     else if (event.type === 'answer.card' && event.answer)
                         this.callbacks.onAnswer(event.answer);
@@ -38411,6 +38466,8 @@ class VoiceAgent {
                 await client.disconnect();
             }
             catch { }
+            await playback.close();
+            this.playback = null;
             throw error;
         }
     }
@@ -38418,14 +38475,22 @@ class VoiceAgent {
         const client = this.client;
         this.client = null;
         this.stopping = true;
-        if (client)
-            await client.disconnect();
+        const playback = this.playback;
+        this.playback = null;
+        try {
+            if (client)
+                await client.disconnect();
+        }
+        finally {
+            if (playback)
+                await playback.close();
+        }
         this.callbacks.onState('off');
     }
 }
 exports.VoiceAgent = VoiceAgent;
 
-},{"@pipecat-ai/client-js":23,"@pipecat-ai/websocket-transport":47,"./api":15}],
+},{"@pipecat-ai/client-js":23,"@pipecat-ai/websocket-transport":47,"./speechPlayback":78,"./api":15}],
 23:[function(module,exports,require,process){
 var $58KWk$events = require("events");
 var $58KWk$uuid = require("uuid");
@@ -49651,6 +49716,94 @@ var resample = /* @__PURE__ */ __name((samples, inputSampleRate, targetSampleRat
 78:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SpeechPlayback = void 0;
+/** Acknowledge only audio that reaches AudioBufferSourceNode.onended. */
+class SpeechPlayback {
+    constructor(context, sampleRate, acknowledge) {
+        this.context = context;
+        this.sampleRate = sampleRate;
+        this.acknowledge = acknowledge;
+        this.sources = new Set();
+        this.nextAt = 0;
+        this.token = null;
+        this.failed = false;
+        this.receivedAudio = false;
+        this.closed = false;
+    }
+    begin() {
+        this.interrupt();
+        this.failed = false;
+        this.receivedAudio = false;
+        this.nextAt = this.context.currentTime;
+    }
+    enqueue(samples) {
+        if (this.failed || this.closed || !samples.length)
+            return;
+        try {
+            if (this.context.state !== 'running')
+                throw new Error('Audio output is suspended');
+            const buffer = this.context.createBuffer(1, samples.length, this.sampleRate);
+            const channel = buffer.getChannelData(0);
+            for (let i = 0; i < samples.length; i++)
+                channel[i] = samples[i] / 32768;
+            const source = this.context.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this.context.destination);
+            source.onended = () => {
+                this.sources.delete(source);
+                source.disconnect();
+                this.finish();
+            };
+            this.sources.add(source);
+            this.nextAt = Math.max(this.nextAt, this.context.currentTime);
+            source.start(this.nextAt);
+            this.nextAt += buffer.duration;
+            this.receivedAudio = true;
+        }
+        catch {
+            this.interrupt();
+        }
+    }
+    end(token) {
+        if (this.closed)
+            return;
+        this.token = token;
+        this.finish();
+    }
+    finish() {
+        if (!this.token || this.sources.size)
+            return;
+        const token = this.token;
+        this.token = null;
+        this.acknowledge(token, !this.failed && this.receivedAudio && this.context.state === 'running'
+            ? 'played' : 'failed');
+    }
+    interrupt() {
+        this.failed = true;
+        for (const source of this.sources) {
+            source.onended = null;
+            try {
+                source.stop();
+            }
+            catch { }
+            source.disconnect();
+        }
+        this.sources.clear();
+        this.finish();
+    }
+    async close() {
+        this.closed = true;
+        this.token = null;
+        this.interrupt();
+        await this.context.close();
+    }
+}
+exports.SpeechPlayback = SpeechPlayback;
+
+},{}],
+79:[function(module,exports,require,process){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.initialVoiceSessionState = void 0;
 exports.voiceSessionReducer = voiceSessionReducer;
 exports.useVoiceSession = useVoiceSession;
@@ -49697,7 +49850,7 @@ function useVoiceSession() {
 }
 
 },{"react":3}],
-79:[function(module,exports,require,process){
+80:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useTurnLifecycle = useTurnLifecycle;
@@ -49726,7 +49879,7 @@ function useTurnLifecycle() {
 }
 
 },{"react":3}],
-80:[function(module,exports,require,process){
+81:[function(module,exports,require,process){
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -49869,7 +50022,7 @@ function useSpeechPlayback() {
 }
 
 },{"react":3,"../api":15}],
-81:[function(module,exports,require,process){
+82:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -49889,7 +50042,7 @@ const Header = ({ currentLanguage, languages, propertyName, now, onLanguageChang
 exports.Header = Header;
 
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-82:[function(module,exports,require,process){
+83:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -49911,7 +50064,7 @@ const SidebarNav = ({ items, language, activeId, onSelectItem, }) => {
 exports.SidebarNav = SidebarNav;
 
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-83:[function(module,exports,require,process){
+84:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -49929,7 +50082,7 @@ const VoiceAssistant = ({ enabled, available, state, message, language, volume, 
 exports.VoiceAssistant = VoiceAssistant;
 
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-84:[function(module,exports,require,process){
+85:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -49943,7 +50096,7 @@ const MyRequests = ({ tickets, selectedId, language, onSelectTicket }) => (0, js
 exports.MyRequests = MyRequests;
 
 },{"react/jsx-runtime":1,"react":3,"../i18n":16}],
-85:[function(module,exports,require,process){
+86:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Chat = Chat;
@@ -49954,8 +50107,8 @@ function Chat(props) {
     return (0, jsx_runtime_1.jsx)(ChatSection_1.ChatSection, { ...props });
 }
 
-},{"react/jsx-runtime":1,"../components/ChatSection":86}],
-86:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"../components/ChatSection":87}],
+87:[function(module,exports,require,process){
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -50009,8 +50162,8 @@ const ChatSection = ({ propertyName, language, messages, value, onChange, onSend
 };
 exports.ChatSection = ChatSection;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"./MarkdownText":87}],
-87:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"./MarkdownText":88}],
+88:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -50046,7 +50199,7 @@ function MarkdownText({ text, className }) {
 }
 
 },{"react/jsx-runtime":1,"react":3}],
-88:[function(module,exports,require,process){
+89:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RequestFlow = RequestFlow;
@@ -50059,8 +50212,8 @@ function RequestFlow({ edit, verification, ticket }) {
     return (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [edit && (0, jsx_runtime_1.jsx)(EditRequestModal_1.EditRequestModal, { ...edit }), (0, jsx_runtime_1.jsx)(VerificationModal_1.VerificationModal, { ...verification }), (0, jsx_runtime_1.jsx)(TicketModal_1.TicketModal, { ...ticket })] });
 }
 
-},{"react/jsx-runtime":1,"../components/EditRequestModal":89,"../components/TicketModal":91,"../components/VerificationModal":92}],
-89:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"../components/EditRequestModal":90,"../components/TicketModal":92,"../components/VerificationModal":93}],
+90:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -50084,8 +50237,8 @@ const EditRequestModal = ({ isOpen, kind, requestTypes, room, quantity, time, pa
 };
 exports.EditRequestModal = EditRequestModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":90}],
-90:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":91}],
+91:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useModalFocus = useModalFocus;
@@ -50156,7 +50309,7 @@ function useModalFocus(isOpen, onClose) {
 }
 
 },{"react":3}],
-91:[function(module,exports,require,process){
+92:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -50183,8 +50336,8 @@ const TicketModal = ({ isOpen, progress, error, language, busy, onClose, onCance
 };
 exports.TicketModal = TicketModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":90}],
-92:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":91}],
+93:[function(module,exports,require,process){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -50210,8 +50363,8 @@ const VerificationModal = ({ isOpen, language, room, onClose, onSubmit }) => {
 };
 exports.VerificationModal = VerificationModal;
 
-},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":90}],
-93:[function(module,exports,require,process){
+},{"react/jsx-runtime":1,"react":3,"../i18n":16,"../hooks/useModalFocus":91}],
+94:[function(module,exports,require,process){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useRequestDraft = useRequestDraft;

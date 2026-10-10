@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from urllib.error import URLError
 
 import pytest
-from jsonschema import Draft202012Validator
 
 from concierge_kiosk.agent.understanding import commands, semantic
 from concierge_kiosk.agent.understanding.routing import RouteDecision, fast_response
@@ -25,46 +24,33 @@ def no_model_http(monkeypatch):
                         lambda *a, **kw: pytest.fail('No real model HTTP permitted'))
 
 
-def sample(schema):
-    if 'const' in schema: return schema['const']
-    if 'enum' in schema: return schema['enum'][0]
-    if schema['type'] == 'string': return 'guest words'
-    if schema['type'] == 'boolean': return False
-    if schema['type'] == 'array': return []
-    return {k: sample(schema['properties'][k]) for k in schema['required']}
+def test_every_command_type_in_the_prompt_spec_parses():
+    policy = get_domain_profile().semantic_authorization
+    spec = commands.command_output_spec()
+    concept = policy['services']['amenity_delivery']['concepts']['en'][0]
+    meanings = policy['preferences']['party_size']
+    party = meanings.get('integer', next(iter(meanings.values())))['en'][0]
+    samples = [
+        ({'type': 'StartGoal', 'goal': 'amenity_delivery', 'slots': []}, f'please {concept}'),
+        ({'type': 'AskInfo', 'query': 'guest words'}, 'guest words'),
+        ({'type': 'Navigate', 'query': 'guest words'}, 'guest words'),
+        ({'type': 'Plan', 'query': 'guest words'}, 'guest words'),
+        ({'type': 'AskStatus'}, 'guest words'), ({'type': 'Cancel'}, 'guest words'),
+        ({'type': 'Modify'}, 'guest words'), ({'type': 'Clarify'}, 'guest words'),
+        ({'type': 'Confirm', 'confirmed': True}, 'guest words'),
+        ({'type': 'Handoff', 'reason': 'guest words'}, f'please {policy["services"][policy["handoff_goal"]]["concepts"]["en"][0]}'),
+        ({'type': 'ChitChat', 'kind': 'thanks'}, 'guest words'),
+        ({'type': 'SwitchLanguage', 'target': 'vi'}, 'guest words'),
+        ({'type': 'SetPreference', 'field': 'party_size', 'value': '3', 'evidence': f'3 {party}'}, f'3 {party}'),
+    ]
+    for command, query in samples:
+        assert command['type'] in spec
+        assert commands.parse_commands(json.dumps({'commands': [command]}), query=query,
+                                       enabled_request_kinds=ACTION_REQUEST_KINDS,
+                                       pending_reply='confirm'), command
 
 
-def test_all_baseline_shapes_and_goals_remain_eligible():
-    baseline = commands.command_schema(GOALS, context_topic=True, confirm_pending=True)
-    compact = commands.command_schema(GOALS, context_topic=True, confirm_pending=True, compact=True)
-    for schema in (baseline, compact): Draft202012Validator.check_schema(schema)
-    variants = baseline['properties']['commands']['items']['anyOf']
-    assert {v['properties']['type']['const'] for v in variants} == commands.COMMAND_TYPES - {'Emergency'}
-    for variant in variants:
-        body = {'commands': [sample(variant)]}
-        if body['commands'][0]['type'] == 'SetPreference' and 'enum' not in variant['properties']['value']:
-            body['commands'][0]['value'] = '3'
-        command = body['commands'][0]
-        policy = get_domain_profile().semantic_authorization
-        query = 'guest words 3'
-        if command['type'] in {'StartGoal','CheckAvailability','Handoff'}:
-            goal = command.get('goal', policy['handoff_goal'])
-            query = 'please ' + policy['services'][goal]['concepts']['en'][0] + ' ' + query
-        if command['type'] == 'SetPreference':
-            meanings = policy['preferences'][command['field']]
-            concept = meanings.get(command['value'], meanings.get('integer'))['en'][0]
-            command['evidence'] = ('3 ' if 'integer' in meanings else '') + concept
-            query = command['evidence'] + ' ' + query
-        for schema in (baseline, compact): Draft202012Validator(schema).validate(body)
-        assert commands.parse_commands(json.dumps(body), query=query,
-            enabled_request_kinds=ACTION_REQUEST_KINDS, pending_reply='confirm')
-    starts = next(v for v in compact['properties']['commands']['items']['anyOf']
-                  if v['properties']['type']['const'] == 'StartGoal')
-    assert set(starts['properties']['goal']['enum']) == set(GOALS)
-
-
-@pytest.mark.parametrize('compact', [False, True])
-def test_item_date_unit_and_multi_intent_fixtures(compact):
+def test_item_date_unit_and_multi_intent_fixtures():
     items = [{'type': 'StartGoal', 'goal': 'amenity_delivery', 'conditional': False,
               'slots': [{'name': k, 'text': v} for k, v in
                         {'requested_item':'water', 'quantity':'3', 'unit':'bottles','room_number':'502'}.items()]},
@@ -72,7 +58,6 @@ def test_item_date_unit_and_multi_intent_fixtures(compact):
               'slots':[{'name':'requested_date','text':'tomorrow'},{'name':'preferred_time','text':'6am'}]},
              {'type':'AskInfo','query':'spa hours'}]
     body = {'commands':items}
-    Draft202012Validator(commands.command_schema(GOALS, compact=compact)).validate(body)
     kept = commands.parse_commands(json.dumps(body), query='Please bring 3 bottles water to 502; wake me tomorrow 6am; spa hours',
                                    enabled_request_kinds=ACTION_REQUEST_KINDS)
     assert kept and [c.public() for c in kept] == [
@@ -85,7 +70,6 @@ def test_item_date_unit_and_multi_intent_fixtures(compact):
     {'type':'Confirm','confirmed':True},
     {'type':'Confirm','confirmed':True,'capability':'commit'},
     {'type':'StartGoal','goal':'amenity_delivery','conditional':'false'},
-    {'type':'Navigate','query':'guest words','conditional':True},
     {'type':['AskInfo'],'query':'guest words'},
     {'type':'StartGoal','goal':['amenity_delivery'],'slots':[]},
     {'type':'AskInfo','query':{'sql':'guest words'}},
@@ -103,37 +87,30 @@ def test_invalid_command_is_dropped_without_losing_valid_clause(bad):
 def test_union_slot_schema_is_not_permission_for_other_goal():
     body = {'commands':[{'type':'StartGoal','goal':'wake_up_call','conditional':False,
                          'slots':[{'name':'quantity','text':'3'}, {'name':'room_number','text':'999'}]}]}
-    Draft202012Validator(commands.command_schema(GOALS, compact=True)).validate(body)
     kept = commands.parse_commands(json.dumps(body), query='3 wake up', enabled_request_kinds=ACTION_REQUEST_KINDS)
     assert kept and kept[0].slots == ()  # unsupported quantity and invented room both removed
 
 
-@pytest.mark.parametrize('compact',[False,True])
-def test_every_registry_goals_valid_slots_survive(compact):
+def test_every_registry_goals_valid_slots_survive():
     values = {'quantity':'3','requested_item':'water','unit':'bottles','room_number':'502',
               'preferred_time':'06:00','requested_date':'2026-10-12','party_size':'4',
               'destination':'airport','issue':'leak','restaurant_name':'restaurant'}
-    validator = Draft202012Validator(commands.command_schema(GOALS,compact=compact))
     for goal,names in GOALS.items():
         slots = [{'name':name,'text':values[name]} for name in names]
         body = {'commands':[{'type':'StartGoal','goal':goal,'slots':slots,'conditional':False}]}
-        validator.validate(body)
         concept = get_domain_profile().semantic_authorization['services'][goal]['concepts']['en'][0]
         kept = commands.parse_commands(json.dumps(body),query='please ' + concept + ' ' + ' '.join(values.values()),
                                        enabled_request_kinds=ACTION_REQUEST_KINDS)
         assert kept and [s.public() for s in kept[0].slots] == slots
 
 
-@pytest.mark.parametrize('compact',[False,True])
-def test_conditional_and_compound_confirm_handoff_context_survive(compact):
+def test_conditional_and_compound_confirm_handoff_context_survive():
     body = {'commands':[
         {'type':'StartGoal','goal':'dining_reservation','slots':[],'conditional':True,'refers_to_context':False},
         {'type':'Confirm','confirmed':True},
         {'type':'Handoff','reason':'staff assistance'},
         {'type':'Navigate','query':'reach that place','refers_to_context':True},
         {'type':'AskInfo','query':'spa hours','refers_to_context':False}]}
-    Draft202012Validator(commands.command_schema(GOALS,compact=compact,context_topic=True,
-                                                confirm_pending=True)).validate(body)
     kept = commands.parse_commands(json.dumps(body),query='if a table is free, book it; please send staff assistance; reach that place; spa hours',
                                    enabled_request_kinds=ACTION_REQUEST_KINDS,pending_reply='confirm')
     assert kept and kept[0].conditional and kept[3].refers_to_context

@@ -22,7 +22,7 @@ from concierge_kiosk.agent.understanding.domain_nlu import (
     TIME_PATTERNS as _TIME_PATTERNS,
 )
 from concierge_kiosk.agent.understanding.intent import normalize_intent_text
-from concierge_kiosk.agent.understanding.normalization import normalize_with_spans
+from concierge_kiosk.agent.understanding.normalization import _strip_marks, normalize_with_spans
 
 
 def _number_phrase_value(values: list[int], connectors: frozenset[str], words: list[str]) -> int:
@@ -187,6 +187,35 @@ def _hour_for_period(hour: int, period: str) -> int:
     return hour
 
 
+# The configured patterns without tone marks, for transcripts typed without any:
+# there "toi nay 7h" is "this evening at 7", whatever single word "toi" restores to.
+_FOLDED_DAYPART_PATTERNS = {language: tuple(re.compile(_strip_marks(pattern.pattern)) for pattern in patterns)
+                            for language, patterns in _CLOCK_DAYPART_PATTERNS.items()}
+
+
+def _unmarked(text: str) -> bool:
+    return text == _strip_marks(text)
+
+
+def _daypart_matches(text: str, language: str, *, unmarked: bool = False) -> list[re.Match[str]]:
+    """Clock-with-daypart matches of every configured word order, leftmost first."""
+    matches = sorted((match for pattern in _CLOCK_DAYPART_PATTERNS.get(language, ())
+                      for match in pattern.finditer(text)), key=lambda match: match.start())
+    if not matches and unmarked:
+        folded = _strip_marks(text)
+        matches = sorted((match for pattern in _FOLDED_DAYPART_PATTERNS.get(language, ())
+                          for match in pattern.finditer(folded)), key=lambda match: match.start())
+    return matches
+
+
+def _has_daypart(text: str, language: str, *, unmarked: bool = False) -> bool:
+    return bool(_daypart_matches(text, language, unmarked=unmarked))
+
+
+def _daypart_period(dayparts: Mapping[str, str], word: str) -> str | None:
+    return dayparts.get(word) or {_strip_marks(key): value for key, value in dayparts.items()}.get(_strip_marks(word))
+
+
 def preferred_time(text: str, language: str) -> str | None:
     """Parse a clock time, letting a corrected time keep the daypart it replaces.
 
@@ -199,16 +228,20 @@ def preferred_time(text: str, language: str) -> str | None:
     value = _preferred_time_core(text, language)
     if value is None or not re.fullmatch(r'\d{2}:\d{2}', value):
         return value
-    pattern = _CLOCK_DAYPART_PATTERNS.get(language)
     dayparts = _CLOCK_DAYPARTS.get(language, {})
-    if pattern is None or not dayparts:
+    if not _CLOCK_DAYPART_PATTERNS.get(language) or not dayparts:
         return value
     hour, minute = int(value[:2]), value[3:]
     surviving = _normalize_number_words(text, language)
-    if not 1 <= hour <= 12 or ':' in surviving or pattern.search(surviving):
+    if not 1 <= hour <= 12 or ':' in surviving or _has_daypart(surviving, language):
         return value
     original = normalize_with_spans(text, language).text
-    periods = {dayparts.get(match.group('daypart')) for match in pattern.finditer(original)}
+    periods = {_daypart_period(dayparts, match.group('daypart'))
+               for match in _daypart_matches(original, language, unmarked=_unmarked(text))}
+    if not periods:
+        # "Tonight, a table for four at 7": the daypart word need not sit next to the clock.
+        periods = {period for word, period in dayparts.items()
+                   if re.search(rf'(?<!\w){re.escape(word)}(?!\w)', original)}
     periods.discard(None)
     if len(periods) != 1:
         return value
@@ -232,18 +265,16 @@ def corrected_time(text: str, language: str, previous: object) -> str | None:
         return value
     previous = previous_clock.group(0)
     hour = int(value[:2])
-    pattern = _CLOCK_DAYPART_PATTERNS.get(language)
     if (not 1 <= hour <= 11 or ':' in _normalize_number_words(text, language)
-            or (pattern is not None and pattern.search(normalize_with_spans(text, language).text))):
+            or _has_daypart(normalize_with_spans(text, language).text, language)):
         return value
     return f'{hour + 12:02d}:{value[3:]}' if int(previous[:2]) >= 12 else value
 
 
 def _within_window(text: str, language: str, value: str, window: str) -> str:
     hour = int(value[:2])
-    pattern = _CLOCK_DAYPART_PATTERNS.get(language)
     if (not 1 <= hour <= 12 or ':' in _normalize_number_words(text, language)
-            or (pattern is not None and pattern.search(normalize_with_spans(text, language).text))):
+            or _has_daypart(normalize_with_spans(text, language).text, language)):
         return value
     periods = {period for daypart, period in _CLOCK_DAYPARTS.get(language, {}).items() if daypart in window}
     if len(periods) != 1:
@@ -253,24 +284,28 @@ def _within_window(text: str, language: str, value: str, window: str) -> str:
 
 def _preferred_time_core(text: str, language: str) -> str | None:
     normalized = _normalize_number_words(text, language)
+    # A daypart next to the clock decides first ("this afternoon at 3:30" is 15:30);
+    # a plain HH:MM is taken as written only without one.
     clock = re.search(r'(?<!\d)((?:[01]?\d|2[0-3])):([0-5]\d)(?!\d)', normalized)
-    if clock:
+    unmarked = _unmarked(text)
+    if clock and not _has_daypart(normalized, language, unmarked=unmarked):
         return f'{int(clock.group(1)):02d}:{int(clock.group(2)):02d}'
-    daypart_pattern = _CLOCK_DAYPART_PATTERNS.get(language)
     dayparts = _CLOCK_DAYPARTS.get(language, {})
-    if daypart_pattern is not None and dayparts:
-        match = daypart_pattern.search(normalized)
+    if dayparts:
+        match = next(iter(_daypart_matches(normalized, language, unmarked=unmarked)), None)
         if match:
             hour = int(match.group('hour'))
             minute = int(match.group('minute') or 0)
             daypart = match.group('daypart')
-            period = dayparts.get(daypart)
+            period = _daypart_period(dayparts, daypart)
             if period is not None and 0 <= hour <= 12 and 0 <= minute <= 59:
                 hour = _hour_for_period(hour, period)
                 clock_value = f'{hour:02d}:{minute:02d}'
                 relative = next((term for term in _RELATIVE_TIME_TERMS.get(language, ())
                                  if term in normalized and daypart in term), None)
                 return f'{relative} {clock_value}' if relative else clock_value
+    if clock:
+        return f'{int(clock.group(1)):02d}:{int(clock.group(2)):02d}'
     marked = _marked_clock(normalized, language)
     if marked:
         return marked
@@ -278,14 +313,11 @@ def _preferred_time_core(text: str, language: str) -> str | None:
         match = re.search(pattern, normalized, flags=re.IGNORECASE)
         if match:
             value = match.group(1).strip()
-            for marker in _SHORT_TIME_MARKERS.get(language, ()):
-                # Canonical clock periods already present in the reviewed
-                # marker table have the existing _hour_for_period semantics.
-                if marker not in {'am', 'pm', 'noon'}:
-                    continue
+            # Clock period words ("6am") from the language's clock grammar.
+            for marker, period in _CLOCK.get(language, {}).get('period', {}).items():
                 clock = re.fullmatch(r'(\d{1,2})(?::(\d{2}))?\s*' + re.escape(marker), value)
                 if clock and 1 <= int(clock.group(1)) <= 12:
-                    return f'{_hour_for_period(int(clock.group(1)), marker):02d}:{int(clock.group(2) or 0):02d}'
+                    return f'{_hour_for_period(int(clock.group(1)), period):02d}:{int(clock.group(2) or 0):02d}'
             return value
     for term in _RELATIVE_TIME_TERMS.get(language, ()):
         if term in normalized:

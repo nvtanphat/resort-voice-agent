@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import json
 from typing import Callable
 
-from concierge_kiosk.core.settings import SLM_NUM_CTX
+from concierge_kiosk.core.settings import SLM_KEEP_ALIVE, SLM_NUM_CTX
 
 from concierge_kiosk.agent.understanding.semantic import _chat
 from ..state import AgentState, GoalContract, GoalConstraint, GoalRequirement, _compat_objectives
@@ -98,7 +98,7 @@ def model_goal_interpretation(*, state: AgentState, base_url: str, model: str,
     payload = {
         'model': model,
         'stream': True,
-        'keep_alive': '5m',
+        'keep_alive': SLM_KEEP_ALIVE,
         'messages': [
             {'role': 'system', 'content': (
                 'You interpret a hotel guest goal before a governed agent loop. '

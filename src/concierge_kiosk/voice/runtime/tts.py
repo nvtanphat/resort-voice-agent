@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import io
+import atexit
 import json
+import multiprocessing
 import os
 import subprocess
 import tempfile
@@ -21,6 +23,88 @@ from .rendering import speech_rendering
 
 
 _PIPER_LOCK = threading.Lock()
+_PIPER_WORKER_LOCK = threading.Lock()
+_PIPER_WORKER = None
+_PIPER_CONNECTION = None
+
+
+def _piper_worker(connection):
+    """Keep voice models warm in a process that the parent can terminate."""
+    try:
+        while True:
+            model, text, synthesis = connection.recv()
+            try:
+                data = _inprocess_synthesis(Path(model), text, synthesis=synthesis)
+                connection.send((True, data))
+            except Exception:
+                connection.send((False, None))
+    except (EOFError, OSError):
+        pass
+    finally:
+        connection.close()
+
+
+def _stop_piper_worker():
+    global _PIPER_WORKER, _PIPER_CONNECTION
+    worker, connection = _PIPER_WORKER, _PIPER_CONNECTION
+    _PIPER_WORKER = _PIPER_CONNECTION = None
+    if connection is not None:
+        connection.close()
+    if worker is not None:
+        if worker.is_alive():
+            worker.terminate()
+        if worker.pid is not None:
+            worker.join(timeout=1)
+            if worker.is_alive():
+                worker.kill()
+                worker.join(timeout=1)
+        worker.close()
+
+
+atexit.register(_stop_piper_worker)
+
+
+def _bounded_piper_synthesis(model: Path, text: str, *, timeout: float,
+                             cancelled=lambda: False, synthesis=None) -> bytes:
+    """Bound lock wait, model load and synthesis; discard timed-out workers."""
+    global _PIPER_WORKER, _PIPER_CONNECTION
+    deadline = time.monotonic() + timeout
+    while not _PIPER_WORKER_LOCK.acquire(timeout=min(0.04, max(0, deadline - time.monotonic()))):
+        if cancelled() or time.monotonic() >= deadline:
+            raise RuntimeError('Local TTS cancelled or timed out')
+    try:
+        if cancelled() or time.monotonic() >= deadline:
+            raise RuntimeError('Local TTS cancelled or timed out')
+        if _PIPER_WORKER is None or not _PIPER_WORKER.is_alive():
+            _stop_piper_worker()
+            context = multiprocessing.get_context('spawn')
+            parent, child = context.Pipe()
+            _PIPER_CONNECTION = parent
+            _PIPER_WORKER = context.Process(target=_piper_worker, args=(child,), daemon=True)
+            try:
+                _PIPER_WORKER.start()
+            finally:
+                child.close()
+        _PIPER_CONNECTION.send((str(model), text, synthesis))
+        while True:
+            if cancelled() or time.monotonic() >= deadline:
+                _stop_piper_worker()
+                raise RuntimeError('Local TTS cancelled or timed out')
+            if _PIPER_CONNECTION.poll(min(0.04, max(0, deadline - time.monotonic()))):
+                ok, data = _PIPER_CONNECTION.recv()
+                if cancelled() or time.monotonic() >= deadline:
+                    _stop_piper_worker()
+                    raise RuntimeError('Local TTS cancelled or timed out')
+                if not ok:
+                    raise RuntimeError('Local TTS unavailable')
+                return data
+            if not _PIPER_WORKER.is_alive():
+                raise RuntimeError('Local TTS worker exited')
+    except (OSError, EOFError, ValueError):
+        _stop_piper_worker()
+        raise RuntimeError('Local TTS worker unavailable') from None
+    finally:
+        _PIPER_WORKER_LOCK.release()
 
 
 def inprocess_piper_available() -> bool:
@@ -131,8 +215,8 @@ def synthesize(cfg: Settings, text: str, language: str) -> bytes:
     synthesis, synthesis_values = _tts_synthesis_config(cfg, language)
     if inprocess_piper_available():
         try:
-            return _inprocess_synthesis(model, speech_rendering(text, language),
-                                        synthesis=synthesis)
+            return _bounded_piper_synthesis(model, speech_rendering(text, language),
+                                            timeout=cfg.tts_timeout_seconds, synthesis=synthesis)
         except (OSError, ValueError, RuntimeError, ImportError) as exc:
             raise RuntimeError("Local TTS unavailable") from exc
     with tempfile.TemporaryDirectory(prefix="concierge-tts-") as tmp:
@@ -184,7 +268,8 @@ def synthesize_cancellable(cfg: Settings, text: str, language: str,
     rendered = speech_rendering(text, language)
     if inprocess_piper_available():
         try:
-            return _inprocess_synthesis(model, rendered, cancelled, synthesis=synthesis)
+            return _bounded_piper_synthesis(model, rendered, cancelled=cancelled,
+                                            timeout=cfg.tts_timeout_seconds, synthesis=synthesis)
         except (OSError, ValueError, ImportError) as exc:
             raise RuntimeError('Local TTS unavailable') from exc
     with tempfile.TemporaryDirectory(prefix='concierge-tts-') as tmp:

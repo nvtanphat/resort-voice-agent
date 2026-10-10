@@ -441,7 +441,22 @@
       "fuzzy_correct": true,
       "max_repeated_letters": 2,
       "fuzzy_min_token_length": 4,
-      "fuzzy_similarity": 0.82
+      "fuzzy_similarity": 0.82,
+      "short_forms": {
+        "vi": {
+          "ko": "không",
+          "khong": "không",
+          "hok": "không",
+          "khum": "không",
+          "dc": "được",
+          "đc": "được",
+          "j": "gì",
+          "ntn": "như thế nào"
+        },
+        "en": {},
+        "zh": {},
+        "ko": {}
+      }
     },
     "numerals": {
       "en": {
@@ -509,7 +524,8 @@
         "minus": [
           "to",
           "before"
-        ]
+        ],
+        "period": {"am": "am", "pm": "pm"}
       },
       "vi": {
         "hour": [
@@ -524,7 +540,8 @@
         ],
         "minus": [
           "kém"
-        ]
+        ],
+        "period": {"am": "am", "pm": "pm"}
       },
       "zh": {
         "hour": [
@@ -541,7 +558,8 @@
         ],
         "minus": [
           "差"
-        ]
+        ],
+        "period": {"am": "am", "pm": "pm"}
       },
       "ko": {
         "hour": [
@@ -555,7 +573,8 @@
         ],
         "minus": [
           "전"
-        ]
+        ],
+        "period": {"am": "am", "pm": "pm"}
       }
     },
     "intent": {
@@ -915,19 +934,19 @@
       },
       "room_patterns": {
         "en": [
-          "\\broom\\s*(?:number\\s*)?#?\\s*([A-Za-z]?\\d{2,5})\\b",
+          "\\b(?:room|rm)\\.?\\s*(?:number\\s*|no\\.?\\s*)?#?\\s*([A-Za-z]?\\d{2,5})\\b",
           "\\b(?:my\\s+)?room\\s+number\\s+is\\s+([A-Za-z]?\\d{2,5})\\b"
         ],
         "vi": [
-          "\\bph[oòóỏõọôồốổỗộơờớởỡợ]ng\\s*(?:s[oố]\\s*)?#?\\s*([A-Za-z]?\\d{2,5})\\b",
+          "\\bph[oòóỏõọôồốổỗộơờớởỡợ]ng\\s*(?:(?:của\\s+)?(?:mình|tôi|em|anh|chị|tui|minh|toi)\\s*)?(?:s[oố]\\s*)?#?\\s*([A-Za-z]?\\d{2,5})\\b",
           "\\b(?:s[oố]\\s+)?ph[oòóỏõọôồốổỗộơờớởỡợ]ng\\s+(?:của\\s+)?(?:tôi\\s+)?là\\s+([A-Za-z]?\\d{2,5})\\b"
         ],
         "zh": [
-          "(?:房间|房号)\\s*([A-Za-z]?\\d{2,5})",
+          "(?:房间|房号)(?:号)?\\s*(?:是|为|:|：)?\\s*([A-Za-z]?\\d{2,5})",
           "([A-Za-z]?\\d{2,5})\\s*(?:号)?(?:房|房间)"
         ],
         "ko": [
-          "(?:객실|방)\\s*([A-Za-z]?\\d{2,5})\\s*호?",
+          "(?:객실|방)\\s*(?:번호\\s*)?(?:는|은|:)?\\s*([A-Za-z]?\\d{2,5})\\s*호?",
           "([A-Za-z]?\\d{2,5})\\s*호(?:실)?"
         ]
       },
@@ -1131,9 +1150,7 @@
           ],
           "particles": [],
           "max_words": 4,
-          "enumeration_terms": [
-            "và"
-          ]
+          "enumeration_terms": ["và", "với"]
         },
         "en": {
           "order": "after",
@@ -1181,9 +1198,7 @@
           ],
           "particles": [],
           "max_words": 8,
-          "enumeration_terms": [
-            "和"
-          ]
+          "enumeration_terms": ["和", "还有", "跟"]
         },
         "ko": {
           "order": "before",
@@ -1205,9 +1220,7 @@
             "도"
           ],
           "max_words": 1,
-          "enumeration_terms": [
-            "그리고"
-          ]
+          "enumeration_terms": ["그리고", "하고", "랑"]
         }
       },
       "party_size_patterns": {
@@ -1242,8 +1255,6 @@
       },
       "short_time_markers": {
         "en": [
-          "am",
-          "pm",
           "tomorrow",
           "today"
         ],
@@ -1261,7 +1272,7 @@
         ]
       },
       "clock_daypart_patterns": {
-        "vi": "(?<!\\d)(?P<hour>\\d{1,2})(?::(?P<minute>\\d{2}))?\\s*(?:giờ)?\\s*(?P<daypart>sáng|trưa|chiều|tối)(?!\\w)"
+        "vi": ["(?<!\\d)(?P<hour>\\d{1,2})(?::(?P<minute>\\d{2}))?\\s*(?:giờ)?\\s*(?P<daypart>sáng|trưa|chiều|tối)(?!\\w)", "(?<!\\w)(?P<daypart>sáng|trưa|chiều|tối)(?:\\s+(?:nay|mai|hôm nay|ngày mai))?\\s*(?:lúc\\s*)?(?P<hour>\\d{1,2})(?:(?::|h)(?P<minute>\\d{2})(?:\\s*giờ)?|\\s*(?:giờ|h))(?!\\w)"]
       },
       "slot_labels": {
         "en": {
@@ -1401,6 +1412,7 @@
       "fast_path_evidence_enabled": false,
       "router_min_score": 0.87,
       "router_min_margin": 0.08,
+    "semantic_support_min_score": 0.7,
       "emergency_min_prob": 0.64,
       "emergency_review_prob": 0.11,
       "emergency_l2": 3e-05
@@ -1448,6 +1460,9 @@
   "rag": {
     "document_domains": {
       "default": "general"
+    },
+    "facet_value_patterns": {
+      "hours": "(?<!\\d)(?:[01]?\\d|2[0-3])[:h][0-5]\\d(?!\\d)"
     },
     "facet_fact_types": {
       "hours": [
@@ -2880,6 +2895,12 @@
         "추가"
       ]
     },
+    "question_particles": {
+      "vi": ["vậy"],
+      "en": [],
+      "zh": [],
+      "ko": []
+    },
     "negation_terms": {
       "en": [
         "not",
@@ -3666,20 +3687,25 @@
       "vi": [
         "biết",
         "tìm hiểu",
-        "tham khảo"
+        "tham khảo",
+        "hỏi"
       ],
       "en": [
         "know",
         "find out",
-        "learn about"
+        "learn about",
+        "ask about"
       ],
       "zh": [
         "知道",
-        "了解"
+        "了解",
+        "问"
       ],
       "ko": [
         "알고 싶",
-        "궁금"
+        "궁금",
+        "물어",
+        "묻"
       ]
     },
     "information_nouns": {

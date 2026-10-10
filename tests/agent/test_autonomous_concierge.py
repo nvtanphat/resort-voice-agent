@@ -307,7 +307,11 @@ def test_voice_readback_denial_with_room_correction_repeats_new_slot(tmp_path: P
                              'en', 'voice-correction-next-12345678')
     assert second.status_code == 200
     body = second.json()
-    assert body['suggested_action']['details'].endswith('room number: 306\nquantity: 2')
+    details = body['suggested_action']['details']
+    assert 'room number: 306\nrequested item (staff to verify availability): towels\nquantity: 2' in details
+    # The guest's own words reach the screen and the staff ticket, never the spoken read-back.
+    assert details.endswith('note: Please bring 2 towels to room 306')  # corrected value
+    assert 'Please bring 2 towels' not in body['answer']
     assert 'three zero six' in body['answer']
 
 
@@ -373,9 +377,9 @@ def test_understanding_model_timeout_or_transport_failure_falls_back(monkeypatch
         enabled_request_kinds=frozenset({'facilities'}), timeout_seconds=60.0)
     # No proposal means the deterministic route keeps the turn (fail closed).
     assert result is None
-    # Text turns use the configured (validated <= 10 s) budget; voice turns
-    # are capped by voice_slm_caps. The adapter itself never exceeds 10 s.
-    assert seen['timeout'] <= 10.0
+    # Text turns use the configured (validated <= 30 s) budget; voice turns
+    # are capped by voice_slm_caps. The adapter itself never exceeds 30 s.
+    assert seen['timeout'] <= 30.0
 
 
 def test_availability_question_executes_pinned_schedule_tool(tmp_path: Path, understand):

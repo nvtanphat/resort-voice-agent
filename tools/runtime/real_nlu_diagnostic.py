@@ -86,7 +86,9 @@ def main():
     def persist():
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding='utf-8')
-    base, model = 'http://127.0.0.1:11434', 'qwen2.5:3b'
+    # The development profile owns the model identity; this diagnostic never picks its own.
+    slm = json.loads(Path('config/runtime-profiles/development.json').read_text(encoding='utf-8'))['models']['slm']
+    base, model = slm['base_url'], slm['primary_model']
     boundary = CallBoundary(local_http._OPENER.open, model, persist, max_calls=4,
                            allowed_phases={'PRELOAD', 'LIVE-01', 'LIVE-02', 'LIVE-03'},
                            allow_repeat=allow_reference_call)

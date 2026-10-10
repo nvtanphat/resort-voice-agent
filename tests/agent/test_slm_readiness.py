@@ -70,7 +70,8 @@ class Response(io.BytesIO):
     headers={}
 
 
-def test_preload_is_one_empty_message_call_with_finite_residency(monkeypatch):
+def test_preload_is_one_bounded_call_with_finite_residency(monkeypatch):
+    from concierge_kiosk.core.settings import SLM_KEEP_ALIVE
     requests=[]
     def opened(request,timeout):
         requests.append((json.loads(request.data),timeout))
@@ -80,9 +81,13 @@ def test_preload_is_one_empty_message_call_with_finite_residency(monkeypatch):
     assert result['load_duration']==123
     assert len(requests)==1
     payload,timeout=requests[0]
-    assert payload['messages']==[] and payload['keep_alive']=='5m'
+    assert payload['messages']==[] and payload['keep_alive']==SLM_KEEP_ALIVE
     assert payload['options']=={'num_predict':1,'num_ctx':4096,'num_gpu':0}
     assert timeout==30
+    # A static prompt prefix (never guest text) may be prefilled with the same one-token budget.
+    prefix=[{'role':'system','content':'static instructions'}]
+    local_ai.preload_local_slm(BASE,'model',timeout=30,num_gpu=0,messages=prefix)
+    assert requests[1][0]['messages']==prefix and requests[1][0]['options']['num_predict']==1
 
 
 def test_preload_cancellation_before_http_and_admission_cleanup(monkeypatch):
@@ -144,6 +149,9 @@ def test_complete_goal_and_slot_contract_survives_shortlist(monkeypatch):
     expected={code for code,d in SERVICE_DEFINITIONS.items() if d.request_kind in ACTION_REQUEST_KINDS and d.request_kind!='directions'}
     assert set(diagnostic['goal_slots'])==expected
     assert diagnostic['candidate_order'][0]=='wake_up_call'
-    for code in expected: assert set(diagnostic['goal_slots'][code])==set(accepted_slots(code))
+    from concierge_kiosk.agent.tools.service_slots import SERVER_EXTRACTED_SLOTS
+    # The prompt names only the text slots; rooms, counts, times and dates are read by the server.
+    for code in expected: assert set(diagnostic['goal_slots'][code])==set(accepted_slots(code))-SERVER_EXTRACTED_SLOTS
     assert {'requested_item','unit'}<=set(diagnostic['goal_slots']['amenity_delivery'])
-    assert 'requested_date' in diagnostic['goal_slots']['wake_up_call']
+    assert 'requested_date' not in diagnostic['goal_slots']['wake_up_call']
+    assert 'requested_date' in accepted_slots('wake_up_call')  # still a valid slot, read by the server

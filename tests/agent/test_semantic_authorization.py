@@ -214,3 +214,89 @@ def test_replayed_model_transport_cannot_create_wrong_review_or_clear_pending(tm
                 'existing_proposal_payload': json.loads(row[1]), 'qwen_http_calls': 0,
                 'verification': 'DETERMINISTIC_REPLAY_NOT_REAL_MODEL'},
                 ensure_ascii=False, indent=2), encoding='utf-8')
+
+
+@pytest.fixture
+def bound_ranking():
+    from concierge_kiosk.agent.understanding.intent_evidence import bind_turn_service_ranking
+
+    yield bind_turn_service_ranking
+    bind_turn_service_ranking(())
+
+
+@pytest.mark.parametrize('query,language', [
+    # Paraphrases outside the reviewed concept lists, and polite question-form requests.
+    ('Phòng 510 nóng hầm hập, máy lạnh chạy mà chẳng mát chút nào.', 'vi'),
+    ('안녕하세요, 503호 에어컨이 안 돼요', 'ko'),
+    ('Cho mình check-out trễ tới 2 giờ chiều được không?', 'vi'),
+])
+def test_top_ranked_goal_with_a_present_request_clause_is_supported(bound_ranking, query, language):
+    goal = 'late_checkout' if 'check-out' in query else 'maintenance'
+    command = Command('StartGoal', goal=goal)
+    assert validate_commands([command], query=query, language=language,
+                             enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+    bound_ranking([(goal, 0.82), ('housekeeping', 0.71)])
+    assert validate_commands([command], query=query, language=language,
+                             enabled_request_kinds=ACTION_REQUEST_KINDS) == (command,)
+
+
+@pytest.mark.parametrize('ranking', [
+    [('housekeeping', 0.9), ('maintenance', 0.85)],   # another goal ranks first
+    [('maintenance', 0.5)],                            # below the calibrated similarity
+    [],                                                # no ranking computed this turn
+])
+def test_semantic_agreement_needs_the_goal_ranked_first_above_threshold(bound_ranking, ranking):
+    bound_ranking(ranking)
+    assert validate_commands([Command('StartGoal', goal='maintenance')],
+                             query='Đèn trong phòng 305 bật mãi không sáng.', language='vi',
+                             enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+
+
+@pytest.mark.parametrize('query,language', [
+    ('I do not need the air conditioner fixed anymore', 'en'),   # external negation
+    ('The technician already fixed the air conditioner', 'en'),  # completed event
+    ('I want to know how much a late check-out costs', 'en'),    # information request
+    # A question word makes the turn a question; folded, "seat" must not read as "give".
+    ('Tour Huế ngày mai còn chỗ và cutoff đặt trước là mấy giờ?', 'vi'),
+    # Thanks for a service already done is not a new request by similarity alone.
+    ('Khăn tắm lúc nãy nhân viên đã mang lên rồi, cảm ơn nha', 'vi'),
+])
+def test_semantic_agreement_keeps_the_modality_guards(bound_ranking, query, language):
+    goal = ('late_checkout' if 'check-out' in query else
+            'tour_reservation' if 'Tour' in query else
+            'amenity_delivery' if 'Khăn' in query else 'maintenance')
+    bound_ranking([(goal, 0.95)])
+    assert validate_commands([Command('StartGoal', goal=goal)], query=query, language=language,
+                             enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+
+
+@pytest.mark.parametrize('query,goal,expected', [
+    # Typed tone marks decide: folded, "milk"/"repair" and "seat"/"give" collide.
+    ('Cho mình một ly sữa nóng lên phòng 706', 'maintenance', False),
+    ('Nhờ sửa vòi nước phòng 706', 'maintenance', True),
+    # Without tone marks the guest gave nothing to tell them apart, so folding applies.
+    ('nho sua voi nuoc phong 706', 'maintenance', True),
+    ('Tour Huế ngày mai còn chỗ không?', 'tour_reservation', False),
+])
+def test_tone_marks_separate_words_that_fold_to_the_same_letters(query, goal, expected):
+    kept = validate_commands([Command('StartGoal', goal=goal)], query=query, language='vi',
+                             enabled_request_kinds=ACTION_REQUEST_KINDS)
+    assert (kept is not None) is expected
+
+
+@pytest.mark.parametrize('query,command,ranking,expected', [
+    # A complaint is told in the past with negations; involving staff is still supported.
+    ('Đồ ăn room service mang lên nguội hết rồi, mình không hài lòng lắm',
+     Command('Handoff', reason='complaint'), [('food_order', 0.8)], True),
+    # Declining staff, or a declined request, is never authorized by similarity alone.
+    ('Không cần gọi nhân viên đâu, cảm ơn', Command('Handoff', reason='x'),
+     [('human_assistance', 0.8)], False),
+    ('Đừng mang khăn lên nữa nhé', Command('StartGoal', goal='amenity_delivery'),
+     [('amenity_delivery', 0.85)], False),
+    # A turn about no hotel service does not escalate.
+    ('Thời tiết hôm nay đẹp quá', Command('Handoff', reason='x'), [('tour_request', 0.5)], False),
+])
+def test_staff_escalation_and_declined_requests(bound_ranking, query, command, ranking, expected):
+    bound_ranking(ranking)
+    kept = validate_commands([command], query=query, language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS)
+    assert (kept is not None) is expected

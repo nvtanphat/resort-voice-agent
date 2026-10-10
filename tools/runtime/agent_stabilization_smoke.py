@@ -24,25 +24,19 @@ def prompt_diagnostics(payload: dict) -> dict:
         user = {}
     if not isinstance(user, dict):
         user = {}
-    schema = payload.get('format', {})
-    variants = schema.get('properties', {}).get('commands', {}).get('items', {}).get('anyOf', [])
-    goals = {}
-    for variant in variants:
-        properties = variant.get('properties', {})
-        if properties.get('type', {}).get('const') == 'StartGoal':
-            goal_schema = properties['goal']
-            codes = goal_schema.get('enum', [goal_schema.get('const')])
-            offered_slots = properties['slots']['items']['properties']['name'].get('enum', [])
-            contracts = {s['service_mode']: s['accepted_slots'] for s in user.get('available_services', [])}
-            for code in codes:
-                goals[code] = sorted(set(contracts.get(code, offered_slots)) & set(offered_slots))
+    from concierge_kiosk.agent.understanding.commands import prompt_catalog
+    try:
+        catalog = prompt_catalog(payload)
+    except (IndexError, KeyError, TypeError, ValueError):
+        catalog = []
+    goals = {item['service_mode']: sorted(item['slots']) for item in catalog}
     return {'http_payload_bytes':len(json.dumps(payload,ensure_ascii=False).encode()),
         'message_bytes':sum(len(m['content'].encode()) for m in messages),
-        'schema_bytes':len(json.dumps(schema,ensure_ascii=False).encode()),
-        'command_variants':len(variants),'service_goal_count':len(goals),
+        'service_goal_count':len(goals),
         'slot_definition_count':sum(map(len,goals.values())), 'goal_slots':goals,
-        'candidate_order':[s['service_mode'] for s in user.get('available_services',[])],
-        'few_shots':len(user.get('examples',[])), 'structured_format':'JSON_SCHEMA',
+        'candidate_order':[s['service_mode'] for s in user.get('likely_services',[])],
+        'few_shots':sum(1 for m in messages if m.get('role') == 'assistant'),
+        'structured_format':payload.get('format'),
         'options':payload.get('options')}
 
 

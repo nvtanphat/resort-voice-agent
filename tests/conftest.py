@@ -54,9 +54,11 @@ def understand(monkeypatch):
                  pending_reply=None, voice_turn=False):
         for marker, commands in script:
             if marker in query:
+                task = self.agent_tasks.load(session, language)
                 return validate_commands(commands, query=query,
                                          enabled_request_kinds=enabled_request_kinds,
                                          pending_reply=pending_reply,
+                                         pending_goal=task.mode if task is not None else None,
                                          language=language)
         return None
 

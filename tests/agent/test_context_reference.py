@@ -7,6 +7,7 @@ pipeline.  Wordings differ on purpose: nothing may depend on a particular phrase
 """
 from __future__ import annotations
 
+import json
 import shutil
 import uuid
 from pathlib import Path
@@ -14,7 +15,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from concierge_kiosk.agent.understanding.commands import Command, CommandSlot, command_schema, model_commands
+from concierge_kiosk.agent.understanding.commands import Command, CommandSlot, model_commands
 from test_understanding_layers import _client
 
 FIRST_TURN = "Nhà hàng Café Indochine mở cửa lúc mấy giờ?"
@@ -147,32 +148,16 @@ def test_a_flagged_information_question_is_retrieved_with_the_referred_topic(
     assert unflagged and all("Indochine" not in q for q in unflagged), unflagged
 
 
-def test_the_model_is_offered_the_flag_only_while_a_topic_exists():
-    def properties(schema, command_type):
-        variants = schema["properties"]["commands"]["items"]
-        variants = variants.get("oneOf") or variants.get("anyOf")
-        return [v["properties"] for v in variants if v["properties"]["type"].get("const") == command_type]
-
-    goals = {"dining_reservation": ["party_size", "preferred_time"]}
-    without = command_schema(goals)
-    with_topic = command_schema(goals, context_topic=True)
-    for command_type in ("StartGoal", "AskInfo", "Navigate"):
-        assert all("refers_to_context" not in p for p in properties(without, command_type))
-        assert all("refers_to_context" in p for p in properties(with_topic, command_type))
-
-    def requires(schema, command_type):
-        variants = schema["properties"]["commands"]["items"]
-        variants = variants.get("oneOf") or variants.get("anyOf")
-        return [v["required"] for v in variants if v["properties"]["type"].get("const") == command_type]
-
-    # With a topic the model must decide explicitly; without one the field does not exist.
-    for command_type in ("StartGoal", "AskInfo", "Navigate"):
-        assert all("refers_to_context" in r for r in requires(with_topic, command_type))
-        assert all("refers_to_context" not in r for r in requires(without, command_type))
-    # Never offered on commands that cannot point back at a topic.
-    for command_type in ("Cancel", "Confirm", "Handoff"):
-        assert all("refers_to_context" not in p for p in properties(with_topic, command_type))
-
+def test_the_model_is_shown_a_topic_only_while_one_exists(monkeypatch):
+    payloads = []
+    monkeypatch.setattr("concierge_kiosk.agent.understanding.commands._chat",
+                        lambda _b, payload, _t, _c: payloads.append(payload) or None)
+    for topic in (None, "Café Indochine"):
+        model_commands(query="book it for 4", language="en", base_url="http://127.0.0.1:11434",
+                       model="m", enabled_request_kinds=frozenset({"dining"}), context_topic=topic)
+    without, with_topic = (json.loads(p["messages"][-1]["content"]) for p in payloads)
+    assert "context" not in without
+    assert with_topic["context"] == {"last_verified_topic": "Café Indochine"}
 
 def test_the_context_topic_reaches_the_model_prompt_only_when_given(monkeypatch):
     import concierge_kiosk.agent.understanding.commands as commands_module

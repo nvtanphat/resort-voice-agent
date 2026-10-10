@@ -5,7 +5,7 @@
   "property_id": "FURAMA_DANANG",
   "release_status": "dataset_valid_runtime_contract_blocked",
   "artifact_policy": "data_and_release_metadata",
-  "file_count": 129,
+  "file_count": 131,
   "files": [
     {
       "path": "README.md",
@@ -266,6 +266,12 @@
       "records": 400
     },
     {
+      "path": "quarantine/training_candidates.jsonl",
+      "bytes": 27976,
+      "sha256": "c648c7eeb10153c96bd99987ad2e2dd43286fcd89643c3bf3def70a12100bc75",
+      "records": 48
+    },
+    {
       "path": "release.json",
       "bytes": 1412,
       "sha256": "31dfde1725218a707b2d556fd72eefce29ebfca7fc219a908f10a12be09a80ed"
@@ -327,8 +333,8 @@
     },
     {
       "path": "schemas/contracts.json",
-      "bytes": 33131,
-      "sha256": "ba67d860e5017c17fec915813b442259de59888332ab1170e302c463a396618c"
+      "bytes": 33312,
+      "sha256": "18068feef683eeb49a3b488c639f083ca4b1c6fa1114332eb7de34de6b36918e"
     },
     {
       "path": "schemas/end_to_end.schema.json",
@@ -394,6 +400,11 @@
       "path": "schemas/quarantine/fact.schema.json",
       "bytes": 3548,
       "sha256": "66011a8adaad3d75887a6fd5a0eb81208a08538f9343e4b351fc68e7251b5ac4"
+    },
+    {
+      "path": "schemas/quarantine/training_candidate.schema.json",
+      "bytes": 2525,
+      "sha256": "28df11f3ea093e9f1042aa69107551be652e2980c4d69fc33044e2d7a16b33f0"
     },
     {
       "path": "schemas/referential_rules.json",
@@ -673,9 +684,9 @@
     },
     {
       "path": "training/agent/assistant_candidates.jsonl",
-      "bytes": 514093,
-      "sha256": "f4adb8e924760c3961a1b1a02c9d47080557c45f582b0ccb9cc39d57cdf968d9",
-      "records": 1083
+      "bytes": 494229,
+      "sha256": "3dccb64e72cf1a1b2178af67b35a35956773c62b263f3e02a49e2e78f86ca5aa",
+      "records": 1035
     },
     {
       "path": "training/agent/source_registry.jsonl",

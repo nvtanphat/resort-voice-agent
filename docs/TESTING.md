@@ -57,20 +57,38 @@ Source AST, config pins, Markdown links, whitespace và protected-file hashes đ
 
 Operator từng cung cấp “714 targeted tests / 11 pre-existing failures / 4 skips”; exact failing node IDs và nguyên bản transcript chưa có. Không nhập các con số đó vào PASS ở bảng này.
 
-## Real-model smoke gần nhất: chưa đạt nghiệm thu
+## Real-model E2E (2026-10-10): đo được, chưa đạt nghiệm thu
 
-Đã có 3 Ollama POST lịch sử: preload rỗng, food NLU timeout và một evidence-copy generation ngoài ý định sau timeout. Run là **PROTOCOL_FAILURE**: stop-after-model-failure chưa giữ được, dù còn trong ceiling. Boundary read-only suppression và stop_on_failure đã được sửa và test deterministic; không có replay real-model thành công tiếp theo.
+Authenticated ASGI API thật (session + CSRF + origin), SQLite copy tạm, selector bge-m3 thật, SLM qua Ollama loopback với `num_gpu=0` (CPU, Ryzen 5 5600H, 16 GB), chỉ một SLM resident mỗi lần chạy. Không phải voice/browser E2E. Mỗi lượt khách là một session mới trừ journeys nhiều lượt.
 
-| Quan sát | Giá trị |
-|---|---|
-| Preload HTTP | 4.375 s, HTTP 200, done_reason=load |
-| Food NLU | 3.016 s HTTP / 3.922 s API, timeout |
-| Provider loading/prefill/generation counters | NOT_RETURNED; không coi bằng 0 |
-| Sau preload | 2,059,284,480 bytes RAM available, 87% load |
-| Model context trong smoke | CPU, context 4096 đã kiểm tra |
-| Source SQLite | Hash không đổi; các delta service/proposal/emergency writes bằng 0 |
+| Bộ | Nguồn | n | Kết quả (qwen2.5:3b, code cuối) | Latency |
+|---|---|---:|---|---|
+| Service holdout | `evaluation/gold/vi_test` (47 service) + `evaluation/holdout/service_workflow` (12/ngôn ngữ en/zh/ko, stratified) | 83 | 36/83 (43%): vi 28/47, en 2/12, zh 4/12, ko 2/12 | p50 5.4 s, p95 8.06 s |
+| Cùng bộ, gate trước thay đổi | như trên, tắt đường semantic agreement | 83 | 8/83 (10%) | p50 5.8 s, p95 8.14 s |
+| Safety (hard negatives) | `evaluation/gold/vi_hard_negatives` | 80 | 80/80 không proposal/không write | p50 3.7 s, p95 9.8 s |
+| Journeys nhiều lượt | 14 kịch bản tự viết (vi/en/zh/ko) | 22 lượt | 7/7 commit: 0 write trước confirm, đúng 1 row sau confirm, replay cùng request_id, session khác 403; hủy draft, multi-intent, emergency, handoff, chỉ đường, sửa số lượng đúng | xem log |
 
-Đây là observations đơn lẻ, không latency distribution/p95 hay real-model accuracy. Nguyên bản lỗi preload ValueError S01–S15 chưa có stack để tái hiện chính xác.
+Thất bại còn lại trên service holdout: 13 timeout SLM (>8 s), 15 `nlu_failure` (model sai shape/goal bị gate từ chối), còn lại là sai loại command (knowledge/status/check_schedule thay vì service). Mẫu nhỏ, không đủ để tuyên bố tỷ lệ với Wilson CI chặt; chỉ dùng để so sánh tương đối giữa các build.
+
+So sánh model (cùng bộ 83, json + spec, CPU, một model resident):
+
+| Model | Đúng | Timeout >8 s | Đúng trên lượt kịp trả lời | p50 |
+|---|---:|---:|---:|---:|
+| qwen2.5:3b | 29/83 | 7 | 38% | 5.2 s |
+| qwen3:4b-instruct-2507 | 27/83 | 37 | 59% | 7.6 s |
+| gemma3:4b | 2/83 | 78 | — (prefix cache không được tái sử dụng) | 8.0 s |
+
+qwen3-4b chính xác hơn rõ rệt nhưng vượt budget 8 s trên CPU này; giữ qwen2.5:3b. Fine-tuning không được thử: lỗi còn lại chủ yếu là latency và năng lực model ở kích thước này, chưa đủ điều kiện ở mục SLM policy.
+
+Đo offline cho gate (không gọi model): leave-one-situation-out trên 736 lượt service train, lexical gate cũ từ chối 57–69% request vàng theo ngôn ngữ; đường đồng thuận semantic nhận ≈82% (`tools/nlu/calibrate_semantic_support.py`, ngưỡng 0.70).
+
+### Kịch bản thực tế (2026-10-10, đợt 2)
+
+19 kịch bản tự viết (văn nói, không dấu, sai chính tả, trộn tiếng Anh; vi/en/zh/ko), model thật qwen2.5:3b trên CPU: 15/19 đúng. 10/10 commit: 0 write trước confirm, đúng 1 row sau confirm, replay cùng request_id, session khác 403. Đã sửa và xác nhận: "tối nay 7 giờ" → 19:00 và "đổi sang 8 giờ" → 20:00 (trước là 07:00/08:00); "6am" → 06:00; giờ trả phòng trả lời được ở vi/zh/en/ko (0.2 s cho vi/zh); dị ứng ("mình dị ứng hành") có trên phiếu nhân viên. Còn lỗi (do model): cảm ơn chuyện đã xong, phàn nàn tiếng ồn, sai chính tả tiếng Anh ("towles") đều nhận "chưa hiểu rõ"; giá massage không có trong dữ liệu.
+
+### Đổi sang qwen2.5:7b (2026-10-10)
+
+Cùng 19 kịch bản thực tế, CPU: 19/19 hiểu đúng ý (3b: 15/19) — 7b xử lý được cảm ơn chuyện đã xong, phàn nàn tiếng ồn (chuyển nhân viên), sai chính tả "towles". Mọi commit: 0 write trước confirm, đúng 1 row, replay cùng request_id, session khác 403. Latency lượt cần model 7–12 s (trung bình ~9.5 s); fast path/read-only 0.1–0.5 s. Tối ưu cho 7b: model chỉ điền slot dạng chữ (phòng, số lượng, giờ, ngày, số khách do server tự trích — `SERVER_EXTRACTED_SLOTS`), giữ 2 few-shot (bỏ few-shot giảm đúng từ 9/9 xuống 6–7/9 trong A/B), ngân sách NLU 12 s. Prefix system prompt được cache, nhưng mỗi token phía sau tốn ~28 ms trên CPU nên phần thay đổi mỗi lượt quyết định độ trễ.
 
 ## Transcript application khi model unavailable
 

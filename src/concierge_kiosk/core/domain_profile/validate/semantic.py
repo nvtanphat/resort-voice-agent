@@ -36,6 +36,11 @@ def semantic_validate(payload: dict[str, Any]) -> None:
                            label='semantic_authorization.deferral_terms')
     validate_language_keys(authority.get('room_access_conflicts', {}).get('terms', {}), language_set,
                            label='semantic_authorization.room_access_conflicts.terms')
+    particles = authority.get('question_particles', {})
+    validate_language_keys(particles, language_set, label='semantic_authorization.question_particles')
+    for language, terms in particles.items():
+        if not set(terms) <= set(authority['reference_terms'].get(language, ())):
+            raise ValueError('Question particles must be reviewed reference terms of the same language')
     for name in ('information_verbs', 'information_nouns', 'sequence_terms', 'indefinite_articles'):
         validate_language_keys(authority.get(name, {}), language_set, label=f'semantic_authorization.{name}')
     validate_language_keys(authority.get('modification_terms', {}), language_set,

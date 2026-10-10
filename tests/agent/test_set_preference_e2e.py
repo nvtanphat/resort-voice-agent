@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from concierge_kiosk.agent.understanding.commands import (
-    Command, CommandSlot, command_schema, commands_from_items, validate_commands,
+    Command, CommandSlot, commands_from_items, validate_commands,
 )
 from concierge_kiosk.i18n import text as i18n
 from test_understanding_layers import _client
@@ -227,12 +227,9 @@ def test_reviewed_training_examples_are_exempt_from_the_evidence_field():
     assert validate_commands((command,), query=GUEST, require_evidence=False)
 
 
-def test_the_model_schema_requires_evidence_on_every_preference():
-    schema = command_schema({})
-    variants = schema["properties"]["commands"]["items"]
-    variants = variants.get("oneOf") or variants.get("anyOf")
-    prefs = [v for v in variants if v["properties"]["type"].get("const") == "SetPreference"]
-    assert prefs and all("evidence" in v["required"] for v in prefs)
+def test_a_model_preference_without_evidence_is_dropped():
+    query = "I only eat vegetarian food"
+    assert validate_commands([Command("SetPreference", field="dietary", value="vegetarian")], query=query) is None
 
 
 def test_pending_store_is_one_turn_bounded_and_expiring():

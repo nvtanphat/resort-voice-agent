@@ -34,11 +34,35 @@ _PRESENTATION_LIMITS = ui_policy().presentation_limits
 
 
 def _mentioned_contexts(query: str, language: str) -> tuple[str, ...]:
+    """Contexts whose data-owned label the guest names, longest phrase first.
+
+    A label is not a mention when the guest's words continue into a longer label
+    of another context: "late check-out until 4 pm" names the late check-out
+    family, not the plain check-out time whose label it contains.
+    """
     surface = normalize_intent_text(query, language)
+    words = surface.split()
+
+    def reach(alias: str) -> int:
+        """Words of ``alias``'s longest prefix that occur contiguously in the turn."""
+        parts = alias.split()
+        best = 0
+        for size in range(len(parts), 0, -1):
+            prefix = parts[:size]
+            if any(words[start:start + size] == prefix for start in range(len(words) - size + 1)):
+                best = size
+                break
+        return best
+
+    labels = {context: [normalize_intent_text(alias, language) for alias in by_language.get(language, ())]
+              for context, by_language in context_terms().items()}
+    matched = {context: max(len(alias.split()) for alias in aliases if alias in surface)
+               for context, aliases in labels.items() if any(alias in surface for alias in aliases)}
     found = []
-    for context, by_language in context_terms().items():
-        aliases = by_language.get(language, ())
-        if any(normalize_intent_text(alias, language) in surface for alias in aliases):
+    for context, length in matched.items():
+        longer = any(reach(alias) > length for other, aliases in labels.items() if other != context
+                     for alias in aliases)
+        if not longer:
             found.append(context)
     return tuple(found)
 
@@ -146,17 +170,6 @@ def _extractive_fallback(answer: str, sources: list[dict], language: str | None 
     return (candidate if extract_claims(candidate) else answer), title
 
 
-def _short_fact_preserves_literals(answer: str, sources: list[dict]) -> bool:
-    """Do not let a short model answer silently drop an hour/price/number."""
-    if not sources or not isinstance(answer, str):
-        return True
-    content = sources[0].get('content')
-    if not isinstance(content, str):
-        return True
-    literals = re.findall(r'\d+(?:[.,:/-]\d+)*', content)
-    return all(literal in answer for literal in literals)
-
-
 def _pending_domain_reviews(sources: list[dict]) -> tuple[dict, ...]:
     """Return source review gates that must be visible to the guest."""
     pending = []
@@ -203,15 +216,23 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         if structured_dataset is None:
             return (), ()
         entities = property_entity_matches(query, language, structured_dataset.aliases)
+        contexts = _mentioned_contexts(query, language)
+        if not entities and len(contexts) == 1:
+            # A named context ("check-out time") that only one entity's facts carry
+            # identifies that entity; no guest wording beyond the data label is used.
+            owners = {fact.get('entity_id') for fact in structured_dataset.facts
+                      if isinstance(fact, dict) and fact.get('context') == contexts[0]}
+            if len(owners) == 1 and isinstance(next(iter(owners)), str):
+                entities = (next(iter(owners)),)
+                facet = None  # the context, not a facet, names the fact
         if len(entities) != 1:
             return (), ()
-        fact_types = facet_fact_types(facet)
-        contexts = _mentioned_contexts(query, language)
-        if not fact_types and len(contexts) == 1:
-            fact_types = tuple(dict.fromkeys(
-                str(fact.get('fact_type')) for fact in structured_dataset.facts
-                if isinstance(fact, dict) and fact.get('entity_id') == entities[0]
-                and fact.get('context') == contexts[0] and isinstance(fact.get('fact_type'), str)))
+        # An exactly named context identifies the fact more precisely than a facet.
+        context_types = tuple(dict.fromkeys(
+            str(fact.get('fact_type')) for fact in structured_dataset.facts
+            if len(contexts) == 1 and isinstance(fact, dict) and fact.get('entity_id') == entities[0]
+            and fact.get('context') == contexts[0] and isinstance(fact.get('fact_type'), str)))
+        fact_types = context_types or facet_fact_types(facet)
         return (entities, fact_types) if fact_types else ((), ())
 
     def structured_context_selector(query: str, language: str) -> tuple[str, ...]:
@@ -292,6 +313,9 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         # The facet is taken from the validated AskInfo command; without one,
         # retrieval is FTS + dense + rerank and no typed fact is required.
         keys = {'facets': (facet,) if facet else (), 'fact_types': facet_fact_types(facet),
+                'value_patterns': tuple(pattern for name, pattern
+                                        in profile_rag_policy().facet_value_patterns.items()
+                                        if name == facet),
                 'contexts': _mentioned_contexts(q, language)}
         structured_entities, structured_fact_types = structured_selectors(q, language, facet)
         keys['entity_ids'] = (property_entity_matches(q, language, structured_dataset.aliases)
@@ -373,12 +397,15 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
         # mode verify the exact pinned digest again before this guest turn;
         # a failed/changed local runtime simply takes extractive RAG.
         short_extract = _short_single_fact_extract(result.answer, result.sources)
-        if short_extract and voice_turn:
+        if short_extract:
             record_metric('slm.short_extract_bypass', language)
-            record_metric('slm.voice_short_bypass', language)
-        # Text gets a chance to be phrased naturally even for one short fact;
-        # voice keeps the old extractive bypass to protect first-audio latency.
-        strict_model_current = slm_permitted() if result.sources and not (short_extract and voice_turn) else False
+            if voice_turn:
+                record_metric('slm.voice_short_bypass', language)
+        # One verified short fact is already rendered by the locale template;
+        # rephrasing it adds a CPU generation call (and evicts the command
+        # prompt from the model's KV cache) without adding information, and
+        # can drop the subject. Only multi-fact evidence is composed by the SLM.
+        strict_model_current = slm_permitted() if result.sources and not short_extract else False
         if cfg.local_ai_strict_mode and result.sources and not strict_model_current:
             record_metric('slm.strict_unavailable', language)
         slm_timeout = min(
@@ -438,13 +465,6 @@ def build_answer_services(*, store, workflows, cfg, conversations, rag_policy, e
                                       semantic.omitted_claims + live_repair.omitted)
             verification['dropped'] += semantic.omitted_claims
         model_answer = semantic.answer if semantic is not None else generated
-        if short_extract and model_answer and not _short_fact_preserves_literals(
-                model_answer, result.sources):
-            # A source-backed short fact such as a full opening-hours range is
-            # not safe to answer with only its first endpoint.
-            semantic = None
-            generated = None
-            model_answer = None
         fallback_answer, answer_title = _extractive_fallback(result.answer, result.sources, language)
         final_answer = model_answer or fallback_answer
         bound = semantic_bound if semantic is not None else bind_citations(

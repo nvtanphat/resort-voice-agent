@@ -9,11 +9,11 @@ Bảng này đọc từ generated profiles hiện tại, không khẳng định 
 | Profile | SLM chính | Embedding candidates | GPU setting của SLM |
 |---|---|---|---|
 | test | Không cấu hình SLM | local E5, rồi hash stub | -1; không inference trong test |
-| development | qwen2.5:3b; có fallback model trong config | Ollama BGE-M3, rồi hash | -1, auto |
+| development | qwen2.5:7b; có fallback model trong config; NLU budget 12 s | Ollama BGE-M3, rồi hash | -1, auto |
 | edge | qwen2.5:1.5b | Ollama BGE-M3, rồi hash | 0, CPU |
-| production | qwen2.5:3b, strict | local multilingual-e5-small | 0, CPU |
+| production | qwen2.5:7b, strict; NLU budget 12 s | local multilingual-e5-small | 0, CPU |
 
-Primary/fallback được cấu hình không chứng minh mỗi lượt tự retry qua mọi model. Kiểm tra transport thực tế. Model digest/manifest/assets production cần operator provision; template không tự là cấu hình deploy hoàn chỉnh.
+qwen2.5:7b (Q4, ~5 GB RAM khi chạy) cần máy còn ≥6 GB RAM trống cùng BGE-M3 và ứng dụng; trên CPU 6 nhân một lượt cần model mất 7–12 s. Primary/fallback được cấu hình không chứng minh mỗi lượt tự retry qua mọi model. Kiểm tra transport thực tế. Model digest/manifest/assets production cần operator provision; template không tự là cấu hình deploy hoàn chỉnh.
 
 Development bật semantic understanding/generation/planner và Pipecat; test tắt các feature đó; edge/production dùng legacy voice transport ở profile hiện tại. Production còn yêu cầu independent NLI và incremental STT. Process overrides và hardware thực tế có thể khác profile.
 

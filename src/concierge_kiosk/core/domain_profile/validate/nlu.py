@@ -20,7 +20,7 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
         raise ValueError("nlu.service_selector.example_statuses must be a non-empty list of unique strings")
     for key, low in (("fallback_min_score", -1.0), ("fallback_min_margin", 0.0),
                      ("router_min_score", -1.0), ("router_min_margin", 0.0),
-                     ("emergency_min_prob", 0.0), ("emergency_review_prob", 0.0)):
+                     ("semantic_support_min_score", -1.0), ("emergency_min_prob", 0.0), ("emergency_review_prob", 0.0)):
         value = selector.get(key)
         if not isinstance(value, (int, float)) or isinstance(value, bool) or not low <= value <= 1.0:
             raise ValueError(f"nlu.service_selector.{key} must be a number in [{low}, 1]")
@@ -51,6 +51,18 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
             if not isinstance(values, list) or any(not isinstance(value, str) or not value.strip() for value in values):
                 raise ValueError(f"nlu.clock.{language}.{key} is invalid")
     normalization = nlu["normalization"]
+    short_forms = normalization.get("short_forms")
+    if not isinstance(short_forms, dict):
+        raise ValueError("nlu.normalization.short_forms must be a language mapping")
+    validate_language_keys(short_forms, languages, label="nlu.normalization.short_forms", require_all=True)
+    for language, forms in short_forms.items():
+        if not isinstance(forms, dict) or any(
+            not isinstance(source, str) or not source or source != source.casefold()
+            or any(char.isspace() for char in source)
+            or not isinstance(target, str) or not target.strip() or target != target.strip()
+            for source, target in forms.items()
+        ):
+            raise ValueError(f"nlu.normalization.short_forms.{language} is invalid")
     if not isinstance(normalization.get("enabled"), bool):
         raise ValueError("nlu.normalization.enabled must be boolean")
     for key in ("accent_restore", "fuzzy_correct"):
@@ -136,8 +148,9 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
     for language, pattern in slots["party_size_full_patterns"].items():
         compile_regex(pattern, label=f"nlu.slots.party_size_full_patterns.{language}")
     validate_language_keys(slots["clock_daypart_patterns"], languages, label="nlu.slots.clock_daypart_patterns")
-    for language, pattern in slots["clock_daypart_patterns"].items():
-        compile_regex(pattern, label=f"nlu.slots.clock_daypart_patterns.{language}")
+    for language, patterns in slots["clock_daypart_patterns"].items():
+        for pattern in patterns:
+            compile_regex(pattern, label=f"nlu.slots.clock_daypart_patterns.{language}")
 
 
     for key in ('time_expressions',):

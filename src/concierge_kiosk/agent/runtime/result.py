@@ -189,8 +189,11 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
         lines.append(i18n_text('agent.prepared_consequential', language,
                                count=len(confirmations)))
     if missing:
+        from concierge_kiosk.agent.understanding.domain_nlu import SLOT_LABELS
+        labels = SLOT_LABELS.get(language, {})
         fields = ', '.join(dict.fromkeys(
-            str(field) for item in missing for field in item.get('missing_slots', []) if field))
+            labels.get(str(field), str(field))
+            for item in missing for field in item.get('missing_slots', []) if field))
         lines.append(i18n_text('agent.continued_missing', language, fields=fields))
     if denied:
         lines.append(i18n_text('agent.denied', language))

@@ -11,7 +11,7 @@ import re
 import time
 from typing import Callable
 from urllib.error import URLError
-from concierge_kiosk.core.settings import SLM_NUM_CTX
+from concierge_kiosk.core.settings import SLM_KEEP_ALIVE, SLM_NUM_CTX
 from concierge_kiosk.core.domain_profile import rag_policy
 from concierge_kiosk.runtime.local_http import slm_turn_expired
 from urllib.request import Request
@@ -182,7 +182,7 @@ def build_slm_payload(model: str, question: str, evidence: list[dict], language:
             "The server will verify each quote and reauthorize the live source; invalid output is discarded."
         )
     return {
-        "model": model, "stream": True, "keep_alive": "5m",
+        "model": model, "stream": True, "keep_alive": SLM_KEEP_ALIVE,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": "<UNTRUSTED_EVIDENCE>\n" + passages +

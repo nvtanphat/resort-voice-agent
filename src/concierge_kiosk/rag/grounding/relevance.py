@@ -7,6 +7,7 @@ into cited evidence. Returning no evidence is preferable to false attribution.
 """
 from __future__ import annotations
 
+import re
 import unicodedata
 from ..text.normalize import fold_accents
 from ..text.tokenization import compatibility_terms, tokens
@@ -61,7 +62,12 @@ def answerable(query_keys, query: str, source: dict, *, language: str,
     # that case retain the lexical safety check below; typed rows must match
     # the requested facet exactly.
     if requested_types and source_type and source_type not in requested_types:
-        return False
+        # A fact of another type answers the facet only through its value (a clock
+        # time stored as a policy answers "what time"); the subject check below stays.
+        content = source.get('content')
+        if not (isinstance(content, str) and any(
+                re.search(pattern, content) for pattern in _query_key_value(query_keys, 'value_patterns') or ())):
+            return False
     entities = set(_query_key_value(query_keys, 'entity_ids') or ())
     source_entity = str(source.get('entity_id') or '')
     if entities and source_entity:
@@ -72,6 +78,10 @@ def answerable(query_keys, query: str, source: dict, *, language: str,
             # without requiring accidental lexical overlap across scripts.
             return True
 
+    contexts = set(_query_key_value(query_keys, 'contexts') or ())
+    if contexts and (source.get('fact_context') or source.get('context')) in contexts:
+        # The guest named this fact's data-owned context label exactly ("check-out time").
+        return True
     source_language = source.get('language') or language
     asked = query_terms(query, language)
     subject_terms = asked

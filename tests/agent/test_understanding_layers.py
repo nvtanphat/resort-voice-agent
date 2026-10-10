@@ -280,7 +280,7 @@ def test_understand_turn_falls_through_to_c_when_b_uncertain(monkeypatch: pytest
     def fake_command_for_session(*_args, **_kwargs):
         nonlocal called_c
         called_c = True
-        return (Command("AskInfo", query="when is checkout?"),)
+        return (Command("AskInfo", query="Tell me about the kids club"),)
 
     monkeypatch.setattr(_TurnRuntimeSupport, "command_for_session", fake_command_for_session)
 
@@ -296,12 +296,13 @@ def test_understand_turn_falls_through_to_c_when_b_uncertain(monkeypatch: pytest
     )
 
     res_dec, ctx, query, commands = support.understand_turn(
-        "when is checkout?", "en", "session-1", RouteDecision("knowledge", False),
+        # Not a clear one-facet question, so the read-only path does not claim it.
+        "Tell me about the kids club", "en", "session-1", RouteDecision("knowledge", False),
         enabled_request_kinds=frozenset({"facilities"}))
 
     assert called_c is True
     assert res_dec.branch == "knowledge"
-    assert commands == (Command("AskInfo", query="when is checkout?"),)
+    assert commands == (Command("AskInfo", query="Tell me about the kids club"),)
 
 
 def test_router_abstain_and_slm_share_one_query_embedding(monkeypatch: pytest.MonkeyPatch):

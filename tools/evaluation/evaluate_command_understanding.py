@@ -276,7 +276,9 @@ def main() -> int:
                              "(default: runtime nlu.service_selector.example_statuses)")
     parser.add_argument("--base-url", default=os.environ.get("CONCIERGE_LLM_BASE_URL",
                                                              "http://127.0.0.1:11434"))
-    parser.add_argument("--model", default=os.environ.get("CONCIERGE_LLM_MODEL", "qwen2.5:3b"))
+    profile_model = json.loads((ROOT / "config/runtime-profiles/development.json").read_text(
+        encoding="utf-8"))["models"]["slm"]["primary_model"]
+    parser.add_argument("--model", default=os.environ.get("CONCIERGE_LLM_MODEL", profile_model))
     parser.add_argument("--embedding-model", default="ollama://bge-m3")
     parser.add_argument("--embedding-manifest", type=Path,
                         default=ROOT / "models/embeddings/bge-m3.ollama.manifest.json")

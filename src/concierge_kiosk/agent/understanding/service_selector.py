@@ -567,6 +567,31 @@ class ServiceSelector:
         return scored
 
     @observed('candidate_selection', project=lambda result: {'candidate_count': len(result[0])})
+    def goal_ranking(self, query: str, *, enabled_request_kinds: frozenset[str]
+                     ) -> tuple[tuple[str, float], ...]:
+        """Every enabled goal with its best similarity to catalog text or a reviewed turn.
+
+        Best first. Empty while the indexes are not ready (a guest turn never
+        builds them). Used as an independent signal by the semantic gate.
+        """
+        if not isinstance(query, str) or not query.strip() or not self._ready_or_build():
+            return ()
+        query_vector = self._query_vector(query)
+        best: dict[str, float] = {}
+        for score, example in self._example_scores(query_vector):
+            if (example.goal is not None and example.pending_field is None
+                    and example.context_topic is None and example.goal not in best):
+                best[example.goal] = score
+        for entry, vector in zip(self.entries, self._ensure_index()):
+            mode = self._mode_for_entry(entry, enabled_request_kinds)
+            if mode is not None and service_definition(mode) is not None:
+                best[mode] = max(best.get(mode, -1.0), cosine(query_vector, vector))
+        enabled = {mode for mode in best
+                   if (definition := service_definition(mode)) is not None
+                   and definition.request_kind in enabled_request_kinds}
+        return tuple(sorted(((mode, score) for mode, score in best.items() if mode in enabled),
+                            key=lambda item: (-item[1], item[0])))
+
     def understand(self, query: str, *, language: str,
                    enabled_request_kinds: frozenset[str],
                    pending_field: str | None = None,

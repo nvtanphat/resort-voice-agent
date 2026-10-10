@@ -105,12 +105,14 @@ def _voice_numeric_review(details: str, slots: dict, language: str) -> str:
 
 
 def _canonical_service_review(*, mode: str, language: str,
-                              slots: dict, fallback_details: str, cfg=None) -> str:
-    """Build read-back text from approved service identity and parsed slots.
+                              slots: dict, fallback_details: str, cfg=None,
+                              guest_words: bool = True) -> str:
+    """Build the request review from approved service identity and parsed slots.
 
-    Raw ASR text is intentionally excluded. It is useful as an internal note,
-    but repeating it aloud can turn a transcription error into an apparent
-    confirmation of the wrong service.
+    The guest's own words follow as a labelled note: they carry what no slot
+    holds (an allergy, what help is needed) to the screen and the staff ticket.
+    The spoken read-back passes ``guest_words=False``: repeating raw ASR text
+    aloud can turn a transcription error into an apparent confirmation.
     """
     catalog = service_catalog_entry(mode, cfg=cfg)
     names = catalog.get('names_by_locale') if isinstance(catalog, dict) else None
@@ -132,6 +134,9 @@ def _canonical_service_review(*, mode: str, language: str,
         # locale-specific spoken unit only for the audio response.
         rendered = str(value)
         lines.append(f'{label}: {rendered}')
+    words = ' '.join(fallback_details.split()) if isinstance(fallback_details, str) else ''
+    if guest_words and words:
+        lines.append(f"{labels.get('note', 'note')}: {words[:240]}")
     return '\n'.join(lines)[:500]
 
 
@@ -428,7 +433,10 @@ class ServiceActionService:
                     low_risk_requires_verified_room=self._low_risk_requires_verified_room,
                     verification=request.verification)
                 else 'service.voice_staff_confirmation', request.language,
-                details=_voice_numeric_review(reviewed, updated_slots, request.language))
+                details=_voice_numeric_review(_canonical_service_review(
+                    mode=pending.mode, language=request.language, slots=updated_slots,
+                    fallback_details=revised_details, cfg=self._cfg, guest_words=False),
+                    updated_slots, request.language))
             base['suggested_action'] = {'kind': pending.kind, 'details': reviewed,
                                         'service': pending.mode}
             base['requires_staff_review'] = True
@@ -572,7 +580,8 @@ class ServiceActionService:
             reviewed = _canonical_service_review(mode=assessment.mode, language=request.language, slots=assessment.slots, fallback_details=details, cfg=self._cfg)
             if voice_numeric_confirmation:
                 screen_gate = _voice_screen_gate(mode=assessment.mode, low_risk_requires_verified_room=self._low_risk_requires_verified_room, verification=request.verification)
-                result['answer'] = i18n_text('service.voice_staff_confirmation' if screen_gate else 'service.voice_numeric_confirmation', request.language, details=_voice_numeric_review(reviewed, assessment.slots, request.language))
+                spoken = _canonical_service_review(mode=assessment.mode, language=request.language, slots=assessment.slots, fallback_details=details, cfg=self._cfg, guest_words=False)
+                result['answer'] = i18n_text('service.voice_staff_confirmation' if screen_gate else 'service.voice_numeric_confirmation', request.language, details=_voice_numeric_review(spoken, assessment.slots, request.language))
             else:
                 result['answer'] = ready_text(request.language)
             result['requires_staff_review'] = True

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import json
 from typing import Callable, Iterable
 
-from concierge_kiosk.core.settings import SLM_NUM_CTX
+from concierge_kiosk.core.settings import SLM_KEEP_ALIVE, SLM_NUM_CTX
 
 from concierge_kiosk.agent.understanding.semantic import _chat
 from .catalog import public_catalog
@@ -373,7 +373,7 @@ def model_action_plan(*, state: AgentState, base_url: str, model: str,
     recent = state.public()
     recent['observations'] = recent['observations'][-5:]
     payload = {
-        'model': model, 'stream': True, 'keep_alive': '5m',
+        'model': model, 'stream': True, 'keep_alive': SLM_KEEP_ALIVE,
         'messages': [
             {'role': 'system', 'content': (
                 'You are a bounded offline hotel-concierge planner. Return ONLY a JSON object with a '
@@ -409,7 +409,7 @@ def model_next_action(*, state: AgentState, base_url: str, model: str,
     recent = state.public()
     recent['observations'] = recent['observations'][-5:]
     payload = {
-        'model': model, 'stream': True, 'keep_alive': '5m',
+        'model': model, 'stream': True, 'keep_alive': SLM_KEEP_ALIVE,
         'messages': [
             {'role': 'system', 'content': (
                 'You are the next-action planner for an offline hotel concierge. '

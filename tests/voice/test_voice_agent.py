@@ -59,5 +59,5 @@ def test_model_commands_is_closed_and_validated(monkeypatch):
 
     assert result and result[0].type == "StartGoal"
     assert result[0].slots[0].text == "2"
-    assert captured["format"]["properties"]["commands"]["maxItems"] == 8
-    assert "available_services" in captured["messages"][1]["content"]
+    assert captured["format"] == "json"
+    assert "AVAILABLE_SERVICES=" in captured["messages"][0]["content"]
