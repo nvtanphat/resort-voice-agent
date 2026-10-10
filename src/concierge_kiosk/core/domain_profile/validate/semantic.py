@@ -34,8 +34,18 @@ def semantic_validate(payload: dict[str, Any]) -> None:
                            label='semantic_authorization.reported_speech_terms')
     validate_language_keys(authority.get('deferral_terms', {}), language_set,
                            label='semantic_authorization.deferral_terms')
+    validate_language_keys(authority.get('confirmation_waivers', {}), language_set,
+                           label='semantic_authorization.confirmation_waivers')
+    validate_language_keys(authority.get('negation_scope', {}), language_set,
+                           label='semantic_authorization.negation_scope')
+    validate_language_keys(authority.get('clause_suffixes', {}), language_set,
+                           label='semantic_authorization.clause_suffixes')
+    validate_language_keys(authority.get('delivery_object_position', {}), language_set,
+                           label='semantic_authorization.delivery_object_position')
     validate_language_keys(authority.get('room_access_conflicts', {}).get('terms', {}), language_set,
                            label='semantic_authorization.room_access_conflicts.terms')
+    validate_language_keys(authority.get('room_access_conflicts', {}).get('override_terms', {}), language_set,
+                           label='semantic_authorization.room_access_conflicts.override_terms')
     particles = authority.get('question_particles', {})
     validate_language_keys(particles, language_set, label='semantic_authorization.question_particles')
     for language, terms in particles.items():

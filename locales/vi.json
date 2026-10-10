@@ -3,6 +3,7 @@
   "backend.request.deferred_pending": "Không sao, bạn cứ xem lại. Yêu cầu đang chờ vẫn được giữ nguyên và chưa có gì được gửi đi.",
   "backend.request.deferred_draft": "Mình đã ghi lại thông tin, chưa gửi yêu cầu nào. Khi bạn sẵn sàng, chỉ cần nói để mình chuẩn bị xác nhận.",
   "backend.service.room_access_conflict": "Phòng đang để chế độ không làm phiền, nhân viên sẽ không vào phòng. Bạn có muốn tắt chế độ này để nhân viên vào làm không? Chưa có yêu cầu nào được gửi.",
+  "backend.service.room_access_override": "Nhân viên không vào phòng của khách bằng chìa tổng hoặc khi chưa có sự đồng ý của khách; việc vào phòng theo quy trình của khách sạn. Bạn có thể nhờ lễ tân hỗ trợ trực tiếp. Chưa có yêu cầu nào được gửi.",
   "backend.request.change.select": "Bạn muốn thay đổi yêu cầu nào? Vui lòng chọn một mã yêu cầu: {codes}.",
   "backend.smalltalk.reply": "Rất vui được hỗ trợ bạn! Bạn cần tôi tra cứu thông tin, chỉ đường hay gửi yêu cầu dịch vụ nào không?",
   "backend.out_of_scope.reply": "Câu này nằm ngoài phạm vi hỗ trợ của khách sạn, nhưng tôi có thể giúp bạn về thông tin, chỉ đường hoặc dịch vụ lưu trú.",
@@ -151,6 +152,10 @@
   "ui.awaiting_guest_choice": "Chờ khách chọn — chưa gửi yêu cầu",
   "ui.networkLost": "Mất kết nối mạng. Kiểm tra kết nối rồi thử lại.",
   "ui.sessionExpired": "Phiên đã hết hạn. Vui lòng kết nối lại để bảo vệ dữ liệu.",
+  "ui.systemStarting": "Hệ thống đang khởi động, vui lòng chờ trong giây lát.",
+  "ui.serviceOptions": "Có phải bạn cần:",
+  "ui.reviewService": "Mình chưa chắc đã hiểu đúng dịch vụ bạn cần — vui lòng kiểm tra kỹ trước khi xác nhận.",
+  "ui.otherServices": "Hoặc chọn dịch vụ khác:",
   "ui.timeout": "Máy chủ phản hồi quá lâu. Kiểm tra trạng thái trước khi gửi lại.",
   "ui.requestPending": "Không xác định được kết quả gửi. Hãy kiểm tra yêu cầu của tôi trước khi thử lại.",
   "ui.maxQuestion": "Câu hỏi tối đa 500 ký tự.",
@@ -219,5 +224,11 @@
   "backend.request.change.modify_label": "xin sửa",
   "backend.request.change.review": "Xem lại ticket {code}: {action}. Trường thay đổi: {changes}. Xác nhận để gửi nhân viên xét duyệt.",
   "backend.nlu.retry": "Hệ thống hiện chưa xử lý được yêu cầu của bạn. Vui lòng chủ động thử lại sau; chưa có yêu cầu nào được gửi từ lượt này.",
-  "backend.nlu.clarify": "Tôi chưa hiểu rõ yêu cầu. Vui lòng nói lại cụ thể hơn; chưa có yêu cầu nào được gửi từ lượt này."
+  "backend.nlu.clarify": "Tôi chưa hiểu rõ yêu cầu. Vui lòng nói lại cụ thể hơn; chưa có yêu cầu nào được gửi từ lượt này.",
+  "backend.service.name.amenity_delivery": "Giao vật dụng lên phòng",
+  "backend.service.name.maintenance": "Sửa chữa & bảo trì",
+  "backend.service.name.human_assistance": "Hỗ trợ từ nhân viên",
+  "backend.service.name.facility_request": "Yêu cầu thiết bị & tiện ích",
+  "backend.service.name.dining_request": "Yêu cầu ăn uống",
+  "backend.service.name.tour_request": "Yêu cầu tour"
 }

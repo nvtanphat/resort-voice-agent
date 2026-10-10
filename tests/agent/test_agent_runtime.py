@@ -421,3 +421,19 @@ def test_preference_constraints_come_from_the_profile_mapping():
     assert (mapped[2], mapped[1]) in kinds
     assert ("preference", f"{soft}:{soft_value}") in kinds
     assert not any("not_a_profile_field" in value for _, value in kinds)
+
+
+def test_navigation_retry_keeps_the_commanded_destination():
+    from concierge_kiosk.agent.runtime.planner import deterministic_next_action
+
+    query = "Cho mình hỏi hồ bơi mấy giờ đóng cửa và chỉ đường ra bãi biển với"
+    state = build_initial_state(
+        query=query, language="vi", decision=RouteDecision("multi_task"),
+        commands=(Command("AskInfo", query="hồ bơi mấy giờ đóng cửa"), Command("Navigate", query="bãi biển")))
+    navigate = next(req for req in state.goal_contract.requirements if req.outcome == "verified_route_guidance")
+    # Both capabilities already ran and the destination has no published route.
+    state.observations.extend([{"capability": "knowledge", "status": "completed"},
+                               {"capability": "navigation", "status": "unavailable"}])
+    action = deterministic_next_action(state, requirement_id=navigate.id)
+    # The whole turn also names the pool, which belongs to the other question.
+    assert action.capability == "navigation" and action.query == "bãi biển"

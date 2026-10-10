@@ -13,6 +13,7 @@ from collections import OrderedDict
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 import threading
 from typing import Any, Iterable, Protocol, Sequence
@@ -108,6 +109,18 @@ def _catalog_entry(row: object) -> ServiceCatalogEntry | None:
         embedding_text=embedding_text,
     )
 
+
+
+def _identity_text(code: str, definition) -> str:
+    """What a service does, for its embedding: the first sentence of its description.
+
+    Later sentences tell the model where the service ends ("delivering supplies is
+    amenity_delivery"). An embedding cannot read that negation and would move the
+    service towards its neighbour, so only the affirmative identity is embedded.
+    """
+    description = (getattr(definition, 'description', '') or '').strip()
+    first = re.split(r'(?<=[.!?])\s+', description, maxsplit=1)[0].strip() if description else ''
+    return first or code
 
 @dataclass(frozen=True)
 class CommandExample:
@@ -313,10 +326,21 @@ class ServiceSelector:
         self.example_k = example_k
         self.entries = entries
         self.examples = tuple(examples)
+        # A composed turn is not a labelled example of its first goal. Only
+        # independently owned, validated training spans teach service identity.
+        self._goal_sources = tuple(dict.fromkeys(
+            (command['goal'], command['source']) for example in self.examples
+            if example.pending_field is None and example.context_topic is None
+            for command in example.commands
+            if command.get('type') == 'StartGoal' and command.get('goal')
+            and isinstance(command.get('source'), str) and command['source']))
         self.cache_dir = Path(cache_dir) if cache_dir is not None else None
         self._cache_path = self._build_cache_path()
         self._vectors: tuple[list[float], ...] | None = None
         self._example_vectors: tuple[list[float], ...] | None = None
+        self._definition_vectors: tuple[list[float], ...] | None = None
+        self._goal_vectors: tuple[list[float], ...] | None = None
+        self._embedding_records: dict[str, list[float]] | None = None
         self._warming = False
         self._lock = threading.Lock()
         # `_lock` is held for a whole embedding pass; a guest turn must never wait for it, so the
@@ -366,8 +390,53 @@ class ServiceSelector:
             # top_k/example_k only bound the prompt; they never change a vector,
             # so they stay out of the key and sweeps reuse one embedding pass.
             'model': model, 'catalog': catalog_hash, 'examples': examples_hash,
+            'criteria': {code: _identity_text(code, definition) for code, definition in SERVICE_DEFINITIONS.items()},
+            'goal_sources': self._goal_sources,
+            'manifest': getattr(self.embedder, 'manifest', None),
         }, sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
         return self.cache_dir / f'{key}.json'
+
+    def _embedding_identity(self):
+        return {'model': str(getattr(self.embedder, 'model_name', type(self.embedder).__name__)),
+                'manifest': getattr(self.embedder, 'manifest', None)}
+
+    def _embed_texts(self, texts, *, query):
+        """Reuse unchanged text vectors across corpus/criteria edits, with pinned identity.
+
+        The complete index key still changes with commands and service criteria.
+        This cache stores only index texts (training/catalog), never guest turns.
+        """
+        if self._embedding_records is None:
+            self._embedding_records = {}
+            path = self.cache_dir / 'embeddings.json' if self.cache_dir else None
+            if path is not None and path.is_file() and not path.is_symlink():
+                try:
+                    payload = json.loads(path.read_text(encoding='utf-8'))
+                    if payload.get('identity') == self._embedding_identity():
+                        self._embedding_records = {key: vector for key, vector in payload.get('records', {}).items()
+                                                   if isinstance(key, str) and valid_vector(vector)}
+                except (OSError, ValueError, TypeError, AttributeError):
+                    pass
+        role = 'query' if query else 'passage'
+        keys = [role + '\0' + text for text in texts]
+        missing = list(dict.fromkeys(text for key, text in zip(keys, texts) if key not in self._embedding_records))
+        if missing:
+            batch = getattr(self.embedder, 'encode_many', None)
+            encoder = self.embedder.encode_query if query else getattr(self.embedder, 'encode_passage', self.embedder.encode_query)
+            vectors = batch(missing) if batch is not None else [encoder(text) for text in missing]
+            self._embedding_records.update((role + '\0' + text, vector) for text, vector in zip(missing, vectors))
+        return tuple(self._embedding_records[key] for key in keys)
+
+    def _ensure_definition_index(self):
+        if self._definition_vectors is None:
+            self._definition_vectors = self._embed_texts(
+                [_identity_text(code, definition) for code, definition in SERVICE_DEFINITIONS.items()], query=False)
+        return self._definition_vectors
+
+    def _ensure_goal_index(self):
+        if self._goal_vectors is None:
+            self._goal_vectors = self._embed_texts([source for _, source in self._goal_sources], query=True)
+        return self._goal_vectors
 
     @staticmethod
     def _valid_vectors(value: object, expected: int) -> tuple[list[float], ...] | None:
@@ -396,6 +465,8 @@ class ServiceSelector:
             return False
         self._vectors = vectors
         self._example_vectors = examples or ()
+        self._definition_vectors = self._valid_vectors(payload.get('definition_vectors'), len(SERVICE_DEFINITIONS))
+        self._goal_vectors = self._valid_vectors(payload.get('goal_vectors'), len(self._goal_sources))
         return True
 
     def _save_cache(self) -> None:
@@ -408,8 +479,16 @@ class ServiceSelector:
             temporary.write_text(json.dumps({
                 'version': 1, 'vectors': self._vectors,
                 'example_vectors': self._example_vectors or (),
+                'definition_vectors': self._definition_vectors,
+                'goal_vectors': self._goal_vectors,
             }, separators=(',', ':')), encoding='utf-8')
             temporary.replace(path)
+            if self._embedding_records:
+                records = self.cache_dir / 'embeddings.json'
+                temporary = records.with_suffix('.tmp')
+                temporary.write_text(json.dumps({'identity': self._embedding_identity(),
+                    'records': self._embedding_records}, separators=(',', ':')), encoding='utf-8')
+                temporary.replace(records)
         except (OSError, TypeError, ValueError):
             # Cache writes are an optimization; a read-only or full data volume
             # must never prevent understanding from warming in memory.
@@ -423,7 +502,8 @@ class ServiceSelector:
         turn proceeds with what is ready and a background thread builds the
         rest, so a cold index can never consume the turn's time budget.
         """
-        if self._vectors is not None and (self._example_vectors is not None or not self.examples):
+        if (self._vectors is not None and (self._example_vectors is not None or not self.examples)
+                and (self._goal_vectors is not None or not self._goal_sources)):
             return True
         from concierge_kiosk.runtime.local_http import in_guest_turn
         if not in_guest_turn():
@@ -453,13 +533,8 @@ class ServiceSelector:
             if self._vectors is None:
                 if self._load_cache():
                     return self._vectors
-                encoder = getattr(self.embedder, "encode_passage", None)
-                if encoder is None:
-                    encoder = self.embedder.encode_query
                 texts = [entry.embedding_text for entry in self.entries]
-                batch = getattr(self.embedder, "encode_many", None)
-                self._vectors = (tuple(batch(texts)) if batch is not None
-                                 else tuple(encoder(text) for text in texts))
+                self._vectors = self._embed_texts(texts, query=False)
                 if not self.examples:
                     self._save_cache()
             return self._vectors
@@ -473,9 +548,7 @@ class ServiceSelector:
                 # Examples are guest utterances, so they share the query side
                 # of the embedding space with the turn being understood.
                 texts = [example.utterance for example in self.examples]
-                batch = getattr(self.embedder, "encode_many", None)
-                self._example_vectors = (tuple(batch(texts)) if batch is not None
-                                         else tuple(self.embedder.encode_query(text) for text in texts))
+                self._example_vectors = self._embed_texts(texts, query=True)
                 self._save_cache()
             return self._example_vectors
 
@@ -484,6 +557,9 @@ class ServiceSelector:
         self._ensure_index()
         if self.examples:
             self._matrix(self._ensure_example_index())
+        self._ensure_goal_index()
+        self._ensure_definition_index()
+        self._save_cache()
 
     @staticmethod
     def _mode_for_entry(entry: ServiceCatalogEntry, enabled_request_kinds: frozenset[str]) -> str | None:
@@ -522,7 +598,7 @@ class ServiceSelector:
                 request_kind=definition.request_kind,
                 catalog_service_id=None,
                 name="",
-                description="Generic governed capability; use only when no catalog service fits.",
+                description=definition.description,
                 score=-1.0,
             ))
         return result
@@ -567,6 +643,22 @@ class ServiceSelector:
         return scored
 
     @observed('candidate_selection', project=lambda result: {'candidate_count': len(result[0])})
+    def nonrequest_similarity(self, query: str) -> float | None:
+        """Best similarity to a reviewed turn that requests no service (a question, thanks, a vague ask).
+
+        The semantic gate requires a proposed service to be closer to the guest's words
+        than any such turn, so what counts as "not a request" is taught by reviewed
+        examples rather than by phrase lists. ``None`` while the index is not ready.
+        """
+        if not isinstance(query, str) or not query.strip() or not self._ready_or_build():
+            return None
+        for score, example in self._example_scores(self._query_vector(query)):
+            if (example.pending_field is None and example.context_topic is None
+                    and example.label != 'emergency'
+                    and not any(command.get('type') == 'StartGoal' for command in example.commands)):
+                return score
+        return None
+
     def goal_ranking(self, query: str, *, enabled_request_kinds: frozenset[str]
                      ) -> tuple[tuple[str, float], ...]:
         """Every enabled goal with its best similarity to catalog text or a reviewed turn.
@@ -579,12 +671,17 @@ class ServiceSelector:
         query_vector = self._query_vector(query)
         best: dict[str, float] = {}
         for score, example in self._example_scores(query_vector):
-            if (example.goal is not None and example.pending_field is None
+            if (example.goal is not None and len(example.commands) == 1 and example.pending_field is None
                     and example.context_topic is None and example.goal not in best):
                 best[example.goal] = score
+        for (goal, _), vector in zip(self._goal_sources, self._goal_vectors or ()):
+            best[goal] = max(best.get(goal, -1.0), cosine(query_vector, vector))
         for entry, vector in zip(self.entries, self._ensure_index()):
             mode = self._mode_for_entry(entry, enabled_request_kinds)
             if mode is not None and service_definition(mode) is not None:
+                best[mode] = max(best.get(mode, -1.0), cosine(query_vector, vector))
+        for (mode, definition), vector in zip(SERVICE_DEFINITIONS.items(), self._definition_vectors or ()):
+            if definition.request_kind in enabled_request_kinds:
                 best[mode] = max(best.get(mode, -1.0), cosine(query_vector, vector))
         enabled = {mode for mode in best
                    if (definition := service_definition(mode)) is not None
@@ -611,8 +708,10 @@ class ServiceSelector:
         scored_examples = self._example_scores(query_vector)
         example_best: dict[str, float] = {}
         for score, example in scored_examples:
-            if example.goal is not None and example.goal not in example_best:
+            if example.goal is not None and len(example.commands) == 1 and example.goal not in example_best:
                 example_best[example.goal] = score
+        for mode, score in self.goal_ranking(query, enabled_request_kinds=enabled_request_kinds):
+            example_best[mode] = max(example_best.get(mode, -1.0), score)
 
         catalog_best: dict[str, tuple[float, ServiceCatalogEntry]] = {}
         for entry, vector in zip(self.entries, vectors):
@@ -630,7 +729,7 @@ class ServiceSelector:
             (ServiceCandidate(
                 service_mode=mode, request_kind=service_definition(mode).request_kind,
                 catalog_service_id=entry.catalog_service_id, name=entry.name,
-                description=entry.description, score=combined(mode, score))
+                description=service_definition(mode).description, score=combined(mode, score))
              for mode, (score, entry) in catalog_best.items()),
             key=lambda item: (-item.score, item.service_mode))
         fallback = sorted(
@@ -643,13 +742,22 @@ class ServiceSelector:
         fallback_budget = min(len(fallback), self.top_k // 3)
         selected = catalog[:self.top_k - fallback_budget] + fallback[:fallback_budget]
         selected.sort(key=lambda item: (-item.score, item.service_mode))
-        offered = {item.service_mode for item in selected}
+        # The command model sees the complete enabled registry. Its shortlist
+        # ranks services; it must not suppress compositional demonstrations.
+        offered = {code for code, definition in SERVICE_DEFINITIONS.items()
+                   if definition.request_kind in enabled_request_kinds}
         usable = [example for _, example in scored_examples
                   if example_eligible(example, pending_field, context_topic)
                   and example.label != "emergency"
                   and all(command.get("goal") in offered for command in example.commands
                           if command.get("type") == "StartGoal")]
         chosen = usable[:self.example_k]
+        if self.example_k > 1:
+            composed = [example for example in usable if len(example.commands) > 1]
+            demo = next((example for example in composed if example.language == language),
+                        composed[0] if composed else None)
+            if demo is not None and not any(len(example.commands) > 1 for example in chosen):
+                chosen = chosen[:self.example_k - 1] + [demo]
         if context_topic and self.example_k and not any(e.context_topic for e in chosen):
             # With a verified topic in play, one slot shows how a turn that points back at
             # it is expressed (and one that does not), so the model sees the mechanism.

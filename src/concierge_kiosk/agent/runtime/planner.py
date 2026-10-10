@@ -25,6 +25,9 @@ _READS = {
 _CAPABILITIES = {*_READS, 'service_action'}
 _WRITE_ALIASES = {'manage_request', 'handoff_staff'}
 _CAPABILITIES |= _WRITE_ALIASES
+# Verifier labels for requirements without a guest-stated topic; never tool input.
+_REQUIREMENT_LABELS = frozenset({'guest question', 'hotel facts', 'route guidance', 'distance or location',
+                                 'current request status', 'itinerary'})
 
 
 @dataclass(frozen=True)
@@ -477,6 +480,11 @@ def deterministic_next_action(state: AgentState, *, extra_requirement: str | Non
                            if item.get('capability') == 'planning' and item.get('missing_topics')), None)
         missing = latest_gap.get('missing_topics') if isinstance(latest_gap, dict) else None
         query = str(missing[0])[:300] if isinstance(missing, list) and missing else state.original_query
+    elif (capability == 'navigation' and target.topic and target.topic not in _REQUIREMENT_LABELS
+          and target.topic != state.original_query[:80]):
+        # The command named its destination. The whole turn may name other places
+        # that belong to other requirements ("pool hours, and the way to the beach").
+        query = target.topic
     elif capability in {'planning', 'navigation', 'request_status', 'check_schedule',
                         'find_place', 'guest_context'}:
         # These tools need the concrete guest request (destinations, itinerary
@@ -484,9 +492,8 @@ def deterministic_next_action(state: AgentState, *, extra_requirement: str | Non
         # ``itinerary`` or ``route guidance`` are verifier metadata, not tool input.
         query = state.original_query
     else:
-        query = (target.topic if target.topic and target.topic not in {
-            'guest question', 'hotel facts', 'route guidance', 'distance or location',
-            'current request status', 'itinerary'} else state.original_query)
+        query = (target.topic if target.topic and target.topic not in _REQUIREMENT_LABELS
+                 else state.original_query)
     return NextAction(
         'tool', capability=capability, objective_id=objective_id,
         requirement_id=target.id, query=query,

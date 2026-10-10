@@ -18,7 +18,7 @@ from concierge_kiosk.core.domain_profile import preference_policy, rag_policy, s
 from concierge_kiosk.core.settings import SLM_KEEP_ALIVE, SLM_NUM_CTX
 from concierge_kiosk.agent.tools.service_slots import SERVER_EXTRACTED_SLOTS
 from concierge_kiosk.domain.service_registry import accepted_slots, service_definition
-from concierge_kiosk.agent.understanding.intent_evidence import command_supported, states_condition
+from concierge_kiosk.agent.understanding.intent_evidence import command_scope, command_supported, plausible_request, states_condition
 
 
 COMMAND_TYPES = frozenset({
@@ -67,6 +67,12 @@ class Command:
     # SetPreference only: the exact words of the guest turn the preference rests on.  The server
     # checks that it is a verbatim span; it is a grounding check, never proof of intent.
     evidence: str | None = None
+    # A complete guest predicate, expanded by the server before authorization.
+    # Numeric/time slots are extracted from this scope, never a sibling request.
+    source: str | None = None
+    # Set by the server only: a plausible request the evidence could not verify. It is
+    # shown to the guest with a review notice and alternatives; confirmation still decides.
+    review: bool = False
 
     def public(self) -> dict[str, Any]:
         result: dict[str, Any] = {'type': self.type}
@@ -76,8 +82,9 @@ class Command:
                 ('conditional', self.conditional if self.conditional else None),
                 ('refers_to_context', True if self.refers_to_context else None),
                 ('evidence', self.evidence),
+                ('source', self.source),
                 ('reason', self.reason), ('kind', self.kind), ('target', self.target),
-                ('facet', self.facet)):
+                ('facet', self.facet), ('review', True if self.review else None)):
             if value is not None:
                 result[key] = value
         if self.slots:
@@ -173,6 +180,14 @@ def validate_commands(commands: Iterable[Command], *, query: str,
         if len(command.slots) > MAX_SLOTS:
             command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
             continue
+        if command.source is not None:
+            if (command.type not in {'StartGoal', 'CheckAvailability'}
+                    or not _text(command.source, 500) or not _verbatim(query, command.source)):
+                continue
+            source = command_scope(query, command.source, command.goal, language)
+            if source is None:
+                continue
+            command = replace(command, source=source)
         if any(not isinstance(slot, CommandSlot) for slot in command.slots):
             command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
             continue
@@ -205,7 +220,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             allowed = set(accepted_slots(command.goal or ''))
             kept = tuple(slot for slot in command.slots
                          if slot.name in allowed and _text(slot.name, 64)
-                         and _text(slot.text, 120) and _verbatim(query, slot.text))
+                         and _text(slot.text, 120) and _verbatim(command.source or query, slot.text))
             if kept != command.slots:
                 command = replace(command, slots=kept)
             if command.conditional and (definition.availability_source is None
@@ -215,7 +230,7 @@ def validate_commands(commands: Iterable[Command], *, query: str,
                 # A model flag alone is no condition: the guest must state one.
                 command = replace(command, conditional=False)
             signature = (command.goal, tuple((s.name, s.text) for s in command.slots),
-                         command.conditional, command.refers_to_context)
+                         command.conditional, command.refers_to_context, command.source)
             if signature in started:
                 command_event('server_validated', command, index=command_index, outcome='rejected', reason='structural_validation')
                 continue  # the same request stated twice is one request
@@ -339,6 +354,12 @@ def validate_commands(commands: Iterable[Command], *, query: str,
             command_event('semantically_authorized', command, index=command_index,
                           outcome='accepted' if supported else 'rejected',
                           reason='none' if supported else 'unsupported_semantics')
+        if not supported and require_evidence and plausible_request(semantic_command, query, language):
+            # Unverified but plausible: the guest reviews it, with alternatives, before anything.
+            command = replace(command, review=True)
+            command_event('semantically_authorized', command, index=command_index,
+                          outcome='accepted', reason='plausible_for_review')
+            supported = True
         if not supported:
             if rejections is not None:
                 rejections.append({'command': command.public(), 'reason': 'unsupported_semantics'})
@@ -364,7 +385,7 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
     if not isinstance(raw_commands, list) or not 1 <= len(raw_commands) <= MAX_COMMANDS:
         return None
     allowed = {'type', 'goal', 'slots', 'query', 'keys', 'field', 'value',
-               'confirmed', 'conditional', 'reason', 'kind', 'target', 'facet', 'refers_to_context', 'evidence'}
+               'confirmed', 'conditional', 'reason', 'kind', 'target', 'facet', 'refers_to_context', 'evidence', 'source'}
     commands: list[Command] = []
     for item in raw_commands:
         if not isinstance(item, dict) or 'type' not in item or set(item) - allowed:
@@ -393,14 +414,15 @@ def commands_from_items(raw_commands: object) -> list[Command] | None:
             value=item.get('value'), confirmed=item.get('confirmed'),
             conditional=item.get('conditional', False), reason=item.get('reason'),
             kind=item.get('kind'), target=item.get('target'), facet=item.get('facet'),
-            refers_to_context=item.get('refers_to_context', False), evidence=item.get('evidence')))
+            refers_to_context=item.get('refers_to_context', False), evidence=item.get('evidence'),
+            source=item.get('source')))
     return commands
 
 
 # The fields each command type carries; anything else a model adds is ignored.
 _TYPE_FIELDS: dict[str, frozenset[str]] = {
-    'StartGoal': frozenset({'goal', 'slots', 'conditional', 'refers_to_context'}),
-    'CheckAvailability': frozenset({'goal', 'slots'}),
+    'StartGoal': frozenset({'goal', 'slots', 'conditional', 'refers_to_context', 'source'}),
+    'CheckAvailability': frozenset({'goal', 'slots', 'source'}),
     'SetSlot': frozenset({'field', 'value'}), 'CorrectSlot': frozenset({'field', 'value'}),
     'Confirm': frozenset({'confirmed'}),
     'AskInfo': frozenset({'query', 'facet', 'refers_to_context'}),
@@ -428,6 +450,13 @@ def _model_items(raw_commands: object) -> object:
             continue
         fields = _TYPE_FIELDS.get(item['type'], frozenset())
         clean = {'type': item['type'], **{key: value for key, value in item.items() if key in fields}}
+        if 'text' in item:
+            if item['type'] in {'StartGoal', 'CheckAvailability'}:
+                clean['source'] = item['text']
+            elif item['type'] in {'AskInfo', 'Navigate', 'Plan'}:
+                clean['query'] = item['text']
+        if 'item' in item and item['type'] == 'StartGoal':
+            clean['slots'] = [{'name': 'requested_item', 'text': item['item']}] if isinstance(item['item'], str) else []
         for flag in ('conditional', 'refers_to_context'):
             if flag in clean and type(clean[flag]) is not bool:
                 del clean[flag]
@@ -457,6 +486,24 @@ def parse_commands(raw: str, *, query: str,
     commands = commands_from_items(_model_items(payload.get('commands')))
     if commands is None:
         return None
+    # The shallow wire carries a source and optional object span. Derive object
+    # slots before the gate; the model never emits room/count/unit/time slots.
+    from concierge_kiosk.agent.tools.service_slots import item_and_unit, item_anchors
+    shaped = []
+    for command in commands:
+        if command.source is not None and command.type == 'StartGoal':
+            source = command_scope(query, command.source, command.goal, language)
+            if source is None:
+                continue
+            allowed = set(accepted_slots(command.goal or ''))
+            if not command.slots and 'requested_item' in allowed:
+                item, unit = item_and_unit(source, language, anchors=item_anchors(command.goal, language))
+                slots = tuple(CommandSlot(name, text) for name, text in
+                              (('requested_item', item), ('unit', unit)) if text and name in allowed)
+                command = replace(command, slots=slots)
+            command = replace(command, source=source)
+        shaped.append(command)
+    commands = shaped
     for index, command in enumerate(commands):
         command_event('model_proposed', command, index=index)
     return validate_commands(commands, query=query,
@@ -468,47 +515,27 @@ def parse_commands(raw: str, *, query: str,
 _CATALOG_MARKER = '\nAVAILABLE_SERVICES='
 
 _COMMAND_INSTRUCTIONS = (
-    'Interpret exactly one hotel concierge guest turn. '
-    'When the guest wants something done, brought, fixed, booked or arranged, emit StartGoal '
-    'only when the AVAILABLE_SERVICES description supports the explicitly requested action, '
-    'with grounded slots; never choose a service by department or default. '
-    'Use CheckAvailability when the guest asks whether a slot/table/seat is free, without asking to book. '
-    'Use AskInfo for a factual hotel question (including price, opening-hours or policies) and set its facet when the question asks about one aspect; '
-    'Navigate for directions, Plan when the guest asks for suggestions or an '
-    'itinerary, AskStatus when the guest asks how an earlier request is going, Cancel or Modify '
-    'when the guest withdraws or changes a pending or earlier request, Confirm only to approve '
-    'the pending task, SetSlot or CorrectSlot only to answer or correct PENDING_REPLY, '
-    'SetPreference only when the guest states a lasting preference (diet, group size, children, '
-    'mobility, quiet) and put in its evidence the exact words of GUEST_TURN that state it; never emit '
-    'SetPreference when the guest said nothing about such a preference, '
-    'SwitchLanguage when the guest asks to change the conversation language, '
-    'Handoff when the guest asks for staff or complains, ChitChat with kind greeting, thanks, '
-    'goodbye or smalltalk for social text, and Clarify when the request is too vague to act on. '
-    'A negated, already-arranged or past-tense mention of a service, or a complaint about it, '
-    'is not a request for that service. One utterance may need several commands. Emit the smallest command list that '
-    'covers the explicit actionable clauses: do not add a service merely because an item '
-    'or place is mentioned, do not repeat an overlapping service, and stop once each clause '
-    'has one representation (separate quantities/items may remain separate commands). '
-    'Every slot text, value and query must '
-    'be an exact substring of GUEST_TURN, in the guest\'s own words and digits; omit any '
-    'slot the guest did not state. Never invent a room, '
-    'quantity, booking, price, permission or completion. '
-    'Use requested_item for the exact item words and unit for the stated counting unit; '
-    'never replace an item with a service catalog name. '
-    'LIKELY_SERVICES ranks the AVAILABLE_SERVICES most similar to the turn; it is a hint, '
-    'never a reason to choose a service the guest did not ask for. '
-    'The earlier user/assistant turns are reviewed guest turns with their correct commands; '
-    'follow their pattern and their compact single-line output. '
-    'CONTEXT.last_verified_topic, when present, is the place or topic the guest was just '
-    'told about. Set refers_to_context=true on StartGoal, AskInfo or Navigate only when the guest '
-    'points back at that topic without naming one again; never otherwise, and never copy the topic into a slot or query. '
-    'For a conditional request such as "if available, book it", set conditional=true on '
-    'StartGoal so the planner checks availability before the governed proposal; wanting to review or confirm '
-    'later is not a condition, so leave conditional false then. '
-    'OPEN_DRAFT, when present, is the service request drafted for the guest and not yet confirmed: '
-    'Cancel when the guest drops it (in any words), CorrectSlot or StartGoal for the same service when '
-    'the guest changes a detail of it. '
-    'A command proposes intent only; the server owns policy, evidence, confirmation and writes. '
+    'Interpret one hotel guest turn into compact JSON commands. Cover EVERY independently '
+    'requested action, including a shorter request beside a longer one. One item list is ONE '
+    'StartGoal; different aspects of one factual question are ONE AskInfo. '
+    'Select services by their action criteria in AVAILABLE_SERVICES, never department or default. '
+    'LIKELY_SERVICES is advisory. Examples demonstrate both single and composed intentions. '
+    'StartGoal requests execution; CheckAvailability asks about free capacity without booking; '
+    'AskInfo asks facts, price, hours or policy; Navigate asks directions; Plan asks advice. '
+    'Past, completed, quoted, reported, hypothetical or negated service mentions grant no execution '
+    'intent. Keep their governing words in text; never turn an inner verb into a new request. '
+    'AskStatus checks an earlier request. Cancel/Modify require an open draft or earlier request; '
+    'declining an item in a fresh order does not cancel a ticket. Confirm approves a pending task. '
+    'SetSlot/CorrectSlot answer PENDING_REPLY. SetPreference needs a stated lasting preference and '
+    'verbatim evidence. Handoff requests staff or reports a complaint. SwitchLanguage changes language. '
+    'ChitChat is social; Clarify is insufficient intent. '
+    'text is the COMPLETE original predicate for that command, including its complements and scope. '
+    'All text, item, value and evidence must be verbatim guest words. Emit NO slots array: the server '
+    'extracts room, quantities, units, time, date and venue. Optional item is only the exact object '
+    'phrase for an object-taking service. Never invent permission, booking, price or completion. '
+    'conditional=true only for an explicit availability condition. refers_to_context=true only '
+    'when the guest points back to CONTEXT.last_verified_topic without naming it. '
+    'OPEN_DRAFT is unconfirmed server state. Every action remains a proposal requiring guest consent. '
 )
 
 
@@ -530,11 +557,9 @@ def command_output_spec() -> str:
     preferences = '|'.join(sorted(preference_policy().fields))
     return (
         'Answer with one line of JSON: {"commands":[...]}. Command shapes: '
-        '{"type":"StartGoal","goal":SERVICE_MODE,"slots":[{"name":SLOT,"text":GUEST_WORDS}]} '
-        '(SLOT is one of the service\'s listed slots; never write a count, time, date or party '
-        'size as a slot, the server reads those from GUEST_TURN; add "conditional":true only when the '
-        'guest states a condition); '
-        '{"type":"CheckAvailability","goal":SERVICE_MODE,"slots":[...]}; '
+        '{"type":"StartGoal","goal":SERVICE_MODE,"text":GUEST_PREDICATE} '
+        '(optional "item":GUEST_OBJECT; optional "conditional":true); '
+        '{"type":"CheckAvailability","goal":SERVICE_MODE,"text":GUEST_PREDICATE}; '
         '{"type":"AskInfo","query":GUEST_WORDS} with optional "facet":'
         + '|'.join(sorted(rag_policy().facet_fact_types)) + '; '
         '{"type":"Navigate","query":GUEST_WORDS}; {"type":"Plan","query":GUEST_WORDS}; '
@@ -635,11 +660,16 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         if item.get('context'):
             shot['context'] = item['context']
         shot['guest_turn'] = item['guest_turn']
-        # Examples show only the slots the model is asked for, so it does not copy rooms or counts.
-        shown = [{**command, 'slots': [slot for slot in command['slots']
-                                       if slot.get('name') not in SERVER_EXTRACTED_SLOTS]}
-                 if isinstance(command.get('slots'), list) else command
-                 for command in item['commands']]
+        shown = []
+        for command in item['commands']:
+            shape = {key: value for key, value in command.items() if key not in {'slots', 'source'}}
+            if command.get('type') in {'StartGoal', 'CheckAvailability'}:
+                shape['text'] = command.get('source') or item['guest_turn']
+                object_span = next((slot.get('text') for slot in command.get('slots', ())
+                                    if slot.get('name') == 'requested_item'), None)
+                if object_span:
+                    shape['item'] = object_span
+            shown.append(shape)
         shots += [{'role': 'user', 'content': json.dumps(shot, ensure_ascii=False, separators=(',', ':'))},
                   {'role': 'assistant', 'content': json.dumps(
                       {'commands': shown}, ensure_ascii=False, separators=(',', ':'))}]
@@ -655,11 +685,18 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
             command_system_message(enabled_request_kinds), *shots,
             {'role': 'user', 'content': json.dumps(turn, ensure_ascii=False, separators=(',', ':'))},
         ],
-        'options': {'temperature': 0, 'num_predict': 220, 'num_ctx': SLM_NUM_CTX,
+        # Room for three commands with slots: a cut-off reply is invalid JSON and the
+        # whole turn is lost. The turn timeout still bounds a runaway generation.
+        'options': {'temperature': 0, 'num_predict': 384, 'num_ctx': SLM_NUM_CTX,
                     'num_gpu': num_gpu},
     }
     with capture_chat_failure() as failures, invocation('NLU'):
         raw = _chat(base_url, payload, min(30.0, max(0.05, timeout_seconds)), should_cancel)
+        if not raw and failures and failures[-1] == 'malformed_output' and not slm_turn_expired():
+            # Greedy JSON decoding can loop on one token until the server aborts it, and the
+            # same request fails the same way again; retry once with a mild repeat penalty.
+            retry = {**payload, 'options': {**payload['options'], 'repeat_penalty': 1.1}}
+            raw = _chat(base_url, retry, min(30.0, max(0.05, timeout_seconds)), should_cancel)
     if not raw:
         note('turn_budget_expired' if slm_turn_expired() else
              failures[-1] if failures else 'no_response')
@@ -670,6 +707,11 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         raw, query=query, enabled_request_kinds=enabled_request_kinds,
         pending_reply=pending_reply, language=language, context_topic=context_topic,
         pending_goal=pending_goal, rejections=rejections)
+    if parsed is None and pending_reply is None and _sole_assent(raw):
+        # "Okay, thanks" with nothing waiting approves nothing (the validator dropped it);
+        # it acknowledges the conversation, so it is answered socially, not as not understood.
+        note('acknowledgement')
+        return (Command('ChitChat', kind='smalltalk'),)
     if parsed is None:
         note('unsupported_semantics' if rejections else
              'rejected_by_validation' if _is_json_object(raw) else 'malformed_output')
@@ -691,6 +733,15 @@ def _proposed_count(raw: str) -> int:
     except (AttributeError, TypeError, ValueError):
         return 0
     return len(items) if isinstance(items, list) else 0
+
+
+def _sole_assent(raw: str) -> bool:
+    """The model proposed nothing but an approval."""
+    try:
+        items = json.loads(raw).get('commands')
+    except (AttributeError, TypeError, ValueError):
+        return False
+    return isinstance(items, list) and len(items) == 1 and isinstance(items[0], dict) and items[0].get('type') == 'Confirm'
 
 
 def _is_json_object(raw: str) -> bool:

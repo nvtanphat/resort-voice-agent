@@ -11,7 +11,7 @@ bounded structured facts and requirement status only.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from concierge_kiosk.agent.tools.service_slots import extract_slots
 from concierge_kiosk.agent.understanding.routing import RouteDecision
@@ -357,6 +357,15 @@ def _goal_summary(decision: RouteDecision, requirements: list[GoalRequirement]) 
     return f'{decision.branch}:' + ','.join(outcomes[:6])
 
 
+# The item list and its counts; a request differs from another by its other slots.
+_ITEM_SLOTS = frozenset({'requested_item', 'quantity', 'unit'})
+
+
+def _same_request_except_items(left, right) -> bool:
+    return ({k: v for k, v in left.items() if k not in _ITEM_SLOTS}
+            == {k: v for k, v in right.items() if k not in _ITEM_SLOTS})
+
+
 def build_initial_state(*, query: str, language: str, decision: RouteDecision,
                         continuation_context: dict | None = None,
                         resume_projection: dict | None = None,
@@ -408,6 +417,8 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
         return result
 
     if commands is not None:
+        from concierge_kiosk.agent.understanding.intent_evidence import command_scope
+        distinct_goals = {command.goal for command in commands if command.type == 'StartGoal'}
         for command in commands:
             if command.type != 'StartGoal':
                 continue
@@ -418,13 +429,28 @@ def build_initial_state(*, query: str, language: str, decision: RouteDecision,
             kind = definition.request_kind
             code = command.goal or ''
             hints = {slot.name: slot.text for slot in command.slots}
+            # In a turn with several services each one reads its own clause, so the
+            # dinner's time is not the taxi's; the room is shared by the whole turn.
+            source = command.source or ((command_scope(query, None, code, language) or query)
+                                        if len(distinct_goals) > 1 else query)
             # Validated model spans seed text fields and counting units;
             # deterministic extraction still owns numeric/time normalization.
-            slots = apply_preference_slots(
-                extract_slots(query, language, kind, mode=code, existing=hints), code)
+            extracted = extract_slots(source, language, kind, mode=code, existing=hints)
+            if source != query and 'room_number' not in extracted:
+                room = extract_slots(query, language, kind, mode=code, existing=hints).get('room_number')
+                if room:
+                    extracted['room_number'] = room
+            slots = apply_preference_slots(extracted, code)
+            same = [candidate for candidate in candidates if candidate.service_code == code
+                    and candidate.slot_source_query == source
+                    and _same_request_except_items(candidate.existing_slots, slots)]
+            if same:
+                # One predicate owns its entire item list. Duplicate commands for
+                # that same scope cannot create additional review proposals.
+                continue
             candidates.append(ServiceCandidate(
                 id=f'S{len(candidates)+1}', service_code=code,
-                request_kind=kind, guest_text=query[:500], slot_source_query=query,
+                request_kind=kind, guest_text=query[:500], slot_source_query=source,
                 risk_tier=service_risk_tier(code), conditional=command.conditional,
                 existing_slots=slots))
             service_deps.append(())

@@ -3,6 +3,7 @@
   "backend.request.deferred_pending": "没问题，您慢慢考虑。待处理的请求会保持不变，目前没有发送任何内容。",
   "backend.request.deferred_draft": "我已记下这些信息，尚未发送任何请求。您准备好后告诉我，我会为您准备确认。",
   "backend.service.room_access_conflict": "您的房间设置了请勿打扰，工作人员不会进入。您是否要取消请勿打扰以便工作人员进入？目前尚未发送任何请求。",
+  "backend.service.room_access_override": "工作人员不会用万能钥匙或在未经客人同意的情况下进入客房；进入客房须遵循酒店流程。前台可以当面为您协助。尚未发送任何请求。",
   "backend.request.change.select": "您想更改哪项请求？请提供以下请求编号之一：{codes}。",
   "backend.smalltalk.reply": "很高兴为您服务！您需要查询酒店信息、指路，还是提交服务请求？",
   "backend.out_of_scope.reply": "这个问题超出了酒店礼宾服务范围，但我可以为您提供酒店信息、路线指引或住客服务帮助。",
@@ -151,6 +152,10 @@
   "ui.awaiting_guest_choice": "等待客人选择—尚未提交",
   "ui.networkLost": "网络连接中断，请检查后重试。",
   "ui.sessionExpired": "会话已过期，请重新连接以保护您的信息。",
+  "ui.systemStarting": "系统正在启动，请稍候。",
+  "ui.serviceOptions": "您是否需要：",
+  "ui.reviewService": "我不太确定选对了服务，请在确认前仔细核对。",
+  "ui.otherServices": "或选择其他服务：",
   "ui.timeout": "服务器响应超时，重试前请查看状态。",
   "ui.requestPending": "提交结果不确定，请先查看“我的请求”。",
   "ui.maxQuestion": "问题不得超过500字。",
@@ -219,5 +224,11 @@
   "backend.request.change.modify_label": "申请修改",
   "backend.request.change.review": "审核工单 {code}: {action}。更改字段：{changes}。确认后提交员工审核。",
   "backend.nlu.retry": "系统暂时无法处理您的要求。请稍后主动重试；本轮尚未提交任何请求。",
-  "backend.nlu.clarify": "我还没有理解您的要求。请更具体地说明；本轮尚未提交任何请求。"
+  "backend.nlu.clarify": "我还没有理解您的要求。请更具体地说明；本轮尚未提交任何请求。",
+  "backend.service.name.amenity_delivery": "客房用品配送",
+  "backend.service.name.maintenance": "维修服务",
+  "backend.service.name.human_assistance": "员工协助",
+  "backend.service.name.facility_request": "设施与设备申请",
+  "backend.service.name.dining_request": "餐饮请求",
+  "backend.service.name.tour_request": "旅游请求"
 }

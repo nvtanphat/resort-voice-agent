@@ -249,11 +249,23 @@ class SpeechPlanResponse(PublicResponse):
     chunks: list[SpeechPlanChunkResponse]
 
 
+class ServiceOptionResponse(PublicResponse):
+    """A service the guest may choose when a turn was not understood; it opens the request form."""
+    kind: str
+    service: str
+    label: str
+    details: str
+    payload: dict = Field(default_factory=dict)
+
+
 class AskResponse(PublicResponse):
     answer: str
     sources: list[dict] = Field(default_factory=list)
     citations: list[dict] = Field(default_factory=list)
     suggested_action: SuggestedActionResponse | None = None
+    service_options: list[ServiceOptionResponse] | None = None
+    # True when a prepared request rests on the model alone: the guest should check the service.
+    needs_review: bool | None = None
     retrieval_mode: str
     generation_mode: str
     request_completed: bool
@@ -409,6 +421,8 @@ class PublicConfigResponse(PublicResponse):
     orchestrator: str
     generation_mode: str
     data_consent_required: bool = False
+    # False while the understanding layer warms up at startup; guest input waits for it.
+    understanding_ready: bool = True
 
 
 class ServiceCatalogResponse(PublicResponse):

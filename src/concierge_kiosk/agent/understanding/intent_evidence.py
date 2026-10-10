@@ -2,12 +2,13 @@
 
 The pinned ontology supplies action and concept meanings. A model's goal, slot
 name, retrieval score, or context flag alone supplies no authority. A paraphrase
-outside the ontology is accepted only when two independent signals agree: the
-model's goal is also the turn's top-ranked service by embedding similarity to
-reviewed turns and catalog text (bound by the server for this turn), and the
-guest's clause passes the modality guards (no external negation, past or
-completed event, reported speech or information request). This gate never
-chooses a replacement goal or inventory item.
+outside the ontology is accepted only when two independent signals agree on the
+clause the command stands for: the model's goal is among that clause's closest
+services by embedding similarity to reviewed turns and catalog text, closer than
+any reviewed turn that requests nothing (thresholds calibrated on held-out
+training groups), and the clause asks for it now (no negation governing the
+request, no completed or past request, reported speech or information request).
+This gate never chooses a replacement goal or inventory item.
 """
 from __future__ import annotations
 from concierge_kiosk.runtime.observability import observed, semantic_gate_metadata
@@ -26,15 +27,69 @@ from concierge_kiosk.agent.understanding.normalization import _strip_marks
 # empty whenever no ranking was computed (tests, model-free paths).
 _TURN_SERVICE_RANKING: ContextVar[tuple[tuple[str, float], ...]] = ContextVar(
     'turn_service_ranking', default=())
+# Server scorers for any span of the turn: its service ranking, and its similarity to
+# the nearest reviewed turn that requests no service.
+_TURN_SOURCE_RANKER: ContextVar[object] = ContextVar('turn_source_ranker', default=None)
+_TURN_NONREQUEST: ContextVar[object] = ContextVar('turn_nonrequest_similarity', default=None)
 
 
-def bind_turn_service_ranking(ranking) -> None:
-    """Record this turn's embedding ranking of services (best first)."""
+def bind_turn_service_ranking(ranking, *, rank_source=None, nonrequest_source=None) -> None:
+    """Record this turn's embedding ranking of services (best first) and the span scorers."""
     _TURN_SERVICE_RANKING.set(tuple((str(goal), float(score)) for goal, score in ranking or ()))
+    _TURN_SOURCE_RANKER.set(rank_source)
+    _TURN_NONREQUEST.set(nonrequest_source)
+
+
+def _ranking(text):
+    """The service ranking of one span (the whole-turn ranking when no scorer is bound)."""
+    rank_source = _TURN_SOURCE_RANKER.get()
+    return tuple(rank_source(text)) if callable(rank_source) else _TURN_SERVICE_RANKING.get()
+
+
+class _EvidenceText(str):
+    """Folded coordinates with the typed Unicode surface retained for every match.
+
+    Slices and trimming retain that surface too. Hangul decomposition can expand
+    characters, so offsets map characters rather than assuming equal lengths.
+    """
+
+    def __new__(cls, surface):
+        surface = (surface.accented if isinstance(surface, cls) else
+                   unicodedata.normalize('NFKC', surface.casefold()))
+        pieces = [_strip_marks(char) for char in surface]
+        value = super().__new__(cls, ''.join(pieces))
+        value.accented = surface
+        value._starts = tuple(i for i, part in enumerate(pieces) for _ in part)
+        value._ends = tuple(i + 1 for i, part in enumerate(pieces) for _ in part)
+        return value
+
+    def surface_span(self, start, end):
+        return self.accented[self._starts[start]:self._ends[end - 1]] if end > start else ''
+
+    def __getitem__(self, key):
+        result = super().__getitem__(key)
+        if isinstance(key, slice):
+            start, end, step = key.indices(len(self))
+            if step == 1 and end > start:
+                view = _EvidenceText(self.surface_span(start, end))
+                if str(view) == result:
+                    return view
+        return result
+
+    def __add__(self, other):
+        return _EvidenceText(self.accented + (other.accented if isinstance(other, _EvidenceText) else other))
+
+    def strip(self, chars=None):
+        start = len(self) - len(super().lstrip(chars))
+        end = len(super().rstrip(chars))
+        return self[start:end]
+
+    def rstrip(self, chars=None):
+        return self[:len(super().rstrip(chars))]
 
 
 def fold(text):
-    return _strip_marks(unicodedata.normalize('NFKC', text.casefold()))
+    return _EvidenceText(text)
 
 
 @lru_cache(maxsize=1024)
@@ -47,7 +102,12 @@ def term_pattern(term):
 
 
 def spans(text, terms):
-    return [match.span() for term in terms for match in term_pattern(term).finditer(text)]
+    """Match typed marks by default; folding is only for a surface without marks."""
+    view = fold(text)
+    marked = view.accented != str(view)
+    return [match.span() for term in terms for match in term_pattern(term).finditer(view)
+            if not marked or view.surface_span(*match.span()) ==
+            unicodedata.normalize('NFKC', term.casefold())]
 
 
 def unquoted(text):
@@ -76,27 +136,155 @@ def unquoted(text):
     return ''.join(result)
 
 
-def clause_views(query, policy, language):
-    """Clauses as ``(folded, accented)`` pairs cut at the same offsets.
+def _predicate(text, policy, language):
+    """Evidence of a predicate, including an elided negative or preference state."""
+    view = fold(text)
+    question_marks = spans(view, policy['question_terms'].get(language, ()))
+    if question_marks:
+        residual_question = view
+        for start, end in sorted(question_marks, reverse=True):
+            residual_question = residual_question[:start] + residual_question[end:]
+        if any(char.isalpha() for char in residual_question):
+            return True
+    from concierge_kiosk.agent.understanding.domain_nlu import ROOM_PATTERNS
+    room_subject = any(re.search(pattern, text, re.IGNORECASE) for pattern in ROOM_PATTERNS.get(language, ()))
+    residual = text
+    for pattern in ROOM_PATTERNS.get(language, ()):
+        residual = re.sub(pattern, '', residual, flags=re.IGNORECASE)
+    if room_subject and any(char.isalpha() for char in residual):
+        return True
+    if spans(view, policy['request_actions'].get(language, ())):
+        # A room/number complement is not a request just because it has a
+        # preposition that shares a request marker. Require a lexical complement.
+        for start, end in sorted(spans(fold(residual), policy['request_actions'].get(language, ())), reverse=True):
+            residual = fold(residual)[:start] + fold(residual)[end:]
+        if any(char.isalpha() for char in residual):
+            return True
+    if spans(view, policy['negation_terms'].get(language, ())):
+        return True
+    aspect = policy.get('perfective_terms', {}).get(language, {}).get('clause_final', ())
+    if spans(view, aspect) and any(spans(view, evidence['concepts'].get(language, ()))
+                                  for evidence in policy['services'].values()):
+        return True
+    if any(spans(view, terms.get(language, ())) for meanings in policy['preferences'].values()
+           for terms in meanings.values()):
+        return True
+    # A service noun alone is not a predicate: it can be inside a requested
+    # object or an enumeration. A device and its predicative symptom can be.
+    return any(spans(view, symptom['objects']) and spans(view, symptom['symptoms'])
+               for evidence in policy['services'].values()
+               for symptom in (evidence.get('symptom_requests', {}).get(language),)
+               if isinstance(symptom, dict))
 
-    Folding keeps one character per character for the supported scripts, so the
-    accented view lines up with the folded one; if it ever does not, both views
-    are the folded text (the previous behaviour).
+
+def predicate_ranges(query, policy, language):
+    """Original offsets: split coordination only between independent predicates.
+
+    Commas and conjunctions inside complements, item lists and informational
+    facets stay attached. These are scope boundaries, never intent predictions.
     """
-    connectors = policy['clause_connectors'].get(language, ())
-    pattern = '|'.join(term_pattern(term).pattern for term in connectors)
-    separator = r'[;,.!?\n\u3002\uff0c\uff1b\uff1f]' + (f'|{pattern}' if pattern else '')
     text = unquoted(query[:500])
-    folded = fold(text)
-    accented = unicodedata.normalize('NFKC', text.casefold())
-    if len(accented) != len(folded):
-        return [(clause, clause) for clause in re.split(separator, folded)]
-    views, start = [], 0
-    for match in re.finditer(separator, folded):
-        views.append((folded[start:match.start()], accented[start:match.start()]))
+    strong = list(re.finditer(r'(?<!\d)\.(?!\d)|[!?\u3002\uff1f\uff01;\n\uFF1B]', text))
+    sentences, start = [], 0
+    for match in strong:
+        sentences.append((start, match.start()))
         start = match.end()
-    views.append((folded[start:], accented[start:]))
+    sentences.append((start, len(text)))
+    terms = (*policy['clause_connectors'].get(language, ()),
+             *policy.get('sequence_terms', {}).get(language, ()))
+    pattern = r'[,\uff0c]' + ''.join('|' + accented_pattern(term).pattern for term in terms)
+    # A connective verb ending ("...\ud574 \uc8fc\uc2dc\uace0 ...") closes a clause in languages that attach it.
+    suffixes = policy.get('clause_suffixes', {}).get(language, ())
+    if suffixes:
+        pattern += '|' + '|'.join(rf'(?<=[^\s,]){re.escape(suffix)}(?=\s)' for suffix in suffixes)
+    result = []
+    for start, end in sentences:
+        cursor = start
+        for match in re.finditer(pattern, text[start:end], re.IGNORECASE):
+            a, b = start + match.start(), start + match.end()
+            left, right = text[cursor:a], text[b:end]
+            if not left.strip() or not right.strip():
+                continue
+            # Two factual facets still belong to one question. The model may
+            # distinguish different subjects without making every noun a task.
+            def informational(part):
+                return (spans(fold(part), policy['question_terms'].get(language, ()))
+                        or information_request(fold(part), part.casefold(), policy, language))
+            if informational(left) and informational(right):
+                continue
+            if _predicate(left, policy, language) and _predicate(right, policy, language):
+                result.append((cursor, a))
+                cursor = b
+        result.append((cursor, end))
+    return tuple((a, b) for a, b in result if text[a:b].strip())
+
+
+def clause_views(query, policy, language):
+    text = unquoted(query[:500])
+    views = []
+    for start, end in predicate_ranges(query, policy, language):
+        view = fold(text[start:end])
+        views.append((view, view.accented if len(view) == len(view.accented) else view))
     return views
+
+
+def command_scope(query, proposed, goal, language):
+    """The independently owned clause of the guest turn that a command stands for.
+
+    The model's verbatim span decides when it lies within one clause, expanded to that
+    whole clause so a governing negation or condition cannot be cut away. When the
+    span is absent, not verbatim, or covers several clauses (a model often repeats
+    the whole turn for each of its requests), the clause most similar to the
+    command's own service decides. ``None`` only when the turn has no clause.
+    """
+    policy = get_domain_profile().semantic_authorization
+    text = unquoted(query[:500])
+    ranges = [(a, b) for a, b in predicate_ranges(query, policy, language) if text[a:b].strip()]
+    if not ranges:
+        return None
+    candidates = ranges
+    chosen = None
+    if isinstance(proposed, str) and proposed.strip():
+        pattern = r'\s+'.join(re.escape(part) for part in proposed.split())
+        matches = list(re.finditer(pattern, query[:500], re.IGNORECASE))
+        if len(matches) == 1 and text[matches[0].start():matches[0].end()].strip():
+            match = matches[0]
+            overlapping = [(a, b) for a, b in ranges if a < match.end() and match.start() < b]
+            if len(overlapping) == 1:
+                a, b = overlapping[0]
+                chosen = (min(match.start(), a), max(match.end(), b))
+            candidates = overlapping or ranges
+    if chosen is not None:
+        a, b = chosen
+    elif len(candidates) > 1 and goal:
+        # Embedding similarity first, then the service's own reviewed concepts; when
+        # neither tells the clauses apart, the scope is all of them, never a guess.
+        def evidence(span):
+            clause = fold(text[span[0]:span[1]])
+            accented = clause.accented if isinstance(clause, _EvidenceText) else clause
+            return (dict(_ranking(query[span[0]:span[1]])).get(goal, -1.0),
+                    bool(goal in policy['services'] and concept_spans(clause, goal, policy, language, accented)))
+        scored = [evidence(span) for span in candidates]
+        if len(set(scored)) == 1:
+            a, b = candidates[0][0], candidates[-1][1]
+        else:
+            best = max(range(len(candidates)), key=lambda index: (scored[index], -index))
+            a, b = candidates[best]
+    else:
+        a, b = candidates[0]
+    # A following clause that asks without naming any service ("the AC is broken,
+    # send someone up") is the request for this one; it belongs to the same scope.
+    following = [(c, d) for c, d in ranges if c >= b]
+    if following:
+        c, d = following[0]
+        clause = fold(text[c:d])
+        accented = clause.accented if isinstance(clause, _EvidenceText) else clause
+        if (marker_spans(clause, accented, policy['request_actions'].get(language, ()))
+                and not declines(clause, accented, goal, policy, language)
+                and not any(concept_spans(clause, other, policy, language, accented)
+                            for other in policy['services'])):
+            b = d
+    return query[a:b].strip()
 
 
 def clauses(query, policy, language):
@@ -118,9 +306,9 @@ def marker_spans(clause, accented, terms):
     marker vs a polite particle); such markers are compared accent-insensitively
     only for unaccented input, where the guest gave no marks to tell them apart.
     """
-    if accented is None or accented == clause:
-        return spans(clause, terms)
-    return [match.span() for term in terms for match in accented_pattern(term).finditer(accented)]
+    if not isinstance(clause, _EvidenceText) and accented is not None and fold(accented) == clause:
+        clause = fold(accented)
+    return spans(clause, terms)
 
 
 def affirmative(clause, concept_spans, policy, language, *, read_only=False, accented=None):
@@ -128,8 +316,12 @@ def affirmative(clause, concept_spans, policy, language, *, read_only=False, acc
         return False
     if marker_spans(clause, accented, policy['past_terms'].get(language, ())):
         return False
-    if not read_only and spans(clause, policy['question_terms'].get(language, ())):
-        return False
+    if not read_only:
+        # A question word inside a request frame ("could you ...?") asks for the service.
+        frames = marker_spans(clause, accented, policy['request_actions'].get(language, ()))
+        if any(not any(start < end_ and start_ < end for start_, end_ in frames)
+               for start, end in spans(clause, policy['question_terms'].get(language, ()))):
+            return False
     # A negation embedded in a positive domain concept (e.g. not-working) is
     # part of its meaning; an external negation denies the proposed action.
     return not any(not (read_only and not clause[b:].strip())
@@ -187,7 +379,9 @@ def information_request(clause, accented, policy, language):
     """
     verbs = policy.get('information_verbs', {}).get(language, ())
     for _, end in marker_spans(clause, accented, policy['request_actions'][language]):
-        if verbs and spans(' '.join(clause[end:].split()[:3]), verbs):
+        tail = clause[end:]
+        surface = tail.accented if isinstance(tail, _EvidenceText) else tail
+        if verbs and spans(' '.join(surface.split()[:3]), verbs):
             return True
     return bool(marker_spans(clause, accented, policy.get('information_nouns', {}).get(language, ())))
 
@@ -219,6 +413,71 @@ def completed_action(clause, actions, policy, language, accented=None):
                for _, end in marker_spans(tail, accented_tail, markers.get('clause_final', ())))
 
 
+def _governs(clause, negation, target, direction):
+    """A negation directly scopes over a target: the next words (or characters, in a
+    script written without spaces) after it, before it, or either, by the language's
+    ``negation_scope``; punctuation ends the scope."""
+    spaced = len(clause.split()) > 1
+    if direction in {'following', 'both'} and target[0] >= negation[1]:
+        between = clause[negation[1]:target[0]]
+        if not re.search(r'[,.;:!?\uff0c\u3002\uff1b\uff1f\uff01]', between) and (
+                len(between.split()) <= 1 if spaced else len(between.strip()) <= 2):
+            return True
+    if direction in {'preceding', 'both'} and target[1] <= negation[0]:
+        between = clause[target[1]:negation[0]]
+        if not re.search(r'[,.;:!?\uff0c\u3002\uff1b\uff1f\uff01]', between) and (
+                len(between.split()) <= 1 if spaced else len(between.strip()) <= 2):
+            return True
+    return False
+
+
+def declines(clause, accented, goal, policy, language):
+    """A negation governs the request itself ("no need to clean", "don't bring water").
+
+    A negation of a state or of a question ("the AC does not cool", "is there a
+    table, or not?") governs no request verb and declines nothing. For a service
+    that delivers objects, negating the object right after declines it ("no towels").
+    """
+    negations = spans(clause, policy['negation_terms'].get(language, ()))
+    if not negations:
+        return False
+    actions = marker_spans(clause, accented, policy['request_actions'].get(language, ()))
+    objects = (concept_spans(clause, goal, policy, language, accented)
+               if goal in policy['services'] and policy['services'][goal]['object_slots'] else [])
+    direction = policy.get('negation_scope', {}).get(language, 'following')
+    for negation in negations:
+        overlaps = lambda span: span[0] < negation[1] and negation[0] < span[1]
+        if any(not overlaps(action) and _governs(clause, negation, action, direction) for action in actions):
+            return True
+        if any(not overlaps(item) and _governs(clause, negation, item, 'following') for item in objects):
+            return True
+    return False
+
+
+def requests_now(scope, goal, policy, language, *, read_only=False):
+    """The clause asks for the service now: not declined, completed, past, reported or a question."""
+    clause = fold(scope)
+    accented = clause.accented if isinstance(clause, _EvidenceText) else clause
+    if spans(clause, policy.get('reported_speech_terms', {}).get(language, ())):
+        return False
+    actions = marker_spans(clause, accented, policy['request_actions'].get(language, ()))
+    # A finished or past event ("they already brought the water", "fixed earlier")
+    # asks for nothing. A perfective closing a state ("blocked already") is not a
+    # past-time marker and stays the reason for asking.
+    if (completed_action(clause, actions, policy, language, accented)
+            or marker_spans(clause, accented, policy['past_terms'].get(language, ()))):
+        return False
+    if declines(clause, accented, goal, policy, language):
+        return False
+    if read_only:
+        return True
+    # A question word inside a request frame ("could you ...?", "...해 주실 수 있나요?")
+    # is how the request is asked, not a question for information.
+    questions = [span for span in spans(clause, policy['question_terms'].get(language, ()))
+                 if not any(span[0] < end and start < span[1] for start, end in actions)]
+    return not (questions or information_request(clause, accented, policy, language))
+
+
 def service_supported(command, query, language, *, context_topic=None, pending_goal=None, pending_reply=None):
     return service_evidence(command, query, language, context_topic=context_topic,
                             pending_goal=pending_goal, pending_reply=pending_reply) is not None
@@ -233,6 +492,16 @@ def service_evidence(command, query, language, *, context_topic=None, pending_go
     """The kind of guest-text evidence that grounds the proposed service, or ``None``."""
     policy = get_domain_profile().semantic_authorization
     goal = command.goal if command.type != 'Handoff' else policy['handoff_goal']
+    turn = query
+    if command.type == 'StartGoal' and states_access_override(query, language):
+        # Entering a guest's room against its access control is never a guest service.
+        return None
+    if getattr(command, 'source', None):
+        if waives_confirmation(query, language, policy):
+            return None
+        query = command_scope(query, command.source, goal, language)
+        if query is None:
+            return None
     evidence = policy['services'].get(goal)
     if evidence is None:
         return None
@@ -260,9 +529,10 @@ def service_evidence(command, query, language, *, context_topic=None, pending_go
             if delivery and not read_only and not evidence['object_slots']:
                 # A delivered object/category is not authority for an incidental
                 # department/action noun in the same clause. Do not relabel it.
+                # Tone marks decide when typed: folded, a package and a pillow are one word.
                 competing_objects = [span for other in policy['services'].values()
                                      if other['object_slots']
-                                     for span in spans(clause, other['concepts'].get(code, ()))]
+                                     for span in marker_spans(clause, accented, other['concepts'].get(code, ()))]
                 if competing_objects:
                     previous_condition = None
                     continue
@@ -277,10 +547,12 @@ def service_evidence(command, query, language, *, context_topic=None, pending_go
                 # A bare statement of the object ("out of towels") may be the
                 # antecedent of a request clause that follows it without one.
                 antecedent = True
-            elif stated and actions and not read_only and evidence['object_slots'] and not any(
-                    spans(clause, other['concepts'].get(code, ()))
+            elif stated and actions and not read_only and not any(
+                    marker_spans(clause, accented, other['concepts'].get(code, ()))
                     for other_goal, other in policy['services'].items() if other_goal != goal):
-                return 'elided_object'
+                # The clause before named this service ("out of towels", "the AC is broken");
+                # this one asks without naming any other ("bring some", "send someone").
+                return 'elided_object' if evidence['object_slots'] else 'elided_service'
             # Explicitly delivered objects can be novel/catalog-free. Only
             # grounded object slots owned by this registry goal qualify; room,
             # quantity and time by themselves never authorize service identity.
@@ -292,12 +564,16 @@ def service_evidence(command, query, language, *, context_topic=None, pending_go
                     # of a compound noun (a table word inside "toothbrush"), not that service.
                     conflicts = [span for other_goal, other in policy['services'].items()
                                  if other_goal != goal
-                                 for span in spans(clause, other['concepts'].get(code, ()))
+                                 for span in marker_spans(clause, accented, other['concepts'].get(code, ()))
                                  if any(start <= span[0] and span[1] <= end
                                         and (span == (start, end) or len(clause[span[0]:span[1]].split()) > 1
                                              or len(clause[start:end].split()) == 1)
                                         for start, end in objects)]
-                    if not conflicts and any(a_end <= obj_start for _, a_end in delivery for obj_start, _ in objects):
+                    # The delivered object follows the verb, or precedes it in a verb-final
+                    # language ("가운 하나 갖다 주세요"), by ``delivery_object_position``.
+                    before = policy.get('delivery_object_position', {}).get(code) == 'before'
+                    if not conflicts and any((obj_end <= a_start) if before else (a_end <= obj_start)
+                                             for a_start, a_end in delivery for obj_start, obj_end in objects):
                         return 'object_delivery'
             references = reference_spans(clause, policy, code)
             if command.refers_to_context and context_topic and booking_reference(clause, code):
@@ -326,9 +602,70 @@ def service_evidence(command, query, language, *, context_topic=None, pending_go
                 return 'pending_task'
     if command.type == 'Handoff' and staff_escalation_supported(query, language, policy):
         return 'semantic_agreement'
-    if semantic_agreement(goal, query, language, policy, read_only=command.type == 'CheckAvailability'):
+    # Without a model span, the clause most about this service is its scope.
+    scope = query if getattr(command, 'source', None) else (command_scope(query, None, goal, language) or query)
+    if semantic_agreement(goal, scope, language, policy, turn=turn,
+                          read_only=command.type == 'CheckAvailability'):
         return 'semantic_agreement'
     return None
+
+
+def plausible_request(command, query, language):
+    """A service request the evidence could not verify, but safe to put before the guest.
+
+    The model chose the service; the server checks what it can without a phrase list:
+    no policy override or confirmation waiver, the command's clause asks for something
+    now, and the service is closer to the guest's words than the nearest reviewed turn
+    that requests nothing (``plausible_*`` in ``nlu.service_selector.semantic_agreement``).
+    Such a request is marked for review; the guest still sees it and confirms or changes it.
+    """
+    from concierge_kiosk.core.domain_profile import nlu_policy
+
+    rule = nlu_policy().service_selector.get('semantic_agreement') or {}
+    floor, margin = rule.get('plausible_min_score'), rule.get('plausible_nonrequest_margin')
+    policy = get_domain_profile().semantic_authorization
+    goal = command.goal
+    if (command.type != 'StartGoal' or floor is None or margin is None or command.conditional
+            or command.refers_to_context or goal not in policy['services'] or goal == policy['handoff_goal']
+            or language not in policy['request_actions']):
+        return False
+    if waives_confirmation(query, language, policy) or states_access_override(query, language):
+        return False
+    scope = command_scope(query, command.source, goal, language) or query
+    if not requests_now(scope, goal, policy, language):
+        return False
+    rank_source, nonrequest = _TURN_SOURCE_RANKER.get(), _TURN_NONREQUEST.get()
+    if not callable(rank_source) or not callable(nonrequest):
+        return False
+    for text in dict.fromkeys((scope, query)):
+        score = dict(rank_source(text)).get(goal, -1.0)
+        closest = nonrequest(text)
+        if score >= float(floor) and (closest is None or score >= closest + float(margin)):
+            return True
+    return False
+
+
+def waives_confirmation(query, language, policy):
+    """The guest asks staff to act without confirming first."""
+    text = fold(unquoted(query[:500]))
+    return bool(spans(text, policy.get('confirmation_waivers', {}).get(language, ())))
+
+
+def _clause_requests(text, policy, language, *, read_only=False):
+    """One request clause asks for something now: the modality guards on that clause alone."""
+    clause, accented = fold(text), unicodedata.normalize('NFKC', text.casefold())
+    if len(clause) != len(accented):
+        accented = clause
+    actions = marker_spans(clause, accented, policy['request_actions'][language])
+    # A negation in a clause with a request verb declines it ("no towels needed"); without
+    # one it describes the problem ("the AC does not cool", "out of towels").
+    stated = (affirmative(clause, (), policy, language, read_only=True, accented=accented) if actions
+              else not spans(clause, policy.get('reported_speech_terms', {}).get(language, ())))
+    return bool(stated
+                and not marker_spans(clause, accented, policy['past_terms'].get(language, ()))
+                and not completed_action(clause, actions, policy, language, accented)
+                and not spans(clause, policy['question_terms'].get(language, ()))
+                and (read_only or not information_request(clause, accented, policy, language)))
 
 
 def staff_escalation_supported(query, language, policy):
@@ -341,7 +678,8 @@ def staff_escalation_supported(query, language, policy):
     """
     from concierge_kiosk.core.domain_profile import nlu_policy
 
-    ranking = _TURN_SERVICE_RANKING.get()
+    rank_source = _TURN_SOURCE_RANKER.get()
+    ranking = tuple(rank_source(query)) if callable(rank_source) else _TURN_SERVICE_RANKING.get()
     if not ranking or ranking[0][1] < float(nlu_policy().service_selector['semantic_support_min_score']):
         return False
     handoff = policy['handoff_goal']
@@ -357,56 +695,40 @@ def staff_escalation_supported(query, language, policy):
     return True
 
 
-def semantic_agreement(goal, query, language, policy, *, read_only=False):
-    """The proposed goal is the turn's top embedding-ranked service and a clause asks for it now.
+def semantic_agreement(goal, scope, language, policy, *, turn=None, read_only=False):
+    """The model's service and the embedding ranking of its own clause agree, and it is asked now.
 
     Guests describe needs in words no ontology lists ("the room is boiling, the AC
-    blows warm"), and polite requests are often phrased as questions. This is the
-    second, independent signal for such turns; the modality guards still reject a
-    negated, past, completed, reported or informational clause.
+    blows warm"). This is the second, independent signal for such clauses: the
+    goal is among the clause's ``top_k`` services, at least ``min_score`` and within
+    ``max_gap`` of the best, and closer than the nearest reviewed turn that requests
+    no service (``nonrequest_margin``). ``nlu.service_selector.semantic_agreement``
+    holds the calibrated values. The clause must still ask for the service now.
     """
     from concierge_kiosk.core.domain_profile import nlu_policy
 
-    ranking = _TURN_SERVICE_RANKING.get()
-    if not ranking or ranking[0][0] != goal:
+    rule = nlu_policy().service_selector.get('semantic_agreement')
+    if not rule or language not in policy['request_actions'] or not scope or not scope.strip():
         return False
-    if ranking[0][1] < float(nlu_policy().service_selector['semantic_support_min_score']):
+    if waives_confirmation(turn if turn is not None else scope, language, policy):
+        # "Just go in, no need to confirm": asking to skip the guest's confirmation is
+        # never a request that similarity alone may authorize.
         return False
-    if language not in policy['request_actions']:
+    ranking = _ranking(scope)
+    names = [name for name, _ in ranking]
+    if goal not in names[:int(rule['top_k'])]:
         return False
-    views = [(clause, accented) for clause, accented in clause_views(query, policy, language) if clause.strip()]
-    # In a turn that asks a question word, a statement without a request verb ("the
-    # tour has seats tomorrow, and what time is the cutoff?") belongs to the question.
-    asks = any(spans(clause, policy['question_terms'].get(language, ())) for clause, _ in views)
-    # A turn that reports the service as already done ("the towels came up earlier,
-    # thanks") is not a request by similarity alone; an explicit request clause in the
-    # same turn is still authorized by the reviewed concept path.
-    if any(marker_spans(clause, accented, policy['past_terms'].get(language, ()))
-           or completed_action(clause, marker_spans(clause, accented, policy['request_actions'][language]),
-                               policy, language, accented)
-           for clause, accented in views):
+    score = dict(ranking)[goal]
+    if score < float(rule['min_score']) or score < ranking[0][1] - float(rule['max_gap']):
         return False
-    # A declined request ("no need to call anyone", "don't bring it") is not asked for
-    # by similarity alone, whatever polite closing follows it.
-    if any(marker_spans(clause, accented, policy['request_actions'][language])
-           and not affirmative(clause, (), policy, language, read_only=True, accented=accented)
-           for clause, accented in views):
-        return False
-    for clause, accented in views:
-        # Tone marks decide when the guest typed them: folded, a seat word and a
-        # "give/let" request verb are the same letters.
-        actions = marker_spans(clause, accented, policy['request_actions'][language])
-        if asks and not actions:
-            continue
-        # read_only=True: a yes/no question ("can I check out late?") is how polite
-        # requests are made, so a clause-final question particle is not a negation.
-        # A question word (what time, how much, where) asks for information instead.
-        if (affirmative(clause, (), policy, language, read_only=True, accented=accented)
-                and not spans(clause, policy['question_terms'].get(language, ()))
-                and not completed_action(clause, actions, policy, language, accented)
-                and (read_only or not information_request(clause, accented, policy, language))):
-            return True
-    return False
+    nonrequest = _TURN_NONREQUEST.get()
+    # The margin guards against an unwarranted request. An availability check is a
+    # question and grants nothing, so its likeness to questions is no objection.
+    if callable(nonrequest) and not read_only:
+        closest = nonrequest(scope)
+        if closest is not None and score < closest + float(rule['nonrequest_margin']):
+            return False
+    return requests_now(scope, goal, policy, language, read_only=read_only)
 
 
 def mentioned_services(query, language):
@@ -467,6 +789,14 @@ def clear_information_turn(query, language):
     # Implicit references and navigation still require their explicit command
     # contract. This fast path covers clear informational facets, not every WH turn.
     if reference_spans(fold(unquoted(query)), policy, language):
+        return False
+    # Only a single-part question is clear. Coordinated parts ("show me the way to
+    # reception, and what time is breakfast?") may hold directions or a request this
+    # vocabulary cannot see; the command model reads them and the gate checks each.
+    text = fold(unquoted(query[:500]))
+    connectors = (*policy['clause_connectors'].get(language, ()), *policy.get('sequence_terms', {}).get(language, ()))
+    separators = r'[,;，；]' + ''.join('|' + term_pattern(term).pattern for term in connectors)
+    if sum(1 for part in re.split(separators, text) if part and part.strip(' .!?。？！')) > 1:
         return False
     found = False
     for clause, accented in clause_views(query, policy, language):
@@ -535,9 +865,26 @@ def states_room_access_conflict(query, language):
     return bool(spans(text, conflicts.get('terms', {}).get(language, ())))
 
 
+def states_access_override(query, language):
+    """The turn instructs staff to override a guest's room access control (a master key)."""
+    policy = get_domain_profile().semantic_authorization
+    terms = policy.get('room_access_conflicts', {}).get('override_terms', {}).get(language, ())
+    return bool(spans(fold(unquoted(query[:500])), terms))
+
+
 def room_access_models():
     return frozenset(get_domain_profile().semantic_authorization.get('room_access_conflicts', {})
                      .get('access_models', ()))
+
+
+def request_clauses(query, language):
+    """``(folded, accented)`` clauses, also cut at a sequence word between two parts.
+
+    "Room 806 needs two pillows, and also wake me at six" holds two requests; each is
+    ranked and checked on its own so one request's wording never decides the other's.
+    """
+    policy = get_domain_profile().semantic_authorization
+    return [(clause, accented) for clause, accented in clause_views(query, policy, language) if clause.strip()]
 
 
 def request_segments(query, language):
@@ -550,7 +897,12 @@ def request_segments(query, language):
     sequence = policy.get('sequence_terms', {}).get(language, ())
     actions = policy['request_actions'][language]
     best = chained = 0
-    for clause, accented in clause_views(query, policy, language):
+    # Count chained action heads in the original sentence. Scope segmentation
+    # has already consumed connectors; counting those new scopes would lose
+    # the distinction between coordination and a semicolon restatement.
+    for text in re.split(r'[;,.!?\n\u3002\uff0c\uff1b\uff1f]', unquoted(query[:500])):
+        clause = fold(text)
+        accented = clause.accented if len(clause) == len(clause.accented) else clause
         markers = sorted(marker_spans(clause, accented, sequence))
         bounds, start = [], 0
         for a, b in markers:
@@ -574,8 +926,9 @@ def symptom_request_supported(query, evidence, policy, language, goal):
     unrelated device mention. Competing service, delivery, negation, questions,
     past/conditional speech and quoted evidence cannot grant this authority.
     """
-    for sentence in re.split(r'[;.!?\n\u3002\uff1b\uff1f]', fold(unquoted(query[:500]))):
-        parts = re.split(r'[,\uff0c]', sentence)
+    for sentence in re.split(r'[;.!?\n\u3002\uff1b\uff1f]', unquoted(query[:500])):
+        parts = [fold(part) for part in re.split(r'[,\uff0c]', sentence)]
+        sentence = fold(sentence)
         if len(parts) > 2:
             continue
         statement, request = parts if len(parts) == 2 else (sentence, sentence)

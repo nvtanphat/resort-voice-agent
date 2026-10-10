@@ -60,15 +60,21 @@ def test_conditional_generic_restaurant_availability_uses_declared_rolling_templ
 
 
 class _AvailabilityEmbedder:
+    # Whole words, as a real embedder reads them: "portable" is not a table.
+    @staticmethod
+    def _words(text):
+        import re
+        return set(re.findall(r"\w+", text.casefold()))
+
     def encode_query(self, text):
-        value = text.casefold()
-        return ([1.0, 0.0, 0.0] if "table" in value else
-                [0.0, 1.0, 0.0] if "spa" in value else [0.0, 0.0, 1.0])
+        words = self._words(text)
+        return ([1.0, 0.0, 0.0] if "table" in words else
+                [0.0, 1.0, 0.0] if "spa" in words else [0.0, 0.0, 1.0])
 
     def encode_passage(self, text):
-        value = text.casefold()
-        return ([1.0, 0.0, 0.0] if "restaurant" in value or "table" in value else
-                [0.0, 1.0, 0.0] if "spa" in value or "massage" in value else
+        words = self._words(text)
+        return ([1.0, 0.0, 0.0] if words & {"restaurant", "table"} else
+                [0.0, 1.0, 0.0] if words & {"spa", "massage"} else
                 [0.0, 0.0, 1.0])
 
 

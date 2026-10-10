@@ -3,6 +3,7 @@
   "backend.request.deferred_pending": "No problem, take your time. Your pending request is kept as it is and nothing has been sent.",
   "backend.request.deferred_draft": "I've noted the details and nothing has been sent. When you're ready, just tell me and I'll prepare it for confirmation.",
   "backend.service.room_access_conflict": "Your room is set to Do Not Disturb, so staff will not enter. Would you like to turn it off so they can come in? Nothing has been sent yet.",
+  "backend.service.room_access_override": "Staff do not enter a guest's room with a master key or without the guest's consent; room entry follows hotel procedure. The front desk can help you in person. No request has been sent.",
   "backend.smalltalk.reply": "Happy to help! Would you like hotel information, directions, or a service request?",
   "backend.out_of_scope.reply": "That is outside my hotel concierge scope, but I can help with hotel information, directions, or guest services.",
   "backend.emergency.alert_queued": " A high-priority alert has been placed in the staff queue; this does not confirm that emergency responders were dispatched.",
@@ -151,6 +152,10 @@
   "ui.awaiting_guest_choice": "Guest choice needed — not submitted",
   "ui.networkLost": "Network connection lost. Check connectivity and retry.",
   "ui.sessionExpired": "Session expired. Reconnect to protect your information.",
+  "ui.systemStarting": "The assistant is starting up. Please wait a moment.",
+  "ui.serviceOptions": "Did you mean:",
+  "ui.reviewService": "I'm not fully sure I picked the right service — please check it before confirming.",
+  "ui.otherServices": "Or choose another service:",
   "ui.timeout": "The server took too long. Check status before retrying.",
   "ui.requestPending": "Submission outcome is uncertain. Check My requests before retrying.",
   "ui.maxQuestion": "Maximum 500 characters.",
@@ -219,5 +224,11 @@
   "backend.request.change.modify_label": "modify",
   "backend.request.change.review": "Review ticket {code}: {action}. Changed fields: {changes}. Confirm to send this change for staff review.",
   "backend.nlu.retry": "The system could not process your request. Please try again when ready; this turn has not sent a request.",
-  "backend.nlu.clarify": "I could not understand the request clearly. Please describe it more specifically; this turn has not sent a request."
+  "backend.nlu.clarify": "I could not understand the request clearly. Please describe it more specifically; this turn has not sent a request.",
+  "backend.service.name.amenity_delivery": "In-room amenity delivery",
+  "backend.service.name.maintenance": "Repair & maintenance",
+  "backend.service.name.human_assistance": "Staff assistance",
+  "backend.service.name.facility_request": "Facility & equipment request",
+  "backend.service.name.dining_request": "Dining request",
+  "backend.service.name.tour_request": "Tour request"
 }

@@ -20,6 +20,7 @@ from concierge_kiosk.i18n import text as i18n_text
 from concierge_kiosk.agent.understanding.domain_nlu import NUMBER_WORDS as _NUMBER_WORDS, QUANTITY_ITEM as _QUANTITY_ITEM, QUANTITY_UNITS as _QUANTITY_UNITS
 from concierge_kiosk.agent.understanding.domain_nlu import PARTY_SIZE_FULL_PATTERNS as _PARTY_SIZE_FULL_PATTERNS, PARTY_SIZE_PATTERNS as _PARTY_SIZE_PATTERNS, QUANTITY_NOUNS as _QUANTITY_NOUNS, ROOM_PATTERNS as _ROOM_PATTERNS, SLOT_LABELS as _SLOT_LABELS
 from concierge_kiosk.agent.tools.numerals import corrected_time, normalize_number_words
+from concierge_kiosk.agent.understanding.normalization import _strip_marks
 from concierge_kiosk.agent.tools.service_dates import requested_date
 from concierge_kiosk.domain.service_registry import (ACTION_REQUEST_KINDS, SERVICE_SLOTS, accepted_slots,
                                                      required_slots, service_definition)
@@ -87,6 +88,18 @@ def _number_near(text: str, language: str, nouns: tuple[str, ...]) -> int | None
     if digit:
         return int(digit.group(1))
     return None
+
+
+def _count_before(text: str, language: str, item: str) -> int | None:
+    """A 1-3 digit count, optionally with a counting unit, written just before ``item``."""
+    normalized = normalize_number_words(text, language)
+    wanted = normalize_number_words(item, language).strip()
+    if not wanted or re.match(r'\d', wanted):
+        return None
+    units = '|'.join(re.escape(unit) for unit in sorted(_QUANTITY_UNITS.get(language, ()), key=len, reverse=True))
+    unit = rf'(?:(?:{units})\s*)?' if units else ''
+    found = re.search(rf'(?<!\d)(\d{{1,3}})(?!\d)\s*{unit}{re.escape(wanted)}', normalized, re.IGNORECASE)
+    return int(found.group(1)) if found else None
 
 
 def _quantity(text: str, language: str) -> int | None:
@@ -194,10 +207,17 @@ def item_and_unit(query: str, language: str, *,
         return None, None
     spaced = bool(grammar.get('spaced'))
     words = [word for word, value in _NUMBER_WORDS.get(language, {}).items() if 0 < int(value) < 100]
-    number = '|'.join([r'\d{1,3}', *(re.escape(word) for word in sorted(words, key=len, reverse=True))])
-    number = rf'(?<!\w)(?:{number})' if spaced else f'(?:{number})'
+    # An indefinite article counts one object ("send up a bathrobe").
+    from concierge_kiosk.core.domain_profile import get_domain_profile
+    words += list(get_domain_profile().semantic_authorization.get('indefinite_articles', {}).get(language, ()))
+    spelled = '|'.join(re.escape(word) for word in sorted(words, key=len, reverse=True))
+    # Digits may touch a measure word ("2병"); a spelled count must be its own word ("a", "an").
+    number = (rf'(?<!\w)(?:\d{{1,3}}|(?:{spelled})(?!\w))' if spaced
+              else rf'(?:\d{{1,3}}|{spelled})')
     unit = _alternation(_QUANTITY_UNITS.get(language, ()), False)
-    unit_part = (rf'(?P<unit>{unit})(?!\w)' if spaced else f'(?P<unit>{unit})') if unit else None
+    particles = _alternation(grammar.get('particles', ()), False)
+    suffix = f'(?:{particles})?' if particles else ''
+    unit_part = (rf'(?P<unit>{unit}){suffix}(?!\w)' if spaced else f'(?P<unit>{unit})') if unit else None
     rooms = [match.span() for pattern in _ROOM_PATTERNS.get(language, ())
              for match in re.finditer(pattern, query, re.IGNORECASE)]
     joiner = _alternation(grammar.get('joiners', ()), spaced)
@@ -205,6 +225,10 @@ def item_and_unit(query: str, language: str, *,
     quantity = rf'(?P<number>{number})\s*' + (f'(?:{unit_part})?' if after and unit_part else (unit_part or ''))
     if not after and not unit_part:
         quantity = ''
+    elif not after and spaced:
+        # A bare count after the item ("가운 하나") counts it when it stands as its own
+        # word; a number glued to another noun (a clock hour, a room) is not a count.
+        quantity = rf'(?P<number>{number})(?:\s*{unit_part}|(?=\s|$))'
     for match in (re.finditer(quantity, query, re.IGNORECASE) if quantity else ()):
         if any(start <= match.start() < end for start, end in rooms):
             continue
@@ -253,6 +277,50 @@ def item_and_unit(query: str, language: str, *,
     return _bounded_item(_strip_particle(query[start:token_end], grammar), grammar), None
 
 
+def _counted_item_lines(query: str, item: str, language: str) -> str | None:
+    """Rewrite an enumerated item phrase as one line per item with its own count.
+
+    "2 toothbrushes and 1 tube of toothpaste" becomes "2 toothbrushes; 1 tube of
+    toothpaste", so staff see each count. ``None`` when the item is not a list of
+    at least two items of which at least one is counted.
+    """
+    grammar = _QUANTITY_ITEM.get(language) or {}
+    terms = tuple(grammar.get('enumeration_terms', ()))
+    if not terms:
+        return None
+    normalized = normalize_number_words(query, language)
+    wanted = normalize_number_words(item, language)
+    if query == _strip_marks(query):
+        # Typed without tone marks: number-word normalization may restore some, and
+        # the model may mark the item; match the list as the guest typed it.
+        normalized, wanted = _strip_marks(normalized), _strip_marks(wanted)
+        terms = tuple(dict.fromkeys((*terms, *(_strip_marks(term) for term in terms))))
+    at = normalized.find(wanted)
+    if at < 0:
+        return None
+    # The list runs from the first item to the item phrase boundary, enumerations included.
+    end = _item_cut(normalized, at, language, grammar, enumerated=True)
+    while re.match(r',\s*\d', normalized[end:]):
+        # "2 towels, 1 toothbrush and 1 razor": a comma followed by a count continues the list.
+        end = _item_cut(normalized, end + 1, language, grammar, enumerated=True)
+    phrase = normalized[at:end].strip()
+    if not any(re.search(rf'(?<!\w){re.escape(term)}(?!\w)', phrase) for term in terms):
+        return None
+    # The first item's count, and its counting unit, stand before the phrase
+    # ("2 | toothbrushes and ...", "2 bottles | of water and ...").
+    units = '|'.join(re.escape(unit) for unit in sorted(_QUANTITY_UNITS.get(language, ()), key=len, reverse=True))
+    lead = re.search(rf'(?<!\d)(\d{{1,3}}(?:\s*(?:{units}))?)\s*$' if units else r'(?<!\d)(\d{1,3})\s*$',
+                     normalized[:at])
+    counted = re.match(r'\d{1,3}\s', phrase)
+    segment = (lead.group(1) + ' ' if lead and not counted else '') + phrase
+    joiner = '|'.join(re.escape(term) for term in sorted(terms, key=len, reverse=True))
+    parts = [part.strip() for part in re.split(rf'\s*(?:,|(?<!\w)(?:{joiner})(?!\w))\s*', segment)]
+    parts = [part for part in parts if part]
+    if len(parts) < 2 or not any(re.match(r'\d{1,3}\s', part) for part in parts):
+        return None
+    return '; '.join(parts)
+
+
 def extract_slots(query: str, language: str, kind: str, *, mode: str,
                   existing: Mapping[str, str | int] | None = None,
                   reference_time: datetime | None = None) -> dict[str, str | int]:
@@ -297,6 +365,12 @@ def extract_slots(query: str, language: str, kind: str, *, mode: str,
         qty = _quantity(query, language)
         if qty is None and isinstance(slots.get('unit'), str):
             qty = _number_near(query, language, (slots['unit'],))
+        hinted = (existing or {}).get('requested_item')
+        if (qty is None and isinstance(hinted, str) and isinstance(slots.get('requested_item'), str)
+                and 'quantity' not in (existing or {})):
+            # The validated item is the guest's own words, so a count written right
+            # before it counts it ("thêm 2 gối"), whether or not the noun is listed.
+            qty = _count_before(query, language, slots['requested_item'])
         if qty is not None:
             slots['quantity'] = qty
     if 'party_size' in supported:
@@ -307,6 +381,13 @@ def extract_slots(query: str, language: str, kind: str, *, mode: str,
         preferred = corrected_time(query, language, slots.get('preferred_time'))
         if preferred:
             slots['preferred_time'] = preferred
+    if isinstance(slots.get('requested_item'), str):
+        lines = _counted_item_lines(query, slots['requested_item'], language)
+        if lines:
+            # Each item carries its own count; one total quantity or unit would misstate it.
+            slots['requested_item'] = lines[:120]
+            slots.pop('quantity', None)
+            slots.pop('unit', None)
     if 'requested_date' in supported:
         value, mentioned = requested_date(query, language, reference_time)
         if not mentioned and isinstance(slots.get('requested_date'), str):

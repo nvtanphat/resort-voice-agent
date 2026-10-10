@@ -45,6 +45,11 @@ ROOT=Path(__file__).resolve().parents[2]
     ('No smoke but someone is choking.', 'en','emergency'),
     ('Yesterday someone collapsed but now someone is choking.', 'en','emergency'),
     ('Tôi nghe tiếng kêu cứu nhưng có người đang co giật.', 'vi','emergency'),
+    # A burnt-out part shares the fire word: ask, never ignore; flames or smoke stay full.
+    ('Bóng đèn phòng tắm 1408 cháy rồi.', 'vi','emergency_check'),
+    ('Cầu chì phòng 1408 cháy rồi, nhờ người lên thay.', 'vi','emergency_check'),
+    ('Ổ cắm phòng 1408 đang cháy.', 'vi','emergency'),
+    ('Đèn ngủ phòng 1408 bị cháy, có khói.', 'vi','emergency'),
 ])
 def test_active_incident_review_and_ordinary_routes(query,language,branch):
     assert classify_dialogue(query,language).branch == branch

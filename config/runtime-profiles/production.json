@@ -130,9 +130,9 @@
     "tts_seconds": 20.0,
     "goal_interpreter_seconds": 2.5,
     "reference_resolver_seconds": 1.8,
-    "intent_parser_seconds": 20.0,
+    "intent_parser_seconds": 30.0,
     "text_generation_seconds": 5.0,
-    "slm_generation_seconds": 20.0,
+    "slm_generation_seconds": 30.0,
     "slm_probe_seconds": 0.7
   }
 }

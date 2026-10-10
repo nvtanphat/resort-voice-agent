@@ -86,6 +86,9 @@ def output_token_budget(question_type: str = 'fact') -> int:
                                                 _BUDGETS['medium_output_tokens'])
 
 
+# Consecutive whitespace-only stream chunks that mark a stuck generation.
+_MAX_BLANK_TOKENS = 16
+
 def _model_answer(response, on_observation: Callable[[str, float], None] | None = None,
                   should_cancel: Callable[[], bool] | None = None,
                   max_chars: int = MAX_GENERATED_CHARS) -> str | None:
@@ -117,6 +120,7 @@ def _model_answer(response, on_observation: Callable[[str, float], None] | None 
         return content.strip() if isinstance(content, str) and len(content) <= max_chars else None
     parts: list[str] = []
     completed = False
+    blank_run = 0
     for event_index, raw in enumerate(response):
         if slm_turn_expired() or (should_cancel and should_cancel()):
             return None
@@ -141,6 +145,11 @@ def _model_answer(response, on_observation: Callable[[str, float], None] | None 
                     on_observation('slm_ttft_ms', (time.monotonic() - stream_started) * 1000)
             parts.append(content)
             if sum(map(len, parts)) > max_chars:
+                return None
+            # A generation stuck repeating whitespace (greedy JSON decoding with no legal
+            # next token) never recovers; stop now instead of when the server gives up.
+            blank_run = blank_run + 1 if not content.strip() else 0
+            if blank_run >= _MAX_BLANK_TOKENS:
                 return None
         if event.get('done') is True:
             provider_metadata(event)

@@ -57,6 +57,8 @@ export interface Answer {
   clear_suggestions?: boolean;
   suggested_action: {change?:RequestChangeTarget;kind: RequestKind; details: string; service?: string} | null;
   action_options?: Array<{kind:RequestKind}>;
+  service_options?: ServiceOption[];
+  needs_review?: boolean;
   tool_route?: string; retrieval_mode?: string;
   plan_is_draft?: boolean; plan_topics?: string[]; missing_topics?: string[];
   plan?: DraftPlan; evidence_status?: 'SUPPORTED'|'PARTIALLY_SUPPORTED'|'CONFLICTING'|'UNSUPPORTED'|'REVOKED_SOURCE';
@@ -88,10 +90,14 @@ export interface MapGuidance {
   origin?:string; destination?:string; origin_id?:string; destination_id?:string; steps?:string[];
 }
 export interface RequestRow { id:string; kind:RequestKind; language:LanguageCode; status:RequestStatus; updated_at:number; guest_change_state?:string; }
+/** A service offered when a turn was not understood; choosing it opens the request form for review. */
+export interface ServiceOption { kind:RequestKind; service:string; label:string; details:string; payload?:ServicePayload; }
+
 export interface KioskConfig {
   property_name:string; languages:LanguageCode[]; voice_available:boolean;
   voice_transport?:'legacy'|'pipecat'; voice_agent_available?:boolean;
   public_origin?:string;
+  understanding_ready?:boolean;
   tts_languages:LanguageCode[];
   max_audio_bytes:number; max_audio_seconds:number;
   incremental_voice_available?:boolean; incremental_voice_language?:LanguageCode;

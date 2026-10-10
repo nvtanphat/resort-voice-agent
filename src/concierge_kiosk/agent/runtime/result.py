@@ -14,6 +14,7 @@ from concierge_kiosk.core.domain_profile import ui_policy
 
 from .runtime import AgentRun
 from .presentation.clarification import clarification_text
+from .presentation.synthesizer import _dedupe_lines
 
 _PRESENTATION_LIMITS = ui_policy().presentation_limits
 
@@ -184,7 +185,8 @@ def compose_multi_result(run: AgentRun, language: str) -> dict:
 
     sources = _dedupe(sources, ('chunk_id', 'source_id', 'revision'))
     citations = _dedupe(citations, ('citation_id', 'chunk_id', 'source_id', 'revision'))
-    lines = list(dict.fromkeys(read_answers))
+    # Two reads that both abstain must not repeat the same localized sentence.
+    lines = _dedupe_lines(read_answers)
     if confirmations:
         lines.append(i18n_text('agent.prepared_consequential', language,
                                count=len(confirmations)))

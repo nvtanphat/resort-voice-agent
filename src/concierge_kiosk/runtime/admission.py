@@ -6,12 +6,14 @@ signals same-session SLM work, while surviving native jobs keep their permits.
 This policy only coordinates work in the single supported API worker.
 """
 from __future__ import annotations
-from threading import Event, Lock
+from threading import Condition, Event, Lock
+import time
 
 
 class AudioAdmission:
     def __init__(self):
         self._lock = Lock()
+        self._changed = Condition(self._lock)
         self._stt = 0
         self._tts = 0
         self._slm = 0
@@ -79,12 +81,33 @@ class AudioAdmission:
         with self._lock:
             return self._slm_session != session or self._slm_cancel.is_set()
 
+    def enter_guest_slm(self, session: str, *, timeout: float) -> bool:
+        """Wait only for startup's unowned permit, within the guest's NLU budget.
+
+        Other guests and STT retain immediate admission semantics. Native warm-up
+        keeps its permit until completion; waiting never starts a competing job.
+        """
+        deadline = time.monotonic() + max(0.0, timeout)
+        with self._changed:
+            while self._slm and self._slm_session is None and not self._stt:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return False
+                self._changed.wait(remaining)
+            if self._slm or self._stt:
+                return False
+            self._slm_cancel.clear()
+            self._slm_session = session
+            self._slm = 1
+            return True
+
     def leave_slm(self) -> None:
         with self._lock:
             if not self._slm:
                 raise RuntimeError('Unbalanced SLM admission')
             self._slm = 0
             self._slm_session = None
+            self._changed.notify_all()
 
 
     def snapshot(self) -> dict[str, int]:

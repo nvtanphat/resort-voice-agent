@@ -26,12 +26,14 @@ guest confirmation.  Nothing here writes.
 """
 from __future__ import annotations
 import re
+from dataclasses import replace
 
 from concierge_kiosk.agent.tools.service_slots import item_and_unit, item_anchors
 from concierge_kiosk.agent.understanding.commands import Command, CommandSlot, validate_commands
 from concierge_kiosk.agent.understanding.intent_evidence import (DIRECT_EVIDENCE, clause_views, clauses,
                                                                   command_supported, concept_spans, marker_spans, mentioned_services,
                                                                   request_segments, service_evidence, spans)
+from concierge_kiosk.agent.understanding.intent_evidence import predicate_ranges
 from concierge_kiosk.agent.understanding.intent_evidence import fold, term_pattern, unquoted
 from concierge_kiosk.agent.understanding.service_selector import ServiceSelector
 from concierge_kiosk.core.domain_profile import get_domain_profile
@@ -129,7 +131,7 @@ class GroundedServiceResolver:
                     resolved = self.ground(goal, part, language, enabled_request_kinds=enabled_request_kinds) if goal else None
                     if resolved is None:
                         break
-                    combined.extend(resolved)
+                    combined.extend(replace(command, source=part) for command in resolved)
                 else:
                     if len({command.goal for command in combined}) == len(combined):
                         return validate_commands(combined, query=query, language=language,
@@ -204,19 +206,6 @@ __all__ = ['GroundedServiceResolver', 'plain_request', 'single_request_clause']
 
 
 def request_clauses(query: str, language: str) -> tuple[str, ...]:
-    """Original guest spans, split only by the existing reviewed clause grammar."""
+    """The same predicate scopes used by model validation and authorization."""
     policy = get_domain_profile().semantic_authorization
-    text = fold(unquoted(query))
-    if len(text) != len(query):
-        return (query,)
-    connectors = policy['clause_connectors'].get(language, ())
-    pattern = '|'.join(term_pattern(term).pattern for term in connectors)
-    separator = r'[;,.!?\n\u3002\uff0c\uff1b\uff1f]' + (f'|{pattern}' if pattern else '')
-    parts, start = [], 0
-    for match in re.finditer(separator, text):
-        if query[start:match.start()].strip():
-            parts.append(query[start:match.start()].strip())
-        start = match.end()
-    if query[start:].strip():
-        parts.append(query[start:].strip())
-    return tuple(parts)
+    return tuple(query[start:end].strip() for start, end in predicate_ranges(query, policy, language))

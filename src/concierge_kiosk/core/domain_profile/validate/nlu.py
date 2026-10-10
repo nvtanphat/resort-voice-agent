@@ -24,6 +24,16 @@ def validate_nlu(payload: dict[str, Any], languages: set[str], request_kinds: se
         value = selector.get(key)
         if not isinstance(value, (int, float)) or isinstance(value, bool) or not low <= value <= 1.0:
             raise ValueError(f"nlu.service_selector.{key} must be a number in [{low}, 1]")
+    agreement = selector.get("semantic_agreement")
+    if agreement is not None:
+        top_k = agreement.get("top_k") if isinstance(agreement, dict) else None
+        if not isinstance(top_k, int) or isinstance(top_k, bool) or not 1 <= top_k <= 5:
+            raise ValueError("nlu.service_selector.semantic_agreement.top_k must be an integer in [1, 5]")
+        for key, low in (("min_score", -1.0), ("max_gap", 0.0), ("nonrequest_margin", -1.0),
+                         ("plausible_min_score", -1.0), ("plausible_nonrequest_margin", -1.0)):
+            value = agreement.get(key)
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or not low <= value <= 1.0:
+                raise ValueError(f"nlu.service_selector.semantic_agreement.{key} must be a number in [{low}, 1]")
     if not isinstance(selector.get("fast_path_evidence_enabled", False), bool):
         raise ValueError("nlu.service_selector.fast_path_evidence_enabled must be a boolean")
     for key, low in (("fast_path_min_score", -1.0), ("fast_path_min_margin", 0.0)):

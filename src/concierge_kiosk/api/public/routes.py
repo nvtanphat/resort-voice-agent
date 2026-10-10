@@ -32,6 +32,8 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
         if cfg.real_runtime_required:
             if not pcm_permitted() or not slm_permitted():
                 raise HTTPException(status_code=503, detail='Pinned offline AI/Voice runtime unavailable')
+        if cfg.llm_base_url and cfg.llm_model and not getattr(app.state, 'understanding_warm', True):
+            raise HTTPException(status_code=503, detail='Understanding layer is warming up')
         if cfg.map_release_path:
             map_today = property_today(cfg.property_timezone)
             try:
@@ -144,7 +146,8 @@ def register_public_routes(app, *, cfg, store, web_dir, pcm_permitted, slm_permi
                 "retrieval_mode": "hybrid" if embedder else "lexical",
                 "orchestrator": "langgraph",
                 "data_consent_required": cfg.data_consent_required,
-                "generation_mode": ("local_semantic_ready" if current_ai_ready else "extractive")
+                "generation_mode": ("local_semantic_ready" if current_ai_ready else "extractive"),
+                "understanding_ready": bool(getattr(app.state, 'understanding_warm', True))
                 if cfg.local_ai_strict_mode else
                 ("local_slm_configured" if cfg.llm_base_url and cfg.llm_model else "extractive")}
 

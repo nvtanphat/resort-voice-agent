@@ -300,3 +300,222 @@ def test_staff_escalation_and_declined_requests(bound_ranking, query, command, r
     bound_ranking(ranking)
     kept = validate_commands([command], query=query, language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS)
     assert (kept is not None) is expected
+
+
+def _scorers(table, nonrequest=None):
+    """Bind span scorers: each span is ranked by the first table key it contains."""
+    from concierge_kiosk.agent.understanding.intent_evidence import bind_turn_service_ranking
+
+    def rank(text):
+        return next((ranking for key, ranking in table if key in text.casefold()), ())
+    bind_turn_service_ranking((), rank_source=rank,
+                              nonrequest_source=(lambda text: nonrequest) if nonrequest is not None else None)
+
+
+def test_each_request_of_a_multi_request_turn_is_checked_on_its_own_clause():
+    from concierge_kiosk.agent.understanding.intent_evidence import bind_turn_service_ranking
+    query = 'Mang thêm 2 cái đệm lót cho phòng 1104, còn dép thì không cần đâu'
+    table = [('đệm lót', [('amenity_delivery', 0.82), ('facility_request', 0.80)]),
+             ('dép', [('amenity_delivery', 0.78), ('housekeeping', 0.70)])]
+    try:
+        _scorers(table)
+        # The model repeated the whole turn as its span: the clause most about the
+        # service is its scope, and that clause asks for it.
+        whole = Command('StartGoal', goal='amenity_delivery', source=query)
+        assert validate_commands([whole], query=query, language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS)
+        # Alone, the declined clause asks for nothing.
+        declined = 'còn dép thì không cần đâu'
+        assert validate_commands([Command('StartGoal', goal='amenity_delivery', source=declined)], query=declined,
+                                 language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+    finally:
+        bind_turn_service_ranking(())
+
+
+@pytest.mark.parametrize('query,goal,language,accepted', [
+    # A negated or finished *state* is the reason for asking, not a refusal.
+    ('Quạt trần phòng 512 không quay, nhờ người lên xem', 'maintenance', 'vi', True),
+    ('Lavabo phòng 512 bị nghẹt rồi, cho người lên với', 'maintenance', 'vi', True),
+    ('The kettle in 512 is not heating at all', 'maintenance', 'en', True),
+    # A clause-final question particle asks politely; it governs no request verb.
+    ('Mình gia hạn ở tới 4 giờ chiều được không, phòng 512', 'late_checkout', 'vi', True),
+    # A negation governing the request verb declines it, in either word order.
+    ('Hôm nay không cần dọn phòng 512 đâu', 'housekeeping', 'vi', False),
+    ('Please do not clean room 512 today', 'housekeeping', 'en', False),
+    ('512호 오늘은 청소하지 않아도 돼요', 'housekeeping', 'ko', False),
+    # A request already carried out asks for nothing.
+    ('Lúc nãy bạn đã mang nước lên phòng 512 rồi', 'amenity_delivery', 'vi', False),
+])
+def test_agreement_reads_the_modality_of_its_own_clause(query, goal, language, accepted):
+    from concierge_kiosk.agent.understanding.intent_evidence import bind_turn_service_ranking
+    try:
+        _scorers([('', [(goal, 0.86), ('human_assistance', 0.70)])])
+        kept = validate_commands([Command('StartGoal', goal=goal, source=query)], query=query,
+                                 language=language, enabled_request_kinds=ACTION_REQUEST_KINDS)
+        assert (kept is not None) is accepted
+    finally:
+        bind_turn_service_ranking(())
+
+
+def test_agreement_needs_the_service_closer_than_any_turn_that_requests_nothing():
+    from concierge_kiosk.agent.understanding.intent_evidence import bind_turn_service_ranking
+    query = 'Làm giống lần trước cho phòng mình nhé'
+    command = Command('StartGoal', goal='housekeeping', source=query)
+    try:
+        _scorers([('', [('housekeeping', 0.73), ('amenity_delivery', 0.72)])], nonrequest=0.80)
+        assert validate_commands([command], query=query, language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+        # A goal outside the clause's closest services has no verified support: at most it is
+        # kept for the guest to review, never as a verified request.
+        _scorers([('', [('amenity_delivery', 0.90), ('food_order', 0.80), ('housekeeping', 0.79)])], nonrequest=0.5)
+        kept = validate_commands([command], query=query, language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS)
+        assert kept is not None and kept[0].review is True
+    finally:
+        bind_turn_service_ranking(())
+
+
+@pytest.mark.parametrize('query,language', [
+    ('Cứ sắp xếp lại đồ đạc lúc tôi ra ngoài, khỏi xác nhận nhé', 'vi'),
+    ('Just go in and sort my things while I am out, no need to confirm', 'en'),
+    ('我出去的时候直接整理一下，不用确认', 'zh'),
+    ('제가 나가 있을 때 정리해 주세요, 확인 없이요', 'ko'),
+])
+def test_similarity_never_authorizes_a_turn_that_waives_confirmation(bound_ranking, query, language):
+    from concierge_kiosk.agent.understanding.intent_evidence import waives_confirmation
+    from concierge_kiosk.core.domain_profile import get_domain_profile
+    assert waives_confirmation(query, language, get_domain_profile().semantic_authorization)
+    bound_ranking([('housekeeping', 0.9)])
+    command = Command('StartGoal', goal='housekeeping')
+    assert validate_commands([command], query=query, language=language,
+                             enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+
+
+@pytest.mark.parametrize('query,language', [
+    ('Cho mình thêm 2 cái gối và 1 cái chăn lên phòng 610', 'vi'),
+    ('Could you bring two more pillows and a blanket to 610?', 'en'),
+    ('请给610房间送两个枕头和一条被子', 'zh'),
+    ('610호에 베개 두 개랑 담요 하나 가져다 주세요', 'ko'),
+])
+def test_bedding_is_an_in_room_amenity(query, language):
+    from concierge_kiosk.agent.understanding.intent_evidence import service_evidence
+    assert service_evidence(Command('StartGoal', goal='amenity_delivery'), query, language) is not None
+    # A spa "package" is not a pillow: marked text keeps the two words apart.
+    assert service_evidence(Command('StartGoal', goal='spa_reservation'),
+                            'Cho mình đặt gói spa thư giãn lúc 4 giờ', 'vi') is not None
+
+
+@pytest.mark.parametrize('query,language,supported', [
+    # Naming the fault, then asking for help without naming another service.
+    ('602호 냉장고가 고장났어요, 사람 좀 보내 주세요', 'ko', True),
+    ('Tủ lạnh phòng 602 bị hỏng, cho người lên xem giúp', 'vi', True),
+    ('602房间的冰箱坏了，请派人来看看', 'zh', True),
+    # A past fault before another service's request, or a fault whose fix is declined.
+    ('Hôm qua tủ lạnh bị hỏng, giờ cho mình thêm khăn', 'vi', False),
+    ('Tủ lạnh bị hỏng, nhưng không cần sửa đâu', 'vi', False),
+])
+def test_a_named_fault_then_a_bare_request_asks_for_that_service(query, language, supported):
+    from concierge_kiosk.agent.understanding.intent_evidence import service_evidence
+    assert (service_evidence(Command('StartGoal', goal='maintenance'), query, language) is not None) is supported
+
+
+@pytest.mark.parametrize('query,clauses', [
+    ('내일 아침 6시에 택시 불러 주시고 저녁 7시에 식당 예약해 주세요', 2),  # connective verb ending
+    ('타월하고 비누 좀 갖다 주세요', 1),                                   # a noun list stays one clause
+])
+def test_a_connective_verb_ending_closes_a_korean_clause(query, clauses):
+    from concierge_kiosk.agent.understanding.intent_evidence import predicate_ranges
+    from concierge_kiosk.core.domain_profile import get_domain_profile
+    assert len(predicate_ranges(query, get_domain_profile().semantic_authorization, 'ko')) == clauses
+
+
+@pytest.mark.parametrize('query,span,goal,language,scope', [
+    # A bare request after the fault belongs to it, whether or not the model's span included it.
+    ('903호 전자레인지가 고장났어요, 사람 좀 보내 주세요', '903호 전자레인지가 고장났어요', 'maintenance', 'ko',
+     '903호 전자레인지가 고장났어요, 사람 좀 보내 주세요'),
+    # A following clause that names another service is that service's own request.
+    ('Dọn phòng 903 giúp mình, tiện mang thêm 2 chai nước', 'Dọn phòng 903 giúp mình', 'housekeeping', 'vi',
+     'Dọn phòng 903 giúp mình'),
+])
+def test_a_command_scope_takes_the_bare_request_that_follows_it(query, span, goal, language, scope):
+    from concierge_kiosk.agent.understanding.intent_evidence import command_scope
+    assert command_scope(query, span, goal, language) == scope
+
+
+@pytest.mark.parametrize('query,language', [
+    ('Lấy chìa tổng mở phòng 714 rồi dọn giúp tôi', 'vi'),
+    ('Use the master key on 714 and tidy it up', 'en'),
+    ('用万能钥匙打开714房间打扫一下', 'zh'),
+    ('마스터키로 714호 열고 청소해 주세요', 'ko'),
+])
+def test_an_access_override_authorizes_no_service(bound_ranking, query, language):
+    bound_ranking([('housekeeping', 0.95)])
+    assert validate_commands([Command('StartGoal', goal='housekeeping')], query=query, language=language,
+                             enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+
+
+@pytest.mark.parametrize('query,language,asks', [
+    # A question word inside a request frame asks for the service politely.
+    ('1105호에 수건 두 장 가져다 주실 수 있나요?', 'ko', True),
+    ('Could you bring two towels to 1105?', 'en', True),
+    # Without a request frame the same question word asks for information.
+    ('객실에 다리미 있나요?', 'ko', False),
+    ('Is there an iron in the room?', 'en', False),
+])
+def test_a_question_word_inside_a_request_frame_is_still_a_request(query, language, asks):
+    from concierge_kiosk.agent.understanding.intent_evidence import requests_now
+    from concierge_kiosk.core.domain_profile import get_domain_profile
+    policy = get_domain_profile().semantic_authorization
+    assert requests_now(query, 'amenity_delivery', policy, language) is asks
+
+
+def test_an_availability_check_is_not_held_to_the_request_margin():
+    from concierge_kiosk.agent.understanding.intent_evidence import bind_turn_service_ranking
+    query = 'Tối mai nhà hàng còn chỗ cho 5 người không?'
+    try:
+        # Availability questions sit close to reviewed questions; that is what they are.
+        _scorers([('', [('dining_reservation', 0.82), ('spa_reservation', 0.69)])], nonrequest=0.90)
+        check = Command('CheckAvailability', goal='dining_reservation', source=query)
+        assert validate_commands([check], query=query, language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS)
+        # The same likeness still blocks a booking the guest did not ask for.
+        book = Command('StartGoal', goal='dining_reservation', source=query)
+        assert validate_commands([book], query=query, language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS) is None
+    finally:
+        bind_turn_service_ranking(())
+
+
+@pytest.mark.parametrize('query,language,item', [
+    ('Could you send up a bathrobe to room 905?', 'en', 'bathrobe'),   # an article counts one object
+    ('905호에 가운 하나 갖다 주실 수 있나요?', 'ko', '가운'),            # a bare count after the object
+])
+def test_a_novel_object_delivered_to_the_room_is_grounded(query, language, item):
+    from concierge_kiosk.agent.tools.service_slots import item_and_unit, item_anchors
+    from concierge_kiosk.agent.understanding.intent_evidence import service_evidence
+    assert item_and_unit(query, language, anchors=item_anchors('amenity_delivery', language))[0] == item
+    command = Command('StartGoal', goal='amenity_delivery', slots=(CommandSlot('requested_item', item),))
+    assert service_evidence(command, query, language) == 'object_delivery'
+
+
+@pytest.mark.parametrize('query,nonrequest,review', [
+    # Agreement misses (the goal is third), but the clause asks now and is closer to
+    # this service than to any turn that requests nothing: kept, marked for guest review.
+    ('Rèm cửa phòng 1006 bị kẹt, nhờ người lên làm giúp', 0.62, True),
+    # Closer to a non-request turn: not a request at all.
+    ('Rèm cửa phòng 1006 bị kẹt, nhờ người lên làm giúp', 0.80, None),
+    # Declined, or a policy override: never shown, however similar.
+    ('Không cần sửa rèm phòng 1006 đâu', 0.40, None),
+    ('Dùng chìa tổng mở phòng 1006 sửa rèm giúp tôi', 0.40, None),
+])
+def test_a_plausible_unverified_request_is_kept_for_guest_review(query, nonrequest, review):
+    from concierge_kiosk.agent.understanding.intent_evidence import bind_turn_service_ranking
+    try:
+        _scorers([('', [('housekeeping', 0.80), ('facility_request', 0.76), ('maintenance', 0.70)])],
+                 nonrequest=nonrequest)
+        kept = validate_commands([Command('StartGoal', goal='maintenance', source=query)], query=query,
+                                 language='vi', enabled_request_kinds=ACTION_REQUEST_KINDS)
+        assert (kept[0].review if kept else None) is review
+    finally:
+        bind_turn_service_ranking(())
+
+
+def test_the_review_flag_cannot_come_from_the_model():
+    from concierge_kiosk.agent.understanding.commands import commands_from_items
+    built = commands_from_items([{'type': 'StartGoal', 'goal': 'maintenance', 'review': True}])
+    assert not built  # an unknown wire key drops the item; the server alone sets the flag

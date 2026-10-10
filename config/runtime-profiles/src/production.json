@@ -42,7 +42,7 @@
     "agent_planner_seconds": 20.0,
     "stt_seconds": 30.0,
     "tts_seconds": 20.0,
-    "slm_generation_seconds": 20.0,
+    "slm_generation_seconds": 30.0,
     "slm_probe_seconds": 0.7
   }
 }

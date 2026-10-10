@@ -8,6 +8,8 @@ export interface ChatMessage {
  planIsDraft?:boolean; missingTopics?:string[]; mapGuidance?:MapGuidance;
  plan?:DraftPlan; evidenceStatus?:string; omittedClaims?:number;
  actionOptions?:Array<{kind:RequestKind}>;
+ serviceOptions?:import('./api').ServiceOption[];
+ needsReview?:boolean;
  taskProgress?:TaskProgress[]; relatedTopics?:RelatedTopic[]; supportContact?:SupportContact|null;
  agentProgress?:Array<{step:number;capability:string|null;status:string;requirement_id?:string|null}>;
 }

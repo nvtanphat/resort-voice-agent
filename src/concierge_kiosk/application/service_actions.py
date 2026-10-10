@@ -104,6 +104,20 @@ def _voice_numeric_review(details: str, slots: dict, language: str) -> str:
     return re.sub(rf'(?<![\d:]){re.escape(text)}(?![\d:])', spoken, details, count=1)
 
 
+def service_display_name(mode: str, language: str, *, cfg=None) -> str:
+    """The guest-facing name of a service: its catalog name, else its localized registry name."""
+    catalog = service_catalog_entry(mode, cfg=cfg)
+    names = catalog.get('names_by_locale') if isinstance(catalog, dict) else None
+    name = names.get(language) if isinstance(names, dict) else None
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    # A service without a catalog row keeps a localized name, never its code.
+    try:
+        return i18n_text(f'service.name.{mode}', language)
+    except KeyError:
+        return mode.replace('_', ' ')
+
+
 def _canonical_service_review(*, mode: str, language: str,
                               slots: dict, fallback_details: str, cfg=None,
                               guest_words: bool = True) -> str:
@@ -114,11 +128,7 @@ def _canonical_service_review(*, mode: str, language: str,
     The spoken read-back passes ``guest_words=False``: repeating raw ASR text
     aloud can turn a transcription error into an apparent confirmation.
     """
-    catalog = service_catalog_entry(mode, cfg=cfg)
-    names = catalog.get('names_by_locale') if isinstance(catalog, dict) else None
-    name = names.get(language) if isinstance(names, dict) else None
-    if not isinstance(name, str) or not name.strip():
-        name = mode.replace('_', ' ')
+    name = service_display_name(mode, language, cfg=cfg)
 
     labels = SLOT_LABELS.get(language, {})
     # Services defined by the item (it is required) describe a guest request, not a
@@ -176,6 +186,14 @@ def _replace_changed_slot_values(details: str, old_slots: dict,
                          str(new), updated, count=1)
     return updated
 
+
+
+def changeable_requests(workflows, session: str) -> list:
+    """The session's submitted tickets a guest may still cancel or change."""
+    rows = workflows.list_guest_requests(session, limit=10)
+    return [row for row in rows
+            if row.get('status') in {'pending_staff', 'approved', 'in_progress', 'paused'}
+            and row.get('guest_change_state') not in {'cancelled', 'cancel_requested', 'modify_requested'}]
 
 class ServiceActionService:
     def __init__(self, *, workflows, task_memory, conversations,
@@ -308,10 +326,7 @@ class ServiceActionService:
                     'request_completed': False, 'grounding': 'business_state',
                     'requires_staff_review': False, 'business_state_verified': True,
                     'request_change': {'needs_details': True}}
-        rows = self._workflows.list_guest_requests(request.session, limit=10)
-        active = [row for row in rows
-                  if row.get('status') in {'pending_staff', 'approved', 'in_progress', 'paused'}
-                  and row.get('guest_change_state') not in {'cancelled', 'cancel_requested', 'modify_requested'}]
+        active = changeable_requests(self._workflows, request.session)
         # A session-owned unique reference wins. Without one, multiple active
         # tickets require selection before recording any consequential change.
         import re
@@ -525,6 +540,12 @@ class ServiceActionService:
             if venue is not None:
                 slot_name, venue_name = venue
                 existing = {**existing, slot_name: venue_name}
+            elif isinstance(definition.venue_slot, dict) or hasattr(definition.venue_slot, 'get'):
+                # A venue slot holds only a configured venue the guest named. Free text
+                # a model put there ("a table for 2", a room number) is not a venue; the
+                # guest's own words still reach staff in the request note.
+                existing = {key: value for key, value in existing.items()
+                            if key != definition.venue_slot.get('name')}
         assessment = assess_service(slot_source_query, request.language, kind, existing=existing, mode=mode, reference_time=self._reference_time())
         if (context and 'requested_date' in context.get('missing', ())
                 and 'requested_date' not in assessment.slots

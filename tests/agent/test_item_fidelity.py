@@ -207,3 +207,79 @@ def test_unmarked_daypart_reads_the_evening(query, expected):
 def test_the_longest_named_context_wins(query, expected):
     from concierge_kiosk.application.conversation.answers import _mentioned_contexts
     assert _mentioned_contexts(query, 'vi') == expected
+
+
+@pytest.mark.parametrize('query,language,hint,expected', [
+    ('Cho mình 2 bàn chải đánh răng với 1 tuýp kem đánh răng lên phòng 1010', 'vi',
+     'bàn chải đánh răng', '2 bàn chải đánh răng; 1 tuýp kem đánh răng'),
+    ('Mang lên phòng 905 hai chai nước suối và ba cái khăn tắm nhé', 'vi', None,
+     '2 chai nước suối; 3 cái khăn tắm'),
+    ('Please bring 2 towels and 3 bottles of water to room 405', 'en', None,
+     '2 towels; 3 bottles of water'),
+    # Typed without tone marks; the model may still return a marked, counted item.
+    ('mang len phong 805 2 goi va 1 cai chan nhe', 'vi', '2 gối và 1 cái chăn', '2 goi; 1 cai chan'),
+    ('mang lên phòng 805 2 gối và 1 cái chăn nhé', 'vi', '2 gối và 1 cái chăn', '2 gối; 1 cái chăn'),
+])
+def test_each_listed_item_keeps_its_own_count(query, language, hint, expected):
+    from concierge_kiosk.agent.tools.service_slots import extract_slots
+    slots = extract_slots(query, language, 'facilities', mode='amenity_delivery',
+                          existing={'requested_item': hint} if hint else None)
+    assert slots['requested_item'] == expected
+    # One total would misstate a list with per-item counts.
+    assert 'quantity' not in slots and 'unit' not in slots
+
+
+def test_a_single_item_and_a_compound_dish_are_not_split():
+    from concierge_kiosk.agent.tools.service_slots import extract_slots
+    single = extract_slots('Cho mình 2 chai nước suối lên phòng 707', 'vi', 'facilities', mode='amenity_delivery')
+    assert single['quantity'] == 2 and ';' not in single['requested_item']
+    dish = extract_slots('Cho mình ly cà phê với sữa phòng 305', 'vi', 'facilities', mode='amenity_delivery',
+                         existing={'requested_item': 'ly cà phê với sữa'})
+    assert dish['requested_item'] == 'ly cà phê với sữa'
+
+
+@pytest.mark.parametrize('query,language,expected', [
+    ('Can you send up two extra pillows to 1104 and book a table', 'en', '1104'),
+    ('mang lên 1104 giúp mình', 'vi', '1104'),
+    ('đặt bàn lúc 7 giờ tới 8 giờ', 'vi', None),
+])
+def test_a_room_after_a_delivery_preposition(query, language, expected):
+    from concierge_kiosk.agent.tools.service_slots import _room_number
+    assert _room_number(query, language) == expected
+
+
+def test_one_item_list_split_across_commands_is_one_request():
+    query = 'Cho mình 2 gối, 1 chăn và 1 đôi dép lên phòng 702'
+    split = tuple(Command('StartGoal', goal='amenity_delivery', slots=(CommandSlot('requested_item', item),))
+                  for item in ('2 gối', '1 chăn', '1 đôi dép'))
+    state = build_initial_state(query=query, language='vi', decision=RouteDecision('service'), commands=split)
+    assert [c.existing_slots['requested_item'] for c in state.service_candidates] == ['2 gối; 1 chăn; 1 đôi dép']
+
+
+@pytest.mark.parametrize('query,language,item,expected', [
+    ('Thêm 3 cái đệm lót cho phòng 1207 nhé', 'vi', 'đệm lót', 3),
+    ('Send 2 extra hangers to 1207 please', 'en', 'extra hangers', 2),
+    ('Cho phòng 1207 thêm đệm lót', 'vi', 'đệm lót', None),   # a room number is not a count
+])
+def test_a_count_written_before_the_item_counts_it(query, language, item, expected):
+    from concierge_kiosk.agent.tools.service_slots import extract_slots
+    slots = extract_slots(query, language, 'facilities', mode='amenity_delivery', existing={'requested_item': item})
+    assert slots.get('quantity') == expected and slots['room_number'] == '1207'
+
+
+@pytest.mark.parametrize('language', ['vi', 'en', 'zh', 'ko'])
+def test_a_service_without_a_catalog_row_still_has_a_localized_title(language):
+    from concierge_kiosk.core.domain_profile import get_domain_profile
+    from concierge_kiosk.i18n import text as i18n_text
+    for service in get_domain_profile().services:
+        if service.catalog_service_id or 'requested_item' in service.required_slots:
+            continue
+        review = _canonical_service_review(mode=service.code, language=language,
+                                           slots={'room_number': '502'}, fallback_details='unused')
+        assert review.splitlines()[0] == i18n_text(f'service.name.{service.code}', language)
+
+
+def test_in_room_equipment_keeps_the_room():
+    from concierge_kiosk.agent.tools.service_slots import extract_slots
+    slots = extract_slots('Có thể mang lên một bàn ủi cho phòng 1418 không', 'vi', 'facilities', mode='facility_request')
+    assert slots == {'room_number': '1418'}

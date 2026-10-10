@@ -178,7 +178,16 @@ def _build_lifespan(graph_holder, store, workflows, cfg=None):
                         await asyncio.to_thread(gate.warm)
                     except Exception as exc:
                         LOGGER.warning('emergency_gate_warmup_failed type=%s', type(exc).__name__)
-        warmup = asyncio.create_task(warm_voice()) if cfg is not None else None
+        async def warm_understanding():
+            # Guests are admitted only once the command prefix, the selector index and the
+            # emergency classifier are warm: a turn during warm-up would wait on the CPU
+            # lane past its budget. Readiness reports this; failures still end warm-up.
+            _app.state.understanding_warm = False
+            try:
+                await warm_voice()
+            finally:
+                _app.state.understanding_warm = True
+        warmup = asyncio.create_task(warm_understanding()) if cfg is not None else None
         async def overdue_worker():
             while not stop.is_set():
                 try:

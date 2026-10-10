@@ -90,6 +90,49 @@ qwen3-4b chính xác hơn rõ rệt nhưng vượt budget 8 s trên CPU này; gi
 
 Cùng 19 kịch bản thực tế, CPU: 19/19 hiểu đúng ý (3b: 15/19) — 7b xử lý được cảm ơn chuyện đã xong, phàn nàn tiếng ồn (chuyển nhân viên), sai chính tả "towles". Mọi commit: 0 write trước confirm, đúng 1 row, replay cùng request_id, session khác 403. Latency lượt cần model 7–12 s (trung bình ~9.5 s); fast path/read-only 0.1–0.5 s. Tối ưu cho 7b: model chỉ điền slot dạng chữ (phòng, số lượng, giờ, ngày, số khách do server tự trích — `SERVER_EXTRACTED_SLOTS`), giữ 2 few-shot (bỏ few-shot giảm đúng từ 9/9 xuống 6–7/9 trong A/B), ngân sách NLU 12 s. Prefix system prompt được cache, nhưng mỗi token phía sau tốn ~28 ms trên CPU nên phần thay đổi mỗi lượt quyết định độ trễ.
 
+### Intent router — đo bằng model thật (2026-10-10)
+
+qwen2.5:7b + bge-m3 trên CPU laptop, API thật, SQLite copy, không gửi xác nhận. Nhãn do agent viết (`unreviewed`), chưa có người duyệt độc lập.
+
+| Bộ | Cỡ | Kết quả | Ghi chú |
+|---|---:|---|---|
+| Chẩn đoán (lời nói tự nhiên, dùng để tìm nguyên nhân) | 42 | 28 → 34 | trước/sau cổng mới; dùng để sửa nên không phải ước lượng độc lập |
+| Giữ riêng `intent_router_conversational` (khóa sha256 trước khi sửa, chạy một lần) | 60 | 44/60 — vi 20/30, en 6/10, zh 10/10, ko 8/10 | p50 12.7 s, p95 19.8 s; không có số "trước" cùng điều kiện |
+| `vi_hard_negatives` | 80 | 80/80, 0 write, 0 proposal | p50 10.2 s, p95 13.0 s |
+
+Lỗi còn lại trên bộ giữ riêng (16): model chọn dịch vụ gần nghĩa hoặc bỏ sót một việc (6); cổng loại lệnh đúng (4, gồm câu hỏi lịch sự tiếng Hàn "…수 있나요?"); câu hỏi chỗ trống/cảm ơn ra `nlu_failure` hoặc thừa một lượt đọc (4); khẩn cấp (2: "bóng đèn… cháy" từng thành khẩn cấp đầy đủ — đã chuyển sang hỏi xác nhận; rò nước vào vùng hỏi lại). Một câu của bộ này đã bị xem phân đoạn trong lúc phát triển (không xem kết quả, không sửa theo).
+
+Thay đổi gốc:
+
+- Cổng ngữ nghĩa xét từng lệnh trên mệnh đề của nó (`command_scope`); span sai không làm mất lệnh; mệnh đề sau chỉ yêu cầu mà không nêu dịch vụ khác ("…hỏng, cho người lên xem") thuộc cùng phạm vi.
+- Đồng thuận model–embedding hiệu chỉnh trên train (giữ riêng cả nhóm, `tools/nlu/calibrate_semantic_support.py`): top-2, ≥ 0.65, cách đầu ≤ 0.03, hơn lượt không-yêu-cầu gần nhất − 0.02. Recall 0.876 → 0.899; nhận nhầm lượt không-yêu-cầu 0.482 → 0.127.
+- Phủ định chỉ từ chối khi chi phối động từ yêu cầu (`negation_scope`); mốc quá khứ, lời thuật lại, câu hỏi thông tin vẫn chặn.
+- Tiếng Hàn: đuôi nối "-고" tách mệnh đề (`clause_suffixes`), "주시" là động từ yêu cầu.
+- Câu hỏi nhiều vế không đi đường đọc tất định; model tách AskInfo/Navigate.
+- Chính sách: chìa tổng / vượt quyền vào phòng trả lời theo chính sách, không mở draft (`room_access_conflicts.override_terms`); bỏ qua xác nhận không được duyệt chỉ nhờ đồng thuận.
+- Khẩn cấp: "cháy" gắn với bóng đèn/cầu chì vào vùng hỏi lại thay vì báo khẩn cấp đầy đủ (`emergency_context_patterns.vi.fault_sense`); khách trả lời không phải khẩn cấp thì lượt gốc được hiểu lại.
+- Khởi động: `/readyz` 503 và `understanding_ready=false` tới khi warm-up xong; kiosk chờ trước khi nhận lượt.
+- Không hiểu: phản hồi kèm `service_options` (3 dịch vụ gần nhất theo embedding, kèm slot server đọc được); khách chạm để mở form và vẫn xác nhận. Vẫn hoạt động khi model không chạy.
+
+#### Đợt 2 (cùng ngày)
+
+- Giữ riêng `intent_router_polite_and_social` (48, khóa trước khi sửa): 30/48 → 32/48 (vi 17→18, en 3→3, zh 5→6, ko 5→5). Sửa: tiểu từ hỏi trong khung yêu cầu ("…주실 수 있나요?"), đồ vật mới qua mạo từ/số đếm đứng riêng, vị trí đồ vật theo ngôn ngữ, "đồng ý" khi không có gì chờ thành lời xã giao, câu hỏi chỗ trống không bị áp lề "không yêu cầu".
+- `vi_hard_negatives`: 80/80, 0 write (p50 10.9 s, p95 14.6 s).
+- Giữ riêng `intent_router_conversational` chạy lại: 48/60 — **không độc lập** (đã xem lỗi của bộ này).
+- Đối chứng: cùng pipeline, model sinh lệnh lớn qua API (chỉ thử, đã gỡ) đạt 38/48 với 0 lỗi do model; 7/10 lỗi còn lại do cổng loại lệnh đúng → nút thắt là cổng, không phải model.
+
+#### Cổng hai mức (chưa đo trên bộ lớn)
+
+Lệnh không có bằng chứng kiểm chứng nhưng hợp lý (đang yêu cầu; gần dịch vụ hơn lượt không-yêu-cầu gần nhất ≥ 0.02, điểm ≥ 0.60) được giữ với cờ `review`: phản hồi `needs_review` + `service_options`, khách vẫn xác nhận. Hiệu chỉnh trên train (giữ riêng nhóm): nhận nhầm lượt không-yêu-cầu 0.057; recall kiểm chứng-hoặc-hợp-lý 0.916. Embedding dịch vụ chỉ dùng câu đầu của mô tả (phần "X là dịch vụ khác" làm lệch vector); hiệu chỉnh lại cho cùng ngưỡng. Kiểm tra bằng model thật: 2 câu (đúng). Bộ giữ riêng `intent_router_review_tier` (48, sha256 `260c0f8c…`) đã khóa, **chưa chạy**.
+
+Chạy trên máy thuê (không chạy trên laptop):
+
+```powershell
+python tools/evaluation/evaluate_intent_router.py --stage after --holdout datasets/evaluation/holdout/intent_router_review_tier.jsonl --output reports/intent-router-review-tier.json --cases reports/intent-router-review-tier-cases.jsonl
+```
+
+Offline: các file test liên quan qua; 4 lỗi cũ còn nguyên. Khi chạy chung một lượt lớn, 1 test API phụ thuộc thời gian (`test_public_status`: timestamp chứa "305") và vài test `tests/data` từng fail nhưng qua khi chạy riêng từng file — cần chạy lại toàn bộ trên máy thuê để kết luận.
+
 ## Transcript application khi model unavailable
 
 Đây là FastAPI/LangGraph/catalog thật qua ASGI TestClient, session cookie + CSRF và SQLite copy; Qwen budget=0, không BGE/reranker load. **REAL_APPLICATION_API_MODEL_UNAVAILABLE**, không phải real-model/browser/voice PASS.
@@ -113,5 +156,11 @@ Layer intervals nested/inclusive, không cộng làm exclusive latency. Giá tr�
 **OFFLINE_INTEGRATION_PASS**, **CLOUD_INGESTION_NOT_VERIFIED**. SDK/mock kiểm tra root/children, semantic rejection, masking, score association và idempotency; chưa chứng minh dashboard ingestion.
 
 Cloud cần operator credentials/permission và synthetic filtered data, rồi read-back hierarchy/scores/privacy; exporter HTTP thành công đơn lẻ chưa đủ. Real-model và voice/browser nghiệm thu riêng.
+
+## Kiểm toán nguyên nhân intent router (2026-10-10)
+
+Đợt kiểm toán mới có baseline working tree và bộ giữ riêng khóa trước edits; xem [báo cáo P1–P7](intent-router-audit.md), [JSON trước/sau](../reports/intent-router.json) và [journal raw/API](../reports/intent-router-cases.jsonl). Cả hai stage 105/105 đều dùng qwen2.5:7b + bge-m3 CPU, SQLite copy, không confirm: 0 write. Bẫy VI sau sửa: 65/80 theo oracle route/evidence cố định, 0 proposal sai. Giữ riêng: VI 9/16, EN 1/3, ZH 3/3, KO 1/3; KO giảm từ 2/3 baseline. **NO-GO cho release cả bốn ngôn ngữ**: còn intent sai/thiếu, hồi quy KO, và khách đến ngay lúc cold startup hết ngân sách chờ 30 giây khi warm-up cần khoảng 45 giây. Những số liệu lịch sử bên trên không thay thế kết quả độc lập này.
+
+Code chưa commit/push; không dùng lỗi giữ riêng để tune tiếp, không đổi evaluation labels, keyword budget hoặc ngưỡng an toàn. Test scope/slot/gate cuối: `344 passed, 2 warnings in 19.01s`; integration cuối: `3 failed, 116 passed, 8 deselected, 2 xfailed, 2 warnings in 67.60s (0:01:07)`, ba fail đúng danh sách lỗi đã có, không thêm fail. Voice/full suite không chạy.
 
 CI/release gates có định nghĩa trong .github/workflows/ci.yml và tools/validate; không sửa hoặc tự chạy full CI khi chỉ sửa docs. Các blockers ở [Limitations](LIMITATIONS.md), test cases ở [backend cases](backend-test-cases.md).

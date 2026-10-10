@@ -52,6 +52,8 @@ Giá trị price_acknowledged/verification phải phản ánh consent thật, kh
 | GET | `/api/services` |
 | GET | `/api/map/places` |
 
+`/readyz` trả 503 "Understanding layer is warming up" cho tới khi warm-up lúc khởi động (prefix lệnh của model, index selector, emergency classifier) kết thúc; `/api/config.understanding_ready` báo cùng trạng thái để kiosk chờ trước khi nhận lượt khách.
+
 ### Guest session, requests và status
 
 | Method | Path |
@@ -75,6 +77,8 @@ Giá trị price_acknowledged/verification phải phản ánh consent thật, kh
 | GET | `/api/requests/{request_id}/status` |
 | GET | `/api/requests/{request_id}/progress` |
 | POST | `/api/requests/{request_id}/feedback` |
+
+Khi một lượt không được hiểu (`nlu_failure`/`clarification`), phản hồi `/api/ask` có thể kèm `service_options`: tối đa 3 `{kind, service, label, details, payload}` là các dịch vụ gần nhất với lời khách theo embedding, `payload` là slot server đọc được (phòng, số lượng, giờ, ngày). Chọn một option chỉ mở form yêu cầu; khách vẫn xem lại và xác nhận, option không mang quyền ghi.
 
 ### Staff
 

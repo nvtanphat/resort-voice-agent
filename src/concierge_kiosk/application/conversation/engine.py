@@ -43,7 +43,8 @@ from concierge_kiosk.agent.runtime.presentation.turn import (
 )
 from concierge_kiosk.agent.runtime.persistence import checkpoint_projection, semantic_memory_projection
 from concierge_kiosk.api.shared.contracts import Ask
-from concierge_kiosk.application.service_actions import ServiceActionService, _structured_entity_data
+import concierge_kiosk.application.service_actions as service_actions_module
+from concierge_kiosk.application.service_actions import ServiceActionService, _structured_entity_data, changeable_requests
 from concierge_kiosk.domain.entity_resolver import property_entity_matches
 from concierge_kiosk.application import TurnCoordinator, CoordinatedTurn
 from concierge_kiosk.domain.service_registry import route_branch_for_request_kind
@@ -55,9 +56,10 @@ from concierge_kiosk.agent.understanding.commands import commands_from_items, va
 from concierge_kiosk.agent.understanding.fast_router import FastRouter, TurnContext
 from concierge_kiosk.agent.understanding.grounded_service import GroundedServiceResolver
 from concierge_kiosk.agent.understanding.intent_evidence import (mentioned_services, room_access_models,
-                                                                  states_room_access_conflict, turn_defers,
+                                                                  states_access_override, states_room_access_conflict, turn_defers,
                                                                   explicit_draft_cancel, clear_information_turn,
                                                                   bind_turn_service_ranking, booking_reference,
+                                                                  request_clauses,
                                                                   command_supported, information_facet)
 from concierge_kiosk.core.operational_policy import service_access_model
 from concierge_kiosk.agent.understanding.emergency_gate import EmergencyGate, emergency_confirm_question
@@ -66,7 +68,7 @@ from concierge_kiosk.agent.understanding.intent import EMERGENCY_TEXT
 from concierge_kiosk.core.domain_profile import memory_policy, preference_policy
 from concierge_kiosk.agent.memory.preferences import PendingPreferenceStore
 from concierge_kiosk.runtime.local_http import slm_turn_budget
-from concierge_kiosk.runtime.local_http import slm_turn_expired
+from concierge_kiosk.runtime.local_http import slm_turn_expired, slm_remaining_timeout
 from concierge_kiosk.agent.memory.reference_resolver import model_reference_choice
 from concierge_kiosk.integrations.synthetic_operations import SyntheticOperations
 from concierge_kiosk.rag.text.safety import unsafe_knowledge_text
@@ -243,6 +245,8 @@ class _TurnRuntimeSupport:
     emergency_gate: EmergencyGate | None = None
     _pending_emergency_checks: set[str] = field(default_factory=set)
     _pending_emergency_details: dict[str, str] = field(default_factory=dict)
+    # The turn a guest just said is not an emergency; the review question is not asked again for it.
+    _emergency_denied: dict[str, str] = field(default_factory=dict)
 
     @observed('memory_resolution', project=lambda result: {'anchor_accepted': bool(result)})
     def live_context_anchors(self, session: str, language: str):
@@ -342,8 +346,11 @@ class _TurnRuntimeSupport:
         if not self.slm_permitted():
             _COMMAND_OUTCOME.set('model_not_ready')
             return None
-        if not self.audio_admission.try_enter_slm(session):
-            _COMMAND_OUTCOME.set('model_busy')
+        enter_guest = getattr(self.audio_admission, 'enter_guest_slm', None)
+        admitted = (enter_guest(session, timeout=slm_remaining_timeout(self.cfg.intent_parser_timeout_seconds))
+                    if enter_guest is not None else self.audio_admission.try_enter_slm(session))
+        if not admitted:
+            _COMMAND_OUTCOME.set('turn_budget_expired' if slm_turn_expired() else 'model_busy')
             return None
         try:
             models = self.cfg.llm_candidates()
@@ -363,8 +370,11 @@ class _TurnRuntimeSupport:
                     # A not-yet-built index yields nothing; the model then sees
                     # the full registry rather than an empty candidate set.
                     candidates = candidates or None
-                    bind_turn_service_ranking(self.service_selector.goal_ranking(
-                        query, enabled_request_kinds=enabled_request_kinds))
+                    bind_turn_service_ranking(
+                        self.service_selector.goal_ranking(query, enabled_request_kinds=enabled_request_kinds),
+                        rank_source=lambda source: self.service_selector.goal_ranking(
+                            source, enabled_request_kinds=enabled_request_kinds),
+                        nonrequest_source=self.service_selector.nonrequest_similarity)
                 except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
                     # Candidate retrieval is advisory. A missing local embedder
                     # must not turn a bounded command proposal into an error.
@@ -389,6 +399,41 @@ class _TurnRuntimeSupport:
             )
         finally:
             self.audio_admission.leave_slm()
+
+    def service_options(self, query: str, language: str, enabled_request_kinds: frozenset[str],
+                        *, limit: int = 3) -> list[dict]:
+        """The services closest to a turn the kiosk did not understand, as guest choices.
+
+        Each option names one enabled service with the guest's words and the slots the
+        server read from them. Choosing one opens the ordinary request form: the guest
+        still reviews and confirms, so an option grants no authority by itself. It also
+        keeps the kiosk useful when the command model is unavailable.
+        """
+        if self.service_selector is None or not query.strip():
+            return []
+        try:
+            ranking = self.service_selector.goal_ranking(query, enabled_request_kinds=enabled_request_kinds)
+        except (OSError, RuntimeError, TypeError, ValueError, TimeoutError):
+            LOGGER.warning('service_options_unavailable', exc_info=True)
+            return []
+        floor = float(nlu_policy().service_selector['semantic_agreement']['min_score'])
+        options: list[dict] = []
+        for goal, score in ranking:
+            if score < floor or len(options) >= limit:
+                break
+            definition = service_definition(goal)
+            if definition is None or definition.request_kind not in enabled_request_kinds:
+                continue
+            try:
+                slots = extract_slots(query, language, definition.request_kind, mode=goal)
+            except ValueError:
+                slots = {}
+            payload = {key: value for key, value in slots.items()
+                       if key in {'room_number', 'quantity', 'preferred_time', 'party_size', 'requested_date'}}
+            options.append({'kind': definition.request_kind, 'service': goal,
+                            'label': service_actions_module.service_display_name(goal, language, cfg=self.cfg),
+                            'details': query.strip()[:500], 'payload': payload})
+        return options
 
     def fallback_commands(self, query: str, language: str, *,
                           enabled_request_kinds: frozenset[str], pending_field: str | None = None):
@@ -436,6 +481,13 @@ class _TurnRuntimeSupport:
             if _is_expected_confirmation(query, language):
                 self.agent_tasks.clear(session)
                 return RouteDecision('emergency', True), {'emergency_details': emergency_details or query}, query, None
+            if emergency_details and _is_expected_denial(query, language):
+                # The guest says it is not an emergency: the turn that raised the question is
+                # understood as it was asked, so the request is not lost to the safety check.
+                self._emergency_denied[session] = emergency_details
+                return self.understand_turn(emergency_details, language, session,
+                                            classify_dialogue(emergency_details, language),
+                                            enabled_request_kinds=enabled_request_kinds, voice_turn=voice_turn)
         if decision.branch == 'emergency_check':
             self.set_pending_emergency_check(session, query)
             return decision, None, query, None
@@ -454,9 +506,15 @@ class _TurnRuntimeSupport:
                 if gate_decision.branch == 'emergency':
                     self.agent_tasks.clear(session)
                     return gate_decision, None, query, None
-                if gate_decision.branch == 'emergency_check':
+                denied = self._emergency_denied.pop(session, None) == query
+                if gate_decision.branch == 'emergency_check' and not denied:
                     self.set_pending_emergency_check(session, query)
                     return gate_decision, None, query, None
+        if states_access_override(query, language):
+            # Overriding a guest's room access (a master key) is staff policy, never a
+            # request the kiosk prepares, however it is phrased: answer with the policy.
+            return (RouteDecision('confirmation', True),
+                    {'held_answer': i18n_text('service.room_access_override', language)}, query, None)
         pending_task = self.agent_tasks.load(session, language)
         update_current(pending_task_continuation=pending_task is not None)
         workflow = self.conversations.workflow_projection(session, language)
@@ -579,7 +637,7 @@ class _TurnRuntimeSupport:
                           for command in commands) else ())
         topic = anchors[0].title if len(anchors) == 1 else None
         pending_reply = self.pending_field(session, language, pending_task)
-        supported = tuple(command for command in commands if command_supported(
+        supported = tuple(command for command in commands if command.review or command_supported(
             command, query, language, context_topic=topic,
             pending_goal=pending_task.mode if pending_task is not None else None,
             pending_reply=pending_reply))
@@ -622,6 +680,14 @@ class _TurnRuntimeSupport:
                         {'cancelled_answer': i18n_text('request.draft_cleared', language),
                          'clear_suggestions': True},
                         execution_query, None)
+            types = {command.type for command in commands}
+        if (types & {'Cancel', 'Modify'} and 'StartGoal' in types and pending_task is None
+                and not has_pending_proposal
+                and not changeable_requests(self.workflows, session)):
+            # "Two pillows, and no towels" declines an item in the new request. With no
+            # draft and no live ticket there is nothing to withdraw, and the request
+            # beside it must not be lost to an empty change.
+            commands = tuple(command for command in commands if command.type not in {'Cancel', 'Modify'})
             types = {command.type for command in commands}
 
         starts = [command for command in commands if command.type == 'StartGoal']
@@ -1317,6 +1383,18 @@ def build_conversation_engine(*, app, cfg, store, workflows, agent_tasks, conver
             result['session_update'] = None
             result['answer'] = i18n_text('property.language_disabled', body.language)
             result['property_policy'] = 'language_disabled'
+
+        if any(getattr(command, 'review', False) for command in (loop_commands or ())):
+            # A plausible but unverified request: ask the guest to check it, with alternatives.
+            result['needs_review'] = True
+            options = turn_support.service_options(query, body.language, frozenset(enabled_request_kinds))
+            if options:
+                result['service_options'] = options
+        if decision.branch in {'nlu_failure', 'clarification'}:
+            # Not understood: offer the closest services as choices instead of a dead end.
+            options = turn_support.service_options(query, body.language, frozenset(enabled_request_kinds))
+            if options:
+                result['service_options'] = options
 
         # Combined service-review clarification keeps its existing evidence-only
         # read. It cannot write business state and is intentionally outside the

@@ -55,6 +55,7 @@ def emergency_tier1(query: str, language: str) -> str | None:
     # underwater + not responding; fragments separately allow a current event
     # after a historical clause to retain priority.
     pieces += re.split(r'[;.!?\n\u3002\uff1b\uff1f]', text)
+    review = False
     for branch, groups in (
             ('emergency', policy['emergency_event_patterns']),
             ('emergency_check', policy.get('emergency_review_patterns', {}))):
@@ -66,11 +67,20 @@ def emergency_tier1(query: str, language: str) -> str | None:
                     continue
                 negative = [match.span() for pattern in context.get('negated', ())
                             for match in re.finditer(pattern, piece)]
+                # A fire word that also names a burnt-out part ("the bulb has burnt out")
+                # is asked about, never ignored: the guest confirms a real fire in one tap.
+                fault = [match.span() for pattern in context.get('fault_sense', ())
+                         for match in re.finditer(pattern, piece)]
                 for pattern in patterns:
                     for match in re.finditer(pattern, piece):
-                        if not any(start < match.end() and match.start() < end for start,end in negative):
-                            return branch
-    return None
+                        if any(start < match.end() and match.start() < end for start, end in negative):
+                            continue
+                        if branch == 'emergency' and any(start < match.end() and match.start() < end
+                                                         for start, end in fault):
+                            review = True
+                            continue
+                        return branch
+    return 'emergency_check' if review else None
 
 
 def _mask_catalog_terms(text: str, language: str) -> str:

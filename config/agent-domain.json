@@ -80,7 +80,7 @@
       ],
       "approval": "none",
       "catalog_service_id": "",
-      "description": "Bring extra in-room items or supplies to the guest room (towels, water, toiletries, adapters, small items)."
+      "description": "Deliver loose guest-use supplies or portable personal items to the room, including objects absent from the catalog. Fulfilment is handing over an object, without installation, equipment setup, repair, prepared meal ordering or reservation."
     },
     {
       "code": "maintenance",
@@ -100,7 +100,7 @@
       "optional_slots": [],
       "approval": "none",
       "catalog_service_id": "",
-      "description": "Repair something broken or not working in the room (air conditioning, plumbing, lights, TV, locks)."
+      "description": "Inspect and restore a faulty or malfunctioning room fixture or installed device. The goal is to make an existing object work; delivering a new loose supply is amenity_delivery and routine room cleaning is housekeeping."
     },
     {
       "code": "housekeeping",
@@ -121,7 +121,7 @@
       ],
       "approval": "none",
       "catalog_service_id": "service.room_cleaning",
-      "description": "Clean or tidy the guest room, change linen, or schedule room cleaning."
+      "description": "Perform cleaning, tidying or linen change inside the guest room, now or at an appointed time. Delivering extra loose room supplies is amenity_delivery, even when the housekeeping department delivers them."
     },
     {
       "code": "human_assistance",
@@ -143,7 +143,7 @@
       ],
       "approval": "staff",
       "catalog_service_id": "",
-      "description": "Connect the guest with a staff member, or handle a request no other service covers (luggage, lost items, special help)."
+      "description": "Connect the guest to staff for a conversation, complaint or personal assistance that no specific workflow covers. Use the specific workflow when its action criteria fit; staff ownership alone does not make a request human_assistance."
     },
     {
       "code": "spa_reservation",
@@ -162,7 +162,7 @@
       "optional_slots": [],
       "approval": "staff",
       "catalog_service_id": "spa.booking",
-      "description": "Book a spa, massage or wellness treatment at a requested time.",
+      "description": "Reserve a personal wellness treatment appointment at an explicitly requested time. A question about treatment hours, prices or policies is AskInfo; a capacity question without booking is CheckAvailability.",
       "availability_source": {
         "dataset": "synthetic/operations/spa/operations.json",
         "shape": "time_slots",
@@ -193,7 +193,7 @@
       },
       "approval": "staff",
       "catalog_service_id": "dining.restaurant_reservation",
-      "description": "Reserve a restaurant table for a number of people at a time.",
+      "description": "Reserve restaurant seating for a party at an appointed time. This holds dining capacity; ordering prepared food is food_order and a special dining arrangement without seating reservation is dining_request.",
       "availability_source": {
         "dataset": "synthetic/operations/food_beverage/restaurants.json",
         "shape": "table_capacity",
@@ -220,7 +220,7 @@
       ],
       "approval": "staff",
       "catalog_service_id": "service.in_room_dining",
-      "description": "Order food or drinks delivered to the guest room (room service)."
+      "description": "Place an order for prepared food or menu beverages served to the guest room. Loose personal or room supplies without a prepared food order belong to amenity_delivery."
     },
     {
       "code": "tour_reservation",
@@ -239,7 +239,7 @@
       "optional_slots": [],
       "approval": "staff",
       "catalog_service_id": "service.tour_reservation",
-      "description": "Book a seat on an organized tour or excursion at a requested time.",
+      "description": "Reserve participation in an organized excursion at an appointed time. A bespoke trip arrangement is tour_request; facts about trips are AskInfo and a capacity question without reservation is CheckAvailability.",
       "availability_source": {
         "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
         "shape": "inventory",
@@ -266,7 +266,7 @@
       ],
       "approval": "staff",
       "catalog_service_id": "service.wake_up_calls",
-      "description": "Schedule a telephone wake-up call to the guest room at a requested time."
+      "description": "Schedule a telephone call that wakes the guest at an appointed time. The requested wake time belongs to this task, independently of times for other services."
     },
     {
       "code": "facility_request",
@@ -281,11 +281,12 @@
       "tool": "service_action",
       "default_for_kind": true,
       "optional_slots": [
+        "room_number",
         "preferred_time"
       ],
       "approval": "staff",
       "catalog_service_id": "",
-      "description": "Request a facility or equipment arrangement not covered by a specific service (extra bed, crib, iron, hair dryer)."
+      "description": "Arrange setup, installation or access to room equipment or a facility requiring staff coordination. Delivering loose guest-use supplies is amenity_delivery; fault repair is maintenance; room cleaning is housekeeping."
     },
     {
       "code": "dining_request",
@@ -305,7 +306,7 @@
       ],
       "approval": "staff",
       "catalog_service_id": "",
-      "description": "Arrange a special dining need (cake, private dinner, dietary or allergy request) that is not a table booking."
+      "description": "Arrange a special dining requirement that needs staff coordination. It goes beyond an ordinary prepared food order or table reservation: use dining_reservation for seating capacity and food_order for a prepared menu order."
     },
     {
       "code": "tour_request",
@@ -324,7 +325,7 @@
       ],
       "approval": "staff",
       "catalog_service_id": "",
-      "description": "Ask the tour desk to arrange or advise on a custom trip, guide or activity outside the listed tours.",
+      "description": "Ask staff to arrange a bespoke excursion or guided activity. An organized tour reservation is tour_reservation; general travel advice without an arrangement is Plan or AskInfo.",
       "availability_source": {
         "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
         "shape": "inventory",
@@ -350,7 +351,7 @@
       ],
       "approval": "staff",
       "catalog_service_id": "transportation.taxi",
-      "description": "Arrange a taxi, car or airport transfer at a requested time.",
+      "description": "Arrange passenger transportation to a stated destination at an appointed time. General route information is Navigate; prices, timetables and operating rules without an arrangement are AskInfo.",
       "availability_source": {
         "dataset": "synthetic/operations/inventory/commercial_snapshot.json",
         "shape": "inventory",
@@ -375,7 +376,7 @@
       "optional_slots": [],
       "approval": "staff",
       "catalog_service_id": "service.late_checkout",
-      "description": "Ask to keep the room past the normal check-out time."
+      "description": "Request continued occupancy of the guest room beyond the normal departure time. The requested extended departure time belongs to this task; a question about the normal departure policy is AskInfo."
     }
   ],
   "public_catalog_kinds": {
@@ -706,7 +707,10 @@
             "(?<!\\w)(?:không|chưa)\\s+(?:có\\s+|bị\\s+|đang\\s+)?(?:cháy|khói|bất tỉnh|co giật|điện giật|phản vệ)(?!\\w)",
             "(?<!\\w)không\\s+có\\s+(?:người|khách)\\s+(?:đang|bị)\\s+(?:co giật|điện giật)(?!\\w)"
           ],
-          "historical": [
+          "fault_sense": [
+          "(?<!\\w)(?:bóng đèn|bóng|đèn|cầu chì)(?:\\s+\\S+){0,4}?\\s+(?:bị\\s+)?(?:cháy|chay)(?:\\s+(?:rồi|roi))?(?!\\w)"
+        ],
+        "historical": [
             "(?<!\\w)(?:hôm qua|trước đây)(?!\\w)"
           ],
           "informational": [
@@ -911,6 +915,10 @@
           "十": 10
         },
         "ko": {
+          "하나": 1,
+          "둘": 2,
+          "셋": 3,
+          "넷": 4,
           "한": 1,
           "두": 2,
           "세": 3,
@@ -935,11 +943,13 @@
       "room_patterns": {
         "en": [
           "\\b(?:room|rm)\\.?\\s*(?:number\\s*|no\\.?\\s*)?#?\\s*([A-Za-z]?\\d{2,5})\\b",
-          "\\b(?:my\\s+)?room\\s+number\\s+is\\s+([A-Za-z]?\\d{2,5})\\b"
+          "\\b(?:my\\s+)?room\\s+number\\s+is\\s+([A-Za-z]?\\d{2,5})\\b",
+        "\\bto\\s+#?([A-Za-z]?\\d{3,4})\\b"
         ],
         "vi": [
           "\\bph[oòóỏõọôồốổỗộơờớởỡợ]ng\\s*(?:(?:của\\s+)?(?:mình|tôi|em|anh|chị|tui|minh|toi)\\s*)?(?:s[oố]\\s*)?#?\\s*([A-Za-z]?\\d{2,5})\\b",
-          "\\b(?:s[oố]\\s+)?ph[oòóỏõọôồốổỗộơờớởỡợ]ng\\s+(?:của\\s+)?(?:tôi\\s+)?là\\s+([A-Za-z]?\\d{2,5})\\b"
+          "\\b(?:s[oố]\\s+)?ph[oòóỏõọôồốổỗộơờớởỡợ]ng\\s+(?:của\\s+)?(?:tôi\\s+)?là\\s+([A-Za-z]?\\d{2,5})\\b",
+        "\\b(?:lên|tới|đến)\\s+#?([A-Za-z]?\\d{3,4})\\b"
         ],
         "zh": [
           "(?:房间|房号)(?:号)?\\s*(?:是|为|:|：)?\\s*([A-Za-z]?\\d{2,5})",
@@ -1043,23 +1053,7 @@
         ]
       },
       "quantity_units": {
-        "vi": [
-          "chai",
-          "lon",
-          "hộp",
-          "gói",
-          "cuộn",
-          "bộ",
-          "cái",
-          "chiếc",
-          "ly",
-          "cốc",
-          "tấm",
-          "đôi",
-          "túi",
-          "hũ",
-          "bình"
-        ],
+        "vi": ["chai", "lon", "hộp", "gói", "cuộn", "bộ", "cái", "chiếc", "ly", "cốc", "tấm", "đôi", "túi", "hũ", "bình", "phần", "tô", "suất", "đĩa", "tuýp", "bát", "chén"],
         "en": [
           "bottle",
           "bottles",
@@ -1413,6 +1407,15 @@
       "router_min_score": 0.87,
       "router_min_margin": 0.08,
     "semantic_support_min_score": 0.7,
+    "semantic_agreement": {
+      "_comment": "Model/embedding identity agreement. Calibrated with whole paraphrase groups held out on the training examples (tools/nlu/calibrate_semantic_support.py): recall 0.899 and 0.127 non-request acceptance, versus 0.876 and 0.482 for rank-1 at 0.70. A request that misses agreement is still shown for guest review when it is a present request at least plausible_min_score and plausible_nonrequest_margin above the nearest non-request turn (non-request acceptance 0.057; verified or plausible recall 0.916).",
+      "top_k": 2,
+      "min_score": 0.65,
+      "max_gap": 0.03,
+      "nonrequest_margin": -0.02,
+      "plausible_min_score": 0.6,
+      "plausible_nonrequest_margin": 0.02
+    },
       "emergency_min_prob": 0.64,
       "emergency_review_prob": 0.11,
       "emergency_l2": 3e-05
@@ -2827,6 +2830,8 @@
       ],
       "ko": [
         "주세요",
+        "주시",
+        "수 있",
         "부탁",
         "원해",
         "원합니다",
@@ -2861,6 +2866,7 @@
       ],
       "ko": [
         "가져",
+        "갖다",
         "배달"
       ]
     },
@@ -3060,7 +3066,9 @@
             "supplies",
             "items",
             "adapters",
-            "sewing kits"
+            "sewing kits",
+            "pillows",
+            "blankets"
           ],
           "vi": [
             "khăn",
@@ -3068,7 +3076,10 @@
             "vật phẩm",
             "đồ dùng",
             "tiện nghi",
-            "bộ khâu"
+            "bộ khâu",
+            "gối",
+            "chăn",
+            "mền"
           ],
           "zh": [
             "毛巾",
@@ -3076,7 +3087,9 @@
             "用品",
             "物品",
             "洗漱",
-            "转换器"
+            "转换器",
+            "枕头",
+            "被子"
           ],
           "ko": [
             "수건",
@@ -3084,7 +3097,9 @@
             "생수",
             "용품",
             "물품",
-            "어댑터"
+            "어댑터",
+            "베개",
+            "담요"
           ]
         },
         "generic_concepts": {
@@ -3832,6 +3847,28 @@
       "access_models": [
         "room_entry_subject_to_dnd_and_guest_access"
       ],
+      "override_terms": {
+        "en": [
+          "master key",
+          "pass key",
+          "passkey"
+        ],
+        "vi": [
+          "master key",
+          "chìa tổng",
+          "chìa khóa tổng",
+          "chìa khoá tổng"
+        ],
+        "zh": [
+          "万能钥匙",
+          "总钥匙",
+          "万能卡"
+        ],
+        "ko": [
+          "마스터키",
+          "마스터 키"
+        ]
+      },
       "terms": {
         "vi": [
           "dnd",
@@ -3903,6 +3940,50 @@
           "了"
         ]
       }
+    },
+    "confirmation_waivers": {
+      "en": [
+        "no need to confirm",
+        "without confirming",
+        "without confirmation",
+        "skip the confirmation",
+        "no confirmation needed"
+      ],
+      "vi": [
+        "không cần xác nhận",
+        "khỏi xác nhận",
+        "không cần hỏi lại",
+        "bỏ qua xác nhận",
+        "khỏi hỏi lại"
+      ],
+      "zh": [
+        "不用确认",
+        "无需确认",
+        "不必确认",
+        "不用再问"
+      ],
+      "ko": [
+        "확인 없이",
+        "확인할 필요 없",
+        "확인 안 해도"
+      ]
+    },
+    "clause_suffixes": {
+      "ko": [
+        "고"
+      ]
+    },
+    "delivery_object_position": {
+      "en": "after",
+      "vi": "after",
+      "zh": "after",
+      "ko": "before"
+    },
+    "negation_scope": {
+      "en": "following",
+      "vi": "following",
+      "zh": "following",
+      "ko": "both"
     },
     "reported_speech_terms": {
       "en": [

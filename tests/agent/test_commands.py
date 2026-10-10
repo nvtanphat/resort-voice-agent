@@ -305,3 +305,59 @@ def test_the_model_is_told_about_an_open_draft(monkeypatch):
                        model='m', enabled_request_kinds=frozenset({'transport'}), pending_goal=goal)
     without, with_draft = (json.loads(p['messages'][-1]['content']) for p in captured)
     assert 'open_draft' not in without and with_draft['open_draft'] == 'transport_request'
+
+
+def test_a_degenerate_json_generation_is_retried_once_with_a_repeat_penalty(monkeypatch):
+    from concierge_kiosk.agent.understanding import semantic
+    calls = []
+
+    def chat(_b, payload, _t, _c):
+        calls.append(payload)
+        if len(calls) == 1:
+            semantic._chat_failed('malformed_output')  # server aborted a repeating generation
+            return None
+        return '{"commands":[{"type":"AskInfo","query":"Spa mở cửa mấy giờ"}]}'
+
+    monkeypatch.setattr('concierge_kiosk.agent.understanding.commands._chat', chat)
+    parsed = model_commands(query='Spa mở cửa mấy giờ', language='vi', base_url='http://127.0.0.1:11434',
+                            model='m', enabled_request_kinds=frozenset({'facilities'}))
+    assert parsed and parsed[0].type == 'AskInfo'
+    assert 'repeat_penalty' not in calls[0]['options'] and calls[1]['options']['repeat_penalty'] == 1.1
+    # A transport failure is not retried: the model is not there to answer.
+    calls.clear()
+    monkeypatch.setattr('concierge_kiosk.agent.understanding.commands._chat',
+                        lambda _b, payload, _t, _c: calls.append(payload) or semantic._chat_failed('unavailable'))
+    assert model_commands(query='Spa mở cửa mấy giờ', language='vi', base_url='http://127.0.0.1:11434',
+                          model='m', enabled_request_kinds=frozenset({'facilities'})) is None
+    assert len(calls) == 1
+
+
+def test_a_stream_stuck_on_whitespace_is_cut_short():
+    from concierge_kiosk.agent.orchestration.grounding import _model_answer
+
+    class Stream(list):
+        status = 200
+        headers = {}
+
+    def stream(*chunks, done=True):
+        events = [json.dumps({'message': {'content': chunk}, 'done': False}).encode() for chunk in chunks]
+        if done:
+            events.append(json.dumps({'message': {'content': ''}, 'done': True}).encode())
+        return Stream(events)
+
+    stuck = stream('{"commands":[', '"{","type"', *['\t'] * 200, '}]}')
+    assert _model_answer(stuck) is None
+    # Ordinary output, including a few whitespace tokens, is untouched.
+    fine = stream('{"commands":', '\n', '  ', '[]}')
+    assert _model_answer(fine) == '{"commands":\n  []}'
+
+
+def test_an_assent_with_nothing_waiting_is_answered_as_an_acknowledgement(monkeypatch):
+    from concierge_kiosk.agent.understanding import commands as module
+    monkeypatch.setattr(module, '_chat', lambda *_: '{"commands":[{"type":"Confirm","confirmed":true}]}')
+    call = dict(query='Ok cảm ơn em nhé', language='vi', base_url='http://127.0.0.1:11434', model='m',
+                enabled_request_kinds=frozenset({'facilities'}))
+    # Nothing is waiting: the validator drops the approval and the turn is a social reply.
+    assert model_commands(**call) == (module.Command('ChitChat', kind='smalltalk'),)
+    # While another question waits, a bare "ok" answers nothing and is not turned into anything.
+    assert model_commands(**call, pending_reply='room_number') is None

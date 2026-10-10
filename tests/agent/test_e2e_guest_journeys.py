@@ -377,3 +377,108 @@ def test_check_out_time_is_answered_from_the_named_context(journey, query, langu
     assert body['tool_route'] == 'knowledge', body
     assert '11:00' in body['answer'], body
     assert journey.count() == 0
+
+
+def test_a_venue_slot_keeps_only_a_configured_venue(journey, understand):
+    q = 'Book me a table for 2 at 8pm tonight'
+    understand(q, Command('StartGoal', goal='dining_reservation',
+                          slots=(CommandSlot('restaurant_name', 'a table for 2'),)))
+    body = journey.ask(journey.new_guest(), q)
+    assert 'restaurant_name' not in body['service_payload'], body['service_payload']
+    assert journey.count() == 0
+
+
+def test_each_service_of_a_multi_request_turn_reads_its_own_clause(journey, understand):
+    from concierge_kiosk.agent.understanding import intent_evidence
+    q = 'Đặt bàn 4 người lúc 7 giờ tối nay, rồi gọi taxi ra phố cổ Hội An lúc 9 giờ tối'
+    original = intent_evidence.bind_turn_service_ranking
+
+    def ranked(ranking, **_):
+        # The engine ranks each span with the embedding selector; the test profile has none.
+        original(ranking, rank_source=lambda text: (
+            [('transport_request', 0.9), ('dining_reservation', 0.6)] if 'taxi' in text
+            else [('dining_reservation', 0.9), ('transport_request', 0.6)]))
+    intent_evidence.bind_turn_service_ranking = ranked
+    import concierge_kiosk.application.conversation.engine as engine_module
+    engine_module.bind_turn_service_ranking = ranked
+    try:
+        understand(q, start('dining_reservation'), start('transport_request'))
+        body = journey.ask(journey.new_guest(), q, 'vi')
+    finally:
+        intent_evidence.bind_turn_service_ranking = original
+        engine_module.bind_turn_service_ranking = original
+    details = ' | '.join(item.get('details', '') for item in body.get('proposed_actions') or [])
+    assert body['tool_route'] == 'multi_task', body
+    assert '19:00' in details and '21:00' in details, details
+
+
+def test_declined_item_beside_a_new_request_is_not_an_empty_cancellation(journey, understand):
+    q = 'Please bring two extra pillows to room 1104, no towels though'
+    understand(q, Command('StartGoal', goal='amenity_delivery',
+                          slots=(CommandSlot('requested_item', 'two extra pillows'),)),
+               Command('Cancel', goal='amenity_delivery'))
+    guest = journey.new_guest()
+    body = journey.ask(guest, q)
+    # No draft and no live ticket: nothing to withdraw, and the pillows are still prepared.
+    assert body['suggested_action']['service'] == 'amenity_delivery', body
+    assert 'change' not in body['suggested_action']
+    assert body['agent_action']['business_writes'] == 0
+
+
+def test_a_denied_emergency_check_resumes_the_request_that_raised_it(journey, understand):
+    from concierge_kiosk.agent.understanding.routing import RouteDecision
+    q = 'Vòi nước phòng 1215 bị hỏng, nhờ sửa giúp'
+    understand(q, start('maintenance'))
+    support = journey.app.state.conversation_engine.turn_support
+
+    class ReviewBand:
+        # The recall-calibrated review band asks about any turn that resembles an emergency.
+        def evaluate(self, query, query_vector=None):
+            return RouteDecision('emergency_check', True) if 'hỏng' in query else None
+    original_gate = support.emergency_gate
+    support.emergency_gate = ReviewBand()
+    try:
+        guest = journey.new_guest()
+        asked = journey.ask(guest, q, 'vi')
+        assert asked['tool_route'] == 'emergency_check'
+        resumed = journey.ask(guest, 'không phải', 'vi')
+    finally:
+        support.emergency_gate = original_gate
+    # "Not an emergency": the repair request is understood as first asked, not lost.
+    assert resumed['tool_route'] == 'service', resumed
+    assert resumed['suggested_action']['service'] == 'maintenance'
+    assert '1215' in resumed['suggested_action']['details']
+    assert not resumed.get('emergency_alert', {}).get('queued')
+    assert journey.count() == 0
+
+
+def test_an_access_override_gets_the_policy_answer_not_a_draft(journey, understand):
+    from concierge_kiosk.i18n import text
+    q = 'Khách phòng 714 đi vắng, cứ lấy chìa tổng vào thay ga giường giúp tôi'
+    understand(q, start('housekeeping'))
+    body = journey.ask(journey.new_guest(), q, 'vi')
+    assert text('service.room_access_override', 'vi') in body['answer'], body
+    assert not body.get('proposed_actions') and not (body.get('suggested_action') or {}).get('service')
+    assert journey.count() == 0
+
+
+def test_a_turn_not_understood_offers_the_closest_services_as_choices(journey):
+    from concierge_kiosk.application.service_actions import service_display_name
+    support = journey.app.state.conversation_engine.turn_support
+
+    class Ranked:
+        def goal_ranking(self, query, *, enabled_request_kinds):
+            return (('maintenance', 0.81), ('housekeeping', 0.70), ('spa_reservation', 0.52))
+    original = support.service_selector
+    support.service_selector = Ranked()
+    try:
+        kinds = frozenset({'facilities', 'housekeeping'})
+        options = support.service_options('Vòi sen phòng 1215 yếu quá', 'vi', kinds)
+        # Spa is below the agreement floor; a disabled kind is never offered.
+        assert [option['service'] for option in options] == ['maintenance', 'housekeeping']
+        assert options[0]['label'] == service_display_name('maintenance', 'vi')
+        assert options[0]['payload'].get('room_number') == '1215'
+        assert options[0]['details'] == 'Vòi sen phòng 1215 yếu quá'
+        assert support.service_options('Vòi sen phòng 1215 yếu quá', 'vi', frozenset({'dining'})) == []
+    finally:
+        support.service_selector = original

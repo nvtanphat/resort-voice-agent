@@ -126,6 +126,15 @@ export const App:React.FC=()=>{
   const epoch=sessionEpoch.current;
   let configuredOrigin='http://localhost:8000';
   try{const [settings,catalog,ui]=await Promise.all([api.config(),api.services(),api.uiContract()]);if(epoch!==sessionEpoch.current)return;await api.startSession(init.signal);if(epoch!==sessionEpoch.current||init.signal.aborted)return;
+   // The understanding layer warms up after a restart; guest input waits until it is ready.
+   let readySettings=settings;
+   while(readySettings.understanding_ready===false){
+    setErrorText(t(langRef.current,'systemStarting'));
+    await new Promise(resolve=>setTimeout(resolve,3000));
+    if(epoch!==sessionEpoch.current||init.signal.aborted)return;
+    readySettings=await api.config();
+   }
+   setErrorText(null);
    configuredOrigin=settings.public_origin||configuredOrigin;
    const defaultLanguage=(settings.default_language&&settings.enabled_languages?.includes(settings.default_language))?settings.default_language:langRef.current;
    const profileLanguage=(!userSelectedLanguage.current&&languageRevision.current===languageAtStart)?defaultLanguage:langRef.current;
@@ -229,7 +238,7 @@ export const App:React.FC=()=>{
      planIsDraft:result.plan_is_draft,missingTopics:result.missing_topics,mapGuidance:result.map_guidance,
      plan:result.plan,evidenceStatus:result.evidence_status,omittedClaims:result.omitted_claims,
      relatedTopics:result.related_topics||[],supportContact:result.support_contact||null,
-     actionOptions:(result.action_options||[]).filter(a=>allowedRequestKinds.includes(a.kind)),taskProgress:result.task_progress,
+     actionOptions:(result.action_options||[]).filter(a=>allowedRequestKinds.includes(a.kind)),serviceOptions:(result.service_options||[]).filter(o=>allowedRequestKinds.includes(o.kind)),needsReview:Boolean(result.needs_review),taskProgress:result.task_progress,
      agentProgress:result.agent_progress}]);
    if(result.autonomous_action?.executed)void refreshRequests();
    setIsThinking(false);setVoiceMessage('');
@@ -336,7 +345,7 @@ export const App:React.FC=()=>{
            missingTopics:result.missing_topics,mapGuidance:result.map_guidance,plan:result.plan,
            evidenceStatus:result.evidence_status,omittedClaims:result.omitted_claims,
            relatedTopics:result.related_topics||[],supportContact:result.support_contact||null,
-           actionOptions:(result.action_options||[]).filter(a=>allowedRequestKinds.includes(a.kind)),
+           actionOptions:(result.action_options||[]).filter(a=>allowedRequestKinds.includes(a.kind)),serviceOptions:(result.service_options||[]).filter(o=>allowedRequestKinds.includes(o.kind)),needsReview:Boolean(result.needs_review),
            taskProgress:result.task_progress,agentProgress:result.agent_progress,
          }]);
          if(result.autonomous_action?.executed)void refreshRequests();

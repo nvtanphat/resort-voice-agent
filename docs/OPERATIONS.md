@@ -23,7 +23,7 @@ Similarity fast path đang bật; evidence path tắt (`nlu.service_selector.fas
 
 Chạy theo [Setup](../SETUP.md). `main.py` tạo app ở import time, mở store và dựng dependency; production kiểm tra strict assets. Lifespan warm SLM/voice/selector/emergency gate có thể tiêu tốn tài nguyên và gọi model. Không import/start app để kiểm tra tài liệu.
 
-`/healthz` kiểm tra storage còn truy cập được. `/readyz` kiểm tra các dependency theo profile; đọc chi tiết mode/model/index, không chỉ HTTP status. Không hứa thời gian warm-up cố định.
+`/healthz` kiểm tra storage còn truy cập được. `/readyz` kiểm tra các dependency theo profile và trả 503 khi lớp hiểu ý định còn warm-up (prefix lệnh, index selector, emergency classifier); `/api/config.understanding_ready` báo cùng trạng thái và kiosk chờ nó trước khi nhận lượt khách; đọc chi tiết mode/model/index, không chỉ HTTP status. Không hứa thời gian warm-up cố định.
 
 Restart khi đổi settings/profile/assets. Shutdown xử lý task warm-up, store/graph và telemetry theo lifecycle; export thành công không phải điều kiện hoàn thành business transaction.
 
