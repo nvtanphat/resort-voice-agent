@@ -11,7 +11,7 @@ Nguồn contract: `api/shared/contracts.py`; routes ở `api/{public,guest,staff
 | Internal agent | X-Agent-Token |
 | Voice WebSocket | Same-origin, session và token theo transport contract |
 
-POST public dùng đúng `Origin` của `CONCIERGE_PUBLIC_ORIGIN`; cookie/CSRF vẫn bắt buộc cho guest endpoints đã bảo vệ. Không đặt raw session_id vào request để thay authorization. Staff bearer không bypass gateway production.
+POST public dùng đúng `Origin` của `CONCIERGE_PUBLIC_ORIGIN`; cookie/CSRF là điều kiện của các guest endpoint có bảo vệ. Không đặt raw session_id vào request để thay authorization. Staff bearer không bypass gateway production.
 
 `X-Request-ID`/`X-Trace-ID` trong response do server tạo cho HTTP correlation; không tin trace ID client hoặc mặc định đồng nhất với SDK trace ID.
 
@@ -79,6 +79,14 @@ Giá trị price_acknowledged/verification phải phản ánh consent thật, kh
 | POST | `/api/requests/{request_id}/feedback` |
 
 Khi một lượt không được hiểu (`nlu_failure`/`clarification`), phản hồi `/api/ask` có thể kèm `service_options`: tối đa 3 `{kind, service, label, details, payload}` là các dịch vụ gần nhất với lời khách theo embedding, `payload` là slot server đọc được (phòng, số lượng, giờ, ngày). Chọn một option chỉ mở form yêu cầu; khách vẫn xem lại và xác nhận, option không mang quyền ghi.
+
+Với proposal hợp lý nhưng chưa có đủ evidence kiểm chứng, `/api/ask` trả
+`needs_review=true` và có thể kèm `service_options` để khách kiểm tra hoặc chọn
+dịch vụ khác. `needs_review` khác với `requires_staff_review`: một field yêu cầu
+khách xem lại cách hiểu, field kia mô tả luồng nhân viên. Chúng không chứng minh
+yêu cầu đã được ghi hoặc hoàn tất. `review` trong command được server đặt;
+wire gọn model dùng nội bộ không thay đổi request/response contract `/api/*`.
+Xem điều kiện semantic tại [Architecture](ARCHITECTURE.md#một-guest-turn).
 
 ### Staff
 

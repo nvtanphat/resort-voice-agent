@@ -15,7 +15,12 @@ Tài liệu này là danh sách blocker hiện hành, không phải roadmap theo
 | Live voice/browser E2E | Chưa nghiệm thu STT/TTS/browser/streaming/audio lifecycle trên thiết bị mục tiêu |
 | Production operation | Chưa đủ evidence về TLS/proxy, rotation, backup/restore, crash/disk-full/load/network isolation |
 
-Chi tiết số đo và test ở [Testing](TESTING.md). Còn các lỗi test đã ghi nhận và các test RAG cần model thật bị offline runner chặn; không suy diễn offline PASS thành nghiệm thu model/voice.
+Chi tiết số đo và test ở [Testing](TESTING.md). Các lỗi được ghi nhận khi dọn code,
+bao gồm lỗi SetSlot tái lập trên HEAD gốc, nằm tại
+[kiểm chứng cleanup](TESTING.md#dọn-code-cơ-học-trên-head-a8bb47c). Các test RAG cần
+model thật có thể không được offline runner cho phép; không suy diễn offline PASS thành
+nghiệm thu model/voice. Tách module và đối chứng API có giới hạn chưa nghiệm thu
+cổng hai mức trên holdout lớn.
 
 - Khởi động: kiosk chờ `understanding_ready` trước khi nhận lượt; số đo warm-up thuộc [Testing](TESTING.md).
 - Khẩn cấp: vùng hỏi lại (`emergency_check`, ngưỡng thiên recall) vẫn hỏi với câu báo hỏng có từ gần nghĩa ("nghẹt", "rò nước"); khách trả lời không thì yêu cầu gốc tiếp tục.
@@ -24,7 +29,7 @@ Chi tiết số đo và test ở [Testing](TESTING.md). Còn các lỗi test đ�
 
 - Emergency domain chưa đủ reviewed evidence cho sudden speech/facial symptoms CORE-VI-EMERGENCY-14 và flooding/trapped person CORE-VI-EMERGENCY-18.
 - Một số active-hazard examples có label service/status thay emergency: NEEDS_ADJUDICATION; không hạ safety hoặc sửa nhãn theo output.
-- Verified spa anchor follow-up đã đi đúng boundary trong API model-unavailable; đây chưa phải real NLU hiểu ngữ cảnh massage trên transcript gốc.
+- Verified spa anchor follow-up có kết quả theo boundary trong API model-unavailable; đây chưa phải real NLU hiểu ngữ cảnh massage trên transcript gốc.
 - Similarity/candidate coverage cần đo với learned embedder sẵn sàng. Không thay unavailable similarity bằng keyword classifier.
 - Implicit information/reference wording ngoài contract có thể cần Qwen hoặc clarification. Read-only fallback không cấp service authority.
 - Training balance, missing examples và translation concepts cần source/human review; không tự grant business authority cho bản dịch chưa duyệt.

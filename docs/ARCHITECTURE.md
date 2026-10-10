@@ -24,17 +24,25 @@ flowchart TD
 
 `main.py` ghép dependencies và lifecycle; `bootstrap.py` validate settings và chuẩn bị runtime. API không thay domain policy; LangGraph/tool output không tự chứng minh business action đã commit.
 
-Trong `agent/understanding/`, `command_types.py` sở hữu command value objects;
-`command_prompt.py` dựng prompt/catalog; `commands.py` parse, validate và gọi model.
-`evidence_text.py` sở hữu Unicode matching/quotation masking, `request_scope.py`
-sở hữu phạm vi mệnh đề, còn `intent_evidence.py` cấp hoặc từ chối semantic support.
-`service_catalog.py` đọc hình dạng catalog, `service_examples.py` đọc training và
-context eligibility, `service_selector.py` sở hữu semantic index/ranking. Các tên
-import đã dùng ở module cũ vẫn được re-export để giữ contract của caller.
+Các module hiểu ý định và điều phối hội thoại có trách nhiệm riêng:
 
-Trong `application/conversation/`, `projection.py` chiếu command đã validate sang
-route và dựng confirmation/safety responses; `engine.py` vẫn sở hữu turn state,
-dependency wiring và thứ tự điều phối.
+| Module | Trách nhiệm |
+|---|---|
+| [command_types.py](../src/concierge_kiosk/agent/understanding/command_types.py) | Vocabulary đóng và command value objects; không có quyền ghi |
+| [command_prompt.py](../src/concierge_kiosk/agent/understanding/command_prompt.py) | Dựng prompt/catalog theo deployment; không gọi model |
+| [commands.py](../src/concierge_kiosk/agent/understanding/commands.py) | Parse, validate và gọi model |
+| [evidence_text.py](../src/concierge_kiosk/agent/understanding/evidence_text.py) | So khớp Unicode, giữ surface/offset và che phần trích dẫn |
+| [request_scope.py](../src/concierge_kiosk/agent/understanding/request_scope.py) | Phạm vi vị ngữ, các dạng clause view và đếm chuỗi hành động |
+| [intent_evidence.py](../src/concierge_kiosk/agent/understanding/intent_evidence.py) | Kiểm tra semantic support và điều kiện giữ proposal để review |
+| [service_catalog.py](../src/concierge_kiosk/agent/understanding/service_catalog.py) | Validate catalog rows và tạo service candidates |
+| [service_examples.py](../src/concierge_kiosk/agent/understanding/service_examples.py) | Đọc training, chuyển nhãn route cũ, kiểm tra context eligibility và label |
+| [service_selector.py](../src/concierge_kiosk/agent/understanding/service_selector.py) | Semantic index, cache và ranking; không cấp authority |
+| [projection.py](../src/concierge_kiosk/application/conversation/projection.py) | Chiếu command đã validate sang route và dựng confirmation/safety responses |
+| [engine.py](../src/concierge_kiosk/application/conversation/engine.py) | Turn state, dependency wiring và thứ tự điều phối |
+
+Các tên import đã dùng ở `commands.py`, `intent_evidence.py`, `service_selector.py`
+và `engine.py` vẫn được re-export để giữ contract của caller. Parser canonical/legacy
+vẫn có caller; wire gọn của model không thay thế hình dạng response API.
 
 ## Một guest turn
 
@@ -43,13 +51,15 @@ dependency wiring và thứ tự điều phối.
 3. Server xử lý các boundary có đủ evidence: clear pending draft, verified booking referent, câu hỏi thông tin read-only, pending confirmation/context continuation.
 4. Fast router và similarity path có thể tạo proposal grounded; nếu không đủ điều kiện, SLM đề xuất Structured Commands. ServiceSelector cung cấp candidates/examples, không cấp authority và không loại bỏ registry goals ngoài shortlist.
    - Prompt bố trí để tái sử dụng KV cache trên CPU: system message tĩnh theo deployment (hướng dẫn, mô tả hình dạng JSON của mọi command, toàn bộ catalog đã bật theo thứ tự registry) đứng đầu và được prefill lúc khởi động; model trả `format: json` (không dùng JSON-schema grammar: trên CPU tốn vài giây mỗi lượt và làm lệch một số model), server validate lại toàn bộ; few-shot là các lượt user→assistant trước đó với JSON một dòng; lượt khách luôn ở cuối. Mọi lời gọi SLM dùng chung `SLM_NUM_CTX` và `SLM_KEEP_ALIVE`.
+   - Wire của model cho `StartGoal` dùng `type`, `goal`, `text` và `item` tùy chọn trong `commands`; `text` là phạm vi nguyên văn của yêu cầu. Prompt không yêu cầu `slots` array. Server mở rộng scope, validate rồi trích slots; command canonical có thể chứa `source`, `slots` và metadata do server sở hữu.
 5. Server validate command/slots, semantic evidence, negation/quoted/past/question/conditional scope. Command sai bị bỏ; sibling hợp lệ được giữ khi contract cho phép.
+   - Command có evidence kiểm chứng đi theo semantic gate. Nếu thiếu evidence đó nhưng đạt điều kiện `plausible_request`, validator giữ proposal với `review=true` do server đặt. Engine trả `needs_review` và có thể kèm alternatives. Không đạt cả hai điều kiện thì từ chối; cờ model gửi không cấp authority. Proposal review vẫn cần explicit guest confirmation trước service write. Code có cổng hai mức; phạm vi nghiệm thu nằm trong [Testing](TESTING.md#cổng-hai-mức-chưa-đo-trên-bộ-lớn).
    - Mỗi command được xét trên mệnh đề của chính nó (`command_scope`): span nguyên văn của model nếu nằm trong đúng một mệnh đề, mở rộng ra cả mệnh đề; nếu thiếu, không nguyên văn hoặc trùm nhiều mệnh đề (model hay lặp cả câu cho từng yêu cầu) thì lấy mệnh đề giống service của command nhất. Span sai không làm mất command; slot cũng trích trên mệnh đề đó, số phòng lấy từ cả lượt.
    - Semantic evidence có hai nguồn: (a) concept + action trong ontology đã review; (b) đồng thuận model–embedding trên mệnh đề (`semantic_agreement`): goal nằm trong `top_k` service của mệnh đề, điểm ≥ `min_score`, cách service đứng đầu không quá `max_gap`, và gần hơn lượt review không yêu cầu dịch vụ nào (câu hỏi, cảm ơn, tham chiếu mơ hồ) theo `nonrequest_margin` — giá trị ở `nlu.service_selector.semantic_agreement`, hiệu chỉnh bằng `tools/nlu/calibrate_semantic_support.py` (giữ riêng cả nhóm diễn đạt trên train). Cái gì "không phải yêu cầu" được dạy bằng lượt review, không bằng danh sách cụm từ.
-   - Mệnh đề phải đang yêu cầu (`requests_now`): phủ định chỉ từ chối khi chi phối động từ yêu cầu ("không cần dọn", "don't bring", "청소하지 않아도") hoặc đối tượng của service giao đồ ("no towels"); phủ định một trạng thái ("máy lạnh không mát") hay tiểu từ hỏi ("…được không, phòng 701") không phải từ chối. Hướng chi phối theo ngữ pháp từng ngôn ngữ (`semantic_authorization.negation_scope`). Mốc quá khứ/hoàn tất, lời thuật lại và câu hỏi thông tin vẫn chặn. Yêu cầu bỏ qua xác nhận không được duyệt chỉ nhờ đồng thuận. Từ hỏi nằm trong khung yêu cầu ("could you…?", "…주실 수 있나요?") là cách hỏi lịch sự, không phải câu hỏi thông tin. Đồng thuận cho `CheckAvailability` (chỉ đọc) không áp lề "lượt không yêu cầu".
+   - Mệnh đề phải đang yêu cầu (`requests_now`): phủ định chỉ từ chối khi chi phối động từ yêu cầu ("không cần dọn", "don't bring", "청소하지 않아도") hoặc đối tượng của service giao đồ ("no towels"); phủ định một trạng thái ("máy lạnh không mát") hay tiểu từ hỏi ("…được không, phòng 701") không phải từ chối. Hướng chi phối theo ngữ pháp từng ngôn ngữ (`semantic_authorization.negation_scope`). Mốc quá khứ/hoàn tất, lời thuật lại và câu hỏi thông tin không cung cấp execution evidence. Yêu cầu bỏ qua xác nhận không được duyệt chỉ nhờ đồng thuận. Từ hỏi nằm trong khung yêu cầu ("could you…?", "…주실 수 있나요?") là cách hỏi lịch sự, không phải câu hỏi thông tin. Đồng thuận cho `CheckAvailability` (chỉ đọc) không áp lề "lượt không yêu cầu".
    - Ngữ pháp theo ngôn ngữ nằm trong config, không trong code: `clause_suffixes` (đuôi nối "-고" tách mệnh đề tiếng Hàn), `negation_scope`, `delivery_object_position` (đồ vật đứng trước động từ giao ở ngôn ngữ động-từ-cuối). Đồ vật mới không có trong catalog được nhận qua đường "giao đồ vật" khi có động từ giao và đồ vật khách nêu; mạo từ bất định ("a bathrobe") và số đếm đứng riêng ("가운 하나") là số lượng một/đếm được.
    - Model chỉ "đồng ý" khi không có gì đang chờ: validator bỏ lệnh đó; ở biên model, lượt chỉ có lệnh này được đáp như lời xã giao thay vì "chưa hiểu".
-   - Trong lượt nhiều command, read có query không phải lời khách và `Clarify` đi kèm hành động bị bỏ như padding; đứng một mình thì vẫn giữ. Field không thuộc loại command và slot sai hình dạng bị bỏ (không mang authority); phần còn lại vẫn qua validator chặt.
+   - Trong lượt nhiều command, read có query không phải lời khách và `Clarify` đi kèm hành động bị bỏ như padding; đứng một mình thì vẫn giữ. Field không thuộc loại command và slot sai hình dạng bị bỏ (không mang authority); phần còn lại vẫn qua validator theo contract.
    - Lượt có từ hỏi (mấy giờ, bao nhiêu, ở đâu…) chỉ được đồng thuận semantic qua mệnh đề có động từ yêu cầu. Động từ và concept được so khớp theo dấu khi khách gõ dấu (`marker_spans`): bỏ dấu thì "sữa"/"sửa", "chỗ"/"cho" trùng chữ. `semantic_authorization.question_particles` (ví dụ "vậy" cuối câu hỏi) không bị coi là tham chiếu ngữ cảnh.
    - `SetSlot`/`CorrectSlot` chỉ áp dụng khi có câu hỏi server đang chờ hoặc draft đang mở. Nêu lại cùng service của draft đang mở với giá trị mới ("cho mình 4 chai luôn") là sửa draft đó, không tạo yêu cầu mới; số lượng nhận theo đơn vị đếm cấu hình (`nlu.slots.quantity_units`).
 6. Command-to-route projection và governed execution chọn read/tool/proposal. Memory chỉ cấp anchor còn hợp lệ, owned và đúng source revision.

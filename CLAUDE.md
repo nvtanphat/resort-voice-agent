@@ -13,6 +13,13 @@
 
 Chi tiết nằm trong [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md) và [Data](docs/DATA.md); không sao chép kiến trúc vào nhiều tài liệu.
 
+## Cách diễn đạt trong tài liệu
+
+Nội dung mô tả trạng thái, contract và kết quả có nguồn đối chiếu. Không kể lại
+thao tác chỉnh sửa hoặc bổ sung. Dùng từ trung tính, không dùng động từ nhấn mạnh
+hay nhận định chủ quan. Số liệu, output nguyên văn và giới hạn kiểm chứng giữ
+nguyên ý nghĩa; lịch sử thuộc Git.
+
 ## Quy trình làm việc
 
 1. Kiểm tra HEAD, branch, working tree; giữ nguyên công việc chưa commit.
