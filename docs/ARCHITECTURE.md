@@ -24,6 +24,18 @@ flowchart TD
 
 `main.py` ghép dependencies và lifecycle; `bootstrap.py` validate settings và chuẩn bị runtime. API không thay domain policy; LangGraph/tool output không tự chứng minh business action đã commit.
 
+Trong `agent/understanding/`, `command_types.py` sở hữu command value objects;
+`command_prompt.py` dựng prompt/catalog; `commands.py` parse, validate và gọi model.
+`evidence_text.py` sở hữu Unicode matching/quotation masking, `request_scope.py`
+sở hữu phạm vi mệnh đề, còn `intent_evidence.py` cấp hoặc từ chối semantic support.
+`service_catalog.py` đọc hình dạng catalog, `service_examples.py` đọc training và
+context eligibility, `service_selector.py` sở hữu semantic index/ranking. Các tên
+import đã dùng ở module cũ vẫn được re-export để giữ contract của caller.
+
+Trong `application/conversation/`, `projection.py` chiếu command đã validate sang
+route và dựng confirmation/safety responses; `engine.py` vẫn sở hữu turn state,
+dependency wiring và thứ tự điều phối.
+
 ## Một guest turn
 
 1. API xác minh origin, session/CSRF và request schema; conversation engine serialize theo session.

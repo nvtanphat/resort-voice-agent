@@ -8,7 +8,7 @@ service code that is not present in the signed registry.
 from __future__ import annotations
 from concierge_kiosk.runtime.observability import observed
 
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from collections import OrderedDict
 import hashlib
 import json
@@ -16,14 +16,17 @@ import math
 import re
 from pathlib import Path
 import threading
-from typing import Any, Iterable, Protocol, Sequence
+from typing import Any, Protocol, Sequence
 
-from concierge_kiosk.agent.understanding.commands import commands_from_items, validate_commands
-from concierge_kiosk.core.dataset_layout import row_has_status, training_agent_paths
+# Existing callers import catalog/example types and loaders from this module.
+from .service_catalog import ServiceCatalogEntry, ServiceCandidate, _catalog_entry
+from .service_examples import (
+    CommandExample, EXCLUDED_ROUTES, _legacy_commands,
+    example_eligible, legacy_route_supported, load_command_examples, load_configured_examples,
+    nearest_label, normalized_situation_group,
+)
 from concierge_kiosk.domain.service_registry import (
-    ACTION_REQUEST_KINDS,
     SERVICE_DEFINITIONS,
-    accepted_slots,
     default_service_for,
     route_branch_for_request_kind,
     service_code_for_catalog_id,
@@ -38,79 +41,6 @@ class _Embedder(Protocol):
     def encode_passage(self, text: str) -> list[float]: ...
 
 
-@dataclass(frozen=True)
-class ServiceCatalogEntry:
-    catalog_service_id: str
-    name: str
-    description: str
-    names_by_locale: tuple[tuple[str, str], ...]
-    embedding_text: str
-
-
-@dataclass(frozen=True)
-class ServiceCandidate:
-    """A server-shaped candidate safe to place in an understanding prompt."""
-
-    service_mode: str
-    request_kind: str
-    catalog_service_id: str | None
-    name: str
-    description: str
-    score: float
-
-    def public(self) -> dict[str, Any]:
-        value: dict[str, Any] = {
-            "service_mode": self.service_mode,
-            "request_kind": self.request_kind,
-            "accepted_slots": list(accepted_slots(self.service_mode)),
-        }
-        if self.catalog_service_id:
-            value["catalog_service_id"] = self.catalog_service_id
-        if self.name:
-            value["name"] = self.name[:180]
-        if self.description:
-            value["description"] = self.description[:320]
-        return value
-
-
-def _text(value: object, maximum: int) -> str:
-    if not isinstance(value, str):
-        return ""
-    return " ".join(value.split()).strip()[:maximum]
-
-
-def _catalog_entry(row: object) -> ServiceCatalogEntry | None:
-    if not isinstance(row, dict):
-        return None
-    service_id = _text(row.get("service_id"), 128)
-    name = _text(row.get("name"), 180)
-    description = _text(row.get("description"), 640)
-    localized = row.get("names_by_locale")
-    if not service_id or not isinstance(localized, dict):
-        return None
-    names: list[tuple[str, str]] = []
-    for language, value in localized.items():
-        language_text = _text(language, 16)
-        name_text = _text(value, 180)
-        if language_text and name_text:
-            names.append((language_text, name_text))
-    if not names and not name:
-        return None
-    labels = " | ".join(dict.fromkeys(value for _, value in names))
-    embedding_text = ". ".join(
-        value for value in (labels, description) if value).strip()
-    if not embedding_text:
-        return None
-    return ServiceCatalogEntry(
-        catalog_service_id=service_id,
-        name=name or names[0][1],
-        description=description,
-        names_by_locale=tuple(names),
-        embedding_text=embedding_text,
-    )
-
-
-
 def _identity_text(code: str, definition) -> str:
     """What a service does, for its embedding: the first sentence of its description.
 
@@ -121,184 +51,6 @@ def _identity_text(code: str, definition) -> str:
     description = (getattr(definition, 'description', '') or '').strip()
     first = re.split(r'(?<=[.!?])\s+', description, maxsplit=1)[0].strip() if description else ''
     return first or code
-
-@dataclass(frozen=True)
-class CommandExample:
-    """A reviewed training utterance shown to the command model as a few-shot."""
-
-    language: str
-    utterance: str
-    commands: tuple[dict[str, Any], ...]
-    goal: str | None
-    # Paraphrases of one reviewed situation share a group (frame/concept);
-    # calibration holds a whole group out so it measures unseen phrasing.
-    group: str | None = None
-    # The server question this turn answers (slot replies only).
-    pending_field: str | None = None
-    # The verified topic the guest had just been told about (follow-up examples only).
-    context_topic: str | None = None
-
-    @property
-    def label(self) -> str:
-        """Coarse intent label used by the embedding router and calibration."""
-        starts = [command for command in self.commands if command.get("type") == "StartGoal"]
-        if len(self.commands) > 1:
-            return "multi"
-        command = self.commands[0]
-        kind = command.get("type")
-        if kind == "StartGoal":
-            return f"service:{starts[0].get('goal')}"
-        if kind == "ChitChat":
-            return f"chitchat:{command.get('kind') or 'smalltalk'}"
-        if kind in {"SetSlot", "CorrectSlot"}:
-            return f"slot:{command.get('field')}"
-        return str(kind).casefold()
-
-
-# Legacy rows carry a route but no explicit commands.  Only routes with an
-# unambiguous command meaning are used as examples; safety routes (emergency,
-# policy/privacy guards) are owned by deterministic layers and never learned.
-_LEGACY_ROUTE_COMMANDS: dict[str, dict[str, Any]] = {
-    "status": {"type": "AskStatus"},
-    "clarification": {"type": "Clarify"},
-    "escalation": {"type": "Handoff", "reason": "escalation"},
-    "reopen": {"type": "Handoff", "reason": "reopen earlier request"},
-    "safety_escalation": {"type": "Handoff", "reason": "safety concern"},
-}
-
-# Routes owned by deterministic layers: a bare-route row teaches no command, and
-# the omission is deliberate.  Any other bare route must appear above or the
-# row would be dropped silently (tests/agent/test_training_route_coverage.py).
-EXCLUDED_ROUTES: frozenset[str] = frozenset({"policy_guard", "privacy_guard"})
-
-
-def legacy_route_supported(route: object) -> bool:
-    """True when a row with only ``expected_route`` can become an example (or is excluded on purpose)."""
-    return route in {"service", "knowledge", "knowledge_abstain", "availability", "emergency"}         or route in _LEGACY_ROUTE_COMMANDS or route in EXCLUDED_ROUTES
-
-
-def _legacy_commands(row: dict[str, Any], route: object, utterance: str) -> list[dict[str, Any]] | None:
-    if route == "service":
-        goal = row.get("service_code")
-        if not isinstance(goal, str) or service_definition(goal) is None:
-            return None
-        slots = row.get("expected_slots") if isinstance(row.get("expected_slots"), dict) else {}
-        # Labels hold normalized values; a few-shot must only show slot text
-        # that is literally present, exactly as the runtime validator demands.
-        allowed = set(accepted_slots(goal))
-        shown = [{"name": name, "text": str(value)} for name, value in slots.items()
-                 if name in allowed and str(value) and str(value) in utterance]
-        return [{"type": "StartGoal", "goal": goal, "slots": shown}]
-    if route in {"knowledge", "knowledge_abstain"}:
-        return [{"type": "AskInfo", "query": utterance}]
-    if route == "availability":
-        goal = row.get("service_code")
-        if not isinstance(goal, str) or service_definition(goal) is None:
-            return None
-        return [{"type": "CheckAvailability", "goal": goal}]
-    if route == "emergency":
-        return [{"type": "Emergency"}]
-    template = _LEGACY_ROUTE_COMMANDS.get(str(route))
-    return [dict(template)] if template is not None else None
-
-
-def normalized_situation_group(*values: object) -> str | None:
-    """Unify historical concept and frame identifiers for leave-group-out scoring."""
-    for value in values:
-        text = _text(value, 128)
-        if text:
-            return text.casefold().removeprefix('frame-')
-    return None
-
-
-def _example(row: object) -> CommandExample | None:
-    if not isinstance(row, dict) or row.get("split") != "train":
-        return None
-    utterance = _text(row.get("utterance"), 300)
-    language = _text(row.get("language"), 16)
-    if not utterance or not language:
-        return None
-    context = row.get("context") if isinstance(row.get("context"), dict) else {}
-    pending_field = _text(context.get("pending_field"), 64) or None
-    context_topic = _text(context.get("last_verified_topic"), 160) or None
-    raw_commands = row.get("commands")
-    if not (isinstance(raw_commands, list) and raw_commands):
-        raw_commands = _legacy_commands(row, row.get("expected_route"), utterance)
-    commands = commands_from_items(raw_commands) if raw_commands else None
-    validated = validate_commands(
-        commands, query=utterance, enabled_request_kinds=ACTION_REQUEST_KINDS,
-        pending_reply=pending_field, language=language,
-        require_evidence=False) if commands else None
-    if not validated or len(validated) != len(commands):
-        # A row whose commands do not survive the runtime validator would
-        # teach the model an output the server rejects.
-        return None
-    public = tuple(command.public() for command in validated)
-    goal = next((command.goal for command in validated if command.type == "StartGoal"), None)
-    group = normalized_situation_group(row.get("frame_id"), row.get("concept_key"))
-    return CommandExample(language, utterance, public, goal, group, pending_field, context_topic)
-
-
-def load_command_examples(paths: Sequence[str | Path],
-                          statuses: Iterable[str] | None = None) -> tuple[CommandExample, ...]:
-    """Load train-split service/knowledge examples; evaluation data is never read here.
-
-    ``statuses`` limits rows to those whose ``gold_status`` is listed
-    (``nlu.service_selector.example_statuses``); ``None`` keeps every row.
-    """
-    examples: list[CommandExample] = []
-    for path in paths:
-        source = Path(path)
-        if not source.is_file() or source.is_symlink():
-            continue
-        for line in source.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if row_has_status(row, statuses) and (example := _example(row)) is not None:
-                examples.append(example)
-    return tuple(examples)
-
-
-def load_configured_examples(root: str | Path | None = None,
-                             statuses: Iterable[str] | None = None) -> tuple[CommandExample, ...]:
-    """Load examples exactly as the runtime does (shared training files + configured statuses).
-
-    Measurement and calibration tools use this so they never score a different
-    example set than the server.  ``statuses`` overrides the configured list
-    for controlled comparisons.
-    """
-    from concierge_kiosk.core.domain_profile import nlu_policy
-    allowed = tuple(statuses) if statuses is not None else tuple(
-        nlu_policy().service_selector["example_statuses"])
-    return load_command_examples(training_agent_paths(root), allowed)
-
-
-def nearest_label(scored: Sequence[tuple[float, CommandExample]]
-                  ) -> tuple[str | None, float, float]:
-    """Return (label, best score, best score of any other label) from ranked examples.
-
-    Labels are :attr:`CommandExample.label` (``service:<code>``, ``askinfo``,
-    ``chitchat:<kind>``, ``slot:<field>``, ...).  Shared by the runtime router,
-    the model-free fallback and their calibration tool.
-    """
-    if not scored:
-        return None, -1.0, -1.0
-    best_score, best_example = scored[0]
-    label = best_example.label
-    runner_up = next((score for score, example in scored[1:] if example.label != label), -1.0)
-    return label, best_score, runner_up
-
-
-def example_eligible(example: CommandExample, pending_field: str | None,
-                     context_topic: str | None = None) -> bool:
-    """Slot-reply examples only count while the server is asking for that field, and
-    follow-up examples only while the server holds a verified topic to point back at."""
-    return ((example.pending_field is None or example.pending_field == pending_field)
-            and (example.context_topic is None or bool(context_topic)))
 
 
 class ServiceSelector:

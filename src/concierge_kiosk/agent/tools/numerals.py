@@ -180,7 +180,7 @@ def _marked_clock(text: str, language: str) -> str | None:
 
 
 def _half_follows(text: str, position: int, language: str) -> bool:
-    """The half-hour marker follows a clock hour ("6 giờ rưỡi", "6 rưỡi")."""
+    """Recognize a configured half-hour marker following a clock hour."""
     markers = _CLOCK.get(language, {})
     halves, hours = tuple(markers.get('half', ())), tuple(markers.get('hour', ()))
     if not halves:

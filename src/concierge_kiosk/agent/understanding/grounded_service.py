@@ -30,11 +30,11 @@ from dataclasses import replace
 
 from concierge_kiosk.agent.tools.service_slots import item_and_unit, item_anchors
 from concierge_kiosk.agent.understanding.commands import Command, CommandSlot, validate_commands
-from concierge_kiosk.agent.understanding.intent_evidence import (DIRECT_EVIDENCE, clause_views, clauses,
+from concierge_kiosk.agent.understanding.intent_evidence import (DIRECT_EVIDENCE,
                                                                   command_supported, concept_spans, marker_spans, mentioned_services,
-                                                                  request_segments, service_evidence, spans)
-from concierge_kiosk.agent.understanding.intent_evidence import predicate_ranges
-from concierge_kiosk.agent.understanding.intent_evidence import fold, term_pattern, unquoted
+                                                                  service_evidence, spans)
+from concierge_kiosk.agent.understanding.request_scope import clause_views, clauses, predicate_ranges, request_segments
+from concierge_kiosk.agent.understanding.evidence_text import fold, term_pattern, unquoted
 from concierge_kiosk.agent.understanding.service_selector import ServiceSelector
 from concierge_kiosk.core.domain_profile import get_domain_profile
 from concierge_kiosk.domain.service_registry import accepted_slots, service_definition

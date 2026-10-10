@@ -6,18 +6,18 @@ Tài liệu này là danh sách blocker hiện hành, không phải roadmap theo
 
 | Hạng mục | Trạng thái và bằng chứng còn thiếu |
 |---|---|
-| SLM latency trên CPU | **NOT MET**: với qwen2.5:7b mỗi lượt cần model mất 7–12 s (mục tiêu P95 ≤ 8 s không đạt; budget đã nâng lên 12 s). Fast path và read-only path dưới 1.1 s. Voice với 7b chưa đo và gần như chắc chắn vượt `voice_slm_caps` ([Testing](TESTING.md)) |
-| Intent router (lời nói tự nhiên) | Giữ riêng 60 câu: 44/60 (vi 20/30, en 6/10, zh 10/10, ko 8/10); 80/80 câu bẫy, 0 write. Còn lỗi: model chọn dịch vụ gần nghĩa/bỏ sót một việc, câu hỏi lịch sự tiếng Hàn "…수 있나요?", câu hỏi chỗ trống. Lượt không hiểu kèm `service_options` để khách chọn ([Testing](TESTING.md)) |
+| SLM latency trên CPU | **NOT MET** trên laptop hiện hành; latency/budget và điều kiện đo nằm ở [Testing](TESTING.md#real-model-e2e-2026-10-10-đo-được-chưa-đạt-nghiệm-thu). Voice với model hiện hành chưa đo |
+| Intent router (lời nói tự nhiên) | Còn chọn dịch vụ gần nghĩa, bỏ sót việc, câu hỏi lịch sự tiếng Hàn và câu hỏi chỗ trống. Số đo từng holdout ở [Testing](TESTING.md#intent-router--đo-bằng-model-thật-2026-10-10); `service_options` hỗ trợ khách chọn, chưa là bằng chứng NLU đã đạt |
 | Transcript S01–S15 | Nguyên bản inputs/harness/failed node IDs chưa có; không thay bằng probe khác rồi gọi cùng suite |
-| Real-model task accuracy | **NOT MET**: 36/83 (43%) trên service holdout độc lập; vi 60%, en/zh/ko 17–33%. qwen3-4b chính xác hơn nhưng quá chậm trên CPU |
+| Real-model task accuracy | **NOT MET** trên service holdout độc lập; kết quả theo ngôn ngữ và đối chứng model ở [Testing](TESTING.md#real-model-e2e-2026-10-10-đo-được-chưa-đạt-nghiệm-thu) |
 | BGE Recall@K và Emergency Tier2 | **NOT_MEASURED** tại model/hardware hiện hành; Tier1 recall không thay whole-system recall |
 | Langfuse Cloud | **CLOUD_INGESTION_NOT_VERIFIED**; chưa controlled ingestion/read-back có quyền |
 | Live voice/browser E2E | Chưa nghiệm thu STT/TTS/browser/streaming/audio lifecycle trên thiết bị mục tiêu |
 | Production operation | Chưa đủ evidence về TLS/proxy, rotation, backup/restore, crash/disk-full/load/network isolation |
 
-Chi tiết ở [Testing](TESTING.md). Offline 2026-10-10: agent 910 passed, domain/data/api/voice 142 passed, ops 82 passed; còn 4 test cũ fail giống hệt trên HEAD trước thay đổi (3 test kỳ vọng knowledge read khi model unavailable, trái với contract `nlu_failure` hiện hành; 1 test kỳ vọng readback dùng tên catalog thay vì item) và 2 test RAG cần model thật bị offline runner chặn.
+Chi tiết số đo và test ở [Testing](TESTING.md). Còn các lỗi test đã ghi nhận và các test RAG cần model thật bị offline runner chặn; không suy diễn offline PASS thành nghiệm thu model/voice.
 
-- Khởi động: kiosk chờ `understanding_ready` trước khi nhận lượt; warm-up trên CPU laptop mất 45–65 s.
+- Khởi động: kiosk chờ `understanding_ready` trước khi nhận lượt; số đo warm-up thuộc [Testing](TESTING.md).
 - Khẩn cấp: vùng hỏi lại (`emergency_check`, ngưỡng thiên recall) vẫn hỏi với câu báo hỏng có từ gần nghĩa ("nghẹt", "rò nước"); khách trả lời không thì yêu cầu gốc tiếp tục.
 
 ## Coverage và authority còn cần review

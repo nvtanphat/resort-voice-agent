@@ -7,7 +7,7 @@ runtime registry before a command stream is accepted.
 from __future__ import annotations
 from concierge_kiosk.runtime.observability import observed, command_event, invocation, update_current
 
-from dataclasses import dataclass, replace
+from dataclasses import replace
 import json
 import unicodedata
 from typing import Any, Callable, Iterable, Mapping, Sequence
@@ -15,83 +15,15 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 from concierge_kiosk.agent.understanding.semantic import _chat, capture_chat_failure
 from concierge_kiosk.runtime.local_http import slm_turn_expired
 from concierge_kiosk.core.domain_profile import preference_policy, rag_policy, supported_languages
+# Preserve the shared command and prompt import paths used by runtime and tools.
+from .command_types import CHITCHAT_KINDS, COMMAND_TYPES, MAX_COMMANDS, MAX_SLOTS, MAX_TEXT, Command, CommandSlot
+from .command_prompt import (
+    _command_catalog, command_output_spec,
+    command_system_message, prompt_catalog,
+)
 from concierge_kiosk.core.settings import SLM_KEEP_ALIVE, SLM_NUM_CTX
-from concierge_kiosk.agent.tools.service_slots import SERVER_EXTRACTED_SLOTS
 from concierge_kiosk.domain.service_registry import accepted_slots, service_definition
 from concierge_kiosk.agent.understanding.intent_evidence import command_scope, command_supported, plausible_request, states_condition
-
-
-COMMAND_TYPES = frozenset({
-    'StartGoal', 'SetSlot', 'CorrectSlot', 'Cancel', 'Modify', 'Confirm',
-    'AskInfo', 'Navigate', 'Handoff', 'ChitChat', 'AskStatus', 'SwitchLanguage',
-    'Plan', 'SetPreference', 'Clarify', 'CheckAvailability', 'Emergency',
-})
-# Social sub-kinds select a fixed reply text; they never select an action.
-CHITCHAT_KINDS = ('greeting', 'thanks', 'goodbye', 'smalltalk')
-MAX_COMMANDS = 8
-MAX_SLOTS = 8
-MAX_TEXT = 300
-
-
-@dataclass(frozen=True)
-class CommandSlot:
-    name: str
-    text: str
-
-    def public(self) -> dict[str, str]:
-        return {'name': self.name, 'text': self.text}
-
-
-@dataclass(frozen=True)
-class Command:
-    """A validated, non-authoritative guest-intent command."""
-
-    type: str
-    goal: str | None = None
-    slots: tuple[CommandSlot, ...] = ()
-    query: str | None = None
-    keys: tuple[str, ...] = ()
-    field: str | None = None
-    value: str | None = None
-    confirmed: bool | None = None
-    conditional: bool = False
-    reason: str | None = None
-    kind: str | None = None
-    target: str | None = None
-    # AskInfo only: closed facet name (rag.facet_fact_types key) the guest is asking about.
-    facet: str | None = None
-    # StartGoal / AskInfo / Navigate: the guest points back at the last verified topic
-    # instead of naming one.  A model-made claim; the server honours it only when a verified
-    # anchor exists, and the anchor (never the model) supplies the topic.
-    refers_to_context: bool = False
-    # SetPreference only: the exact words of the guest turn the preference rests on.  The server
-    # checks that it is a verbatim span; it is a grounding check, never proof of intent.
-    evidence: str | None = None
-    # A complete guest predicate, expanded by the server before authorization.
-    # Numeric/time slots are extracted from this scope, never a sibling request.
-    source: str | None = None
-    # Set by the server only: a plausible request the evidence could not verify. It is
-    # shown to the guest with a review notice and alternatives; confirmation still decides.
-    review: bool = False
-
-    def public(self) -> dict[str, Any]:
-        result: dict[str, Any] = {'type': self.type}
-        for key, value in (
-                ('goal', self.goal), ('query', self.query), ('field', self.field),
-                ('value', self.value), ('confirmed', self.confirmed),
-                ('conditional', self.conditional if self.conditional else None),
-                ('refers_to_context', True if self.refers_to_context else None),
-                ('evidence', self.evidence),
-                ('source', self.source),
-                ('reason', self.reason), ('kind', self.kind), ('target', self.target),
-                ('facet', self.facet), ('review', True if self.review else None)):
-            if value is not None:
-                result[key] = value
-        if self.slots:
-            result['slots'] = [slot.public() for slot in self.slots]
-        if self.keys:
-            result['keys'] = list(self.keys)
-        return result
 
 
 def _surface(value: str) -> str:
@@ -512,80 +444,6 @@ def parse_commands(raw: str, *, query: str,
                              context_topic=context_topic, pending_goal=pending_goal, rejections=rejections)
 
 
-_CATALOG_MARKER = '\nAVAILABLE_SERVICES='
-
-_COMMAND_INSTRUCTIONS = (
-    'Interpret one hotel guest turn into compact JSON commands. Cover EVERY independently '
-    'requested action, including a shorter request beside a longer one. One item list is ONE '
-    'StartGoal; different aspects of one factual question are ONE AskInfo. '
-    'Select services by their action criteria in AVAILABLE_SERVICES, never department or default. '
-    'LIKELY_SERVICES is advisory. Examples demonstrate both single and composed intentions. '
-    'StartGoal requests execution; CheckAvailability asks about free capacity without booking; '
-    'AskInfo asks facts, price, hours or policy; Navigate asks directions; Plan asks advice. '
-    'Past, completed, quoted, reported, hypothetical or negated service mentions grant no execution '
-    'intent. Keep their governing words in text; never turn an inner verb into a new request. '
-    'AskStatus checks an earlier request. Cancel/Modify require an open draft or earlier request; '
-    'declining an item in a fresh order does not cancel a ticket. Confirm approves a pending task. '
-    'SetSlot/CorrectSlot answer PENDING_REPLY. SetPreference needs a stated lasting preference and '
-    'verbatim evidence. Handoff requests staff or reports a complaint. SwitchLanguage changes language. '
-    'ChitChat is social; Clarify is insufficient intent. '
-    'text is the COMPLETE original predicate for that command, including its complements and scope. '
-    'All text, item, value and evidence must be verbatim guest words. Emit NO slots array: the server '
-    'extracts room, quantities, units, time, date and venue. Optional item is only the exact object '
-    'phrase for an object-taking service. Never invent permission, booking, price or completion. '
-    'conditional=true only for an explicit availability condition. refers_to_context=true only '
-    'when the guest points back to CONTEXT.last_verified_topic without naming it. '
-    'OPEN_DRAFT is unconfirmed server state. Every action remains a proposal requiring guest consent. '
-)
-
-
-def _command_catalog(enabled_request_kinds: frozenset[str]) -> list[dict[str, Any]]:
-    """Every enabled registry service, in registry order (the authority for goals and slots)."""
-    from concierge_kiosk.domain.service_registry import SERVICE_DEFINITIONS
-    # Only the slots a model has to point at; the server reads counts, clock
-    # times, dates and party sizes from the guest turn itself.
-    return [{'service_mode': code,
-             'slots': [name for name in accepted_slots(code) if name not in SERVER_EXTRACTED_SLOTS],
-             'description': definition.description}
-            for code, definition in SERVICE_DEFINITIONS.items()
-            if definition.request_kind in enabled_request_kinds
-            and definition.request_kind != 'directions']
-
-
-def command_output_spec() -> str:
-    """The JSON shape of every command, stated in the prompt (vocabularies from config)."""
-    preferences = '|'.join(sorted(preference_policy().fields))
-    return (
-        'Answer with one line of JSON: {"commands":[...]}. Command shapes: '
-        '{"type":"StartGoal","goal":SERVICE_MODE,"text":GUEST_PREDICATE} '
-        '(optional "item":GUEST_OBJECT; optional "conditional":true); '
-        '{"type":"CheckAvailability","goal":SERVICE_MODE,"text":GUEST_PREDICATE}; '
-        '{"type":"AskInfo","query":GUEST_WORDS} with optional "facet":'
-        + '|'.join(sorted(rag_policy().facet_fact_types)) + '; '
-        '{"type":"Navigate","query":GUEST_WORDS}; {"type":"Plan","query":GUEST_WORDS}; '
-        '{"type":"AskStatus"}; {"type":"Cancel"}; {"type":"Modify"}; {"type":"Clarify"}; '
-        '{"type":"Confirm","confirmed":true}; '
-        '{"type":"SetSlot","field":ACCEPTED_SLOT,"value":GUEST_WORDS} (or CorrectSlot); '
-        '{"type":"SetPreference","field":' + preferences + ',"value":VALUE,"evidence":GUEST_WORDS}; '
-        '{"type":"SwitchLanguage","target":' + '|'.join(sorted(supported_languages())) + '}; '
-        '{"type":"Handoff","reason":TEXT}; '
-        '{"type":"ChitChat","kind":' + '|'.join(CHITCHAT_KINDS) + '}. '
-        'When CONTEXT is present, StartGoal, AskInfo and Navigate also carry "refers_to_context":true|false.'
-    )
-
-
-def command_system_message(enabled_request_kinds: frozenset[str]) -> dict[str, str]:
-    """The static part of every command prompt: instructions plus the enabled catalog.
-
-    It depends only on the deployment, so it is byte-identical on every turn and
-    comes first: the local runtime then reuses its KV cache instead of prefilling
-    the catalog again on CPU, and startup can warm exactly this prefix. Everything
-    that changes per turn goes in the user message, with the guest turn last.
-    """
-    return {'role': 'system', 'content': _COMMAND_INSTRUCTIONS + command_output_spec() + _CATALOG_MARKER
-            + json.dumps(_command_catalog(enabled_request_kinds), ensure_ascii=False, separators=(',', ':'))}
-
-
 @observed('qwen_nlu')
 def model_commands(*, query: str, language: str, base_url: str, model: str,
                    enabled_request_kinds: frozenset[str],
@@ -723,12 +581,6 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
     else:
         note('partially_accepted' if len(parsed) < _proposed_count(raw) else 'accepted')
     return parsed
-
-
-def prompt_catalog(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """The service catalog a command payload offered the model (for diagnostics)."""
-    system = payload['messages'][0]['content']
-    return json.loads(system.rsplit(_CATALOG_MARKER, 1)[1])
 
 
 def _proposed_count(raw: str) -> int:

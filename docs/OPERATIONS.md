@@ -43,6 +43,11 @@ Canonical knowledge thay đổi có thể cần build vocabulary, localized know
 
 Production ingestion dùng `concierge-ingest --bundle ... --manifest ... --signature ... --public-key ...`; directory ingestion chỉ cho môi trường được phép. Backup, OTA, reconcile và signoff nằm trong `tools/operations/`; không coi tên tool là proof đã nghiệm thu.
 
+`tools/operations/backup.py` cung cấp SQLite online snapshot bằng backup API.
+`secure_backup.py` gọi hàm đó rồi mã hóa/restore; maintenance migration,
+`edge_snapshot.py`, `privacy_backup_probe.py` và `test_secure_backup.py` dùng lớp
+mã hóa này. Hai file có trách nhiệm khác nhau và vẫn được giữ riêng.
+
 ## Langfuse optional
 
 Extra hiện tại: `observability` pin SDK `langfuse==4.17.0`.
