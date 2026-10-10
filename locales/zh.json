@@ -2,6 +2,7 @@
   "backend.request.deferred_nothing": "没问题，您慢慢来。准备好后告诉我即可，目前没有发送任何请求。",
   "backend.request.deferred_pending": "没问题，您慢慢考虑。待处理的请求会保持不变，目前没有发送任何内容。",
   "backend.request.deferred_draft": "我已记下这些信息，尚未发送任何请求。您准备好后告诉我，我会为您准备确认。",
+  "backend.request.review_before_confirm": "请点击屏幕上的“查看请求”进行核对后再确认。尚未发送任何请求。",
   "backend.service.room_access_conflict": "您的房间设置了请勿打扰，工作人员不会进入。您是否要取消请勿打扰以便工作人员进入？目前尚未发送任何请求。",
   "backend.service.room_access_override": "工作人员不会用万能钥匙或在未经客人同意的情况下进入客房；进入客房须遵循酒店流程。前台可以当面为您协助。尚未发送任何请求。",
   "backend.request.change.select": "您想更改哪项请求？请提供以下请求编号之一：{codes}。",

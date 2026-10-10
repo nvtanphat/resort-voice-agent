@@ -361,3 +361,14 @@ def test_an_assent_with_nothing_waiting_is_answered_as_an_acknowledgement(monkey
     assert model_commands(**call) == (module.Command('ChitChat', kind='smalltalk'),)
     # While another question waits, a bare "ok" answers nothing and is not turned into anything.
     assert model_commands(**call, pending_reply='room_number') is None
+
+
+def test_an_assent_for_an_unreviewed_draft_points_to_the_review_step(monkeypatch):
+    from concierge_kiosk.agent.understanding import commands as module
+    outcomes = []
+    monkeypatch.setattr(module, '_chat', lambda *_: '{"commands":[{"type":"Confirm","confirmed":true}]}')
+    result = model_commands(query='Ừ, xác nhận giúp mình', language='vi', base_url='http://127.0.0.1:11434',
+                            model='m', enabled_request_kinds=frozenset({'transport'}),
+                            pending_goal='transport_request', on_outcome=outcomes.append)
+    # Nothing is confirmed or acknowledged away: the guest is sent to review the draft.
+    assert result is None and outcomes[-1] == 'review_before_confirm'

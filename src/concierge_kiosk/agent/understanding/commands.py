@@ -708,6 +708,11 @@ def model_commands(*, query: str, language: str, base_url: str, model: str,
         pending_reply=pending_reply, language=language, context_topic=context_topic,
         pending_goal=pending_goal, rejections=rejections)
     if parsed is None and pending_reply is None and _sole_assent(raw):
+        if pending_goal is not None:
+            # "Yes, go ahead" for a draft the guest has not reviewed yet: nothing is sent
+            # before the review step; the engine points the guest to it.
+            note('review_before_confirm')
+            return None
         # "Okay, thanks" with nothing waiting approves nothing (the validator dropped it);
         # it acknowledges the conversation, so it is answered socially, not as not understood.
         note('acknowledgement')

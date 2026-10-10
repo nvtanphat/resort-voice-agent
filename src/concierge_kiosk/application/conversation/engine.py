@@ -599,6 +599,10 @@ class _TurnRuntimeSupport:
                 outcome = _COMMAND_OUTCOME.get()
             finally:
                 _COMMAND_OUTCOME.reset(token)
+            if commands is None and outcome == 'review_before_confirm':
+                # The draft stays as it is; the guest confirms it on the review screen.
+                return (RouteDecision('confirmation', True),
+                        {'held_answer': i18n_text('request.review_before_confirm', language)}, execution_query, None)
             if commands is None and outcome is not None:
                 failure = {
                     'model_not_ready': 'MODEL_NOT_READY', 'model_busy': 'MODEL_BUSY',
@@ -706,6 +710,13 @@ class _TurnRuntimeSupport:
                                     and command.field in {'requested_item', 'unit', 'requested_date'}})
                     if updates:
                         context['slots'] = {**context.get('slots', {}), **updates}
+                    # What the guest adds about the open draft ("the room is on do-not-disturb,
+                    # leave it outside") reaches staff in the request note with the first words.
+                    # A slot answer or correction lives in its slot; repeating it would keep a
+                    # replaced value in front of staff.
+                    said = ' '.join(query.split())
+                    if said and not updates and said not in str(context.get('details') or ''):
+                        context['details'] = f"{context.get('details') or ''} / {said}".strip(' /')[:500]
                     return RouteDecision(branch, True), context, execution_query, None
             if starts:
                 # A different service replaces the unfinished draft.

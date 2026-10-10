@@ -2,6 +2,7 @@
   "backend.request.deferred_nothing": "Không sao, bạn cứ thong thả. Khi sẵn sàng, bạn chỉ cần nói với mình. Chưa có yêu cầu nào được gửi.",
   "backend.request.deferred_pending": "Không sao, bạn cứ xem lại. Yêu cầu đang chờ vẫn được giữ nguyên và chưa có gì được gửi đi.",
   "backend.request.deferred_draft": "Mình đã ghi lại thông tin, chưa gửi yêu cầu nào. Khi bạn sẵn sàng, chỉ cần nói để mình chuẩn bị xác nhận.",
+  "backend.request.review_before_confirm": "Bạn vui lòng bấm “Xem lại yêu cầu” trên màn hình để kiểm tra rồi xác nhận. Chưa có yêu cầu nào được gửi.",
   "backend.service.room_access_conflict": "Phòng đang để chế độ không làm phiền, nhân viên sẽ không vào phòng. Bạn có muốn tắt chế độ này để nhân viên vào làm không? Chưa có yêu cầu nào được gửi.",
   "backend.service.room_access_override": "Nhân viên không vào phòng của khách bằng chìa tổng hoặc khi chưa có sự đồng ý của khách; việc vào phòng theo quy trình của khách sạn. Bạn có thể nhờ lễ tân hỗ trợ trực tiếp. Chưa có yêu cầu nào được gửi.",
   "backend.request.change.select": "Bạn muốn thay đổi yêu cầu nào? Vui lòng chọn một mã yêu cầu: {codes}.",

@@ -354,8 +354,11 @@ def extract_slots(query: str, language: str, kind: str, *, mode: str,
         terms = (_QUANTITY_ITEM.get(language) or {}).get('enumeration_terms', ())
         if complete and slots['requested_item'] in complete and any(term in complete for term in terms):
             slots['requested_item'] = complete
-    if isinstance(slots.get('requested_item'), str) and _QUANTITY_ITEM.get(language):
-        # An item phrase (from any source) ends at the first boundary word ("... to room").
+    if (isinstance(slots.get('requested_item'), str) and _QUANTITY_ITEM.get(language)
+            and _strip_marks(slots['requested_item'].casefold().split(';')[0].strip())
+            in _strip_marks(query.casefold())):
+        # An item phrase of this turn ends at the first boundary word ("... to room").
+        # An item carried from the open draft is not in this turn's words and stays whole.
         item = slots['requested_item']
         # Preserve bounded validated enumerations, including per-item quantities.
         trimmed = item[:_item_cut(item, 0, language, _QUANTITY_ITEM[language], enumerated=True)].strip()

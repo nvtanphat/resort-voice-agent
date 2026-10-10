@@ -482,3 +482,16 @@ def test_a_turn_not_understood_offers_the_closest_services_as_choices(journey):
         assert support.service_options('Vòi sen phòng 1215 yếu quá', 'vi', frozenset({'dining'})) == []
     finally:
         support.service_selector = original
+
+
+def test_what_the_guest_adds_to_an_open_draft_reaches_staff(journey, understand):
+    first = 'Mang lên phòng 611 hai cái gối nhé'
+    later = 'À phòng 611 đang treo biển không làm phiền, để ngoài cửa giúp nha'
+    understand(first, start('amenity_delivery', requested_item='gối'))
+    understand(later, Command('SetSlot', field='room_number', value='611'))
+    guest = journey.new_guest()
+    journey.ask(guest, first, 'vi')
+    body = journey.ask(guest, later, 'vi')
+    details = (body.get('suggested_action') or {}).get('details', '')
+    assert 'để ngoài cửa' in details and '611' in details, body
+    assert journey.count() == 0

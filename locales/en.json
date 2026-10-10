@@ -2,6 +2,7 @@
   "backend.request.deferred_nothing": "No problem, take your time. Just tell me when you're ready. Nothing has been sent.",
   "backend.request.deferred_pending": "No problem, take your time. Your pending request is kept as it is and nothing has been sent.",
   "backend.request.deferred_draft": "I've noted the details and nothing has been sent. When you're ready, just tell me and I'll prepare it for confirmation.",
+  "backend.request.review_before_confirm": "Please tap “Review request” on the screen to check it, then confirm. No request has been sent yet.",
   "backend.service.room_access_conflict": "Your room is set to Do Not Disturb, so staff will not enter. Would you like to turn it off so they can come in? Nothing has been sent yet.",
   "backend.service.room_access_override": "Staff do not enter a guest's room with a master key or without the guest's consent; room entry follows hotel procedure. The front desk can help you in person. No request has been sent.",
   "backend.smalltalk.reply": "Happy to help! Would you like hotel information, directions, or a service request?",

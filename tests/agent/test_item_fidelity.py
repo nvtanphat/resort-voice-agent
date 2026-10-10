@@ -283,3 +283,21 @@ def test_in_room_equipment_keeps_the_room():
     from concierge_kiosk.agent.tools.service_slots import extract_slots
     slots = extract_slots('Có thể mang lên một bàn ủi cho phòng 1418 không', 'vi', 'facilities', mode='facility_request')
     assert slots == {'room_number': '1418'}
+
+
+@pytest.mark.parametrize('query,expected', [
+    ('Đặt xe sáng mai lúc tám rưỡi nhé', '08:30'),          # spelled hour, half straight after it
+    ('Đặt bàn 6 giờ rưỡi tối nay', '18:30'),                # an evening half-hour is 18:30
+    ('Spa 1 tiếng rưỡi giá bao nhiêu', None),               # a duration is not a clock time
+])
+def test_a_half_hour_after_the_hour_is_thirty_minutes(query, expected):
+    from concierge_kiosk.agent.tools.service_slots import extract_slots
+    assert extract_slots(query, 'vi', 'transport', mode='transport_request').get('preferred_time') == expected
+
+
+def test_an_item_list_carried_by_the_draft_survives_a_later_turn():
+    from concierge_kiosk.agent.tools.service_slots import extract_slots
+    draft = {'requested_item': '2 gối; 1 chăn', 'room_number': '611'}
+    later = extract_slots('À phòng mình đang treo biển không làm phiền nhé', 'vi', 'facilities',
+                          mode='amenity_delivery', existing=draft)
+    assert later['requested_item'] == '2 gối; 1 chăn'

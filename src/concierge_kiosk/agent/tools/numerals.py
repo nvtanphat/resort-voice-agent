@@ -161,8 +161,10 @@ def _marked_clock(text: str, language: str) -> str | None:
         return f'{value // 60:02d}:{value % 60:02d}'
 
     marked_pattern = re.compile(
-        rf'(?<!\d){hour}\s*(?:{hour_marker})'
-        rf'(?:\s*(?:{half_marker})|\s*{minute}\s*(?:{minute_marker})?)?',
+        rf'(?<!\d){hour}\s*(?:(?:{hour_marker})'
+        rf'(?:\s*(?:{half_marker})|\s*{minute}\s*(?:{minute_marker})?)?'
+        # "half past" written straight after the hour ("6 rưỡi") also marks a clock.
+        rf'|(?:{half_marker})(?!\w))',
         flags=re.IGNORECASE,
     )
     match = marked_pattern.search(text)
@@ -175,6 +177,18 @@ def _marked_clock(text: str, language: str) -> str | None:
             for marker in halves
         ) else '00'
     return f'{int(match.group("hour")):02d}:{int(minute_value):02d}'
+
+
+def _half_follows(text: str, position: int, language: str) -> bool:
+    """The half-hour marker follows a clock hour ("6 giờ rưỡi", "6 rưỡi")."""
+    markers = _CLOCK.get(language, {})
+    halves, hours = tuple(markers.get('half', ())), tuple(markers.get('hour', ()))
+    if not halves:
+        return False
+    hour = '|'.join(re.escape(term) for term in sorted(hours, key=len, reverse=True))
+    half = '|'.join(re.escape(term) for term in sorted(halves, key=len, reverse=True))
+    pattern = rf'\s*(?:(?:{hour})\s*)?(?:{half})(?!\w)' if hour else rf'\s*(?:{half})(?!\w)'
+    return re.match(pattern, text[position:], re.IGNORECASE) is not None
 
 
 def _hour_for_period(hour: int, period: str) -> int:
@@ -296,6 +310,8 @@ def _preferred_time_core(text: str, language: str) -> str | None:
         if match:
             hour = int(match.group('hour'))
             minute = int(match.group('minute') or 0)
+            if match.group('minute') is None and _half_follows(normalized, match.end(), language):
+                minute = 30
             daypart = match.group('daypart')
             period = _daypart_period(dayparts, daypart)
             if period is not None and 0 <= hour <= 12 and 0 <= minute <= 59:

@@ -146,7 +146,7 @@ def _canonical_service_review(*, mode: str, language: str,
         lines.append(f'{label}: {rendered}')
     words = ' '.join(fallback_details.split()) if isinstance(fallback_details, str) else ''
     if guest_words and words:
-        lines.append(f"{labels.get('note', 'note')}: {words[:240]}")
+        lines.append(f"{labels.get('note', 'note')}: {words[:360]}")
     return '\n'.join(lines)[:500]
 
 
